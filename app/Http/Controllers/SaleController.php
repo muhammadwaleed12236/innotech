@@ -1373,6 +1373,26 @@ class SaleController extends Controller
                 $saleItem = new SaleItem;
                 $saleItem->sale_id = $sale->id;
                 $saleItem->product_id = $isManual ? null : $pid;
+                $saleItem->batch_id = !empty($request->batch_id[$index]) ? $request->batch_id[$index] : null;
+                $saleItem->batch_no = !empty($request->batch_no[$index]) ? $request->batch_no[$index] : null;
+
+                $rawSerials = $request->serials[$index] ?? null;
+                if (!empty($rawSerials)) {
+                    if (is_array($rawSerials)) {
+                        $saleItem->serials = json_encode(array_values($rawSerials));
+                    } elseif (is_string($rawSerials)) {
+                        $decoded = json_decode($rawSerials, true);
+                        if (is_array($decoded)) {
+                            $saleItem->serials = json_encode(array_values($decoded));
+                        } else {
+                            $cleanArr = array_values(array_filter(array_map('trim', explode(',', $rawSerials))));
+                            $saleItem->serials = count($cleanArr) > 0 ? json_encode($cleanArr) : null;
+                        }
+                    }
+                } else {
+                    $saleItem->serials = null;
+                }
+
                 $saleItem->color = $colorVal;
                 $saleItem->warehouse_id = !empty($warehouses[$index]) ? $warehouses[$index] : $defaultWhId;
                 $saleItem->product_name = $productName; // Store name snapshot
@@ -1974,6 +1994,25 @@ class SaleController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Deduct Batch quantity if specified
+                if (!empty($item->batch_id)) {
+                    \App\Models\ProductBatch::where('id', $item->batch_id)->decrement('qty', $qtyPieces);
+                } elseif (!empty($item->batch_no)) {
+                    \App\Models\ProductBatch::where('product_id', $item->product_id)
+                        ->where('batch_no', $item->batch_no)
+                        ->decrement('qty', $qtyPieces);
+                }
+
+                // Update Serials status to 'sold' if specified
+                if (!empty($item->serials)) {
+                    $serialList = is_array($item->serials) ? $item->serials : json_decode($item->serials, true);
+                    if (is_array($serialList) && count($serialList) > 0) {
+                        \App\Models\ProductSerial::where('product_id', $item->product_id)
+                            ->whereIn('serial_number', $serialList)
+                            ->update(['status' => 'sold']);
+                    }
+                }
             } elseif ($type === 'in' || $type === 'return') {
                 // Restore (Cancel or Return)
                 $stock->total_pieces += $qtyPieces;
@@ -1993,6 +2032,25 @@ class SaleController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
+                // Restore Batch quantity if specified
+                if (!empty($item->batch_id)) {
+                    \App\Models\ProductBatch::where('id', $item->batch_id)->increment('qty', $qtyPieces);
+                } elseif (!empty($item->batch_no)) {
+                    \App\Models\ProductBatch::where('product_id', $item->product_id)
+                        ->where('batch_no', $item->batch_no)
+                        ->increment('qty', $qtyPieces);
+                }
+
+                // Restore Serials status to 'available' if specified
+                if (!empty($item->serials)) {
+                    $serialList = is_array($item->serials) ? $item->serials : json_decode($item->serials, true);
+                    if (is_array($serialList) && count($serialList) > 0) {
+                        \App\Models\ProductSerial::where('product_id', $item->product_id)
+                            ->whereIn('serial_number', $serialList)
+                            ->update(['status' => 'available']);
+                    }
+                }
             }
         }
     }
@@ -2583,16 +2641,29 @@ class SaleController extends Controller
     public function getProductBatches(Request $request)
     {
         $productId = $request->get('product_id');
-        $warehouseId = $request->get('warehouse_id', 1);
+        $warehouseId = $request->get('warehouse_id');
 
-        $batches = \App\Models\ProductBatch::where('product_id', $productId)
-            ->where('warehouse_id', $warehouseId)
-            ->where('qty', '>', 0)
-            ->orderBy('expiry_date', 'asc')
-            ->get();
+        $isBatchProduct = \App\Models\ProductBatch::where('product_id', $productId)->exists();
+
+        $query = \App\Models\ProductBatch::where('product_id', $productId)
+            ->where('qty', '>', 0);
+
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
+
+        $batches = $query->orderBy('expiry_date', 'asc')->get();
+
+        if ($batches->isEmpty() && $warehouseId) {
+            $batches = \App\Models\ProductBatch::where('product_id', $productId)
+                ->where('qty', '>', 0)
+                ->orderBy('expiry_date', 'asc')
+                ->get();
+        }
 
         return response()->json([
             'success' => true,
+            'is_batch_product' => $isBatchProduct,
             'batches' => $batches
         ]);
     }
@@ -2603,12 +2674,17 @@ class SaleController extends Controller
     public function getProductSerials(Request $request)
     {
         $productId = $request->get('product_id');
-        $warehouseId = $request->get('warehouse_id', 1);
+        $warehouseId = $request->get('warehouse_id');
         $search = $request->get('search');
 
+        $isSerialProduct = \App\Models\ProductSerial::where('product_id', $productId)->exists();
+
         $query = \App\Models\ProductSerial::where('product_id', $productId)
-            ->where('warehouse_id', $warehouseId)
             ->where('status', 'available');
+
+        if ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        }
 
         if (!empty($search)) {
             $query->where('serial_number', 'like', "%{$search}%");
@@ -2616,8 +2692,18 @@ class SaleController extends Controller
 
         $serials = $query->orderBy('serial_number', 'asc')->get();
 
+        if ($serials->isEmpty() && $warehouseId) {
+            $query2 = \App\Models\ProductSerial::where('product_id', $productId)
+                ->where('status', 'available');
+            if (!empty($search)) {
+                $query2->where('serial_number', 'like', "%{$search}%");
+            }
+            $serials = $query2->orderBy('serial_number', 'asc')->get();
+        }
+
         return response()->json([
             'success' => true,
+            'is_serial_product' => $isSerialProduct,
             'serials' => $serials
         ]);
     }

@@ -1783,15 +1783,15 @@
 
             // Check Batches first
             $.get('{{ route("sale.get_batches") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
-                if (res.success && res.batches && res.batches.length > 0) {
-                    openBatchSelectModal($row, res.batches);
+                if (res.success && (res.is_batch_product || (res.batches && res.batches.length > 0))) {
+                    openBatchSelectModal($row, res.batches || []);
                     return;
                 }
 
-                // If no batches, check Serials / IMEIs
+                // If not batch product, check Serials / IMEIs
                 $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
-                    if (sRes.success && sRes.serials && sRes.serials.length > 0) {
-                        openSerialSelectModal($row, sRes.serials);
+                    if (sRes.success && (sRes.is_serial_product || (sRes.serials && sRes.serials.length > 0))) {
+                        openSerialSelectModal($row, sRes.serials || []);
                     }
                 });
             });
@@ -1803,32 +1803,36 @@
             $('#activeBatchRowIndex').val(rowIndex);
 
             let html = '';
-            batches.forEach(b => {
-                const expDate = b.expiry_date ? b.expiry_date : 'N/A';
-                const mfgDate = b.mfg_date ? b.mfg_date : 'N/A';
-                
-                let isExpired = false;
-                if (b.expiry_date) {
-                    const today = new Date().toISOString().split('T')[0];
-                    if (b.expiry_date <= today) isExpired = true;
-                }
+            if (!batches || batches.length === 0) {
+                html = '<tr><td colspan="5" class="text-danger fw-bold py-3"><i class="fas fa-exclamation-triangle me-1"></i> No active batches with available stock found for this product.</td></tr>';
+            } else {
+                batches.forEach(b => {
+                    const expDate = b.expiry_date ? b.expiry_date : 'N/A';
+                    const mfgDate = b.mfg_date ? b.mfg_date : 'N/A';
+                    
+                    let isExpired = false;
+                    if (b.expiry_date) {
+                        const today = new Date().toISOString().split('T')[0];
+                        if (b.expiry_date <= today) isExpired = true;
+                    }
 
-                const expBadge = isExpired ? '<span class="badge bg-danger">Expired</span>' : `<span class="badge bg-light text-dark border">${expDate}</span>`;
+                    const expBadge = isExpired ? '<span class="badge bg-danger">Expired</span>' : `<span class="badge bg-light text-dark border">${expDate}</span>`;
 
-                html += `
-                    <tr>
-                        <td class="fw-bold text-primary font-monospace">${b.batch_no}</td>
-                        <td class="small">${mfgDate}</td>
-                        <td>${expBadge}</td>
-                        <td><span class="badge bg-success font-monospace fs-6">${b.qty}</span></td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-primary btn-choose-batch py-1 px-3 fw-bold"
-                                    data-batch-id="${b.id}" data-batch-no="${b.batch_no}" data-batch-qty="${b.qty}">
-                                <i class="fas fa-check me-1"></i> Select Batch
-                            </button>
-                        </td>
-                    </tr>`;
-            });
+                    html += `
+                        <tr>
+                            <td class="fw-bold text-primary font-monospace">${b.batch_no}</td>
+                            <td class="small">${mfgDate}</td>
+                            <td>${expBadge}</td>
+                            <td><span class="badge bg-success font-monospace fs-6">${b.qty}</span></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-primary btn-choose-batch py-1 px-3 fw-bold"
+                                        data-batch-id="${b.id}" data-batch-no="${b.batch_no}" data-batch-qty="${b.qty}">
+                                    <i class="fas fa-check me-1"></i> Select Batch
+                                </button>
+                            </td>
+                        </tr>`;
+                });
+            }
 
             $('#batchModalTableBody').html(html);
             $('#modalSelectBatch').modal('show');
@@ -1948,6 +1952,15 @@
                 }
 
                 $('#modalSelectSerial').modal('hide');
+            }
+        });
+
+        // Re-open Batch or Serial Modal on clicking tracking badge
+        $(document).on('click', '.row-tracking-badges', function() {
+            const $row = $(this).closest('tr');
+            const pid = $row.find('.product-id-hidden').val() || $row.find('.product').val();
+            if (pid) {
+                checkAndOpenProductTracking($row, pid);
             }
         });
     }); // Close $(document).ready
