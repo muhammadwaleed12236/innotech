@@ -1258,102 +1258,65 @@
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
             <div class="sale-card mb-3 p-3">
                 <div class="row g-2 align-items-center">
-                    {{-- Form Inputs (Left Block) --}}
-                    <div class="col-xl-8 col-lg-7">
-                        <div class="row g-2 align-items-center">
-                            {{-- Customer --}}
-                            <div class="col-12 col-md-7">
-                                <label class="field-label mb-1">Customer</label>
-                                <div class="d-flex gap-2">
-                                    <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
-                                        <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
-                                        <select class="form-select" id="customerSelect" name="customer" style="width:100%">
-                                            <option value=""></option>
-                                        </select>
-                                    </div>
-                                    <button type="button" id="btnOpenAddCustomerModal"
-                                            class="btn btn-outline-primary flex-shrink-0 align-self-stretch"
-                                            style="width: var(--pos-input-h); padding: 0; display: inline-flex; align-items: center; justify-content: center;"
-                                            data-toggle="modal" data-target="#addCustomerModal"
-                                            data-bs-toggle="modal" data-bs-target="#addCustomerModal"
-                                            title="Quick Add Customer (Alt+C or F2)">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {{-- Sale Type --}}
-                            <div class="col-12 col-md-5">
-                                <label class="field-label mb-1">Sale Type</label>
-                                <div class="seg-toggle" role="group" aria-label="Sale Type">
-                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
-                                        <i class="fas fa-users me-1"></i> Customer
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
-                                        <i class="fas fa-walking me-1"></i> Walk-in
-                                    </button>
-                                </div>
-                                <select class="d-none" id="partyTypeSelect" name="partyType">
-                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                    @endforeach
+                    {{-- Customer --}}
+                    <div class="col-12 col-md-7">
+                        <label class="field-label mb-1">Customer</label>
+                        <div class="d-flex gap-2">
+                            <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
+                                <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
+                                <select class="form-select" id="customerSelect" name="customer" style="width:100%">
+                                    <option value=""></option>
                                 </select>
                             </div>
+                            <button type="button" id="btnOpenAddCustomerModal"
+                                    class="btn btn-outline-primary flex-shrink-0 align-self-stretch"
+                                    style="width: var(--pos-input-h); padding: 0; display: inline-flex; align-items: center; justify-content: center;"
+                                    data-toggle="modal" data-target="#addCustomerModal"
+                                    data-bs-toggle="modal" data-bs-target="#addCustomerModal"
+                                    title="Quick Add Customer (Alt+C or F2)">
+                                <i class="fas fa-plus"></i>
+                            </button>
                         </div>
                     </div>
 
-                    {{-- Customer Balance Card (Right Block) --}}
-                    <div class="col-xl-4 col-lg-5">
-                        <div class="cust-bal-card p-2 rounded-3" style="background: #F8FAFC; border: 1px solid #E2E8F0;">
-                            <span id="cc_customer_name" class="d-none"></span>
-                            <span id="ci_code" class="d-none"></span>
-
-                            <div id="customerInfoCard" class="d-none cb-extras mb-2">
-                                <div class="cb-ext">
-                                    <div class="cb-ext-label">Full Name</div>
-                                    <div class="cb-ext-val" id="ci_name">—</div>
-                                </div>
-                                <div class="cb-ext">
-                                    <div class="cb-ext-label">Mobile</div>
-                                    <div class="cb-ext-val" id="ci_mobile">—</div>
-                                </div>
-                                <div class="cb-ext">
-                                    <div class="cb-ext-label">Address</div>
-                                    <div class="cb-ext-val" id="ci_address">—</div>
-                                </div>
-                            </div>
-
-                            <div class="row row-cols-4 g-2 text-center m-0">
-                                <div class="col p-1">
-                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Prev. Due</div>
-                                        <div class="fw-bold mt-1" style="font-size: 13px; color: #EF4444;">
-                                            <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col p-1">
-                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Current Due</div>
-                                        <div class="fw-bold text-primary mt-1" id="cc_current_bill" style="font-size: 13px; color: #2563EB !important;">Rs 0</div>
-                                    </div>
-                                </div>
-                                <div class="col p-1">
-                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Paid</div>
-                                        <div class="fw-bold text-success mt-1" id="cc_paid_now" style="font-size: 13px; color: #16A34A !important;">Rs 0</div>
-                                    </div>
-                                </div>
-                                <div class="col p-1">
-                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Closing</div>
-                                        <div class="fw-bold mt-1" style="font-size: 13px; color: #9333EA !important;">
-                                            <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    {{-- Sale Type --}}
+                    <div class="col-12 col-md-5">
+                        <label class="field-label mb-1">Sale Type</label>
+                        <div class="seg-toggle" role="group" aria-label="Sale Type">
+                            <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
+                                <i class="fas fa-users me-1"></i> Customer
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
+                                <i class="fas fa-walking me-1"></i> Walk-in
+                            </button>
                         </div>
+                        <select class="d-none" id="partyTypeSelect" name="partyType">
+                            @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Simple Customer Balance Info Line --}}
+                <div class="d-flex align-items-center flex-wrap gap-3 mt-3 pt-2 border-top" style="font-size: 13px;">
+                    <span id="cc_customer_name" class="d-none"></span>
+                    <span id="ci_code" class="d-none"></span>
+
+                    <div id="customerInfoCard" class="d-none cb-extras me-2">
+                        <span class="me-3 text-muted">Full Name: <b id="ci_name" class="text-dark">—</b></span>
+                        <span class="me-3 text-muted">Mobile: <b id="ci_mobile" class="text-dark">—</b></span>
+                        <span class="text-muted">Address: <b id="ci_address" class="text-dark">—</b></span>
+                    </div>
+
+                    <div class="d-flex align-items-center flex-wrap gap-3 fw-bold">
+                        <span class="text-danger">Prev. Due: <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span></span>
+                        <span class="text-muted opacity-50">|</span>
+                        <span class="text-primary">Current Due: <span id="cc_current_bill">Rs 0</span></span>
+                        <span class="text-muted opacity-50">|</span>
+                        <span class="text-success">Paid: <span id="cc_paid_now">Rs 0</span></span>
+                        <span class="text-muted opacity-50">|</span>
+                        <span style="color: #9333EA;">Closing: <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span></span>
                     </div>
                 </div>
             </div>
