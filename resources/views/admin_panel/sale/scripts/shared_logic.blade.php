@@ -64,10 +64,10 @@
             ajax: {
                 url: '{{ route('products.ajax.search') }}',
                 dataType: 'json',
-                delay: 250,
+                delay: 200,
                 data: function(params) {
                     return {
-                        term: params.term,
+                        term: params.term || '',
                         page: params.page || 1
                     };
                 },
@@ -83,6 +83,17 @@
                 cache: true
             },
             minimumInputLength: 0,
+            language: {
+                searching: function() {
+                    return '<div class="p-2 text-muted" style="font-size: 13px;"><i class="fas fa-spinner fa-spin me-1"></i> Searching products...</div>';
+                },
+                noResults: function() {
+                    return '<div class="p-2 text-muted" style="font-size: 13px;">No product found</div>';
+                }
+            },
+            escapeMarkup: function(markup) {
+                return markup;
+            },
             templateResult: formatProduct,
             templateSelection: formatSelection
         });
@@ -95,17 +106,15 @@
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
         let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
-        return $(`
-        <div class="clearfix">
-            <div class="float-start">
-                <div class="fw-bold">${repo.name || repo.text}</div>
-                <small class="text-muted">SKU: ${sku}</small>
-            </div>
-            <div class="float-end">
-                <span class="badge ${badgeClass} rounded-pill">Stock: ${stock}</span>
-            </div>
-        </div>
-    `);
+        return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="color: #0f172a;">' +
+            '<div>' +
+                '<div class="fw-bold" style="color: #0f172a;">' + (repo.name || repo.text) + '</div>' +
+                '<small class="text-muted" style="font-size: 11px;">SKU: ' + sku + '</small>' +
+            '</div>' +
+            '<div>' +
+                '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1">Stock: ' + stock + '</span>' +
+            '</div>' +
+        '</div>';
     }
 
     function formatSelection(repo) {
