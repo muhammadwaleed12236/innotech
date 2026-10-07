@@ -496,7 +496,8 @@
             currentInvoiceTotal -= freightCharges;
         }
 
-        const prev = toNum($('#previousBalance').val());
+        const isWalkin = $('#is_walkin').val() === '1';
+        const prev = isWalkin ? 0 : toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
         const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
 
@@ -904,6 +905,14 @@
         $('#is_walkin').val(isWalkin ? '1' : '0');
         
         if (isWalkin) {
+            $('#previousBalance').val(0);
+            $('#rangeBalance').val(0);
+            $('#ci_name').text($('#walkinNameInput').val() || 'Walk-in Customer');
+            $('#ci_mobile').text('—');
+            $('#ci_address').text('—');
+            $('#ci_code').text('—');
+            $('#cc_customer_name').text($('#walkinNameInput').val() || 'Walk-in Customer');
+
             $('#btnTypeWalkin').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
             $('#btnTypeCustomer').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
             
