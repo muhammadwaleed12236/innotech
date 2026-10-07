@@ -2202,8 +2202,10 @@
                 </form>
             </div>
         </div>
+    </div>
+
     <!-- Modal: Select Product Batch -->
-    <div class="modal fade" id="modalSelectBatch" tabindex="-1" aria-labelledby="modalSelectBatchLabel" aria-hidden="true" style="z-index:1065;">
+    <div class="modal fade" id="modalSelectBatch" tabindex="-1" aria-labelledby="modalSelectBatchLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header border-bottom bg-light px-3 py-2">
@@ -2241,7 +2243,7 @@
     </div>
 
     <!-- Modal: Select Product Serials / IMEIs -->
-    <div class="modal fade" id="modalSelectSerial" tabindex="-1" aria-labelledby="modalSelectSerialLabel" aria-hidden="true" style="z-index:1065;">
+    <div class="modal fade" id="modalSelectSerial" tabindex="-1" aria-labelledby="modalSelectSerialLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header border-bottom bg-light px-3 py-2">
