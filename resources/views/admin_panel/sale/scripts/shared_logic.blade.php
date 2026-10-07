@@ -1717,9 +1717,23 @@
             $('#changeAccountId, #bottomChangeAccountId').val(val);
         });
 
-        // Toggle Customer Info Card
+        // Toggle Customer Info Modal
         $(document).on('click', '#btnToggleCustomerInfo', function() {
-            $('#customerInfoCard').toggleClass('d-none');
+            const name = $('#ci_name').text().trim();
+            const mobile = $('#ci_mobile').text().trim();
+            const address = $('#ci_address').text().trim();
+            const prevVal = $('#cc_prev_bal_val').text().trim();
+            const prevSuf = $('#cc_prev_bal_suffix').text().trim();
+            const closingVal = $('#cc_closing_bal_val').text().trim();
+            const closingSuf = $('#cc_closing_bal_suffix').text().trim();
+
+            $('#ci_modal_name').text(name || '—');
+            $('#ci_modal_mobile').text(mobile || '—');
+            $('#ci_modal_address').text(address || '—');
+            $('#ci_modal_prev').html((prevVal || 'Rs 0') + (prevSuf ? ' <small>' + prevSuf + '</small>' : ''));
+            $('#ci_modal_closing').html((closingVal || 'Rs 0') + (closingSuf ? ' <small>' + closingSuf + '</small>' : ''));
+
+            $('#modalCustomerDetails').modal('show');
         });
 
 

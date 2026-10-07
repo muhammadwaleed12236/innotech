@@ -1327,14 +1327,11 @@
                     </div>
                 </div>
 
-                {{-- Collapsible / Toggleable Customer Info Details --}}
-                <div id="customerInfoCard" class="d-none cb-extras mt-2 pt-2 border-top" style="font-size: 13px;">
-                    <span id="cc_customer_name" class="d-none"></span>
-                    <span id="ci_code" class="d-none"></span>
-                    <span class="me-3 text-muted">Full Name: <b id="ci_name" class="text-dark">—</b></span>
-                    <span class="me-3 text-muted">Mobile: <b id="ci_mobile" class="text-dark">—</b></span>
-                    <span class="text-muted">Address: <b id="ci_address" class="text-dark">—</b></span>
-                </div>
+                <span id="cc_customer_name" class="d-none"></span>
+                <span id="ci_code" class="d-none"></span>
+                <span id="ci_name" class="d-none">—</span>
+                <span id="ci_mobile" class="d-none">—</span>
+                <span id="ci_address" class="d-none">—</span>
             </div>
 
             {{-- Hidden fields for backend --}}
@@ -2291,6 +2288,57 @@
                     <button type="button" class="btn btn-success btn-sm fw-bold px-3" id="btnApplySelectedSerials">
                         <i class="fas fa-check me-1"></i> Apply Selected IMEIs
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer Details Modal -->
+    <div class="modal fade" id="modalCustomerDetails" tabindex="-1" aria-labelledby="modalCustomerDetailsLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+            <div class="modal-content border-0 shadow-lg rounded-3">
+                <div class="modal-header bg-light border-bottom p-3">
+                    <h5 class="modal-title fw-bold text-primary fs-6 d-flex align-items-center gap-2" id="modalCustomerDetailsLabel">
+                        <i class="fas fa-user-circle fs-5"></i> Customer Information
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="p-2 rounded bg-light border">
+                                <label class="text-muted fw-bold d-block" style="font-size: 11px;">FULL NAME</label>
+                                <span class="fw-bold text-dark fs-6" id="ci_modal_name">—</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded bg-light border">
+                                <label class="text-muted fw-bold d-block" style="font-size: 11px;">MOBILE</label>
+                                <span class="fw-bold text-dark fs-6" id="ci_modal_mobile">—</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="p-2 rounded bg-light border">
+                                <label class="text-muted fw-bold d-block" style="font-size: 11px;">ADDRESS</label>
+                                <span class="fw-bold text-dark" id="ci_modal_address" style="font-size: 13.5px;">—</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded border" style="background: #FEF2F2; border-color: #FCA5A5 !important;">
+                                <label class="text-danger fw-bold d-block" style="font-size: 11px;">PREV. DUE</label>
+                                <span class="fw-bold text-danger fs-6" id="ci_modal_prev">—</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded border" style="background: #F3E8FF; border-color: #D8B4FE !important;">
+                                <label class="fw-bold d-block" style="font-size: 11px; color: #9333EA;">CLOSING BALANCE</label>
+                                <span class="fw-bold fs-6" id="ci_modal_closing" style="color: #9333EA;">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-2 px-3 border-top">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
