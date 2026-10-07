@@ -149,19 +149,29 @@
             z-index: 99999 !important;
             overflow: hidden !important;
         }
-        .select2-results__options {
+        .select2-container--default .select2-results__options {
             background-color: #ffffff !important;
+            max-height: 250px !important;
         }
-        .select2-results__option {
+        .select2-container--default .select2-results__option {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
             padding: 8px 12px !important;
             font-size: 13px !important;
-            color: #1e293b !important;
-            background-color: #ffffff !important;
+            border-bottom: 1px solid #f1f5f9 !important;
         }
-        .select2-results__option--highlighted[aria-selected],
-        .select2-results__option--highlighted.select2-results__option--selectable {
-            background-color: var(--pos-blue, #2563eb) !important;
+        .select2-container--default .select2-results__option .text-muted,
+        .select2-container--default .select2-results__option small {
+            color: #64748b !important;
+        }
+        .select2-container--default .select2-results__option--highlighted,
+        .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: #2563eb !important;
             color: #ffffff !important;
+        }
+        .select2-container--default .select2-results__option--highlighted .text-muted,
+        .select2-container--default .select2-results__option--highlighted small {
+            color: #e2e8f0 !important;
         }
         .select2-search--dropdown {
             padding: 6px !important;
