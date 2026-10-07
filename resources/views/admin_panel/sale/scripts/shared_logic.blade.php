@@ -61,6 +61,7 @@
             placeholder: 'Search Product (Name / SKU / Barcode)',
             allowClear: true,
             width: '100%',
+            dropdownParent: $(document.body),
             ajax: {
                 url: '{{ route('products.ajax.search') }}',
                 dataType: 'json',
@@ -101,15 +102,28 @@
 
     function formatProduct(repo) {
         if (repo.loading) return repo.text;
+        
+        let name = repo.name || repo.text || '';
+        let sku = repo.sku || '';
         let stock = repo.stock !== undefined ? repo.stock : 0;
-        let sku = repo.sku || 'N/A';
         let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
+
+        if (repo.element) {
+            const $el = $(repo.element);
+            if ($el.val() === '') return repo.text;
+            sku = $el.data('sku') || sku;
+            stock = $el.data('stock') !== undefined ? $el.data('stock') : stock;
+            stockVal = parseFloat(stock) || 0;
+            name = $el.data('name') || name || $el.text();
+        }
+
+        let skuText = sku ? ('SKU: ' + sku) : 'N/A';
         let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
         return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="color: #0f172a;">' +
             '<div>' +
-                '<div class="fw-bold" style="color: #0f172a;">' + (repo.name || repo.text) + '</div>' +
-                '<small class="text-muted" style="font-size: 11px;">SKU: ' + sku + '</small>' +
+                '<div class="fw-bold" style="color: #0f172a;">' + name + '</div>' +
+                '<small class="text-muted" style="font-size: 11px;">' + skuText + '</small>' +
             '</div>' +
             '<div>' +
                 '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1">Stock: ' + stock + '</span>' +
@@ -118,6 +132,13 @@
     }
 
     function formatSelection(repo) {
+        if (repo.element) {
+            const $el = $(repo.element);
+            if (!$el.val()) return repo.text || '';
+            const name = $el.data('name') || repo.name || repo.text || '';
+            const sku = $el.data('sku') || repo.sku || '';
+            return sku ? (name + ' (SKU: ' + sku + ')') : name;
+        }
         return repo.name || repo.text;
     }
 
@@ -147,6 +168,23 @@
     <td class="col-product">
       <select class="form-select product" style="width:100%">
         <option value=""></option>
+        @if(isset($allProducts) && count($allProducts) > 0)
+            @foreach($allProducts as $p)
+                <option value="{{ $p->id }}" 
+                    data-sku="{{ $p->item_code }}" 
+                    data-stock="{{ $p->warehouse_stocks_sum_total_pieces ?? 0 }}"
+                    data-retail_price="{{ $p->sale_price_per_piece ?? 0 }}"
+                    data-trade_price="{{ $p->purchase_price_per_piece ?? 0 }}"
+                    data-wholesale_price="{{ $p->wholesale_price ?? 0 }}"
+                    data-weight_per_piece="{{ $p->weight_per_piece ?? 0 }}"
+                    data-pieces_per_box="{{ $p->pieces_per_box ?? 1 }}"
+                    data-size_mode="{{ $p->size_mode }}"
+                    data-sale_discount_percent="{{ $p->sale_discount_percent ?? 0 }}"
+                    data-name="{{ $p->item_name }}">
+                    {{ $p->item_name }} (SKU: {{ $p->item_code }})
+                </option>
+            @endforeach
+        @endif
       </select>
       <input type="hidden" class="product-id-hidden" name="product_id[]">
       <input type="hidden" class="variant-data-hidden" name="color[]">
@@ -1008,10 +1046,23 @@
             if (window.isEditModeLoading) return; // Block during edit load
             
             const data = e.params.data;
-            if (!data.id) return;
+            if (!data || !data.id) return;
             
             const $row = $(this).closest('tr');
             
+            if (data.element) {
+                const $el = $(data.element);
+                data.sku = data.sku || $el.data('sku') || '';
+                data.retail_price = data.retail_price !== undefined ? data.retail_price : ($el.data('retail_price') || $el.data('trade_price') || 0);
+                data.wholesale_price = data.wholesale_price !== undefined ? data.wholesale_price : ($el.data('wholesale_price') || 0);
+                data.weight_per_piece = data.weight_per_piece !== undefined ? data.weight_per_piece : ($el.data('weight_per_piece') || 0);
+                data.size_mode = data.size_mode || $el.data('size_mode') || 'by_pcs';
+                data.pieces_per_box = data.pieces_per_box || $el.data('pieces_per_box') || 1;
+                data.variant_data = data.variant_data || $el.data('variant_data') || '';
+                data.stock = data.stock !== undefined ? data.stock : ($el.data('stock') || 0);
+                data.sale_discount_percent = data.sale_discount_percent !== undefined ? data.sale_discount_percent : ($el.data('sale_discount_percent') || 0);
+            }
+
             let pid = data.id.toString().split('|')[0];
             $row.find('.product-id-hidden').val(pid);
             $row.find('.variant-data-hidden').val(data.variant_data || '');

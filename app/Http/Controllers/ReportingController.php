@@ -1021,158 +1021,193 @@ class ReportingController extends Controller
      */
     public function fetchProductHistory(Request $request, $productId)
     {
-        $product = Product::with(['unit', 'category_relation'])->findOrFail($productId);
+        try {
+            $product = Product::with(['unit', 'category_relation'])->findOrFail($productId);
 
-        // 1. Batches
-        $batches = [];
-        if (\Illuminate\Support\Facades\Schema::hasTable('product_batches')) {
-            $batches = DB::table('product_batches as b')
-                ->leftJoin('warehouses as w', 'w.id', '=', 'b.warehouse_id')
-                ->where('b.product_id', $productId)
-                ->select(
-                    'b.*',
-                    DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
-                )
-                ->orderBy('b.expiry_date', 'asc')
-                ->get()
-                ->map(function ($b) {
-                    $status = 'active';
-                    if ($b->expiry_date) {
-                        $exp = \Carbon\Carbon::parse($b->expiry_date);
-                        if ($exp->isPast()) {
-                            $status = 'expired';
-                        } elseif ($exp->diffInDays(now()) <= 30) {
-                            $status = 'near_expiry';
-                        }
-                    }
-                    return [
-                        'id'             => $b->id,
-                        'batch_no'       => $b->batch_no,
-                        'variant_key'    => $b->variant_key ?: '-',
-                        'warehouse_name' => $b->warehouse_name,
-                        'mfg_date'       => $b->mfg_date ? date('d M Y', strtotime($b->mfg_date)) : '-',
-                        'expiry_date'    => $b->expiry_date ? date('d M Y', strtotime($b->expiry_date)) : '-',
-                        'qty'            => (float) $b->qty,
-                        'cost_price'     => (float) $b->cost_price,
-                        'remarks'        => $b->remarks ?: '-',
-                        'status'         => $status,
-                    ];
-                });
-        }
-
-        // 2. Serials
-        $serials = [];
-        if (\Illuminate\Support\Facades\Schema::hasTable('product_serials')) {
-            $serials = DB::table('product_serials as s')
-                ->leftJoin('warehouses as w', 'w.id', '=', 's.warehouse_id')
-                ->leftJoin('product_batches as b', 'b.id', '=', 's.batch_id')
-                ->where('s.product_id', $productId)
-                ->select(
-                    's.*',
-                    'b.batch_no',
-                    DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
-                )
-                ->orderBy('s.created_at', 'desc')
-                ->get()
-                ->map(function ($s) {
-                    return [
-                        'id'             => $s->id,
-                        'serial_number'  => $s->serial_number,
-                        'batch_no'       => $s->batch_no ?: '-',
-                        'variant_key'    => $s->variant_key ?: '-',
-                        'warehouse_name' => $s->warehouse_name,
-                        'status'         => strtolower($s->status ?: 'available'),
-                        'cost_price'     => (float) $s->cost_price,
-                        'remarks'        => $s->remarks ?: '-',
-                        'created_at'     => date('d M Y h:i A', strtotime($s->created_at)),
-                    ];
-                });
-        }
-
-        // 3. Warehouse Stocks Breakdown
-        $ppb = (float) ($product->pieces_per_box ?? 1);
-        if ($ppb <= 0) $ppb = 1;
-        $unitName = $product->unit->name ?? 'Pcs';
-        $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($unitName) === 'carton');
-        $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-
-        $warehouseStocks = [];
-        if (\Illuminate\Support\Facades\Schema::hasTable('warehouse_stocks')) {
-            $warehouseStocks = DB::table('warehouse_stocks as ws')
-                ->leftJoin('warehouses as w', 'w.id', '=', 'ws.warehouse_id')
-                ->where('ws.product_id', $productId)
-                ->select(
-                    'ws.*',
-                    DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
-                )
-                ->get()
-                ->map(function ($ws) use ($isCartonMode, $ppb, $ctnLbl) {
-                    $totalPieces = (float) ($ws->total_pieces ?? 0);
-                    if ($isCartonMode) {
-                        $cartons = (int) floor($totalPieces / $ppb);
-                        $loose   = (int) round($totalPieces - ($cartons * $ppb));
-                        $formatted = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
-                    } else {
-                        $formatted = number_format($totalPieces, 2);
-                    }
-
-                    return [
-                        'warehouse_name'  => $ws->warehouse_name,
-                        'boxes_quantity'  => (float) $ws->boxes_quantity,
-                        'total_pieces'    => $totalPieces,
-                        'formatted_stock' => $formatted,
-                        'remarks'         => $ws->remarks ?: '-',
-                    ];
-                });
-        }
-
-        // 4. Stock Movement Timeline
-        $movements = DB::table('stock_movements')
-            ->where('product_id', $productId)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($m) {
-                $typeBadge = 'info';
-                $typeLabel = strtoupper($m->type);
-                if ($m->type === 'in' || $m->type === 'assembly_in') {
-                    $typeBadge = 'success';
-                    $typeLabel = 'INWARD (+)';
-                } elseif ($m->type === 'out' || $m->type === 'assembly_out') {
-                    $typeBadge = 'danger';
-                    $typeLabel = 'OUTWARD (-)';
-                } elseif ($m->type === 'adjustment') {
-                    $typeBadge = 'warning';
-                    $typeLabel = 'ADJUSTMENT (' . ($m->qty >= 0 ? '+' : '') . ')';
-                } elseif ($m->type === 'sale_return') {
-                    $typeBadge = 'info';
-                    $typeLabel = 'SALE RETURN (+)';
+            // 1. Batches
+            $batches = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('product_batches')) {
+                try {
+                    $batches = DB::table('product_batches as b')
+                        ->leftJoin('warehouses as w', 'w.id', '=', 'b.warehouse_id')
+                        ->where('b.product_id', $productId)
+                        ->select(
+                            'b.*',
+                            DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
+                        )
+                        ->orderBy('b.expiry_date', 'asc')
+                        ->get()
+                        ->map(function ($b) {
+                            $status = 'active';
+                            $expDate = $b->expiry_date ?? null;
+                            if ($expDate) {
+                                try {
+                                    $exp = \Carbon\Carbon::parse($expDate);
+                                    if ($exp->isPast()) {
+                                        $status = 'expired';
+                                    } elseif ($exp->diffInDays(now()) <= 30) {
+                                        $status = 'near_expiry';
+                                    }
+                                } catch (\Exception $e) {}
+                            }
+                            return [
+                                'id'             => $b->id ?? 0,
+                                'batch_no'       => $b->batch_no ?? '-',
+                                'variant_key'    => $b->variant_key ?? '-',
+                                'warehouse_name' => $b->warehouse_name ?? 'Main Stock',
+                                'mfg_date'       => !empty($b->mfg_date) ? date('d M Y', strtotime($b->mfg_date)) : '-',
+                                'expiry_date'    => !empty($b->expiry_date) ? date('d M Y', strtotime($b->expiry_date)) : '-',
+                                'qty'            => (float) ($b->qty ?? 0),
+                                'cost_price'     => (float) ($b->cost_price ?? 0),
+                                'remarks'        => $b->remarks ?? '-',
+                                'status'         => $status,
+                            ];
+                        });
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Error fetching product batches: " . $e->getMessage());
                 }
+            }
 
-                return [
-                    'id'          => $m->id,
-                    'date'        => date('d M Y h:i A', strtotime($m->created_at)),
-                    'type'        => $typeLabel,
-                    'type_badge'  => $typeBadge,
-                    'qty'         => (float) $m->qty,
-                    'ref_type'    => $m->ref_type ?: 'GENERAL',
-                    'note'        => $m->note ?: 'N/A',
-                ];
-            });
+            // 2. Serials
+            $serials = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('product_serials')) {
+                try {
+                    $serials = DB::table('product_serials as s')
+                        ->leftJoin('warehouses as w', 'w.id', '=', 's.warehouse_id')
+                        ->leftJoin('product_batches as b', 'b.id', '=', 's.batch_id')
+                        ->where('s.product_id', $productId)
+                        ->select(
+                            's.*',
+                            'b.batch_no',
+                            DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
+                        )
+                        ->orderBy('s.created_at', 'desc')
+                        ->get()
+                        ->map(function ($s) {
+                            return [
+                                'id'             => $s->id ?? 0,
+                                'serial_number'  => $s->serial_number ?? '-',
+                                'batch_no'       => $s->batch_no ?? '-',
+                                'variant_key'    => $s->variant_key ?? '-',
+                                'warehouse_name' => $s->warehouse_name ?? 'Main Stock',
+                                'status'         => strtolower($s->status ?? 'available'),
+                                'cost_price'     => (float) ($s->cost_price ?? 0),
+                                'remarks'        => $s->remarks ?? '-',
+                                'created_at'     => !empty($s->created_at) ? date('d M Y h:i A', strtotime($s->created_at)) : '-',
+                            ];
+                        });
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Error fetching product serials: " . $e->getMessage());
+                }
+            }
 
-        $totalStock = DB::table('warehouse_stocks')->where('product_id', $productId)->sum('total_pieces');
+            // 3. Warehouse Stocks Breakdown
+            $ppb = (float) ($product->pieces_per_box ?? 1);
+            if ($ppb <= 0) $ppb = 1;
+            $unitName = $product->unit->name ?? 'Pcs';
+            $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($unitName) === 'carton');
+            $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
 
-        return response()->json([
-            'success'          => true,
-            'product_name'     => $product->item_name,
-            'item_code'        => $product->item_code,
-            'category_name'    => $product->category_relation->name ?? 'Standard',
-            'unit_name'        => $unitName,
-            'total_stock'      => (float) $totalStock,
-            'batches'          => $batches,
-            'serials'          => $serials,
-            'warehouse_stocks' => $warehouseStocks,
-            'history'          => $movements
-        ]);
+            $warehouseStocks = [];
+            $totalStock = 0;
+            if (\Illuminate\Support\Facades\Schema::hasTable('warehouse_stocks')) {
+                try {
+                    $warehouseStocks = DB::table('warehouse_stocks as ws')
+                        ->leftJoin('warehouses as w', 'w.id', '=', 'ws.warehouse_id')
+                        ->where('ws.product_id', $productId)
+                        ->select(
+                            'ws.*',
+                            DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
+                        )
+                        ->get()
+                        ->map(function ($ws) use ($isCartonMode, $ppb, $ctnLbl) {
+                            $totalPieces = (float) ($ws->total_pieces ?? $ws->quantity ?? 0);
+                            $boxesQty   = (float) ($ws->boxes_quantity ?? $ws->quantity ?? 0);
+                            if ($isCartonMode) {
+                                $cartons = (int) floor($totalPieces / $ppb);
+                                $loose   = (int) round($totalPieces - ($cartons * $ppb));
+                                $formatted = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
+                            } else {
+                                $formatted = number_format($totalPieces, 2);
+                            }
+
+                            return [
+                                'warehouse_name'  => $ws->warehouse_name ?? 'Main Stock',
+                                'boxes_quantity'  => $boxesQty,
+                                'total_pieces'    => $totalPieces,
+                                'formatted_stock' => $formatted,
+                                'remarks'         => $ws->remarks ?? '-',
+                            ];
+                        });
+
+                    $totalStock = (float) DB::table('warehouse_stocks')
+                        ->where('product_id', $productId)
+                        ->selectRaw('COALESCE(SUM(COALESCE(total_pieces, quantity, 0)), 0) as total')
+                        ->value('total');
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Error fetching warehouse stocks: " . $e->getMessage());
+                }
+            }
+
+            // 4. Stock Movement Timeline
+            $movements = [];
+            try {
+                $movements = DB::table('stock_movements')
+                    ->where('product_id', $productId)
+                    ->orderBy('created_at', 'desc')
+                    ->get()
+                    ->map(function ($m) {
+                        $typeBadge = 'info';
+                        $typeLabel = strtoupper($m->type ?? '');
+                        if (($m->type ?? '') === 'in' || ($m->type ?? '') === 'assembly_in') {
+                            $typeBadge = 'success';
+                            $typeLabel = 'INWARD (+)';
+                        } elseif (($m->type ?? '') === 'out' || ($m->type ?? '') === 'assembly_out') {
+                            $typeBadge = 'danger';
+                            $typeLabel = 'OUTWARD (-)';
+                        } elseif (($m->type ?? '') === 'adjustment') {
+                            $typeBadge = 'warning';
+                            $typeLabel = 'ADJUSTMENT (' . (($m->qty ?? 0) >= 0 ? '+' : '') . ')';
+                        } elseif (($m->type ?? '') === 'sale_return') {
+                            $typeBadge = 'info';
+                            $typeLabel = 'SALE RETURN (+)';
+                        }
+
+                        return [
+                            'id'          => $m->id ?? 0,
+                            'date'        => !empty($m->created_at) ? date('d M Y h:i A', strtotime($m->created_at)) : '-',
+                            'type'        => $typeLabel,
+                            'type_badge'  => $typeBadge,
+                            'qty'         => (float) ($m->qty ?? 0),
+                            'ref_type'    => $m->ref_type ?? 'GENERAL',
+                            'note'        => $m->note ?? 'N/A',
+                        ];
+                    });
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Error fetching stock movements: " . $e->getMessage());
+            }
+
+            return response()->json([
+                'success'          => true,
+                'product_name'     => $product->item_name,
+                'item_code'        => $product->item_code,
+                'category_name'    => $product->category_relation->name ?? 'Standard',
+                'unit_name'        => $unitName,
+                'total_stock'      => (float) $totalStock,
+                'batches'          => $batches,
+                'serials'          => $serials,
+                'warehouse_stocks' => $warehouseStocks,
+                'history'          => $movements
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("fetchProductHistory global exception: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'history' => []
+            ], 500);
+        }
     }
 
     public function profit_loss_report()

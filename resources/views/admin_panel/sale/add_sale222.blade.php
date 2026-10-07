@@ -1475,6 +1475,23 @@
                                 <td class="col-product">
                                     <select class="form-select product" style="width:100%">
                                         <option value=""></option>
+                                        @if(isset($allProducts) && count($allProducts) > 0)
+                                            @foreach($allProducts as $p)
+                                                <option value="{{ $p->id }}" 
+                                                    data-sku="{{ $p->item_code }}" 
+                                                    data-stock="{{ $p->warehouse_stocks_sum_total_pieces ?? 0 }}"
+                                                    data-retail_price="{{ $p->sale_price_per_piece ?? 0 }}"
+                                                    data-trade_price="{{ $p->purchase_price_per_piece ?? 0 }}"
+                                                    data-wholesale_price="{{ $p->wholesale_price ?? 0 }}"
+                                                    data-weight_per_piece="{{ $p->weight_per_piece ?? 0 }}"
+                                                    data-pieces_per_box="{{ $p->pieces_per_box ?? 1 }}"
+                                                    data-size_mode="{{ $p->size_mode }}"
+                                                    data-sale_discount_percent="{{ $p->sale_discount_percent ?? 0 }}"
+                                                    data-name="{{ $p->item_name }}">
+                                                    {{ $p->item_name }} (SKU: {{ $p->item_code }})
+                                                </option>
+                                            @endforeach
+                                        @endif
                                     </select>
                                     <input type="hidden" class="product-id-hidden" name="product_id[]">
                                     <input type="hidden" class="variant-data-hidden" name="color[]">
