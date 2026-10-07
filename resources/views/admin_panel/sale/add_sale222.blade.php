@@ -1326,40 +1326,28 @@
                             <div class="row row-cols-4 g-2 text-center m-0">
                                 <div class="col p-1">
                                     <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #FEE2E2; color: #EF4444;">
-                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
-                                        </div>
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Prev. Due</div>
-                                        <div class="fw-bold mt-1" style="font-size: 12.5px; color: #EF4444;">
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Prev. Due</div>
+                                        <div class="fw-bold mt-1" style="font-size: 13px; color: #EF4444;">
                                             <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col p-1">
                                     <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #DBEAFE; color: #2563EB;">
-                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
-                                        </div>
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Current Due</div>
-                                        <div class="fw-bold text-primary mt-1" id="cc_current_bill" style="font-size: 12.5px; color: #2563EB !important;">Rs 0</div>
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Current Due</div>
+                                        <div class="fw-bold text-primary mt-1" id="cc_current_bill" style="font-size: 13px; color: #2563EB !important;">Rs 0</div>
                                     </div>
                                 </div>
                                 <div class="col p-1">
                                     <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #DCFCE7; color: #16A34A;">
-                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
-                                        </div>
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Paid</div>
-                                        <div class="fw-bold text-success mt-1" id="cc_paid_now" style="font-size: 12.5px; color: #16A34A !important;">Rs 0</div>
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Paid</div>
+                                        <div class="fw-bold text-success mt-1" id="cc_paid_now" style="font-size: 13px; color: #16A34A !important;">Rs 0</div>
                                     </div>
                                 </div>
                                 <div class="col p-1">
                                     <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
-                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #F3E8FF; color: #9333EA;">
-                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
-                                        </div>
-                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Closing</div>
-                                        <div class="fw-bold mt-1" style="font-size: 12.5px; color: #9333EA !important;">
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1; text-transform: uppercase;">Closing</div>
+                                        <div class="fw-bold mt-1" style="font-size: 13px; color: #9333EA !important;">
                                             <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
                                         </div>
                                     </div>
