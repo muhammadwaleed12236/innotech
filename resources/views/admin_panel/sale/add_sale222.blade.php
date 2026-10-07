@@ -906,31 +906,43 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
-            padding-bottom: 12px;
-            margin-bottom: 14px;
-            border-bottom: 1px solid #F1F5F9;
+            gap: 6px;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        .btn-pay-head {
+            font-size: 11px !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
         }
         .rv-row {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         .rv-row .rv-account {
             flex: 1;
             min-width: 0;
-        }
-        .rv-row .rv-amount {
-            width: 132px;
-            flex-shrink: 0;
-            text-align: right;
+            height: 28px !important;
+            font-size: 11.5px !important;
+            border-color: #CBD5E1;
             font-weight: 600;
         }
+        .rv-row .rv-amount {
+            width: 110px;
+            flex-shrink: 0;
+            height: 28px !important;
+            font-size: 11.5px !important;
+            text-align: right;
+            font-weight: 700;
+            border-color: #CBD5E1;
+        }
         .btnRemRV {
-            width: 36px;
-            height: var(--pos-input-h);
-            border-radius: 8px;
+            width: 28px;
+            height: 28px !important;
+            border-radius: 4px;
             border: 1px solid var(--pos-border);
             background: #ffffff;
             color: var(--pos-muted);
@@ -938,6 +950,7 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            font-size: 11px;
             transition: all .15s ease;
         }
         .btnRemRV:hover {
@@ -947,24 +960,25 @@
         }
         .change-row {
             border-top: 1px dashed var(--pos-border);
-            margin-top: 12px;
-            padding-top: 12px;
+            margin-top: 6px;
+            padding-top: 6px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
         }
         .change-row .change-label {
-            font-size: 12.5px;
+            font-size: 11.5px;
             font-weight: 600;
             color: var(--pos-muted);
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
         .change-row .form-select {
-            width: 150px;
-            height: 36px !important;
+            width: 130px;
+            height: 28px !important;
+            font-size: 11.5px !important;
         }
 
         /* ---------- ORDER SUMMARY ---------- */
@@ -972,47 +986,49 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 10px;
-            padding: 11px 0;
-            font-size: 14px;
-        }
-        .s-row + .s-row {
-            border-top: 1px solid #F1F5F9;
+            gap: 6px;
+            padding: 3px 0;
+            font-size: 12px;
+            border-bottom: 1px solid #F1F5F9;
         }
         .s-label {
-            color: var(--pos-muted);
+            color: #64748B;
+            font-weight: 600;
         }
         .s-val {
-            font-weight: 600;
-            color: var(--pos-text);
+            font-weight: 700;
+            color: #0F172A;
             font-variant-numeric: tabular-nums;
         }
         .s-row.net {
-            padding: 15px 0;
-            border-top: 2px solid var(--pos-border);
-            align-items: flex-end;
+            padding: 4px 8px;
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 4px;
+            margin: 3px 0;
         }
         .net-label {
-            font-size: 15px;
+            font-size: 12.5px;
             font-weight: 800;
-            color: var(--pos-text);
+            color: #1E3A8A;
+            text-transform: uppercase;
         }
         .net-val {
-            font-size: 23px;
+            font-size: 16px;
             font-weight: 800;
-            letter-spacing: -.4px;
-            color: var(--pos-blue);
+            letter-spacing: -.3px;
+            color: #2563EB;
             font-variant-numeric: tabular-nums;
         }
         .paid-val {
-            font-weight: 700;
-            font-size: 15px;
-            color: var(--pos-green);
+            font-weight: 800;
+            font-size: 12.5px;
+            color: #16A34A;
             font-variant-numeric: tabular-nums;
         }
         .change-val {
             font-weight: 700;
-            font-size: 14.5px;
+            font-size: 12.5px;
             font-variant-numeric: tabular-nums;
         }
         .change-val.text-success {
@@ -1022,20 +1038,19 @@
             color: var(--pos-red) !important;
         }
         .discount-input {
-            width: 150px;
+            width: 110px;
             flex-shrink: 0;
         }
         .discount-input input {
-            font-weight: 600;
-            text-align: right;
+            height: 26px !important;
+            font-size: 11.5px !important;
+            padding: 1px 4px !important;
+            font-weight: 700;
         }
         .discount-input .input-group-text {
-            background: #F8FAFC;
-            border: 1px solid var(--pos-border);
-            border-radius: 0 8px 8px 0;
-            color: var(--pos-muted);
-            font-weight: 600;
-            font-size: 12px;
+            height: 26px !important;
+            font-size: 10.5px !important;
+            padding: 0 4px !important;
         }
 
         /* ---------- STICKY BOTTOM ACTION BAR ---------- */
@@ -1047,52 +1062,52 @@
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: 12px 18px;
+            gap: 6px 10px;
             background: #ffffff;
-            border: 1px solid var(--pos-border);
-            border-radius: 12px;
-            box-shadow: 0 -8px 24px -12px rgba(15, 23, 42, .18);
-            padding: 12px 18px;
-            margin-top: 18px;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            box-shadow: 0 -3px 10px -4px rgba(15, 23, 42, .1);
+            padding: 6px 12px;
+            margin-top: 8px;
         }
         .bb-left {
             display: flex;
             align-items: center;
-            gap: 20px;
-            font-size: 13.5px;
-            color: var(--pos-muted);
+            gap: 12px;
+            font-size: 11.5px;
+            color: #64748B;
             flex-wrap: wrap;
         }
         .bb-left b {
-            color: var(--pos-text);
-            font-weight: 700;
+            color: #0F172A;
+            font-weight: 800;
             font-variant-numeric: tabular-nums;
         }
         .bb-left .text-success {
-            color: var(--pos-green) !important;
+            color: #16A34A !important;
         }
         .btn-ghost {
-            border: 1px solid var(--pos-border);
+            border: 1px solid #CBD5E1;
             background: #ffffff;
-            color: var(--pos-muted);
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 12.5px;
-            padding: 6px 12px;
+            color: #475569;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 3px 7px;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 3px;
             transition: all .15s ease;
         }
         .btn-ghost:hover {
-            background: #F8FAFC;
-            color: var(--pos-text);
-            border-color: var(--pos-border-strong);
+            background: #F1F5F9;
+            color: #0F172A;
+            border-color: #94A3B8;
         }
         .bb-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
         }
 
@@ -1508,19 +1523,19 @@
             </div>
 
             {{-- ============================ PAYMENT METHODS & ORDER SUMMARY ============================ --}}
-            <div class="row g-3 align-items-stretch">
+            <div class="row g-2 align-items-start">
                 {{-- LEFT: Payment Methods --}}
                 <div class="col-lg-6">
-                    <div class="sale-card h-100 p-4 d-flex flex-column">
+                    <div class="sale-card p-2 px-3">
                         <div class="pay-head">
                             <span class="card-title">Payment Methods</span>
-                            <button type="button" class="btn btn-sm btn-outline-primary px-3" id="btnAddRV">
+                            <button type="button" class="btn btn-sm btn-outline-primary px-2 py-0" id="btnAddRV" style="font-size: 11px;">
                                 <i class="fas fa-plus me-1"></i> Add Payment
                             </button>
                         </div>
 
                         <!-- Quick Payment Head Buttons -->
-                        <div class="mb-3 d-flex flex-wrap gap-2" id="payHeadGroup">
+                        <div class="mb-2 d-flex flex-wrap gap-1" id="payHeadGroup">
                             <button type="button" class="btn btn-sm btn-outline-primary active btn-pay-head fw-semibold" data-head="cash">
                                 💵 Cash
                             </button>
@@ -1549,7 +1564,7 @@
                             </div>
                         </div>
 
-                        <div class="mt-auto pt-3">
+                        <div class="pt-2">
                             <div class="change-row" id="changeAccountRow" style="display:none;">
                                 <span class="change-label">
                                     <i class="fas fa-exchange-alt me-1"></i> Change Account
@@ -1566,12 +1581,12 @@
 
                 {{-- RIGHT: Order Summary --}}
                 <div class="col-lg-6">
-                    <div class="sale-card h-100 p-4 d-flex flex-column">
+                    <div class="sale-card p-2 px-3">
                         <div class="pay-head">
                             <span class="card-title">Order Summary</span>
                         </div>
 
-                        <div class="flex-grow-1">
+                        <div>
                             <div class="s-row">
                                 <span class="s-label">Subtotal</span>
                                 <span class="s-val" id="tGross">0.00</span>
