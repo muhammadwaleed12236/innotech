@@ -25,17 +25,17 @@
             --pos-red-soft: #FEF2F2;
             --pos-orange: #F59E0B;
             --pos-orange-soft: #FFFBEB;
-            --pos-text: #1E293B;
+            --pos-text: #0F172A;
             --pos-muted: #64748B;
-            --pos-border: #C7D0DA;
-            --pos-border-strong: #AEBAC7;
-            --pos-bg: #F8FAFC;
+            --pos-border: #CBD5E1;
+            --pos-border-strong: #94A3B8;
+            --pos-bg: #F1F5F9;
             --pos-card: #FFFFFF;
-            --pos-radius: 10px;
-            --pos-radius-lg: 14px;
-            --pos-shadow-sm: 0 1px 2px rgba(15,23,42,.04);
-            --pos-shadow-md: 0 6px 20px -6px rgba(15,23,42,.10);
-            --pos-input-h: 42px;
+            --pos-radius: 8px;
+            --pos-radius-lg: 12px;
+            --pos-shadow-sm: 0 1px 3px rgba(0,0,0,.05);
+            --pos-shadow-md: 0 4px 14px rgba(15,23,42,.08);
+            --pos-input-h: 38px;
         }
 
         body {
@@ -50,86 +50,94 @@
             margin: 0 auto;
         }
 
-        /* ---------- CARDS ---------- */
+        /* ---------- CARDS & CONTAINERS ---------- */
         .sale-card {
             background: var(--pos-card);
             border: 1px solid var(--pos-border);
             border-radius: var(--pos-radius-lg);
             box-shadow: var(--pos-shadow-sm);
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
 
         .card-title {
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 14px;
+            font-weight: 800;
             color: var(--pos-text);
+            text-transform: uppercase;
+            letter-spacing: .4px;
             line-height: 1.3;
         }
 
         /* ---------- LABELS ---------- */
         .field-label {
             display: block;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: 11.5px;
+            font-weight: 700;
             color: var(--pos-muted);
-            margin-bottom: 6px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
             line-height: 1.2;
         }
 
-        /* ---------- INPUTS ---------- */
+        /* ---------- INPUTS & FORM CONTROLS ---------- */
         .sale-page .form-control,
         .sale-page .form-select {
             height: var(--pos-input-h);
             border: 1px solid var(--pos-border);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 14px;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13.5px;
             font-weight: 500;
             color: var(--pos-text);
             background-color: #ffffff;
             box-shadow: none;
-            transition: border-color .15s ease, box-shadow .15s ease;
+            transition: border-color .12s ease, box-shadow .12s ease;
         }
         .sale-page .form-control::placeholder {
             color: #94A3B8;
             font-weight: 400;
         }
         .sale-page .form-control:focus,
-        .sale-page .form-select:focus {
-            border-color: var(--pos-blue);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
-            outline: none;
-            background-color: #ffffff;
+        .sale-page .form-select:focus,
+        .sale-page .form-control:focus-visible {
+            border: 2px solid var(--pos-blue) !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
+            outline: none !important;
+            background-color: #ffffff !important;
         }
         .sale-page .input-readonly,
         .sale-page input[readonly] {
             background-color: #F8FAFC !important;
-            color: var(--pos-muted) !important;
+            color: #475569 !important;
+            border-color: #E2E8F0 !important;
             cursor: default;
+            font-weight: 600;
         }
 
         /* Select2 (customer) */
         #customerInputWrapper .select2-container--default .select2-selection--single {
             height: var(--pos-input-h) !important;
             border: 1px solid var(--pos-border) !important;
-            border-radius: 8px !important;
+            border-radius: 6px !important;
             background-color: #ffffff !important;
             padding: 0 !important;
         }
         #customerInputWrapper .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 40px !important;
-            padding-left: 12px !important;
-            font-size: 14px !important;
-            font-weight: 500 !important;
+            line-height: 36px !important;
+            padding-left: 10px !important;
+            font-size: 13.5px !important;
+            font-weight: 600 !important;
             color: var(--pos-text) !important;
         }
         #customerInputWrapper .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 40px !important;
-            right: 8px !important;
+            height: 36px !important;
+            right: 6px !important;
         }
         #customerInputWrapper .select2-container--default.select2-container--focus .select2-selection--single,
         #customerInputWrapper .select2-container--default.select2-container--open .select2-selection--single {
-            border-color: var(--pos-blue) !important;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, .12) !important;
+            border: 2px solid var(--pos-blue) !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
         }
 
         /* ---------- BUTTONS ---------- */
@@ -137,9 +145,10 @@
             background: var(--pos-blue);
             border-color: var(--pos-blue);
             color: #ffffff;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 14px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13.5px;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, .2);
         }
         .sale-page .btn-primary:hover,
         .sale-page .btn-primary:focus {
@@ -149,11 +158,11 @@
         }
         .sale-page .btn-outline-primary {
             color: var(--pos-blue);
-            border-color: #BFDBFE;
+            border-color: #93C5FD;
             background: #ffffff;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13.5px;
         }
         .sale-page .btn-outline-primary:hover {
             background: var(--pos-blue-soft);
@@ -164,9 +173,9 @@
             color: var(--pos-muted);
             border-color: var(--pos-border);
             background: #ffffff;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13.5px;
         }
         .sale-page .btn-outline-secondary:hover {
             background: #F1F5F9;
@@ -175,21 +184,21 @@
         }
 
         .btn-save-print {
-            padding: 10px 20px !important;
-            box-shadow: 0 4px 12px -2px rgba(37, 99, 235, .35);
+            padding: 8px 18px !important;
+            box-shadow: 0 3px 10px -2px rgba(37, 99, 235, .4);
         }
 
         .btn-icon-back {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             border: 1px solid var(--pos-border);
             background: #ffffff;
             color: var(--pos-muted);
-            font-size: 15px;
+            font-size: 14px;
             flex-shrink: 0;
             transition: all .15s ease;
         }
@@ -206,34 +215,35 @@
             align-items: center;
             justify-content: space-between;
             gap: 14px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
         .sale-header-left {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
         }
         .sale-title-ic {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             background: var(--pos-blue-soft);
             color: var(--pos-blue);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 17px;
             flex-shrink: 0;
+            border: 1px solid #BFDBFE;
         }
         .sale-title-main h5 {
-            font-size: 19px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: -.3px;
             color: var(--pos-text);
             margin-bottom: 2px;
         }
         .sale-subtitle {
-            font-size: 13px;
+            font-size: 12.5px;
             color: var(--pos-muted);
         }
 
@@ -243,27 +253,29 @@
             height: var(--pos-input-h);
             background: #F1F5F9;
             border: 1px solid var(--pos-border);
-            border-radius: 8px;
-            padding: 3px;
+            border-radius: 6px;
+            padding: 2px;
             width: 100%;
         }
         .seg-toggle .btn {
             flex: 1;
-            border-radius: 6px;
+            border-radius: 4px;
             border: none;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12.5px;
+            font-weight: 700;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 0 10px;
+            padding: 0 8px;
         }
         .seg-toggle .btn.btn-outline-primary {
             background: transparent;
+            color: var(--pos-muted);
         }
         .seg-toggle .btn-outline-primary:hover {
             background: rgba(37, 99, 235, .08);
+            color: var(--pos-blue);
         }
 
         /* ---------- INVOICE GROUP ---------- */
@@ -278,8 +290,8 @@
             color: var(--pos-text);
             font-weight: 700;
             font-size: 13px;
-            border-radius: 8px 0 0 8px;
-            padding: 0 12px;
+            border-radius: 6px 0 0 6px;
+            padding: 0 10px;
             white-space: nowrap;
             display: inline-flex;
             align-items: center;
@@ -302,8 +314,8 @@
             border-left: none;
             background: #ffffff;
             color: var(--pos-muted);
-            border-radius: 0 8px 8px 0;
-            padding: 0 12px;
+            border-radius: 0 6px 6px 0;
+            padding: 0 10px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -316,19 +328,17 @@
 
         /* ---------- CUSTOMER BALANCE CARD ---------- */
         .cust-bal-card {
-            background: linear-gradient(180deg, #EEF6FF 0%, #F7FBFF 70%, #FFFFFF 100%);
-            border: 1px solid #CFE2FA;
-            border-radius: 10px;
-            padding: 8px 12px;
+            background: #FFFFFF;
+            border: 1px solid var(--pos-border);
+            border-radius: 8px;
+            padding: 8px 10px;
             box-sizing: border-box;
-            height: 136px;
-            min-height: 136px;
-            max-height: 136px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px -4px rgba(37, 99, 235, .12);
+            height: 100%;
+            min-height: 104px;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
         .cb-head {
             display: flex;
@@ -344,17 +354,16 @@
             min-width: 0;
         }
         .cb-avatar {
-            width: 30px;
-            height: 30px;
-            border-radius: 9px;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
             background: var(--pos-blue);
             color: #FFFFFF;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
+            font-size: 12px;
             flex-shrink: 0;
-            box-shadow: 0 2px 6px -2px rgba(37, 99, 235, .45);
         }
         .cb-name {
             font-size: 13px;
@@ -378,22 +387,22 @@
             margin-bottom: 5px;
         }
         .cb-ext {
-            background: #FFFFFF;
-            border: 1px solid #E3EEFC;
-            border-radius: 7px;
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
             padding: 4px 7px;
         }
         .cb-ext-label {
             font-size: 9.5px;
             text-transform: uppercase;
             letter-spacing: .3px;
-            font-weight: 600;
-            color: #5B84C4;
+            font-weight: 700;
+            color: #64748B;
             margin-bottom: 1px;
         }
         .cb-ext-val {
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--pos-text);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -405,26 +414,26 @@
             gap: 6px;
         }
         .cb-cell {
-            background: #FFFFFF;
-            border: 1px solid #E3EEFC;
-            border-radius: 7px;
-            padding: 5px 2px;
+            background: #F8FAFC !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 6px !important;
+            padding: 6px 4px !important;
             text-align: center;
         }
         .cb-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: .3px;
-            font-weight: 600;
-            color: #5B84C4;
-            margin-bottom: 2px;
-            white-space: nowrap;
+            font-size: 9.5px !important;
+            text-transform: uppercase !important;
+            letter-spacing: .4px !important;
+            font-weight: 800 !important;
+            color: #64748B !important;
+            margin-bottom: 2px !important;
+            white-space: nowrap !important;
         }
         .cb-value {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--pos-text);
-            white-space: nowrap;
+            font-size: 13px !important;
+            font-weight: 800 !important;
+            color: #0F172A !important;
+            white-space: nowrap !important;
         }
         .cust-bal-card .text-danger {
             color: var(--pos-red) !important;
