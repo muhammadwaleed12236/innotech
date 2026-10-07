@@ -133,6 +133,7 @@ class SaleController extends Controller
         $nextInvoiceNumber = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
         $recentProducts = Product::latest()->take(12)->get();
+        $allProducts = Product::where('is_active', true)->withSum('warehouseStocks', 'total_pieces')->orderBy('item_name')->get();
 
         // Filter accounts (Cash/Bank) for Payment Voucher
         $accounts = \App\Models\Account::whereHas('head', function($q) {
@@ -143,7 +144,7 @@ class SaleController extends Controller
 
         return view('admin_panel.sale.add_sale222', compact(
             'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 
-            'recentProducts', 'allSeries', 'activePrefix'
+            'recentProducts', 'allProducts', 'allSeries', 'activePrefix'
         ));
     }
 
@@ -965,6 +966,7 @@ class SaleController extends Controller
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
         $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
         $recentProducts = Product::latest()->take(12)->get();
+        $allProducts = Product::where('is_active', true)->withSum('warehouseStocks', 'total_pieces')->orderBy('item_name')->get();
 
         // Filter accounts (Cash/Bank) for Receipt Voucher
         $accounts = \App\Models\Account::whereHas('head', function($q) {
@@ -977,7 +979,7 @@ class SaleController extends Controller
         $nextInvoiceNumber = $sale->invoice_no;
 
         // 4. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allSeries', 'activePrefix'));
+        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix'));
     }
 
     public function updatesale(Request $request, $id)
