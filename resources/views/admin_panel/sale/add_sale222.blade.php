@@ -1871,7 +1871,7 @@
                 },
                 language: {
                     noResults: function() {
-                        return $('<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>');
+                        return '<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>';
                     }
                 },
                 escapeMarkup: function(markup) {
@@ -1881,11 +1881,11 @@
                     if (item.loading) return item.text;
                     if (!item.customer) return item.text;
                     const c = item.customer;
-                    return $(`<div>
-                        <strong>${c.customer_name}</strong>
-                        <small class="text-muted ms-2">${c.customer_id || ''}</small>
-                        ${c.mobile ? '<br><small class="text-muted">' + c.mobile + '</small>' : ''}
-                    </div>`);
+                    return '<div>' +
+                        '<strong>' + (c.customer_name || '') + '</strong>' +
+                        '<small class="text-muted ms-2">' + (c.customer_id || '') + '</small>' +
+                        (c.mobile ? '<br><small class="text-muted">' + c.mobile + '</small>' : '') +
+                    '</div>';
                 },
                 templateSelection: function(item) {
                     if (!item.customer) return item.text;
