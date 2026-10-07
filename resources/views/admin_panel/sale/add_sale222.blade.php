@@ -1395,6 +1395,10 @@
                                     </select>
                                     <input type="hidden" class="product-id-hidden" name="product_id[]">
                                     <input type="hidden" class="variant-data-hidden" name="color[]">
+                                     <input type="hidden" class="batch-id-hidden" name="batch_id[]">
+                                     <input type="hidden" class="batch-no-hidden" name="batch_no[]">
+                                     <input type="hidden" class="serials-hidden" name="serials[]">
+                                     <div class="row-tracking-badges mt-1 d-flex flex-wrap gap-1"></div>
                                     <input type="hidden" class="item-code-display">
                                     <input type="hidden" class="size-h">
                                     <input type="hidden" class="size-w">
@@ -2196,6 +2200,75 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    <!-- Modal: Select Product Batch -->
+    <div class="modal fade" id="modalSelectBatch" tabindex="-1" aria-labelledby="modalSelectBatchLabel" aria-hidden="true" style="z-index:1065;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-light px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectBatchLabel">
+                        <i class="fas fa-layer-group text-primary me-1"></i> Select Batch for Product
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="activeBatchRowIndex" value="">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle mb-0 text-center">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Batch #</th>
+                                    <th>MFG Date</th>
+                                    <th>Expiry Date</th>
+                                    <th>Avail. Qty</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batchModalTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-muted py-3">Loading available batches...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top p-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Select Product Serials / IMEIs -->
+    <div class="modal fade" id="modalSelectSerial" tabindex="-1" aria-labelledby="modalSelectSerialLabel" aria-hidden="true" style="z-index:1065;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-light px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectSerialLabel">
+                        <i class="fas fa-barcode text-success me-1"></i> Select Serial / IMEI Numbers
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="activeSerialRowIndex" value="">
+                    <div class="input-group input-group-sm mb-3">
+                        <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="serialSearchInput" placeholder="Scan IMEI barcode or search serial number...">
+                    </div>
+                    <div class="border rounded p-2 overflow-auto" style="max-height: 280px;" id="serialListContainer">
+                        <div class="text-muted text-center py-3">Loading available serial numbers...</div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                        <span class="small text-muted">Selected IMEIs: <strong id="selectedSerialCount" class="text-primary">0</strong></span>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top p-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3" id="btnApplySelectedSerials">
+                        <i class="fas fa-check me-1"></i> Apply Selected IMEIs
+                    </button>
+                </div>
             </div>
         </div>
     </div>

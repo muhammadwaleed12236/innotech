@@ -141,6 +141,10 @@
       </select>
       <input type="hidden" class="product-id-hidden" name="product_id[]">
       <input type="hidden" class="variant-data-hidden" name="color[]">
+      <input type="hidden" class="batch-id-hidden" name="batch_id[]">
+      <input type="hidden" class="batch-no-hidden" name="batch_no[]">
+      <input type="hidden" class="serials-hidden" name="serials[]">
+      <div class="row-tracking-badges mt-1 d-flex flex-wrap gap-1"></div>
       <input type="hidden" class="item-code-display">
       <input type="hidden" class="size-h">
       <input type="hidden" class="size-w">
@@ -1056,6 +1060,7 @@
             setupRowQtyToggle($row, data.size_mode);
 
             computeRow($row);
+            checkAndOpenProductTracking($row, pid);
             setTimeout(() => {
                 $row.find('.carton-qty').focus().select();
             }, 100);
@@ -1770,5 +1775,180 @@
 
         // Initialize Posted Button State
         refreshPostedState();
+
+        // --- Product Tracking (Batch / Serial IMEI Modals) ---
+        window.checkAndOpenProductTracking = function($row, productId, warehouseId) {
+            if (!productId) return;
+            warehouseId = warehouseId || $row.find('.warehouse').val() || 1;
+
+            // Check Batches first
+            $.get('{{ route("sale.get_batches") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
+                if (res.success && res.batches && res.batches.length > 0) {
+                    openBatchSelectModal($row, res.batches);
+                    return;
+                }
+
+                // If no batches, check Serials / IMEIs
+                $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
+                    if (sRes.success && sRes.serials && sRes.serials.length > 0) {
+                        openSerialSelectModal($row, sRes.serials);
+                    }
+                });
+            });
+        };
+
+        // Open Batch Modal
+        function openBatchSelectModal($row, batches) {
+            const rowIndex = $('#salesTableBody tr').index($row);
+            $('#activeBatchRowIndex').val(rowIndex);
+
+            let html = '';
+            batches.forEach(b => {
+                const expDate = b.expiry_date ? b.expiry_date : 'N/A';
+                const mfgDate = b.mfg_date ? b.mfg_date : 'N/A';
+                
+                let isExpired = false;
+                if (b.expiry_date) {
+                    const today = new Date().toISOString().split('T')[0];
+                    if (b.expiry_date <= today) isExpired = true;
+                }
+
+                const expBadge = isExpired ? '<span class="badge bg-danger">Expired</span>' : `<span class="badge bg-light text-dark border">${expDate}</span>`;
+
+                html += `
+                    <tr>
+                        <td class="fw-bold text-primary font-monospace">${b.batch_no}</td>
+                        <td class="small">${mfgDate}</td>
+                        <td>${expBadge}</td>
+                        <td><span class="badge bg-success font-monospace fs-6">${b.qty}</span></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary btn-choose-batch py-1 px-3 fw-bold"
+                                    data-batch-id="${b.id}" data-batch-no="${b.batch_no}" data-batch-qty="${b.qty}">
+                                <i class="fas fa-check me-1"></i> Select Batch
+                            </button>
+                        </td>
+                    </tr>`;
+            });
+
+            $('#batchModalTableBody').html(html);
+            $('#modalSelectBatch').modal('show');
+        }
+
+        // Select Batch Button Click inside Modal
+        $(document).on('click', '.btn-choose-batch', function() {
+            const batchId = $(this).data('batch-id');
+            const batchNo = $(this).data('batch-no');
+            const rowIndex = $('#activeBatchRowIndex').val();
+            const $row = $('#salesTableBody tr').eq(rowIndex);
+
+            if ($row.length) {
+                $row.find('.batch-id-hidden').val(batchId);
+                $row.find('.batch-no-hidden').val(batchNo);
+
+                // Update tracking badges display on row
+                let badgeHtml = `<span class="badge bg-info text-dark" style="font-size:0.7rem;"><i class="fas fa-layer-group me-1"></i>Batch: ${batchNo}</span>`;
+                $row.find('.row-tracking-badges').html(badgeHtml);
+
+                $('#modalSelectBatch').modal('hide');
+                $row.find('.carton-qty').focus().select();
+            }
+        });
+
+        // Open Serial / IMEI Modal
+        let currentAvailableSerials = [];
+        function openSerialSelectModal($row, serials) {
+            const rowIndex = $('#salesTableBody tr').index($row);
+            $('#activeSerialRowIndex').val(rowIndex);
+            currentAvailableSerials = serials || [];
+
+            // Pre-selected serials if any
+            let existingSelected = [];
+            try {
+                existingSelected = JSON.parse($row.find('.serials-hidden').val() || '[]');
+            } catch(e) {}
+
+            renderSerialList(currentAvailableSerials, existingSelected);
+            $('#modalSelectSerial').modal('show');
+        }
+
+        function renderSerialList(serials, selectedList = []) {
+            let html = '';
+            if (!serials || serials.length === 0) {
+                html = '<div class="text-center text-muted py-3">No available IMEIs / Serial numbers found for this product.</div>';
+            } else {
+                serials.forEach(s => {
+                    const isChecked = selectedList.includes(s.serial_number) ? 'checked' : '';
+                    html += `
+                        <div class="d-flex align-items-center justify-content-between p-2 border-bottom serial-item-row" style="font-size:0.85rem;">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input serial-chk" type="checkbox" value="${s.serial_number}" id="chk_s_${s.id}" ${isChecked}>
+                                <label class="form-check-label fw-bold text-dark font-monospace" for="chk_s_${s.id}">
+                                    ${s.serial_number}
+                                </label>
+                            </div>
+                            <span class="badge bg-success font-monospace">Available</span>
+                        </div>`;
+                });
+            }
+            $('#serialListContainer').html(html);
+            updateSelectedSerialCount();
+        }
+
+        // Live Search/Scan Serial Numbers
+        $(document).on('input', '#serialSearchInput', function() {
+            const q = $(this).val().trim().toLowerCase();
+            let existingSelected = [];
+            $('.serial-chk:checked').each(function() { existingSelected.push($(this).val()); });
+
+            const filtered = currentAvailableSerials.filter(s => s.serial_number.toLowerCase().includes(q));
+            renderSerialList(filtered, existingSelected);
+
+            // Auto-check if exact barcode scan match
+            if (q.length > 4) {
+                const exact = currentAvailableSerials.find(s => s.serial_number.toLowerCase() === q);
+                if (exact) {
+                    $(`#chk_s_${exact.id}`).prop('checked', true).trigger('change');
+                    $('#serialSearchInput').val('').focus();
+                }
+            }
+        });
+
+        $(document).on('change', '.serial-chk', function() {
+            updateSelectedSerialCount();
+        });
+
+        function updateSelectedSerialCount() {
+            const count = $('.serial-chk:checked').length;
+            $('#selectedSerialCount').text(count);
+        }
+
+        // Apply Selected Serials Button
+        $(document).on('click', '#btnApplySelectedSerials', function() {
+            const rowIndex = $('#activeSerialRowIndex').val();
+            const $row = $('#salesTableBody tr').eq(rowIndex);
+
+            let selectedSerials = [];
+            $('.serial-chk:checked').each(function() {
+                selectedSerials.push($(this).val());
+            });
+
+            if ($row.length) {
+                $row.find('.serials-hidden').val(JSON.stringify(selectedSerials));
+
+                // Auto update qty in row based on selected IMEIs count
+                if (selectedSerials.length > 0) {
+                    $row.find('.carton-qty').val(selectedSerials.length);
+                    computeRow($row);
+                    updateGrandTotals();
+
+                    let badgeHtml = `<span class="badge bg-secondary text-light" style="font-size:0.7rem;" title="${selectedSerials.join(', ')}"><i class="fas fa-barcode me-1"></i>${selectedSerials.length} IMEI(s)</span>`;
+                    $row.find('.row-tracking-badges').html(badgeHtml);
+                } else {
+                    $row.find('.row-tracking-badges').html('');
+                }
+
+                $('#modalSelectSerial').modal('hide');
+            }
+        });
     }); // Close $(document).ready
 </script>

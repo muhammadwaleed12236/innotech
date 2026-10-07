@@ -359,6 +359,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/search-product-name', [SaleController::class, 'searchpname'])->name('search-product-name');
     Route::post('/sales/store', [SaleController::class, 'store'])->middleware('permission:sales.create')->name('sales.store');
     Route::post('/sales/post-final', [SaleController::class, 'postFinal'])->middleware('permission:sales.create')->name('sales.post_final');
+    Route::get('/sale/get-batches', [SaleController::class, 'getProductBatches'])->name('sale.get_batches');
+    Route::get('/sale/get-serials', [SaleController::class, 'getProductSerials'])->name('sale.get_serials');
 
     // Sale Return Routes - NEW SYSTEM
     Route::get('sale/return', [App\Http\Controllers\SaleReturnController::class, 'saleReturnIndex'])->middleware('permission:sales.view')->name('sale.return.index');

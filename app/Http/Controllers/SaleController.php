@@ -2576,4 +2576,49 @@ class SaleController extends Controller
         $invoiceNo = \App\Models\InvoiceSeries::generateNextNo($prefix);
         return response()->json(['invoice_no' => $invoiceNo]);
     }
+
+    /**
+     * AJAX endpoint to fetch active batches for a product and warehouse
+     */
+    public function getProductBatches(Request $request)
+    {
+        $productId = $request->get('product_id');
+        $warehouseId = $request->get('warehouse_id', 1);
+
+        $batches = \App\Models\ProductBatch::where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('qty', '>', 0)
+            ->orderBy('expiry_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'batches' => $batches
+        ]);
+    }
+
+    /**
+     * AJAX endpoint to fetch available serials/IMEIs for a product and warehouse
+     */
+    public function getProductSerials(Request $request)
+    {
+        $productId = $request->get('product_id');
+        $warehouseId = $request->get('warehouse_id', 1);
+        $search = $request->get('search');
+
+        $query = \App\Models\ProductSerial::where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->where('status', 'available');
+
+        if (!empty($search)) {
+            $query->where('serial_number', 'like', "%{$search}%");
+        }
+
+        $serials = $query->orderBy('serial_number', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'serials' => $serials
+        ]);
+    }
 }
