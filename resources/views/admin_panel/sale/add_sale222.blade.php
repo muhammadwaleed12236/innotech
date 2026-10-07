@@ -533,97 +533,105 @@
             font-size: 11.5px !important;
         }
 
-        /* ---------- PRODUCT TABLE ---------- */
+        /* ---------- PRODUCT TABLE (EXCEL GRID STYLE) ---------- */
         .table-responsive {
-            border: 1px solid var(--pos-border);
-            border-radius: 10px;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
             background: #ffffff;
             overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .pos-table-wrap {
-            overflow: hidden;
+            overflow-x: auto;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
         .sales-table {
-            min-width: 0;
-            border-collapse: separate;
-            border-spacing: 0;
+            min-width: 850px;
+            border-collapse: collapse !important;
             width: 100%;
             margin-bottom: 0;
             table-layout: fixed;
+            background: #ffffff;
         }
         .sales-table thead th {
-            background: #F8FAFC;
-            color: #475569;
-            font-size: 11px;
-            font-weight: 700;
+            background: #F1F5F9 !important;
+            color: #334155 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
             text-transform: uppercase;
             letter-spacing: .5px;
-            padding: 11px 8px;
-            border-bottom: 1px solid var(--pos-border);
+            padding: 9px 6px !important;
+            border: 1px solid #CBD5E1 !important;
             text-align: center;
             vertical-align: middle;
             white-space: nowrap;
         }
         .sales-table thead th.col-product {
             text-align: left;
-            padding-left: 14px;
+            padding-left: 10px !important;
         }
         .sales-table tbody td {
-            padding: 7px;
-            height: 52px;
-            border-bottom: 1px solid #F1F5F9;
+            padding: 3px 5px !important;
+            height: 42px !important;
+            border: 1px solid #CBD5E1 !important;
             vertical-align: middle;
+            background: #ffffff;
         }
-        .sales-table tbody tr:last-child td {
-            border-bottom: none;
+        .sales-table tbody tr:nth-child(even) td {
+            background: #FAFCFE;
         }
         .sales-table tbody tr:hover td {
-            background: #FBFDFF;
+            background: #F1F5F9;
         }
         .row-index-cell {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
-            color: #94A3B8;
+            color: #64748B;
             text-align: center;
+            background: #F8FAFC !important;
         }
 
-        /* Table inputs — clean flat cells that highlight on focus */
+        /* Table inputs — clean Excel grid cells that highlight with sharp blue outline on focus */
         .sales-table tbody .form-control,
         .sales-table tbody .form-select {
-            height: 38px !important;
-            border: 1px solid transparent !important;
-            border-radius: 6px !important;
-            padding: 4px 9px !important;
-            font-size: 13.5px !important;
+            height: 34px !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 4px !important;
+            padding: 3px 7px !important;
+            font-size: 13px !important;
             font-weight: 500 !important;
-            background: transparent !important;
+            background: #ffffff !important;
             box-shadow: none !important;
-            color: var(--pos-text) !important;
+            color: #0F172A !important;
             width: 100% !important;
-            transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+            transition: border-color .12s ease, box-shadow .12s ease;
         }
         .sales-table tbody .form-control:hover,
         .sales-table tbody .form-select:hover {
-            border-color: var(--pos-border) !important;
-            background: #ffffff !important;
+            border-color: #94A3B8 !important;
         }
         .sales-table tbody .form-control:focus,
         .sales-table tbody .form-select:focus,
         .sales-table tbody .form-control:focus-visible {
-            border-color: var(--pos-blue) !important;
+            border: 2px solid #2563EB !important;
             background: #ffffff !important;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, .10) !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
             outline: none !important;
         }
         .sales-table tbody input[readonly],
         .sales-table tbody .input-readonly {
-            background: #FAFBFC !important;
-            color: var(--pos-muted) !important;
+            background: #F8FAFC !important;
+            color: #475569 !important;
             cursor: default !important;
             font-weight: 600 !important;
+            border-color: #E2E8F0 !important;
         }
-        .sales-table tbody input[readonly]:hover {
-            border-color: transparent !important;
+        .sales-table tbody input[readonly]:focus {
+            border-color: #CBD5E1 !important;
+            box-shadow: none !important;
         }
 
         /* Stock badge style inside stock cell */
@@ -644,41 +652,40 @@
             border-color: #BBF7D0;
         }
 
-        /* Product select2 inside table */
+        /* Product select2 inside table - Excel cell style */
         .sales-table tbody .select2-container {
             width: 100% !important;
         }
         .sales-table tbody .select2-container .select2-selection--single {
-            height: 38px !important;
-            border: 1px solid transparent !important;
-            border-radius: 6px !important;
-            background: transparent !important;
+            height: 34px !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 4px !important;
+            background: #ffffff !important;
             padding: 0 !important;
         }
         .sales-table tbody .select2-container:hover .select2-selection--single {
-            border-color: var(--pos-border) !important;
-            background: #ffffff !important;
+            border-color: #94A3B8 !important;
         }
         .sales-table tbody .select2-container--focus .select2-selection--single,
         .sales-table tbody .select2-container--open .select2-selection--single {
-            border-color: var(--pos-blue) !important;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, .10) !important;
+            border: 2px solid #2563EB !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
             background: #ffffff !important;
         }
         .sales-table tbody .select2-container .select2-selection__rendered {
-            line-height: 36px !important;
-            padding-left: 9px !important;
+            line-height: 32px !important;
+            padding-left: 7px !important;
             padding-right: 18px !important;
-            font-size: 13.5px !important;
+            font-size: 13px !important;
             font-weight: 600 !important;
-            color: var(--pos-text) !important;
+            color: #0F172A !important;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
         .sales-table tbody .select2-container .select2-selection__arrow {
-            height: 36px !important;
-            right: 6px !important;
+            height: 32px !important;
+            right: 4px !important;
         }
 
         /* Qty cell */
@@ -1348,9 +1355,6 @@
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="button" class="btn btn-outline-primary px-3" id="btnNewProductHeader">
                             <i class="fas fa-box-open me-1"></i> New Product
-                        </button>
-                        <button type="button" class="btn btn-primary px-3" id="btnAdd">
-                            <i class="fas fa-plus me-1"></i> Add Product
                         </button>
                     </div>
                 </div>

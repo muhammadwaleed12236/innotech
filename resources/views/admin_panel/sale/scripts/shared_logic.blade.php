@@ -1377,6 +1377,54 @@
         // Add Row Button
         $('#btnAdd').click(addNewRow);
 
+        // --- ENTER KEY NAVIGATION & AUTOMATIC EXCEL NEW ROW OPENING ---
+        $(document).on('keydown', '#salesTableBody input, #salesTableBody select', function(e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                // Allow default Select2 selection behavior when dropdown list is actively open
+                if ($('.select2-container--open').length > 0 && $(this).hasClass('select2-search__field')) {
+                    return; 
+                }
+                
+                e.preventDefault();
+                const $currentInput = $(this);
+                const $row = $currentInput.closest('tr');
+                
+                // Find all visible, editable inputs/selects in the row
+                const $rowInputs = $row.find('input:visible:not([readonly]):not([disabled]), select:visible:not([disabled])');
+                const currentIndex = $rowInputs.index($currentInput);
+                
+                if (currentIndex !== -1 && currentIndex < $rowInputs.length - 1) {
+                    const $nextInput = $rowInputs.eq(currentIndex + 1);
+                    $nextInput.focus();
+                    if ($nextInput.is('input')) {
+                        $nextInput.select();
+                    }
+                } else {
+                    // At last editable cell of row -> automatically open a new row if on last row, or jump to next row
+                    const $allRows = $('#salesTableBody tr');
+                    const isLastRow = $row.is($allRows.last());
+                    
+                    if (isLastRow) {
+                        addNewRow();
+                        const $newRow = $('#salesTableBody tr:last-child');
+                        setTimeout(function() {
+                            $newRow.find('.product').select2('open');
+                        }, 80);
+                    } else {
+                        const $nextRow = $row.next('tr');
+                        const $nextRowProduct = $nextRow.find('.product');
+                        if ($nextRowProduct.val()) {
+                            $nextRow.find('.carton-qty').focus().select();
+                        } else {
+                            setTimeout(function() {
+                                $nextRowProduct.select2('open');
+                            }, 50);
+                        }
+                    }
+                }
+            }
+        });
+
         // Row Pricing Mode Toggle Handler
         $(document).on('click', '.price-mode-row-toggle', function() {
             const $btn = $(this);
