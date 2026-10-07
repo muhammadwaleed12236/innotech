@@ -1736,6 +1736,10 @@
             $('#modalCustomerDetails').modal('show');
         });
 
+        $(document).on('click', '#modalCustomerDetails [data-dismiss="modal"], #modalCustomerDetails [data-bs-dismiss="modal"]', function() {
+            $('#modalCustomerDetails').modal('hide');
+        });
+
 
         // --- Customers & Accounts ---
         // We leave accountData here as a helper if available, but parent should ideally provide it.

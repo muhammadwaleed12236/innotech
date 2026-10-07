@@ -2492,7 +2492,7 @@
                     <h5 class="modal-title fw-bold text-primary fs-6 d-flex align-items-center gap-2" id="modalCustomerDetailsLabel">
                         <i class="fas fa-user-circle fs-5"></i> Customer Information
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body p-3">
                     <div class="row g-3">
@@ -2529,7 +2529,7 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light p-2 px-3 border-top">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
