@@ -1225,43 +1225,14 @@
             </div>
 
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
-            <div class="sale-card mb-3 p-4">
-                <div class="row g-4 align-items-center">
-                    <div class="col-xl-8">
-                        <div class="row g-3 align-items-center">
-                            {{-- Sale Type --}}
-                            <div class="col-12 col-md-4">
-                                <label class="field-label">Sale Type</label>
-                                <div class="seg-toggle" role="group" aria-label="Sale Type">
-                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
-                                        <i class="fas fa-users me-1"></i> Customer
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
-                                        <i class="fas fa-walking me-1"></i> Walk-in
-                                    </button>
-                                </div>
-                                <select class="d-none" id="partyTypeSelect" name="partyType">
-                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            {{-- Credit Days --}}
-                            <div class="col-6 col-md-2">
-                                <label class="field-label" for="creditDaysInput">Credit Days</label>
-                                <input type="number" class="form-control text-center" id="creditDaysInput" name="credit_days" placeholder="Days" min="0" value="{{ $sale->credit_days ?? '0' }}">
-                            </div>
-
-                            {{-- Reference / Remarks --}}
-                            <div class="col-6 col-md-6">
-                                <label class="field-label" for="remarks">Reference / Remarks</label>
-                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional">
-                            </div>
-
+            <div class="sale-card mb-3 p-3">
+                <div class="row g-2 align-items-center">
+                    {{-- Form Inputs (Left Block) --}}
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="row g-2 align-items-center">
                             {{-- Customer --}}
-                            <div class="col-12">
-                                <label class="field-label" for="customerSelect">Customer</label>
+                            <div class="col-12 col-md-7">
+                                <label class="field-label mb-1">Customer</label>
                                 <div class="d-flex gap-2">
                                     <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
                                         <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
@@ -1279,12 +1250,42 @@
                                     </button>
                                 </div>
                             </div>
+
+                            {{-- Sale Type --}}
+                            <div class="col-12 col-md-5">
+                                <label class="field-label mb-1">Sale Type</label>
+                                <div class="seg-toggle" role="group" aria-label="Sale Type">
+                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
+                                        <i class="fas fa-users me-1"></i> Customer
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
+                                        <i class="fas fa-walking me-1"></i> Walk-in
+                                    </button>
+                                </div>
+                                <select class="d-none" id="partyTypeSelect" name="partyType">
+                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Reference / Remarks --}}
+                            <div class="col-8 col-md-9">
+                                <label class="field-label mb-1" for="remarks">Reference / Remarks</label>
+                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional">
+                            </div>
+
+                            {{-- Credit Days --}}
+                            <div class="col-4 col-md-3">
+                                <label class="field-label mb-1" for="creditDaysInput">Credit Days</label>
+                                <input type="number" class="form-control text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}">
+                            </div>
                         </div>
                     </div>
 
-                    {{-- Customer Balance Card (right) --}}
-                    <div class="col-xl-4">
-                        <div class="cust-bal-card" style="height: auto; min-height: 0; max-height: none; padding: 12px 14px; background: #FFFFFF; border: 1px solid var(--pos-border); border-radius: 10px;">
+                    {{-- Customer Balance Card (Right Block) --}}
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="cust-bal-card" style="height: 100%; min-height: 104px; max-height: none; padding: 10px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; justify-content: center;">
                             <span id="cc_customer_name" class="d-none"></span>
                             <span id="ci_code" class="d-none"></span>
 
@@ -1304,23 +1305,23 @@
                             </div>
 
                             <div class="cb-grid">
-                                <div class="cb-cell" style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 4px; border-radius: 8px;">
-                                    <div class="cb-label" style="font-size: 10.5px; color: #64748B; font-weight: 700; text-transform: uppercase;">Prev. Due</div>
-                                    <div class="cb-value" style="font-size: 13.5px; font-weight: 700; color: #1E293B;">
+                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
+                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Prev. Due</div>
+                                    <div class="cb-value" style="font-size: 13px; font-weight: 700; color: #1E293B;">
                                         <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
                                     </div>
                                 </div>
-                                <div class="cb-cell" style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 4px; border-radius: 8px;">
-                                    <div class="cb-label" style="font-size: 10.5px; color: #64748B; font-weight: 700; text-transform: uppercase;">Current Due</div>
-                                    <div class="cb-value" id="cc_current_bill" style="font-size: 13.5px; font-weight: 700; color: #1E293B;">Rs 0</div>
+                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
+                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Current Due</div>
+                                    <div class="cb-value" id="cc_current_bill" style="font-size: 13px; font-weight: 700; color: #1E293B;">Rs 0</div>
                                 </div>
-                                <div class="cb-cell" style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 4px; border-radius: 8px;">
-                                    <div class="cb-label" style="font-size: 10.5px; color: #64748B; font-weight: 700; text-transform: uppercase;">Paid</div>
-                                    <div class="cb-value" id="cc_paid_now" style="font-size: 13.5px; font-weight: 700; color: #16A34A;">Rs 0</div>
+                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
+                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Paid</div>
+                                    <div class="cb-value" id="cc_paid_now" style="font-size: 13px; font-weight: 700; color: #16A34A;">Rs 0</div>
                                 </div>
-                                <div class="cb-cell" style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 4px; border-radius: 8px;">
-                                    <div class="cb-label" style="font-size: 10.5px; color: #64748B; font-weight: 700; text-transform: uppercase;">Closing</div>
-                                    <div class="cb-value" style="font-size: 13.5px; font-weight: 700; color: #1E293B;">
+                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
+                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Closing</div>
+                                    <div class="cb-value" style="font-size: 13px; font-weight: 700; color: #1E293B;">
                                         <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
                                     </div>
                                 </div>
