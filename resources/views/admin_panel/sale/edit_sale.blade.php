@@ -1260,8 +1260,19 @@
                                 <div id="customerInputWrapper" style="min-width: 0;">
                                     <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="{{ $sale->walkin_name ?? 'Walk-in Customer' }}" placeholder="Enter Walk-in Name...">
                                     <select class="form-select" id="customerSelect" name="customer" style="width:100%">
-                                        @if($sale->customer_relation)
-                                            <option value="{{ $sale->customer_id }}" selected>{{ $sale->customer_relation->customer_id }} — {{ $sale->customer_relation->customer_name }}</option>
+                                        <option value="">Select Customer...</option>
+                                        @if(isset($customer) && count($customer) > 0)
+                                            @foreach($customer as $c)
+                                                <option value="{{ $c->id }}" 
+                                                        {{ isset($sale) && $sale->customer == $c->id ? 'selected' : '' }}
+                                                        data-mobile="{{ $c->mobile }}" 
+                                                        data-address="{{ $c->address }}" 
+                                                        data-code="{{ $c->customer_id }}"
+                                                        data-prev="{{ $c->previous_balance ?? 0 }}" 
+                                                        data-range="{{ $c->balance_range ?? 0 }}">
+                                                    {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
+                                                </option>
+                                            @endforeach
                                         @endif
                                     </select>
                                 </div>
@@ -1788,33 +1799,9 @@
             }
 
             $('#customerSelect').select2({
-                placeholder: 'Search by Name or Code...',
+                placeholder: 'Search by Name, Code, or Mobile...',
                 allowClear: true,
                 width: '100%',
-                minimumInputLength: 0,
-                ajax: {
-                    url: '{{ route('salecustomers.index') }}',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function(params) {
-                        return {
-                            type: getPartyType(),
-                            search: params.term || ''
-                        };
-                    },
-                    processResults: function(data) {
-                        return {
-                            results: data.map(function(c) {
-                                return {
-                                    id: c.id,
-                                    text: (c.customer_id || '') + ' — ' + c.customer_name,
-                                    customer: c
-                                };
-                            })
-                        };
-                    },
-                    cache: false
-                },
                 language: {
                     noResults: function() {
                         return '<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>';
@@ -1822,20 +1809,6 @@
                 },
                 escapeMarkup: function(markup) {
                     return markup;
-                },
-                templateResult: function(item) {
-                    if (item.loading) return item.text;
-                    if (!item.customer) return item.text;
-                    const c = item.customer;
-                    return '<div>' +
-                        '<strong>' + (c.customer_name || '') + '</strong>' +
-                        '<small class="text-muted ms-2">' + (c.customer_id || '') + '</small>' +
-                        (c.mobile ? '<br><small class="text-muted">' + c.mobile + '</small>' : '') +
-                    '</div>';
-                },
-                templateSelection: function(item) {
-                    if (!item.customer) return item.text;
-                    return item.customer.customer_id + ' — ' + item.customer.customer_name;
                 }
             });
 
@@ -1849,12 +1822,32 @@
             });
 
             // Customer selected → load details
-            $('#customerSelect').on('select2:select', function(e) {
-                const id = e.params.data.id;
-                if (!id) return;
+            $(document).on('change select2:select', '#customerSelect', function() {
+                const id = $(this).val();
+                if (!id) {
+                    clearCustomerInfo();
+                    if (typeof updateGrandTotals === 'function') updateGrandTotals();
+                    return;
+                }
+
+                const $opt = $(this).find('option:selected');
+                if ($opt.length && $opt.attr('data-mobile') !== undefined) {
+                    $('#address').val($opt.attr('data-address') || '');
+                    $('#tel').val($opt.attr('data-mobile') || '');
+                    const prev = parseFloat($opt.attr('data-prev') || 0);
+                    const range = parseFloat($opt.attr('data-range') || 0);
+                    $('#previousBalance').val(prev.toFixed(2));
+                    $('#rangeBalance').val(range.toFixed(2));
+
+                    $('#ci_code').text($opt.attr('data-code') || '—');
+                    $('#ci_name').text($opt.text());
+                    $('#ci_mobile').text($opt.attr('data-mobile') || '—');
+                    $('#ci_address').text($opt.attr('data-address') || '—');
+                    $('#ci_prev_bal').text(prev.toFixed(2));
+                    $('#ci_range_bal').text(range.toFixed(2));
+                }
 
                 $.get("{{ url('sale/customers') }}/" + id + "?t=" + new Date().getTime(), function(d) {
-                    // Fill hidden fields
                     $('#address').val(d.address || '');
                     $('#tel').val(d.mobile || '');
                     const prev = parseFloat(d.previous_balance || 0);
@@ -1862,23 +1855,18 @@
                     $('#previousBalance').val(prev.toFixed(2));
                     $('#rangeBalance').val(range.toFixed(2));
 
-                    // Fill info card
                     $('#ci_code').text(d.customer_id || '—');
                     $('#ci_name').text(d.customer_name || '—');
                     $('#ci_mobile').text(d.mobile || '—');
                     $('#ci_address').text(d.address || '—');
                     $('#ci_prev_bal').text(prev.toFixed(2));
                     $('#ci_range_bal').text(range.toFixed(2));
-                    $('#customerInfoCard').removeClass('d-none');
 
-                    // Auto-fill Sales Officer if customer has one
                     if (d.sales_officer_id) {
                         $('#salesOfficerSelect').val(d.sales_officer_id);
                     }
 
                     if (typeof updateGrandTotals === 'function') updateGrandTotals();
-                }).fail(function() {
-                    showAlert('error', 'Failed to load customer details');
                 });
             });
 
