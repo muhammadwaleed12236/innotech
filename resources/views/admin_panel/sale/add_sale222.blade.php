@@ -140,6 +140,44 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
         }
 
+        /* Select2 Dropdown Clean Styling */
+        .select2-dropdown {
+            background-color: #ffffff !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
+            z-index: 99999 !important;
+            overflow: hidden !important;
+        }
+        .select2-results__options {
+            background-color: #ffffff !important;
+        }
+        .select2-results__option {
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+            color: #1e293b !important;
+            background-color: #ffffff !important;
+        }
+        .select2-results__option--highlighted[aria-selected],
+        .select2-results__option--highlighted.select2-results__option--selectable {
+            background-color: var(--pos-blue, #2563eb) !important;
+            color: #ffffff !important;
+        }
+        .select2-search--dropdown {
+            padding: 6px !important;
+            background-color: #f8fafc !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+        }
+        .select2-search--dropdown .select2-search__field {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 6px !important;
+            padding: 6px 10px !important;
+            font-size: 13px !important;
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            outline: none !important;
+        }
+
         /* ---------- BUTTONS ---------- */
         .sale-page .btn-primary {
             background: var(--pos-blue);
