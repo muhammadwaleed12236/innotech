@@ -1246,18 +1246,6 @@
                                     @endforeach
                                 </select>
                             </div>
-
-                            {{-- Reference / Remarks --}}
-                            <div class="col-8 col-md-9">
-                                <label class="field-label mb-1" for="remarks">Reference / Remarks</label>
-                                <input type="text" class="form-control" name="reference" id="remarks" placeholder="Optional" value="{{ $sale->reference ?? '' }}">
-                            </div>
-
-                            {{-- Credit Days --}}
-                            <div class="col-4 col-md-3">
-                                <label class="field-label mb-1" for="creditDaysInput">Credit Days</label>
-                                <input type="number" class="form-control text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}">
-                            </div>
                         </div>
                     </div>
 
@@ -1533,7 +1521,17 @@
                             @endforeach
                         </div>
 
-                        <div class="pt-2">
+                        <div class="pt-2 border-top mt-3">
+                            <div class="row g-2 mb-2">
+                                <div class="col-8">
+                                    <label class="field-label mb-1" for="remarks" style="font-size: 11px;">Reference / Remarks</label>
+                                    <input type="text" class="form-control form-control-sm" name="reference" id="remarks" placeholder="Optional..." value="{{ $sale->reference ?? '' }}" style="height: 34px;">
+                                </div>
+                                <div class="col-4">
+                                    <label class="field-label mb-1" for="creditDaysInput" style="font-size: 11px;">Credit Days</label>
+                                    <input type="number" class="form-control form-control-sm text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="height: 34px;">
+                                </div>
+                            </div>
                             <div class="change-row mt-2" id="changeAccountRow" style="display:none;">
                                 <span class="change-label me-2 fw-semibold text-muted small">
                                     <i class="fas fa-exchange-alt me-1"></i> Change Account
