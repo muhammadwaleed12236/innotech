@@ -1740,11 +1740,33 @@
         window.recomputeReceipts = function() {
             let sum = 0;
             $('.rv-amount').each(function() {
-                sum += toNum($(this).val());
+                const amt = toNum($(this).val());
+                sum += amt;
+                const $card = $(this).closest('.pay-account-card');
+                if ($card.length) {
+                    if (amt > 0) {
+                        $card.css({
+                            'border-color': '#2563eb',
+                            'background-color': '#eff6ff'
+                        }).addClass('border-primary bg-primary-soft');
+                    } else {
+                        $card.css({
+                            'border-color': '#e2e8f0',
+                            'background-color': '#ffffff'
+                        }).removeClass('border-primary bg-primary-soft');
+                    }
+                }
             });
             $('#receiptsTotal').text(sum.toFixed(2));
-            updateGrandTotals();
+            if ($('#footerPaid').length) $('#footerPaid').text(sum.toFixed(2));
+            if (typeof updateGrandTotals === 'function') updateGrandTotals();
         }
+
+        $(function() {
+            if (typeof window.recomputeReceipts === 'function') {
+                window.recomputeReceipts();
+            }
+        });
 
         // --- Sidebar Direct Add Product ---
         $(document).on('click', '.add-product-direct-btn', function() {

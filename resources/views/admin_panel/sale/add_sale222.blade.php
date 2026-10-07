@@ -1316,7 +1316,7 @@
 
                     {{-- Customer Balance Card (Right Block) --}}
                     <div class="col-xl-4 col-lg-5">
-                        <div class="cust-bal-card" style="height: 100%; min-height: 104px; max-height: none; padding: 10px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; justify-content: center;">
+                        <div class="cust-bal-card p-2 rounded-3" style="background: #F8FAFC; border: 1px solid #E2E8F0;">
                             <span id="cc_customer_name" class="d-none"></span>
                             <span id="ci_code" class="d-none"></span>
 
@@ -1335,25 +1335,45 @@
                                 </div>
                             </div>
 
-                            <div class="cb-grid">
-                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
-                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Prev. Due</div>
-                                    <div class="cb-value" style="font-size: 13px; font-weight: 700; color: #1E293B;">
-                                        <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
+                            <div class="row row-cols-4 g-2 text-center m-0">
+                                <div class="col p-1">
+                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
+                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #FEE2E2; color: #EF4444;">
+                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
+                                        </div>
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Prev. Due</div>
+                                        <div class="fw-bold mt-1" style="font-size: 12.5px; color: #EF4444;">
+                                            <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
-                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Current Due</div>
-                                    <div class="cb-value" id="cc_current_bill" style="font-size: 13px; font-weight: 700; color: #1E293B;">Rs 0</div>
+                                <div class="col p-1">
+                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
+                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #DBEAFE; color: #2563EB;">
+                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
+                                        </div>
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Current Due</div>
+                                        <div class="fw-bold text-primary mt-1" id="cc_current_bill" style="font-size: 12.5px; color: #2563EB !important;">Rs 0</div>
+                                    </div>
                                 </div>
-                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
-                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Paid</div>
-                                    <div class="cb-value" id="cc_paid_now" style="font-size: 13px; font-weight: 700; color: #16A34A;">Rs 0</div>
+                                <div class="col p-1">
+                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
+                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #DCFCE7; color: #16A34A;">
+                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
+                                        </div>
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Paid</div>
+                                        <div class="fw-bold text-success mt-1" id="cc_paid_now" style="font-size: 12.5px; color: #16A34A !important;">Rs 0</div>
+                                    </div>
                                 </div>
-                                <div class="cb-cell" style="background: #FFFFFF; border: 1px solid #E2E8F0; padding: 6px 4px; border-radius: 6px;">
-                                    <div class="cb-label" style="font-size: 10px; color: #64748B; font-weight: 700; text-transform: uppercase;">Closing</div>
-                                    <div class="cb-value" style="font-size: 13px; font-weight: 700; color: #1E293B;">
-                                        <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
+                                <div class="col p-1">
+                                    <div class="p-2 rounded-3 bg-white border h-100 d-flex flex-column align-items-center justify-content-center" style="border-color: #E2E8F0 !important;">
+                                        <div class="rounded-3 d-inline-flex align-items-center justify-content-center mb-1" style="width: 28px; height: 28px; background: #F3E8FF; color: #9333EA;">
+                                            <i class="far fa-calendar-alt" style="font-size: 13px;"></i>
+                                        </div>
+                                        <div class="text-muted fw-bold" style="font-size: 11px; line-height: 1.1;">Closing</div>
+                                        <div class="fw-bold mt-1" style="font-size: 12.5px; color: #9333EA !important;">
+                                            <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1523,53 +1543,58 @@
             </div>
 
             {{-- ============================ PAYMENT METHODS & ORDER SUMMARY ============================ --}}
-            <div class="row g-2 align-items-start">
+            <div class="row g-2 align-items-start mb-3">
                 {{-- LEFT: Payment Methods --}}
                 <div class="col-lg-6">
-                    <div class="sale-card p-2 px-3">
-                        <div class="pay-head">
-                            <span class="card-title">Payment Methods</span>
-                            <button type="button" class="btn btn-sm btn-outline-primary px-2 py-0" id="btnAddRV" style="font-size: 11px;">
-                                <i class="fas fa-plus me-1"></i> Add Payment
-                            </button>
+                    <div class="sale-card p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="card-title d-flex align-items-center gap-2" style="font-size: 15px;">
+                                <i class="fas fa-wallet text-primary"></i> Payment Methods
+                            </span>
                         </div>
 
-                        <!-- Quick Payment Head Buttons -->
-                        <div class="mb-2 d-flex flex-wrap gap-1" id="payHeadGroup">
-                            <button type="button" class="btn btn-sm btn-outline-primary active btn-pay-head fw-semibold" data-head="cash">
-                                💵 Cash
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-pay-head fw-semibold" data-head="bank">
-                                🏦 Bank Transfer
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-pay-head fw-semibold" data-head="jazzcash">
-                                📱 JazzCash
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-pay-head fw-semibold" data-head="easypaisa">
-                                📱 EasyPaisa
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-pay-head fw-semibold" data-head="card">
-                                💳 Card
-                            </button>
-                        </div>
-
-                        <div id="rvWrapper">
-                            <div class="rv-row">
-                                <select class="form-select rv-account" name="receipt_account_id[]">
-                                    @foreach ($accounts as $acc)
-                                        <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') || str_contains(strtolower($acc->title), 'easypaisa') ? 'selected' : '' }}>{{ $acc->title }}</option>
-                                    @endforeach
-                                </select>
-                                <input type="number" step="0.01" class="form-control rv-amount" name="receipt_amount[]" placeholder="0.00">
-                            </div>
+                        <div id="rvWrapper" class="row g-2">
+                            @foreach ($accounts as $acc)
+                                @php
+                                    $accTitleLower = strtolower($acc->title);
+                                @endphp
+                                <div class="col-md-6 col-12">
+                                    <div class="pay-account-card d-flex align-items-center justify-content-between p-2 rounded-3 border transition-all" style="background: #ffffff; border: 1px solid #E2E8F0;">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="acc-icon-badge flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 36px; height: 36px; background: #F1F5F9;">
+                                                @if(str_contains($accTitleLower, 'cash'))
+                                                    <span class="fs-5">💵</span>
+                                                @elseif(str_contains($accTitleLower, 'bank'))
+                                                    <i class="fas fa-university text-primary fs-6"></i>
+                                                @elseif(str_contains($accTitleLower, 'card'))
+                                                    <i class="fas fa-credit-card text-info fs-6"></i>
+                                                @elseif(str_contains($accTitleLower, 'easy') || str_contains($accTitleLower, 'paisa'))
+                                                    <span class="fw-bold text-success fs-5" style="font-family: sans-serif;">e</span>
+                                                @elseif(str_contains($accTitleLower, 'jazz'))
+                                                    <span class="badge bg-danger rounded-circle p-1" style="font-size: 9px;">Jazz</span>
+                                                @else
+                                                    <i class="fas fa-ellipsis-h text-secondary fs-6"></i>
+                                                @endif
+                                            </div>
+                                            <div class="lh-1">
+                                                <span class="fw-bold fs-6 text-dark d-block">{{ $acc->title }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="rv-row m-0 p-0" style="width: 110px;">
+                                            <input type="hidden" class="rv-account" name="receipt_account_id[]" value="{{ $acc->id }}">
+                                            <input type="number" step="0.01" class="form-control text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" style="height: 34px; font-size: 13.5px; border-radius: 6px;">
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
 
                         <div class="pt-2">
-                            <div class="change-row" id="changeAccountRow" style="display:none;">
-                                <span class="change-label">
+                            <div class="change-row mt-2" id="changeAccountRow" style="display:none;">
+                                <span class="change-label me-2 fw-semibold text-muted small">
                                     <i class="fas fa-exchange-alt me-1"></i> Change Account
                                 </span>
-                                <select class="form-select" name="change_account_id" id="changeAccountId">
+                                <select class="form-select form-select-sm d-inline-block" name="change_account_id" id="changeAccountId" style="width: auto;">
                                     @foreach ($accounts as $acc)
                                         <option value="{{ $acc->id }}" {{ str_contains(strtolower($acc->title), 'cash') ? 'selected' : '' }}>{{ $acc->title }}</option>
                                     @endforeach
@@ -1581,9 +1606,11 @@
 
                 {{-- RIGHT: Order Summary --}}
                 <div class="col-lg-6">
-                    <div class="sale-card p-2 px-3">
-                        <div class="pay-head">
-                            <span class="card-title">Order Summary</span>
+                    <div class="sale-card p-3">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <span class="card-title d-flex align-items-center gap-2" style="font-size: 15px;">
+                                <i class="fas fa-file-alt text-primary"></i> Order Summary
+                            </span>
                         </div>
 
                         <div>
@@ -1605,30 +1632,30 @@
                             <div class="s-row">
                                 <span class="s-label">Freight</span>
                                 <div class="input-group input-group-sm discount-input">
-                                    <button type="button" class="btn btn-outline-secondary" id="freightTypeToggle" tabindex="-1" style="width: 36px; border-radius: 8px 0 0 8px; font-weight: bold; font-size: 14px; background: #F8FAFC; color: #64748b; border-color: var(--pos-border);">+</button>
+                                    <button type="button" class="btn btn-outline-secondary" id="freightTypeToggle" tabindex="-1" style="width: 34px; border-radius: 6px 0 0 6px; font-weight: bold; font-size: 13px; background: #F8FAFC; color: #64748b; border-color: var(--pos-border);">+</button>
                                     <input type="hidden" name="freight_type" id="freightType" value="add">
                                     <input type="number" class="form-control text-end" id="freightCharges" name="freight_charges" value="0" placeholder="0">
                                     <span class="input-group-text">Rs</span>
                                 </div>
                             </div>
-                            <div class="s-row net">
-                                <span class="net-label">Net Total</span>
-                                <span class="net-val" id="tSub">0.00</span>
+                            <div class="s-row net my-2 p-2 rounded-3" style="background: #EFF6FF; border: 1px solid #BFDBFE;">
+                                <span class="net-label fw-bold text-primary" style="font-size: 14px;">Net Total</span>
+                                <span class="net-val fw-extrabold text-primary" id="tSub" style="font-size: 18px;">0.00</span>
                                 <span id="walkinNetTotal" class="d-none">0.00</span>
                             </div>
                             <div class="s-row">
                                 <span class="s-label">Total Paid</span>
-                                <span class="paid-val" id="receiptsTotal">0.00</span>
+                                <span class="paid-val text-success fw-bold" id="receiptsTotal">0.00</span>
                                 <span id="receiptsTotalBadge" style="display:none;">0.00</span>
                                 <span id="bottomPaymentsTotal" class="d-none">0.00</span>
                             </div>
                             <div class="s-row">
                                 <span class="s-label">Remaining</span>
-                                <span class="s-val" id="tPayable">0.00</span>
+                                <span class="s-val text-danger fw-bold" id="tPayable">0.00</span>
                             </div>
                             <div class="s-row">
                                 <span class="s-label">Change</span>
-                                <span class="change-val" id="walkinChange">-0.00</span>
+                                <span class="change-val text-success fw-bold" id="walkinChange">-0.00</span>
                                 <span id="bottomChangeVal" class="d-none">-0.00</span>
                             </div>
                         </div>
