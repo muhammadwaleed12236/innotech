@@ -1717,6 +1717,11 @@
             $('#changeAccountId, #bottomChangeAccountId').val(val);
         });
 
+        // Toggle Customer Info Card
+        $(document).on('click', '#btnToggleCustomerInfo', function() {
+            $('#customerInfoCard').toggleClass('d-none');
+        });
+
 
         // --- Customers & Accounts ---
         // We leave accountData here as a helper if available, but parent should ideally provide it.

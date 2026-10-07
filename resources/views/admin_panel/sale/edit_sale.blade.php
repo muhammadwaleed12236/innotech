@@ -1201,70 +1201,86 @@
             </div>
 
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
-            <div class="sale-card mb-3 p-3">
+            <div class="sale-card mb-3 p-2 px-3">
                 <div class="row g-2 align-items-center">
-                    {{-- Customer --}}
-                    <div class="col-12 col-md-7">
-                        <label class="field-label mb-1">Customer</label>
-                        <div class="d-flex gap-2">
-                            <div id="customerInputWrapper" class="flex-grow-1" style="min-width: 0;">
-                                <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="{{ $sale->walkin_name ?? 'Walk-in Customer' }}" placeholder="Enter Walk-in Name...">
-                                <select class="form-select" id="customerSelect" name="customer" style="width:100%">
-                                    @if($sale->customer_relation)
-                                        <option value="{{ $sale->customer_id }}" selected>{{ $sale->customer_relation->customer_id }} — {{ $sale->customer_relation->customer_name }}</option>
-                                    @endif
+                    {{-- Left: Customer Dropdown, Grouped Action Buttons, Sale Type --}}
+                    <div class="col-xl-7 col-lg-6 col-md-12">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            {{-- Customer Input --}}
+                            <div class="flex-grow-1" style="min-width: 220px;">
+                                <label class="field-label mb-1">Customer</label>
+                                <div id="customerInputWrapper" style="min-width: 0;">
+                                    <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="{{ $sale->walkin_name ?? 'Walk-in Customer' }}" placeholder="Enter Walk-in Name...">
+                                    <select class="form-select" id="customerSelect" name="customer" style="width:100%">
+                                        @if($sale->customer_relation)
+                                            <option value="{{ $sale->customer_id }}" selected>{{ $sale->customer_relation->customer_id }} — {{ $sale->customer_relation->customer_name }}</option>
+                                        @endif
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- Action Buttons Group (+ and Eye/View icon) --}}
+                            <div class="align-self-end mb-0">
+                                <label class="field-label mb-1 opacity-0 d-block">&nbsp;</label>
+                                <div class="btn-group" role="group">
+                                    <button type="button" id="btnOpenAddCustomerModal"
+                                            class="btn btn-outline-primary"
+                                            style="height: var(--pos-input-h); padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;"
+                                            data-toggle="modal" data-target="#addCustomerModal"
+                                            data-bs-toggle="modal" data-bs-target="#addCustomerModal"
+                                            title="Quick Add Customer (Alt+C or F2)">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button type="button" id="btnToggleCustomerInfo"
+                                            class="btn btn-outline-secondary"
+                                            style="height: var(--pos-input-h); padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;"
+                                            title="View Customer Details">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Sale Type --}}
+                            <div class="align-self-end mb-0">
+                                <label class="field-label mb-1">Sale Type</label>
+                                <div class="seg-toggle" role="group" aria-label="Sale Type">
+                                    <button type="button" class="btn {{ $sale->walkin_name ? 'btn-outline-primary' : 'btn-primary active text-white' }}" id="btnTypeCustomer">
+                                        <i class="fas fa-users me-1"></i> Customer
+                                    </button>
+                                    <button type="button" class="btn {{ $sale->walkin_name ? 'btn-primary active text-white' : 'btn-outline-primary' }}" id="btnTypeWalkin">
+                                        <i class="fas fa-walking me-1"></i> Walk-in
+                                    </button>
+                                </div>
+                                <select class="d-none" id="partyTypeSelect" name="partyType">
+                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                        <option value="{{ $type->name }}" {{ $type->name === ($sale->walkin_name ? 'Walking Customer' : (optional($sale->customer_relation)->customer_type ?? 'Main Customer')) ? 'selected' : '' }}>{{ $type->name }}</option>
+                                    @endforeach
                                 </select>
                             </div>
-                            <button type="button" id="btnOpenAddCustomerModal"
-                                    class="btn btn-outline-primary flex-shrink-0 align-self-stretch"
-                                    style="width: var(--pos-input-h); padding: 0; display: inline-flex; align-items: center; justify-content: center;"
-                                    data-toggle="modal" data-target="#addCustomerModal"
-                                    data-bs-toggle="modal" data-bs-target="#addCustomerModal"
-                                    title="Quick Add Customer (Alt+C or F2)">
-                                <i class="fas fa-plus"></i>
-                            </button>
                         </div>
                     </div>
 
-                    {{-- Sale Type --}}
-                    <div class="col-12 col-md-5">
-                        <label class="field-label mb-1">Sale Type</label>
-                        <div class="seg-toggle" role="group" aria-label="Sale Type">
-                            <button type="button" class="btn {{ $sale->walkin_name ? 'btn-outline-primary' : 'btn-primary active text-white' }}" id="btnTypeCustomer">
-                                <i class="fas fa-users me-1"></i> Customer
-                            </button>
-                            <button type="button" class="btn {{ $sale->walkin_name ? 'btn-primary active text-white' : 'btn-outline-primary' }}" id="btnTypeWalkin">
-                                <i class="fas fa-walking me-1"></i> Walk-in
-                            </button>
+                    {{-- Right: Balances on the same line --}}
+                    <div class="col-xl-5 col-lg-6 col-md-12 text-lg-end">
+                        <div class="d-inline-flex align-items-center flex-wrap gap-2 fw-bold" style="font-size: 12.5px;">
+                            <span class="text-danger">Prev. Due: <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span></span>
+                            <span class="text-muted opacity-50">|</span>
+                            <span class="text-primary">Current Due: <span id="cc_current_bill">Rs 0</span></span>
+                            <span class="text-muted opacity-50">|</span>
+                            <span class="text-success">Paid: <span id="cc_paid_now">Rs 0</span></span>
+                            <span class="text-muted opacity-50">|</span>
+                            <span style="color: #9333EA;">Closing: <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span></span>
                         </div>
-                        <select class="d-none" id="partyTypeSelect" name="partyType">
-                            @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                <option value="{{ $type->name }}" {{ $type->name === ($sale->walkin_name ? 'Walking Customer' : (optional($sale->customer_relation)->customer_type ?? 'Main Customer')) ? 'selected' : '' }}>{{ $type->name }}</option>
-                            @endforeach
-                        </select>
                     </div>
                 </div>
 
-                {{-- Simple Customer Balance Info Line --}}
-                <div class="d-flex align-items-center flex-wrap gap-3 mt-3 pt-2 border-top" style="font-size: 13px;">
+                {{-- Collapsible / Toggleable Customer Info Details --}}
+                <div id="customerInfoCard" class="d-none cb-extras mt-2 pt-2 border-top" style="font-size: 13px;">
                     <span id="cc_customer_name" class="d-none"></span>
                     <span id="ci_code" class="d-none"></span>
-
-                    <div id="customerInfoCard" class="d-none cb-extras me-2">
-                        <span class="me-3 text-muted">Full Name: <b id="ci_name" class="text-dark">—</b></span>
-                        <span class="me-3 text-muted">Mobile: <b id="ci_mobile" class="text-dark">—</b></span>
-                        <span class="text-muted">Address: <b id="ci_address" class="text-dark">—</b></span>
-                    </div>
-
-                    <div class="d-flex align-items-center flex-wrap gap-3 fw-bold">
-                        <span class="text-danger">Prev. Due: <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span></span>
-                        <span class="text-muted opacity-50">|</span>
-                        <span class="text-primary">Current Due: <span id="cc_current_bill">Rs 0</span></span>
-                        <span class="text-muted opacity-50">|</span>
-                        <span class="text-success">Paid: <span id="cc_paid_now">Rs 0</span></span>
-                        <span class="text-muted opacity-50">|</span>
-                        <span style="color: #9333EA;">Closing: <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span></span>
-                    </div>
+                    <span class="me-3 text-muted">Full Name: <b id="ci_name" class="text-dark">—</b></span>
+                    <span class="me-3 text-muted">Mobile: <b id="ci_mobile" class="text-dark">—</b></span>
+                    <span class="text-muted">Address: <b id="ci_address" class="text-dark">—</b></span>
                 </div>
             </div>
 
