@@ -2441,6 +2441,9 @@ class SaleController extends Controller
                 'width' => $item->product->width ?? 0,
                 'pieces_per_m2' => $item->product->pieces_per_m2 ?? 0,
                 'size_mode' => $item->size_mode ?? $item->product->size_mode ?? 'std',
+                'batch_id' => $item->batch_id ?? null,
+                'batch_no' => $item->batch_no ?? null,
+                'serials' => $item->serials ?? null,
             ];
         });
     }

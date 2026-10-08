@@ -3,349 +3,256 @@
 @section('content')
   <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
-        /* ================= RESPONSIVE PURCHASE UI (Modernized) ================= */
+        /* ==================== EDIT PURCHASE — PRO ERP & EXCEL GRID UI ==================== */
+        :root {
+            --pos-blue: #2563EB;
+            --pos-blue-hover: #1D4ED8;
+            --pos-blue-soft: #EFF6FF;
+            --pos-green: #16A34A;
+            --pos-green-soft: #F0FDF4;
+            --pos-red: #DC2626;
+            --pos-red-soft: #FEF2F2;
+            --pos-orange: #F59E0B;
+            --pos-orange-soft: #FFFBEB;
+            --pos-text: #0F172A;
+            --pos-muted: #64748B;
+            --pos-border: #CBD5E1;
+            --pos-border-strong: #94A3B8;
+            --pos-bg: #F1F5F9;
+            --pos-card: #FFFFFF;
+            --pos-radius: 8px;
+            --pos-radius-lg: 12px;
+            --pos-shadow-sm: 0 1px 3px rgba(0,0,0,.05);
+            --pos-shadow-md: 0 4px 14px rgba(15,23,42,.08);
+            --pos-input-h: 38px;
+        }
+
         body {
-            background-color: #f4f6f9;
-            /* Light gray background for contrast */
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--pos-bg) !important;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+            color: var(--pos-text) !important;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        .purchase-page {
+            max-width: 1560px;
+            margin: 0 auto;
         }
 
-        .sales-table {
-            border-collapse: collapse !important;
-            margin-bottom: 0 !important;
-            min-width: 1000px;
+        /* ---------- PAGE HEADER ---------- */
+        .purchase-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 16px;
         }
-
-        .sales-table thead th {
-            background-color: #f8fafc !important; /* Light clean header */
-            color: #0f172a !important;
-            font-weight: 700 !important;
-            text-transform: uppercase;
-            font-size: 11px !important;
-            letter-spacing: 0.5px;
-            padding: 10px 8px !important;
-            border: 1px solid #cbd5e1 !important;
-            border-bottom: 2px solid #94a3b8 !important; /* Thick header separator border */
-            vertical-align: middle !important;
-            text-align: center;
-        }
-
-        .sales-table thead th.col-product {
-            text-align: left !important;
-            padding-left: 12px !important;
-        }
-
-        .sales-table tbody td {
-            border: 1px solid #cbd5e1 !important; /* Flat interior cell borders */
-            padding: 0 !important; /* Zero padding to let input fill cell completely */
-            background-color: #ffffff;
-            vertical-align: middle !important;
-        }
-
-        /* ⚡ FLAT BORDERLESS GRID INPUTS ⚡ */
-        .sales-table tbody .form-control,
-        .sales-table tbody .form-select {
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            height: 38px !important; /* Uniform height */
-            margin: 0 !important;
-            padding: 6px 8px !important;
-            width: 100% !important;
-            background-color: transparent !important;
-            text-align: center; /* Center-align text in grid inputs */
-            color: #1e293b !important;
-            font-weight: 500 !important;
-            font-size: 0.82rem !important;
-        }
-
-        .sales-table tbody td.col-product .form-select {
-            text-align: left !important;
-            padding-left: 12px !important;
-        }
-
-        /* Calculations and Read-Only cells get a neat slate tone background */
-        .sales-table tbody .input-readonly,
-        .sales-table tbody input[readonly],
-        .sales-table tbody select[disabled] {
-            background-color: #f1f5f9 !important;
-            cursor: not-allowed !important;
-            color: #475569 !important;
-            font-weight: 600 !important;
-        }
-
-        /* Subtle focus highlight inside cell */
-        .sales-table tbody .form-control:focus,
-        .sales-table tbody .form-select:focus {
-            outline: none !important;
-            background-color: #f8fafc !important;
-            box-shadow: inset 0 0 0 2px #2563eb !important;
-        }
-
-        /* Select2 Specific flat borderless styling */
-        .sales-table tbody .select2-container--default .select2-selection--single {
-            height: 38px !important;
-            padding: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            background-color: transparent !important;
+        .purchase-header-left {
             display: flex;
             align-items: center;
+            gap: 12px;
+        }
+        .purchase-title-ic {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            background: var(--pos-blue-soft);
+            color: var(--pos-blue);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            flex-shrink: 0;
+            border: 1px solid #BFDBFE;
+        }
+        .purchase-title-main h5 {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -.3px;
+            color: var(--pos-text);
+            margin-bottom: 2px;
+        }
+        .purchase-subtitle {
+            font-size: 12.5px;
+            color: var(--pos-muted);
         }
 
-        .sales-table tbody .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 38px !important;
-            padding-left: 12px !important;
-            padding-right: 20px !important;
-            font-size: 0.82rem !important;
-            color: #1e293b !important;
-            font-weight: 500 !important;
-            text-align: left !important;
+        /* ---------- CARDS & CONTAINERS ---------- */
+        .purchase-card {
+            background: var(--pos-card);
+            border: 1px solid var(--pos-border);
+            border-radius: var(--pos-radius-lg);
+            box-shadow: var(--pos-shadow-sm);
+            padding: 16px;
+            margin-bottom: 16px;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
 
-        .sales-table tbody .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 38px !important;
-            right: 8px !important;
-        }
-
-        /* Select2 Focus state */
-        .sales-table tbody .select2-container--default.select2-container--focus .select2-selection--single {
-            background-color: #f8fafc !important;
-            box-shadow: inset 0 0 0 2px #2563eb !important;
-        }
-
-        /* Elegant flat block layout for discount input + toggle */
-        .sales-table tbody .discount-wrapper {
-            display: flex !important;
-            align-items: stretch !important;
-            width: 100% !important;
-            height: 38px !important;
-            gap: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        .sales-table tbody .discount-wrapper .discount-value {
-            flex-grow: 1 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            height: 100% !important;
-            text-align: center;
-            background-color: transparent !important;
-            padding: 6px 8px !important;
-        }
-
-        .sales-table tbody .discount-wrapper .discount-toggle {
-            border: none !important;
-            border-radius: 0 !important;
-            background-color: #e2e8f0 !important;
-            color: #475569 !important;
-            font-weight: 700 !important;
-            font-size: 0.75rem !important;
-            width: 32px !important;
-            min-width: 32px !important;
-            height: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 0 !important;
-            cursor: pointer !important;
-            transition: background-color 0.2s !important;
-        }
-
-        .sales-table tbody .discount-wrapper .discount-toggle:hover {
-            background-color: #cbd5e1 !important;
-            color: #0f172a !important;
-        }
-
-        .sales-table tfoot td {
-            background-color: #f8fafc !important;
-            border: 1px solid #cbd5e1 !important;
-            border-top: 2px solid #94a3b8 !important; /* Thick tfoot separator */
-            padding: 8px 10px !important;
-            font-weight: 700 !important;
-            color: #0f172a !important;
-        }
-
-        /* Row hover */
-        .sales-table tbody tr:hover td {
-            background-color: #f8fafc !important;
-        }
-
-        /* Column widths */
-        .col-product {
-            width: 300px;
-            min-width: 250px;
-        }
-
-        .col-warehouse {
-            width: 140px;
-        }
-
-        .col-stock {
-            width: 90px;
-        }
-
-        .col-qty {
-            width: 100px;
-        }
-
-        .col-pieces {
-            width: 100px;
-        }
-
-        .col-price {
-            width: 120px;
-        }
-
-        .col-disc {
-            width: 80px;
-        }
-
-        .col-disc-amt {
-            width: 95px;
-        }
-
-        .col-price-p {
-            width: 100px;
-        }
-
-        .col-amount {
-            width: 120px;
-            text-align: right;
-        }
-
-        .col-action {
-            width: 50px;
-            text-align: center;
-        }
-
-        .main-container {
-            font-size: .85rem;
-            max-width: 99%;
-            border-radius: 12px !important;
-            border: none !important;
-            box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08) !important;
-        }
-
-        .btn {
-            font-size: .82rem;
-            padding: .35rem .8rem;
-            border-radius: 5px;
-            font-weight: 500;
-        }
-
-        .btn-primary {
-            background-color: #0d6efd;
-            border-color: #0d6efd;
-        }
-
-        .btn-success {
-            background-color: #198754;
-            border-color: #198754;
-        }
-
-        /* Mobile Breakpoints (< 768px) */
-        @media (max-width: 768px) {
-            .header-text {
-                font-size: 1.1rem !important;
-            }
-            .main-container {
-                padding: 12px !important;
-                border-radius: 8px !important;
-            }
-            .sales-table {
-                min-width: 780px !important;
-            }
-            .discount-wrapper {
-                min-width: 70px !important;
-            }
-            .btn-submit-update {
-                width: 100% !important;
-                height: 46px !important;
-                font-size: 1rem !important;
-            }
-            .payment-row select, .payment-row input {
-                width: 100% !important;
-                max-width: 100% !important;
-            }
-        }
-
-        .section-title {
-            font-weight: 700;
-            color: #6c757d;
+        .card-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--pos-text);
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.8px;
-            margin-bottom: 10px;
-            border-left: 3px solid #0d6efd;
-            padding-left: 8px;
+            letter-spacing: .4px;
+            line-height: 1.3;
         }
 
-        /* Product Search Dropdown */
-        .search-results {
-            position: absolute;
-            background: white;
-            border: 1px solid #ddd;
-            z-index: 1000;
-            max-height: 250px;
-            overflow-y: auto;
-            width: 100%;
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        /* ---------- LABELS ---------- */
+        .field-label {
+            display: block;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--pos-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            line-height: 1.2;
+        }
+
+        /* ---------- INPUTS & FORM CONTROLS ---------- */
+        .purchase-page .form-control,
+        .purchase-page .form-select {
+            height: var(--pos-input-h);
+            border: 1px solid var(--pos-border);
             border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--pos-text);
+            background-color: #ffffff;
+            box-shadow: none;
+            transition: border-color .12s ease, box-shadow .12s ease;
+        }
+        .purchase-page .form-control::placeholder {
+            color: #94A3B8;
+            font-weight: 400;
+        }
+        .purchase-page .form-control:focus,
+        .purchase-page .form-select:focus,
+        .purchase-page .form-control:focus-visible {
+            border: 2px solid var(--pos-blue) !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
+            outline: none !important;
+            background-color: #ffffff !important;
+        }
+        .purchase-page .input-readonly,
+        .purchase-page input[readonly] {
+            background-color: #F8FAFC !important;
+            color: #475569 !important;
+            border-color: #CBD5E1 !important;
+            cursor: default;
+            font-weight: 600;
         }
 
-        .search-result-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f1f1;
-            transition: background 0.1s;
+        /* Select2 Vendor styling */
+        #vendorSelectWrapper .select2-container--default .select2-selection--single {
+            height: var(--pos-input-h) !important;
+            border: 1px solid var(--pos-border) !important;
+            border-radius: 6px !important;
+            background-color: #ffffff !important;
+            padding: 0 !important;
+        }
+        #vendorSelectWrapper .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 36px !important;
+            padding-left: 10px !important;
+            font-size: 13.5px !important;
+            font-weight: 600 !important;
+            color: var(--pos-text) !important;
         }
 
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-
-        .search-result-item:hover,
-        .search-result-item.active {
-            background-color: #e7f1ff;
-            color: #0b5ed7;
-        }
-
-        /* Layout Helpers */
-        .card-panel {
-            background-color: #fff;
-            border: 1px solid #e9ecef;
+        /* ---------- PRODUCT TABLE (EXCEL GRID STYLE) ---------- */
+        .pos-table-wrap {
+            overflow-x: auto;
+            border: 1px solid #CBD5E1;
             border-radius: 8px;
-            padding: 1rem;
-            height: 100%;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+        .sales-table {
+            min-width: 950px;
+            border-collapse: collapse !important;
+            width: 100%;
+            margin-bottom: 0;
+            background: #ffffff;
+        }
+        .sales-table thead th {
+            background: #F1F5F9 !important;
+            color: #334155 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            padding: 9px 8px !important;
+            border: 1px solid #CBD5E1 !important;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .sales-table thead th.col-product {
+            text-align: left;
+            padding-left: 12px !important;
+        }
+        .sales-table tbody td {
+            padding: 3px 5px !important;
+            height: 42px !important;
+            border: 1px solid #CBD5E1 !important;
+            vertical-align: middle;
+            background: #ffffff;
+        }
+        .sales-table tbody tr:nth-child(even) td {
+            background: #FAFCFE;
+        }
+        .sales-table tbody tr:hover td {
+            background: #F1F5F9;
+        }
+        .row-index-cell {
+            font-size: 12px;
+            font-weight: 700;
+            color: #64748B;
+            text-align: center;
+            background: #F8FAFC !important;
+            width: 38px;
         }
 
-        .summary-card {
-            background-color: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
+        /* Table inputs — clean Excel grid cells that highlight with sharp blue outline on focus */
+        .sales-table tbody .form-control,
+        .sales-table tbody .form-select {
+            height: 34px !important;
+            border: 1px solid #E2E8F0 !important;
+            border-radius: 4px !important;
+            padding: 3px 7px !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            color: #0F172A !important;
+            width: 100% !important;
+            transition: border-color .12s ease, box-shadow .12s ease;
         }
-
-        .select2-container .select2-selection--single {
-            height: 36px !important;
-            padding: 3px 12px;
-            border-color: #ced4da;
+        .sales-table tbody .form-control:hover,
+        .sales-table tbody .form-select:hover {
+            border-color: #94A3B8 !important;
         }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            top: 5px !important;
+        .sales-table tbody .form-control:focus,
+        .sales-table tbody .form-select:focus,
+        .sales-table tbody .form-control:focus-visible {
+            border: 2px solid #2563EB !important;
+            background: #ffffff !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
+            outline: none !important;
+        }
+        .sales-table tbody input[readonly],
+        .sales-table tbody .input-readonly {
+            background: #F8FAFC !important;
+            color: #475569 !important;
+            cursor: default !important;
+            font-weight: 600 !important;
+            border-color: #E2E8F0 !important;
+        }
+        .sales-table tbody input[readonly]:focus {
+            border-color: #CBD5E1 !important;
+            box-shadow: none !important;
         }
     </style>
 
@@ -429,6 +336,7 @@
                                 <table class="table table-bordered sales-table mb-0" id="purchaseTable">
                                     <thead>
                                         <tr>
+                                            <th style="width: 38px;" class="text-center">#</th>
                                             <th class="col-product">Product & Variant</th>
                                             <th class="col-unit" style="width: 100px;">Unit</th>
                                             <th class="col-qty" style="width: 110px;">Qty</th>
@@ -525,6 +433,7 @@
                                             @endphp
                                             <tr data-sizemode="{{ $sizeMode }}"
                                                 data-pieces_per_m2="{{ $item->pieces_per_m2 }}">
+                                                <td class="row-index-cell text-center">{{ $loop->iteration }}</td>
                                                 <td>
                                                     <select class="form-select product-select2" name="product_id[]">
                                                         <option value="{{ $optionVal }}" selected>
@@ -549,6 +458,18 @@
                                                         value="{{ $item->width }}">
                                                     <input type="hidden" name="color[]" class="hidden-variant-data"
                                                         value="{{ $rawVariantData }}">
+                                                    <input type="hidden" class="product-id-hidden" value="{{ $item->product_id }}">
+                                                    <input type="hidden" class="batch-id-hidden" name="batch_id[]" value="{{ $item->batch_id ?? '' }}">
+                                                    <input type="hidden" class="batch-no-hidden" name="batch_no[]" value="{{ $item->batch_no ?? '' }}">
+                                                    <input type="hidden" class="serials-hidden" name="serials[]" value="{{ isset($item->serials) ? json_encode($item->serials) : '' }}">
+                                                    <div class="row-tracking-badges mt-1 d-flex flex-wrap gap-1">
+                                                        @if(!empty($item->batch_no))
+                                                            <span class="badge bg-info text-dark" style="font-size:0.7rem;"><i class="fas fa-layer-group me-1"></i>Batch: {{ $item->batch_no }}</span>
+                                                        @endif
+                                                        @if(!empty($item->serials) && count($item->serials) > 0)
+                                                            <span class="badge bg-secondary text-light" style="font-size:0.7rem;" title="{{ implode(', ', $item->serials) }}"><i class="fas fa-barcode me-1"></i>{{ count($item->serials) }} IMEI(s)</span>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                                 <td class="text-center align-middle">
                                                     @php
@@ -718,6 +639,98 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal: Enter Batch Details for Purchase -->
+    <div class="modal fade" id="modalSelectBatch" tabindex="-1" aria-labelledby="modalSelectBatchLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-light px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectBatchLabel">
+                        <i class="fas fa-layer-group text-primary me-1"></i> Enter New Batch Details
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="activeBatchRowIndex" value="">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Batch Number <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm font-monospace fw-bold" id="inputBatchNo" placeholder="e.g. BATCH-2026-001">
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">MFG Date</label>
+                            <input type="date" class="form-control form-control-sm" id="inputBatchMfgDate">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold small text-muted">Expiry Date</label>
+                            <input type="date" class="form-control form-control-sm" id="inputBatchExpiryDate">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top p-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm fw-bold px-3" id="btnSaveBatchInfo">
+                        <i class="fas fa-check me-1"></i> Save Batch Info
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Enter / Scan Serial & IMEI Numbers for Purchase -->
+    <div class="modal fade" id="modalSelectSerial" tabindex="-1" aria-labelledby="modalSelectSerialLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-light px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectSerialLabel">
+                        <i class="fas fa-barcode text-success me-1"></i> Add / Scan Serial & IMEI Numbers
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="activeSerialRowIndex" value="">
+                    
+                    <!-- Single Barcode Scan Input -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Scan / Type Single IMEI (Press Enter to Add)</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light"><i class="fas fa-barcode"></i></span>
+                            <input type="text" class="form-control font-monospace" id="inputSingleSerial" placeholder="Scan barcode or type IMEI number...">
+                            <button type="button" class="btn btn-primary fw-bold" id="btnAddSingleSerial">Add IMEI</button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Paste Input -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted">Or Paste Multiple IMEIs (One per line or comma separated)</label>
+                        <textarea class="form-control font-monospace form-control-sm" id="inputBulkSerials" rows="3" placeholder="860000000000001&#10;860000000000002&#10;860000000000003"></textarea>
+                        <div class="text-end mt-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" id="btnApplyBulkSerials">
+                                <i class="fas fa-plus-circle me-1"></i> Add Bulk IMEIs
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- List of Entered IMEIs -->
+                    <div class="border rounded p-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                            <span class="fw-bold small text-secondary">Entered IMEIs List (<span id="purchaseSerialCount" class="text-success fs-6">0</span>)</span>
+                            <button type="button" class="btn btn-link text-danger p-0 small text-decoration-none" id="btnClearAllSerials">Clear All</button>
+                        </div>
+                        <div id="enteredSerialsContainer" class="d-flex flex-wrap gap-1 overflow-auto p-1 bg-white border rounded" style="max-height: 180px; min-height: 80px;">
+                            <div class="text-muted text-center w-100 py-3 small">No IMEIs added yet. Scan barcode or paste IMEIs above.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top p-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3" id="btnApplySelectedSerials">
+                        <i class="fas fa-check me-1"></i> Apply IMEIs to Purchase
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('js')
@@ -725,7 +738,17 @@
         $(document).ready(function() {
             // Init Global Select2
             $('.select2').select2({
-                width: '100%'
+                width: '100%',
+                dropdownParent: $(document.body)
+            });
+
+            $(document).on('select2:open', function() {
+                setTimeout(function() {
+                    const searchInput = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 50);
             });
 
             // Initialize existing product selects
@@ -796,10 +819,17 @@
                 }
             });
 
+            function updateRowIndexes() {
+                $('#purchaseTableBody tr').each(function(index) {
+                    $(this).find('.row-index-cell').text(index + 1);
+                });
+            }
+
             // Add Row
             window.addBlankRow = function() {
                 const html = `
                 <tr>
+                    <td class="row-index-cell text-center">1</td>
                     <td>
                         <select class="form-select product-select2" name="product_id[]"></select>
                         <div class="variant-badge-wrapper px-2 py-1 small text-muted d-flex gap-2 align-items-center d-none">
@@ -814,6 +844,11 @@
                         <input type="hidden" name="length[]" class="hidden-length">
                         <input type="hidden" name="width[]" class="hidden-width">
                         <input type="hidden" name="color[]" class="hidden-variant-data">
+                        <input type="hidden" class="product-id-hidden" value="">
+                        <input type="hidden" class="batch-id-hidden" name="batch_id[]" value="">
+                        <input type="hidden" class="batch-no-hidden" name="batch_no[]" value="">
+                        <input type="hidden" class="serials-hidden" name="serials[]" value="">
+                        <div class="row-tracking-badges mt-1 d-flex flex-wrap gap-1"></div>
                     </td>
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn py-0 px-2" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)" style="font-size:0.75rem; min-width: 55px; cursor: pointer;">Pcs</button>
@@ -845,12 +880,14 @@
                 initProductSelect2($row.find('.product-select2'));
                 recalcRow($row);
                 recalcAll();
+                updateRowIndexes();
             };
 
             // Remove Row
             $(document).on('click', '.remove-row', function() {
                 $(this).closest('tr').remove();
                 recalcAll();
+                updateRowIndexes();
             });
 
             // Inputs -> Calc
@@ -1027,10 +1064,15 @@
             }
 
             function initProductSelect2($el) {
+                if (!$el || !$el.length) return;
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    try { $el.select2('destroy'); } catch(e) {}
+                }
                 $el.select2({
                     placeholder: 'Search Product (Name / SKU / Barcode / Variant)...',
                     allowClear: true,
                     width: '100%',
+                    dropdownParent: $(document.body),
                     ajax: {
                         url: '{{ route('products.ajax.search') }}',
                         dataType: 'json',
@@ -1053,13 +1095,28 @@
                         cache: true
                     },
                     minimumInputLength: 0,
+                    escapeMarkup: function(markup) {
+                        return markup;
+                    },
                     templateResult: formatProduct,
                     templateSelection: formatSelection
+                });
+
+                $el.off('select2:open').on('select2:open', function() {
+                    setTimeout(function() {
+                        const searchInput = document.querySelector('.select2-container--open .select2-search__field');
+                        if (searchInput) {
+                            searchInput.focus();
+                        }
+                    }, 50);
                 });
 
                 $el.on('select2:select', function(e) {
                     const data = e.params.data;
                     const $row = $(this).closest('tr');
+                    const pid = data.id;
+
+                    $row.find('.product-id-hidden').val(pid);
 
                     let unitName = data.unit_name || 'Pcs';
                     const ppb = parseFloat(data.pieces_per_box || data.ppb) || 1;
@@ -1158,33 +1215,239 @@
                     $row.find('.main-qty-input').focus().select();
                     recalcRow($row);
                     recalcAll();
+
+                    // Auto-open Batch / Serial IMEI tracking modal if applicable
+                    checkAndOpenProductTracking($row, pid);
                 });
             }
 
             function formatProduct(repo) {
                 if (repo.loading) return repo.text;
-                let stock = repo.stock !== undefined ? repo.stock : 0;
+                let name = repo.name || repo.text || '';
                 let sku = repo.sku || 'N/A';
                 let unit = repo.unit_name || 'Pcs';
+                let stock = repo.stock !== undefined ? repo.stock : 0;
                 let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
-                let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-secondary';
                 let buyPrice = parseFloat(repo.purchase_price_per_piece || repo.trade_price || 0);
 
-                return $(`
-                <div class="clearfix py-1">
-                    <div class="float-start">
-                        <div class="fw-bold text-dark">${repo.name || repo.text}</div>
-                        <small class="text-muted">SKU: ${sku} | Unit: ${unit} | Buy Price: Rs. ${buyPrice.toFixed(2)}</small>
-                    </div>
-                    <div class="float-end">
-                        <span class="badge ${badgeClass} rounded-pill">Stock: ${stock}</span>
-                    </div>
-                </div>`);
+                if (repo.element) {
+                    const $el = $(repo.element);
+                    if ($el.val() === '') return repo.text;
+                    sku = $el.data('sku') || sku;
+                    stock = $el.data('stock') !== undefined ? $el.data('stock') : stock;
+                    stockVal = parseFloat(stock) || 0;
+                    name = $el.data('name') || name || $el.text();
+                }
+
+                let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-secondary';
+
+                return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="color: #0f172a;">' +
+                    '<div>' +
+                        '<div class="fw-bold text-dark">' + name + '</div>' +
+                        '<small class="text-muted" style="font-size: 11px;">SKU: ' + sku + ' | Unit: ' + unit + ' | Buy Price: Rs. ' + buyPrice.toFixed(2) + '</small>' +
+                    '</div>' +
+                    '<div>' +
+                        '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1">Stock: ' + stock + '</span>' +
+                    '</div>' +
+                '</div>';
             }
 
             function formatSelection(repo) {
+                if (repo.element) {
+                    const $el = $(repo.element);
+                    if (!$el.val()) return repo.text || '';
+                    const name = $el.data('name') || repo.name || repo.text || '';
+                    const sku = $el.data('sku') || repo.sku || '';
+                    return sku ? (name + ' (SKU: ' + sku + ')') : name;
+                }
                 return repo.name || repo.text;
             }
+
+            // --- Product Tracking for Purchase (New Batch / New Serial IMEI Entry Modals) ---
+            window.checkAndOpenProductTracking = function($row, productId, warehouseId) {
+                if (!productId) return;
+                warehouseId = warehouseId || $('[name="warehouse_id"]').val() || 1;
+
+                // Check Batches first
+                $.get('{{ route("sale.get_batches") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
+                    if (res.success && (res.is_batch_product || (res.batches && res.batches.length > 0))) {
+                        openBatchSelectModal($row);
+                        return;
+                    }
+
+                    // If not batch product, check Serials / IMEIs
+                    $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
+                        if (sRes.success && (sRes.is_serial_product || (sRes.serials && sRes.serials.length > 0))) {
+                            openSerialSelectModal($row);
+                        }
+                    });
+                });
+            };
+
+            // Open Purchase Batch Modal
+            function openBatchSelectModal($row) {
+                const rowIndex = $('#purchaseTableBody tr').index($row);
+                $('#activeBatchRowIndex').val(rowIndex);
+
+                const existingBatchNo = $row.find('.batch-no-hidden').val() || '';
+                $('#inputBatchNo').val(existingBatchNo);
+
+                $('#modalSelectBatch').modal('show');
+                setTimeout(() => $('#inputBatchNo').focus(), 300);
+            }
+
+            // Save Batch Info Button
+            $(document).on('click', '#btnSaveBatchInfo', function() {
+                const batchNo = $('#inputBatchNo').val().trim();
+                const rowIndex = $('#activeBatchRowIndex').val();
+                const $row = $('#purchaseTableBody tr').eq(rowIndex);
+
+                if (!batchNo) {
+                    Swal.fire('Required', 'Please enter a Batch Number.', 'warning');
+                    return;
+                }
+
+                if ($row.length) {
+                    $row.find('.batch-no-hidden').val(batchNo);
+
+                    // Update tracking badges display on row
+                    let badgeHtml = `<span class="badge bg-info text-dark" style="font-size:0.7rem;"><i class="fas fa-layer-group me-1"></i>Batch: ${batchNo}</span>`;
+                    $row.find('.row-tracking-badges').html(badgeHtml);
+
+                    $('#modalSelectBatch').modal('hide');
+                    $row.find('.main-qty-input').focus().select();
+                }
+            });
+
+            // Open Purchase Serial / IMEI Modal
+            let currentPurchaseSerials = [];
+            function openSerialSelectModal($row) {
+                const rowIndex = $('#purchaseTableBody tr').index($row);
+                $('#activeSerialRowIndex').val(rowIndex);
+
+                // Pre-selected/entered serials if any
+                currentPurchaseSerials = [];
+                try {
+                    const raw = $row.find('.serials-hidden').val();
+                    if (raw) {
+                        currentPurchaseSerials = JSON.parse(raw);
+                    }
+                } catch(e) {}
+
+                renderEnteredSerialsList();
+                $('#modalSelectSerial').modal('show');
+                setTimeout(() => $('#inputSingleSerial').focus(), 300);
+            }
+
+            function renderEnteredSerialsList() {
+                let html = '';
+                if (!currentPurchaseSerials || currentPurchaseSerials.length === 0) {
+                    html = '<div class="text-muted text-center w-100 py-3 small">No IMEIs added yet. Scan barcode or paste IMEIs above.</div>';
+                } else {
+                    currentPurchaseSerials.forEach((sNum, idx) => {
+                        html += `
+                            <span class="badge bg-light text-dark border p-2 d-flex align-items-center gap-1 font-monospace" style="font-size:0.82rem;">
+                                <i class="fas fa-barcode text-success"></i> ${sNum}
+                                <i class="fas fa-times text-danger remove-serial-item ms-1" data-index="${idx}" style="cursor:pointer;" title="Remove IMEI"></i>
+                            </span>`;
+                    });
+                }
+                $('#enteredSerialsContainer').html(html);
+                $('#purchaseSerialCount').text(currentPurchaseSerials.length);
+            }
+
+            // Single Serial Add / Scan (on Enter or Button click)
+            function addSingleSerialFromInput() {
+                const sNum = $('#inputSingleSerial').val().trim();
+                if (!sNum) return;
+
+                if (currentPurchaseSerials.includes(sNum)) {
+                    Swal.fire('Duplicate', 'This IMEI / Serial number is already added.', 'warning');
+                    $('#inputSingleSerial').val('').focus();
+                    return;
+                }
+
+                currentPurchaseSerials.push(sNum);
+                renderEnteredSerialsList();
+                $('#inputSingleSerial').val('').focus();
+            }
+
+            $(document).on('keypress', '#inputSingleSerial', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    addSingleSerialFromInput();
+                }
+            });
+
+            $(document).on('click', '#btnAddSingleSerial', function() {
+                addSingleSerialFromInput();
+            });
+
+            // Bulk Serial Add
+            $(document).on('click', '#btnApplyBulkSerials', function() {
+                const text = $('#inputBulkSerials').val();
+                if (!text || !text.trim()) return;
+
+                // Split by newline or comma
+                const items = text.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+
+                items.forEach(sNum => {
+                    if (!currentPurchaseSerials.includes(sNum)) {
+                        currentPurchaseSerials.push(sNum);
+                    }
+                });
+
+                renderEnteredSerialsList();
+                $('#inputBulkSerials').val('');
+            });
+
+            // Remove Single Serial Badge
+            $(document).on('click', '.remove-serial-item', function() {
+                const idx = $(this).data('index');
+                if (idx !== undefined) {
+                    currentPurchaseSerials.splice(idx, 1);
+                    renderEnteredSerialsList();
+                }
+            });
+
+            // Clear All Serials
+            $(document).on('click', '#btnClearAllSerials', function() {
+                currentPurchaseSerials = [];
+                renderEnteredSerialsList();
+            });
+
+            // Apply Selected Serials Button
+            $(document).on('click', '#btnApplySelectedSerials', function() {
+                const rowIndex = $('#activeSerialRowIndex').val();
+                const $row = $('#purchaseTableBody tr').eq(rowIndex);
+
+                if ($row.length) {
+                    $row.find('.serials-hidden').val(JSON.stringify(currentPurchaseSerials));
+
+                    // Auto update qty in row based on entered IMEIs count
+                    if (currentPurchaseSerials.length > 0) {
+                        $row.find('.main-qty-input').val(currentPurchaseSerials.length);
+                        recalcRow($row);
+                        recalcAll();
+
+                        let badgeHtml = `<span class="badge bg-secondary text-light" style="font-size:0.7rem;" title="${currentPurchaseSerials.join(', ')}"><i class="fas fa-barcode me-1"></i>${currentPurchaseSerials.length} IMEI(s)</span>`;
+                        $row.find('.row-tracking-badges').html(badgeHtml);
+                    } else {
+                        $row.find('.row-tracking-badges').html('');
+                    }
+
+                    $('#modalSelectSerial').modal('hide');
+                }
+            });
+
+            // Re-open Batch or Serial Modal on clicking tracking badge
+            $(document).on('click', '.row-tracking-badges', function() {
+                const $row = $(this).closest('tr');
+                const pid = $row.find('.product-id-hidden').val() || $row.find('.product-select2').val();
+                if (pid) {
+                    checkAndOpenProductTracking($row, pid);
+                }
+            });
         });
     </script>
 @endsection

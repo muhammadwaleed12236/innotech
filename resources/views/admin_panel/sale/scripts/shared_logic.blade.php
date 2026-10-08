@@ -57,6 +57,10 @@
        PRODUCT SELECT2
        ========================================= */
     function initProductSelect2($el) {
+        if (!$el || !$el.length) return;
+        if ($el.hasClass('select2-hidden-accessible')) {
+            try { $el.select2('destroy'); } catch(e) {}
+        }
         $el.select2({
             placeholder: 'Search Product (Name / SKU / Barcode)',
             allowClear: true,
@@ -97,6 +101,15 @@
             },
             templateResult: formatProduct,
             templateSelection: formatSelection
+        });
+
+        $el.off('select2:open').on('select2:open', function() {
+            setTimeout(function() {
+                const searchInput = document.querySelector('.select2-container--open .select2-search__field');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }, 50);
         });
     }
 
@@ -168,23 +181,6 @@
     <td class="col-product">
       <select class="form-select product" style="width:100%">
         <option value=""></option>
-        @if(isset($allProducts) && count($allProducts) > 0)
-            @foreach($allProducts as $p)
-                <option value="{{ $p->id }}" 
-                    data-sku="{{ $p->item_code }}" 
-                    data-stock="{{ $p->warehouse_stocks_sum_total_pieces ?? 0 }}"
-                    data-retail_price="{{ $p->sale_price_per_piece ?? 0 }}"
-                    data-trade_price="{{ $p->purchase_price_per_piece ?? 0 }}"
-                    data-wholesale_price="{{ $p->wholesale_price ?? 0 }}"
-                    data-weight_per_piece="{{ $p->weight_per_piece ?? 0 }}"
-                    data-pieces_per_box="{{ $p->pieces_per_box ?? 1 }}"
-                    data-size_mode="{{ $p->size_mode }}"
-                    data-sale_discount_percent="{{ $p->sale_discount_percent ?? 0 }}"
-                    data-name="{{ $p->item_name }}">
-                    {{ $p->item_name }} (SKU: {{ $p->item_code }})
-                </option>
-            @endforeach
-        @endif
       </select>
       <input type="hidden" class="product-id-hidden" name="product_id[]">
       <input type="hidden" class="variant-data-hidden" name="color[]">
@@ -288,6 +284,10 @@
   </tr>`;
 
         const $row = $(rowHtml);
+        const $initialOpts = $('#salesTableBody tr:first-child .product option').clone();
+        if ($initialOpts.length > 0) {
+            $row.find('.product').html($initialOpts);
+        }
         $('#salesTableBody').append($row);
         initProductSelect2($row.find('.product'));
         updateRowIndexes();
@@ -543,7 +543,6 @@
             currentInvoiceTotal -= freightCharges;
         }
 
-        const isWalkin = $('#is_walkin').val() === '1';
         const prev = isWalkin ? 0 : toNum($('#previousBalance').val());
         const receipts = toNum($('#receiptsTotal').text());
         const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
@@ -1787,10 +1786,20 @@
         });
 
         // Toggle Customer Info Modal
-        $(document).on('click', '#btnToggleCustomerInfo', function() {
-            const name = $('#ci_name').text().trim();
-            const mobile = $('#ci_mobile').text().trim();
-            const address = $('#ci_address').text().trim();
+        $(document).on('click', '#btnToggleCustomerInfo', function(e) {
+            if (e) e.preventDefault();
+            let name = $('#ci_name').text().trim();
+            let mobile = $('#ci_mobile').text().trim();
+            let address = $('#ci_address').text().trim();
+            
+            // Fallback to selected option in customerSelect if ci_ fields are blank
+            const $selectedOpt = $('#customerSelect option:selected');
+            if ($selectedOpt.length && $selectedOpt.val()) {
+                if (!name || name === '—') name = $selectedOpt.text().trim();
+                if (!mobile || mobile === '—') mobile = $selectedOpt.attr('data-mobile') || '';
+                if (!address || address === '—') address = $selectedOpt.attr('data-address') || '';
+            }
+
             const prevVal = $('#cc_prev_bal_val').text().trim();
             const prevSuf = $('#cc_prev_bal_suffix').text().trim();
             const closingVal = $('#cc_closing_bal_val').text().trim();
@@ -1802,22 +1811,37 @@
             $('#ci_modal_prev').html((prevVal || 'Rs 0') + (prevSuf ? ' <small>' + prevSuf + '</small>' : ''));
             $('#ci_modal_closing').html((closingVal || 'Rs 0') + (closingSuf ? ' <small>' + closingSuf + '</small>' : ''));
 
-            $('#modalCustomerDetails').modal('show');
+            const modalEl = document.getElementById('modalCustomerDetails');
+            if (modalEl) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    bsModal.show();
+                } else if ($.fn.modal) {
+                    $('#modalCustomerDetails').modal('show');
+                } else {
+                    $(modalEl).addClass('show').css('display', 'block').removeAttr('aria-hidden');
+                }
+            }
         });
 
         $(document).on('click', '#modalCustomerDetails [data-dismiss="modal"], #modalCustomerDetails [data-bs-dismiss="modal"]', function() {
-            $('#modalCustomerDetails').modal('hide');
+            const modalEl = document.getElementById('modalCustomerDetails');
+            if (modalEl) {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const bsModal = bootstrap.Modal.getInstance(modalEl);
+                    if (bsModal) bsModal.hide();
+                    else $(modalEl).removeClass('show').css('display', 'none');
+                } else if ($.fn.modal) {
+                    $('#modalCustomerDetails').modal('hide');
+                } else {
+                    $(modalEl).removeClass('show').css('display', 'none');
+                }
+            }
         });
 
 
         // --- Customers & Accounts ---
-        // We leave accountData here as a helper if available, but parent should ideally provide it.
-        const accountData =
-            @if (isset($accounts))
-                @json($accounts)
-            @else
-                []
-            @endif ;
+        const accountData = {!! isset($accounts) ? json_encode($accounts) : '[]' !!};
 
         function loadAccountsInto($select, customerId) {
             const currentVal = $select.val();
@@ -2045,10 +2069,10 @@
                 serials.forEach(s => {
                     const isChecked = selectedList.includes(s.serial_number) ? 'checked' : '';
                     html += `
-                        <div class="d-flex align-items-center justify-content-between p-2 border-bottom serial-item-row" style="font-size:0.85rem;">
-                            <div class="form-check mb-0">
+                        <div class="d-flex align-items-center justify-content-between p-2 border-bottom serial-item-row" style="font-size:0.85rem; cursor: pointer; user-select: none;">
+                            <div class="form-check mb-0 flex-grow-1">
                                 <input class="form-check-input serial-chk" type="checkbox" value="${s.serial_number}" id="chk_s_${s.id}" ${isChecked}>
-                                <label class="form-check-label fw-bold text-dark font-monospace" for="chk_s_${s.id}">
+                                <label class="form-check-label fw-bold text-dark font-monospace w-100" for="chk_s_${s.id}" style="cursor: pointer;">
                                     ${s.serial_number}
                                 </label>
                             </div>
@@ -2059,6 +2083,15 @@
             $('#serialListContainer').html(html);
             updateSelectedSerialCount();
         }
+
+        // Click anywhere on serial item row to toggle checkbox
+        $(document).on('click', '.serial-item-row', function(e) {
+            if ($(e.target).is('input[type="checkbox"]') || $(e.target).is('label')) {
+                return; // Native checkbox and label handling
+            }
+            const $chk = $(this).find('.serial-chk');
+            $chk.prop('checked', !$chk.prop('checked')).trigger('change');
+        });
 
         // Live Search/Scan Serial Numbers
         $(document).on('input', '#serialSearchInput', function() {

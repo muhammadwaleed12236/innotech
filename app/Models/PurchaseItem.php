@@ -12,6 +12,7 @@ class PurchaseItem extends Model
         'price'         => 'decimal:2',
         'item_discount' => 'decimal:2',
         'line_total'    => 'decimal:2',
+        'serials'       => 'array',
     ];
 
     

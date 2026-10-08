@@ -255,7 +255,7 @@ class OpeningStockController extends Controller
             'variant_key'   => 'nullable|string',
             'qty'           => 'required|numeric|min:0.01',
             'cost_price'    => 'nullable|numeric|min:0',
-            'remarks'       => 'nullable|string|max:1000',
+            'remarks'       => 'nullable|string|max:5000',
         ]);
 
         if ($validator->fails()) {

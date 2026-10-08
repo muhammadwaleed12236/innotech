@@ -192,22 +192,24 @@
             padding: 10px 14px !important;
             border-bottom: none !important;
         }
-        .select2-search--dropdown {
-            padding: 6px 8px !important;
+        .select2-dropdown .select2-search--dropdown {
+            padding: 8px 10px !important;
             background-color: #f8fafc !important;
             border-bottom: 1px solid #e2e8f0 !important;
             display: block !important;
         }
-        .select2-search--dropdown .select2-search__field {
-            border: 1px solid #cbd5e1 !important;
+        .select2-dropdown .select2-search__field {
+            border: 1.5px solid #2563eb !important;
             border-radius: 6px !important;
-            padding: 6px 10px !important;
+            padding: 7px 12px !important;
             font-size: 13px !important;
             background-color: #ffffff !important;
             color: #0f172a !important;
             outline: none !important;
             width: 100% !important;
             box-sizing: border-box !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15) !important;
+            display: block !important;
         }
 
         /* ---------- BUTTONS ---------- */
@@ -1896,6 +1898,7 @@
                 placeholder: 'Search by Name, Code, or Mobile...',
                 allowClear: true,
                 width: '100%',
+                dropdownParent: $(document.body),
                 language: {
                     noResults: function() {
                         return '<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>';
@@ -1904,6 +1907,15 @@
                 escapeMarkup: function(markup) {
                     return markup;
                 }
+            });
+
+            $('#customerSelect').on('select2:open', function() {
+                setTimeout(function() {
+                    const searchInput = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 50);
             });
 
             // Set initial visibility state of Customer Select / Walk-in input

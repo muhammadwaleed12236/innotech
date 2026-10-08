@@ -643,7 +643,17 @@
         $(document).ready(function() {
             // Init Select2
             $('.select2').select2({
-                width: '100%'
+                width: '100%',
+                dropdownParent: $(document.body)
+            });
+
+            $(document).on('select2:open', function() {
+                setTimeout(function() {
+                    const searchInput = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchInput) {
+                        searchInput.focus();
+                    }
+                }, 50);
             });
 
             // Vendor Select Logic
@@ -958,10 +968,15 @@
             }
 
             function initProductSelect2($el) {
+                if (!$el || !$el.length) return;
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    try { $el.select2('destroy'); } catch(e) {}
+                }
                 $el.select2({
                     placeholder: 'Search Product (Name / SKU / Barcode)',
                     allowClear: true,
                     width: '100%',
+                    dropdownParent: $(document.body),
                     ajax: {
                         url: '{{ route('products.ajax.search') }}',
                         dataType: 'json',
@@ -984,8 +999,20 @@
                         cache: true
                     },
                     minimumInputLength: 0,
+                    escapeMarkup: function(markup) {
+                        return markup;
+                    },
                     templateResult: formatProduct,
                     templateSelection: formatSelection
+                });
+
+                $el.off('select2:open').on('select2:open', function() {
+                    setTimeout(function() {
+                        const searchInput = document.querySelector('.select2-container--open .select2-search__field');
+                        if (searchInput) {
+                            searchInput.focus();
+                        }
+                    }, 50);
                 });
 
                 $el.on('select2:select', function(e) {
@@ -1066,26 +1093,42 @@
 
             function formatProduct(repo) {
                 if (repo.loading) return repo.text;
-                let stock = repo.stock !== undefined ? repo.stock : 0;
+                let name = repo.name || repo.text || '';
                 let sku = repo.sku || 'N/A';
                 let unit = repo.unit_name || 'Pcs';
+                let stock = repo.stock !== undefined ? repo.stock : 0;
                 let stockVal = parseFloat(repo.stock_pieces !== undefined ? repo.stock_pieces : repo.stock) || 0;
+
+                if (repo.element) {
+                    const $el = $(repo.element);
+                    if ($el.val() === '') return repo.text;
+                    sku = $el.data('sku') || sku;
+                    stock = $el.data('stock') !== undefined ? $el.data('stock') : stock;
+                    stockVal = parseFloat(stock) || 0;
+                    name = $el.data('name') || name || $el.text();
+                }
+
                 let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
-                return $(`
-                <div class="clearfix">
-                    <div class="float-start">
-                        <div class="fw-bold">${repo.name || repo.text}</div>
-                        <small class="text-muted">SKU: ${sku} | Unit: ${unit}</small>
-                    </div>
-                    <div class="float-end">
-                        <span class="badge ${badgeClass} rounded-pill">Stock: ${stock}</span>
-                    </div>
-                </div>
-                `);
+                return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="color: #0f172a;">' +
+                    '<div>' +
+                        '<div class="fw-bold" style="color: #0f172a;">' + name + '</div>' +
+                        '<small class="text-muted" style="font-size: 11px;">SKU: ' + sku + ' | Unit: ' + unit + '</small>' +
+                    '</div>' +
+                    '<div>' +
+                        '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1">Stock: ' + stock + '</span>' +
+                    '</div>' +
+                '</div>';
             }
 
             function formatSelection(repo) {
+                if (repo.element) {
+                    const $el = $(repo.element);
+                    if (!$el.val()) return repo.text || '';
+                    const name = $el.data('name') || repo.name || repo.text || '';
+                    const sku = $el.data('sku') || repo.sku || '';
+                    return sku ? (name + ' (SKU: ' + sku + ')') : name;
+                }
                 return repo.name || repo.text;
             }
 

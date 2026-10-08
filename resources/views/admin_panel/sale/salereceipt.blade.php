@@ -396,6 +396,35 @@
                             @if($variantStr && $variantStr !== '{' && trim($variantStr) !== '')
                                 <span class="item-variant">{{ $variantStr }}</span>
                             @endif
+
+                            @php
+                                $rBatchNo = $item['batch_no'] ?? null;
+                                $rSerialsRaw = $item['serials'] ?? null;
+                                $rSerialsList = [];
+                                if (!empty($rSerialsRaw)) {
+                                    if (is_array($rSerialsRaw)) {
+                                        $rSerialsList = $rSerialsRaw;
+                                    } elseif (is_string($rSerialsRaw)) {
+                                        $decodedR = json_decode($rSerialsRaw, true);
+                                        if (is_array($decodedR)) {
+                                            $rSerialsList = $decodedR;
+                                        } else {
+                                            $rSerialsList = array_filter(array_map('trim', explode(',', $rSerialsRaw)));
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($rBatchNo))
+                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; margin-top: 1px;">
+                                    Batch: {{ $rBatchNo }}
+                                </span>
+                            @endif
+                            @if(!empty($rSerialsList))
+                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; word-break: break-all; margin-top: 1px;">
+                                    S/N: {{ implode(', ', $rSerialsList) }}
+                                </span>
+                            @endif
                         </td>
                         <td style="width: 10%;" class="text-center">{{ $qtyDisplay }}</td>
                         <td style="width: 13%;" class="text-end">{{ number_format($item['price'], 0) }}</td>

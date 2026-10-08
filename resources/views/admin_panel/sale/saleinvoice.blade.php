@@ -786,6 +786,39 @@
 
                             </div>
 
+                            @php
+                                $itemBatchNo = $item['batch_no'] ?? null;
+                                $itemSerialsRaw = $item['serials'] ?? null;
+                                $itemSerialsList = [];
+                                if (!empty($itemSerialsRaw)) {
+                                    if (is_array($itemSerialsRaw)) {
+                                        $itemSerialsList = $itemSerialsRaw;
+                                    } elseif (is_string($itemSerialsRaw)) {
+                                        $decodedSerials = json_decode($itemSerialsRaw, true);
+                                        if (is_array($decodedSerials)) {
+                                            $itemSerialsList = $decodedSerials;
+                                        } else {
+                                            $itemSerialsList = array_filter(array_map('trim', explode(',', $itemSerialsRaw)));
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($itemBatchNo) || !empty($itemSerialsList))
+                                <div style="font-size: 11px; margin-top: 3px; line-height: 1.3;">
+                                    @if(!empty($itemBatchNo))
+                                        <span class="d-inline-block me-1" style="background-color: #eef2f7; color: #1e293b; border: 1px solid #cbd5e1; padding: 1px 6px; border-radius: 3px; font-weight: 600;">
+                                            Batch: {{ $itemBatchNo }}
+                                        </span>
+                                    @endif
+                                    @if(!empty($itemSerialsList))
+                                        <div style="margin-top: 2px; color: #065f46; font-weight: 600;">
+                                            S/N: {{ implode(', ', $itemSerialsList) }}
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+
                         </td>
 
 
@@ -2199,6 +2232,35 @@
                             <span class="item-name">
                                 {{ $tProductTitle }}
                             </span>
+
+                            @php
+                                $tBatchNo = $item['batch_no'] ?? null;
+                                $tSerialsRaw = $item['serials'] ?? null;
+                                $tSerialsList = [];
+                                if (!empty($tSerialsRaw)) {
+                                    if (is_array($tSerialsRaw)) {
+                                        $tSerialsList = $tSerialsRaw;
+                                    } elseif (is_string($tSerialsRaw)) {
+                                        $decodedT = json_decode($tSerialsRaw, true);
+                                        if (is_array($decodedT)) {
+                                            $tSerialsList = $decodedT;
+                                        } else {
+                                            $tSerialsList = array_filter(array_map('trim', explode(',', $tSerialsRaw)));
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($tBatchNo))
+                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; margin-top: 1px;">
+                                    Batch: {{ $tBatchNo }}
+                                </span>
+                            @endif
+                            @if(!empty($tSerialsList))
+                                <span class="item-variant" style="font-weight: 600; color: #000; font-size: 9px; display: block; word-break: break-all; margin-top: 1px;">
+                                    S/N: {{ implode(', ', $tSerialsList) }}
+                                </span>
+                            @endif
 
                             {{-- 
                                 IMPORTANT:

@@ -305,6 +305,35 @@
                                     {{ $sizeStr }}
                                 </div>
                             @endif
+
+                            @php
+                                $dctBatchNo = $item['batch_no'] ?? null;
+                                $dctSerialsRaw = $item['serials'] ?? null;
+                                $dctSerialsList = [];
+                                if (!empty($dctSerialsRaw)) {
+                                    if (is_array($dctSerialsRaw)) {
+                                        $dctSerialsList = $dctSerialsRaw;
+                                    } elseif (is_string($dctSerialsRaw)) {
+                                        $decodedDct = json_decode($dctSerialsRaw, true);
+                                        if (is_array($decodedDct)) {
+                                            $dctSerialsList = $decodedDct;
+                                        } else {
+                                            $dctSerialsList = array_filter(array_map('trim', explode(',', $dctSerialsRaw)));
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($dctBatchNo))
+                                <div class="item-meta mt-1" style="font-weight: 600; color: #000;">
+                                    Batch: {{ $dctBatchNo }}
+                                </div>
+                            @endif
+                            @if(!empty($dctSerialsList))
+                                <div class="item-meta mt-1" style="font-weight: 600; color: #000; word-break: break-all;">
+                                    S/N: {{ implode(', ', $dctSerialsList) }}
+                                </div>
+                            @endif
                         </td>
                         <td class="text-end font-weight-bold" style="vertical-align: middle;">
                             {{ $qtyStr }}

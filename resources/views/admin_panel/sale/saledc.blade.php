@@ -365,6 +365,39 @@
                                     PACKTEST: {{ $piecesPerBox }} pcs | {{ number_format($m2PerBox, 4) }} m²
                                 </span>
                             </div>
+
+                            @php
+                                $dcBatchNo = $item['batch_no'] ?? null;
+                                $dcSerialsRaw = $item['serials'] ?? null;
+                                $dcSerialsList = [];
+                                if (!empty($dcSerialsRaw)) {
+                                    if (is_array($dcSerialsRaw)) {
+                                        $dcSerialsList = $dcSerialsRaw;
+                                    } elseif (is_string($dcSerialsRaw)) {
+                                        $decodedDc = json_decode($dcSerialsRaw, true);
+                                        if (is_array($decodedDc)) {
+                                            $dcSerialsList = $decodedDc;
+                                        } else {
+                                            $dcSerialsList = array_filter(array_map('trim', explode(',', $dcSerialsRaw)));
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($dcBatchNo) || !empty($dcSerialsList))
+                                <div style="font-size: 11px; margin-top: 3px; line-height: 1.3;">
+                                    @if(!empty($dcBatchNo))
+                                        <span class="d-inline-block me-1" style="background-color: #eef2f7; color: #1e293b; border: 1px solid #cbd5e1; padding: 1px 6px; border-radius: 3px; font-weight: 600;">
+                                            Batch: {{ $dcBatchNo }}
+                                        </span>
+                                    @endif
+                                    @if(!empty($dcSerialsList))
+                                        <div style="margin-top: 2px; color: #065f46; font-weight: 600;">
+                                            S/N: {{ implode(', ', $dcSerialsList) }}
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         </td>
 
                         <td class="text-center" style="vertical-align: middle;">

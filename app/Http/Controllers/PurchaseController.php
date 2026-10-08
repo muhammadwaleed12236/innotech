@@ -456,6 +456,41 @@ class PurchaseController extends Controller
                 ];
                 // stocks
                 $this->upsertStocks($item->product_id, +$baseQty, $branchId, $warehouseId);
+
+                // Process Batch Creation/Stock
+                $batchId = null;
+                if (!empty($item->batch_no)) {
+                    $batch = \App\Models\ProductBatch::firstOrCreate([
+                        'product_id' => $item->product_id,
+                        'warehouse_id' => $warehouseId,
+                        'batch_no' => $item->batch_no,
+                    ], [
+                        'cost_price' => $item->price,
+                        'qty' => 0,
+                    ]);
+                    $batch->increment('qty', $baseQty);
+                    $batchId = $batch->id;
+                    $item->update(['batch_id' => $batchId]);
+                }
+
+                // Process Serial / IMEI Numbers Creation
+                $serialsList = is_array($item->serials) ? $item->serials : (is_string($item->serials) ? json_decode($item->serials, true) : []);
+                if (is_array($serialsList) && count($serialsList) > 0) {
+                    foreach ($serialsList as $sNum) {
+                        $sNum = trim($sNum);
+                        if ($sNum !== '') {
+                            \App\Models\ProductSerial::updateOrCreate([
+                                'product_id' => $item->product_id,
+                                'serial_number' => $sNum,
+                            ], [
+                                'warehouse_id' => $warehouseId,
+                                'batch_id' => $batchId,
+                                'status' => 'available',
+                                'cost_price' => $item->price,
+                            ]);
+                        }
+                    }
+                }
             }
 
             if (! empty($movRows)) {
@@ -770,9 +805,20 @@ class PurchaseController extends Controller
                     [$bQty, $lQty] = self::parseCartonQty($rawQtyStr);
                 }
 
+                $batchNos = $request->batch_no ?? [];
+                $serialsInputs = $request->serials ?? [];
+                $itemBatchNo = !empty($batchNos[$i]) ? trim($batchNos[$i]) : null;
+                $itemSerialsRaw = $serialsInputs[$i] ?? null;
+                $itemSerialsParsed = null;
+                if (!empty($itemSerialsRaw)) {
+                    $itemSerialsParsed = is_array($itemSerialsRaw) ? $itemSerialsRaw : json_decode($itemSerialsRaw, true);
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'product_id' => $pid,
+                    'batch_no' => $itemBatchNo,
+                    'serials' => $itemSerialsParsed,
                     'unit' => $unit,
                     'price' => $price,
                     'item_discount' => $discAmount, // Store calculated amount
@@ -1439,9 +1485,20 @@ class PurchaseController extends Controller
                     [$bQty, $lQty] = self::parseCartonQty($rawQtyStr);
                 }
 
+                $batchNos = $request->batch_no ?? [];
+                $serialsInputs = $request->serials ?? [];
+                $itemBatchNo = !empty($batchNos[$i]) ? trim($batchNos[$i]) : null;
+                $itemSerialsRaw = $serialsInputs[$i] ?? null;
+                $itemSerialsParsed = null;
+                if (!empty($itemSerialsRaw)) {
+                    $itemSerialsParsed = is_array($itemSerialsRaw) ? $itemSerialsRaw : json_decode($itemSerialsRaw, true);
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'product_id' => $pid,
+                    'batch_no' => $itemBatchNo,
+                    'serials' => $itemSerialsParsed,
                     'unit' => $unit,
                     'price' => $price,
                     'item_discount' => $discAmount,
