@@ -13,6 +13,8 @@ class SaleItem extends Model
         'discount_percent', 'discount_amount',
         'color', 'total_pieces', 'loose_pieces',
         'price_per_piece', 'price_per_m2',
+        'bonus_qty', 'mfg_date', 'exp_date', 'gross_amount', 'exclusive_gst_amount',
+        'sales_tax_percent', 'sales_tax_amount', 'further_tax_percent', 'further_tax_amount',
     ];
 
     public function sale()

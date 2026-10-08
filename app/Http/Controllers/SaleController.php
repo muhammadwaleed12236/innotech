@@ -1142,6 +1142,11 @@ class SaleController extends Controller
             // We will calculate totals from verified items
             $total_bill = 0;
             $total_items = 0;
+            $total_gross = 0;
+            $total_exclusive_gst = 0;
+            $total_sales_tax = 0;
+            $total_further_tax = 0;
+            $total_bonus_qty = 0;
 
             // Determine if this is a booking transaction
             if ($request->action === 'booking' || ($status === 'booked' && $sale->is_booking)) {
@@ -1354,7 +1359,15 @@ class SaleController extends Controller
                     $calcDiscountAmount  = round(($lineGross * $discount) / 100, 2);
                 }
 
-                $lineTotal = max(0, round($lineGross - $calcDiscountAmount, 2));
+                $calcExclusiveGst = max(0, round($lineGross - $calcDiscountAmount, 2));
+                $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? 0);
+                $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
+                $furtherTaxPct = (float) ($request->further_tax_percent[$index] ?? 0);
+                $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
+                $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt, 2);
+                $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);
+                $mfgDate = $request->mfg_date[$index] ?? null;
+                $expDate = $request->exp_date[$index] ?? null;
 
                 $colorVal = $request->color[$index] ?? null;
                 $sizeVal = $request->size_display[$index] ?? ($request->size[$index] ?? null);
@@ -1402,10 +1415,19 @@ class SaleController extends Controller
                 $saleItem->qty = $storedQtyBox; // Store as Box equivalent for consistency
                 $saleItem->total_pieces = $totalPieces;
                 $saleItem->loose_pieces = $loose;
+                $saleItem->bonus_qty = $bonusQty;
+                $saleItem->mfg_date = $mfgDate;
+                $saleItem->exp_date = $expDate;
 
                 $saleItem->price = $dbPrice;
+                $saleItem->gross_amount = $lineGross;
                 $saleItem->discount_percent = $calcDiscountPercent;
                 $saleItem->discount_amount = $calcDiscountAmount;
+                $saleItem->exclusive_gst_amount = $calcExclusiveGst;
+                $saleItem->sales_tax_percent = $salesTaxPct;
+                $saleItem->sales_tax_amount = $salesTaxAmt;
+                $saleItem->further_tax_percent = $furtherTaxPct;
+                $saleItem->further_tax_amount = $furtherTaxAmt;
                 $saleItem->total = $lineTotal;
 
                 // Meta
@@ -1432,10 +1454,20 @@ class SaleController extends Controller
 
                 $total_bill += $lineTotal;
                 $total_items += $totalPieces;
+                $total_gross += $lineGross;
+                $total_exclusive_gst += $calcExclusiveGst;
+                $total_sales_tax += $salesTaxAmt;
+                $total_further_tax += $furtherTaxAmt;
+                $total_bonus_qty += $bonusQty;
             }
 
             // Update Sale Totals
             $sale->total_bill_amount = $total_bill;
+            $sale->total_gross = $total_gross;
+            $sale->total_exclusive_gst = $total_exclusive_gst;
+            $sale->total_sales_tax = $total_sales_tax;
+            $sale->total_further_tax = $total_further_tax;
+            $sale->total_bonus_qty = $total_bonus_qty;
             $sale->total_extradiscount = $request->total_extra_cost ?? 0;
             $sale->freight_charges = $request->freight_charges ?? 0;
             $sale->freight_type = $request->freight_type ?? 'add';
@@ -2444,6 +2476,15 @@ class SaleController extends Controller
                 'batch_id' => $item->batch_id ?? null,
                 'batch_no' => $item->batch_no ?? null,
                 'serials' => $item->serials ?? null,
+                'bonus_qty' => (float) ($item->bonus_qty ?? 0),
+                'mfg_date' => $item->mfg_date ?? '',
+                'exp_date' => $item->exp_date ?? '',
+                'gross_amount' => (float) ($item->gross_amount ?? 0),
+                'exclusive_gst_amount' => (float) ($item->exclusive_gst_amount ?? 0),
+                'sales_tax_percent' => (float) ($item->sales_tax_percent ?? 0),
+                'sales_tax_amount' => (float) ($item->sales_tax_amount ?? 0),
+                'further_tax_percent' => (float) ($item->further_tax_percent ?? 0),
+                'further_tax_amount' => (float) ($item->further_tax_amount ?? 0),
             ];
         });
     }

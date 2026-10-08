@@ -1460,11 +1460,14 @@
                                 <th class="col-product">Product</th>
                                 <th class="c-stock-th">Stock</th>
                                 <th>Qty</th>
+                                <th>Bonus</th>
                                 <th>Size</th>
                                 <th class="c-pcs-th">Pcs</th>
                                 <th class="col-pcs-ctn-th">Pcs/Ctn</th>
                                 <th>Price</th>
                                 <th>Discount</th>
+                                <th>ST %</th>
+                                <th>FT %</th>
                                 <th>Amount</th>
                                 <th>Action</th>
                             </tr>
@@ -1527,6 +1530,11 @@
                                     <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
                                 </td>
 
+                                <!-- BONUS -->
+                                <td class="col-bonus">
+                                    <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0">
+                                </td>
+
                                 <!-- SIZE -->
                                 <td class="col-size">
                                     <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
@@ -1570,10 +1578,23 @@
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
+                                <!-- ST % (Sales Tax @18%) -->
+                                <td class="col-st">
+                                    <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
+                                    <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
+                                </td>
+
+                                <!-- FT % (Further Tax @3%) -->
+                                <td class="col-ft">
+                                    <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
+                                    <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
+                                </td>
+
                                 <!-- AMOUNT -->
                                 <td class="col-amount">
                                     <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
                                     <input type="hidden" class="gross-amount" name="gross_amount[]">
+                                    <input type="hidden" class="exclusive-gst-amount" name="exclusive_gst_amount[]" value="0">
                                 </td>
 
                                 <!-- ACTION -->
@@ -1678,12 +1699,24 @@
 
                         <div>
                             <div class="s-row">
-                                <span class="s-label">Subtotal</span>
+                                <span class="s-label">Subtotal (Gross)</span>
                                 <span class="s-val" id="tGross">0.00</span>
                             </div>
                             <div class="s-row">
                                 <span class="s-label">Line Discount</span>
                                 <span class="s-val" id="tLineDisc">0.00</span>
+                            </div>
+                            <div class="s-row">
+                                <span class="s-label fw-bold text-dark">Exclusive GST Amount</span>
+                                <span class="s-val fw-bold text-dark" id="tExclusiveGst">0.00</span>
+                            </div>
+                            <div class="s-row">
+                                <span class="s-label text-success">Sales Tax (@18%)</span>
+                                <span class="s-val text-success fw-bold" id="tSalesTax">0.00</span>
+                            </div>
+                            <div class="s-row">
+                                <span class="s-label text-primary">Further Tax (@3%)</span>
+                                <span class="s-val text-primary fw-bold" id="tFurtherTax">0.00</span>
                             </div>
                             <div class="s-row">
                                 <span class="s-label">Discount (Rs)</span>

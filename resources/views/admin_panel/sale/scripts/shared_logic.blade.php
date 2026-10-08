@@ -213,6 +213,11 @@
       <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
     </td>
 
+    <!-- BONUS -->
+    <td style="width:60px;min-width:60px;" class="col-bonus">
+      <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0" style="height: 26px; font-size: 0.85rem; padding: 2px 4px;">
+    </td>
+
     <!-- Loose Pieces -->
     <td style="width:70px;min-width:70px;" class="d-none">
       <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
@@ -223,11 +228,6 @@
        <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
        <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
     </td>
-
-    <!-- Color (Display - readonly) -->
-    {{-- <td class="col-color">
-      <input type="text" class="form-control color-display text-center input-readonly" readonly tabindex="-1" placeholder="-">
-    </td> --}}
 
     <!-- Total Pieces (Calculated) -->
     <td class="col-pieces">
@@ -271,10 +271,23 @@
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
+    <!-- ST % (Sales Tax @18%) -->
+    <td style="width:65px;min-width:65px;" class="col-st">
+      <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18" style="height: 26px; font-size: 0.85rem; padding: 2px 4px;">
+      <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
+    </td>
+
+    <!-- FT % (Further Tax @3%) -->
+    <td style="width:60px;min-width:60px;" class="col-ft">
+      <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3" style="height: 26px; font-size: 0.85rem; padding: 2px 4px;">
+      <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
+    </td>
+
     <!-- NET AMOUNT -->
     <td class="col-amount">
       <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
       <input type="hidden" class="gross-amount" name="gross_amount[]">
+      <input type="hidden" class="exclusive-gst-amount" name="exclusive_gst_amount[]" value="0">
     </td>
 
     <!-- ACTION -->
@@ -492,7 +505,18 @@
         }
         $row.find('.discount-amount').val(dam.toFixed(2));
 
-        const netRow = Math.max(0, gross - dam);
+        const exclusiveGst = Math.max(0, gross - dam);
+        $row.find('.exclusive-gst-amount').val(exclusiveGst.toFixed(2));
+
+        const salesTaxPct = toNum($row.find('.sales-tax-percent').val());
+        const salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+        $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
+
+        const furtherTaxPct = toNum($row.find('.further-tax-percent').val());
+        const furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
+        $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
+
+        const netRow = exclusiveGst + salesTaxAmt + furtherTaxAmt;
         $row.find('.gross-amount').val(gross.toFixed(2));
         $row.find('.sales-amount').val(netRow.toFixed(2));
 
@@ -503,8 +527,12 @@
 
     function updateGrandTotals() {
         let tQty = 0;
+        let tBonus = 0;
         let tGross = 0;
         let tLineDisc = 0;
+        let tExclusiveGst = 0;
+        let tSalesTax = 0;
+        let tFurtherTax = 0;
         let tNet = 0;
 
         $('#salesTableBody tr').each(function() {
@@ -512,6 +540,10 @@
             let gross = toNum($r.find('.gross-amount').val());
             const net = toNum($r.find('.sales-amount').val());
             const dam = toNum($r.find('.discount-amount').val());
+            const exclGst = toNum($r.find('.exclusive-gst-amount').val());
+            const stAmt = toNum($r.find('.sales-tax-amount').val());
+            const ftAmt = toNum($r.find('.further-tax-amount').val());
+            const bonus = toNum($r.find('.bonus-qty').val());
             
             if (gross <= 0 && net > 0) gross = net + dam;
 
@@ -519,8 +551,12 @@
             const pieces = parseInt($r.find('.total-pieces').val()) || 0;
 
             tQty += pieces;
+            tBonus += bonus;
             tGross += gross;
             tLineDisc += dam;
+            tExclusiveGst += exclGst;
+            tSalesTax += stAmt;
+            tFurtherTax += ftAmt;
             tNet += net;
         });
 
@@ -548,8 +584,12 @@
         const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
 
         $('#tQty').text(tQty.toFixed(0));
+        if ($('#tBonus').length) $('#tBonus').text(tBonus.toFixed(0));
         $('#tGross').text(tGross.toFixed(2));
         $('#tLineDisc').text(tLineDisc.toFixed(2));
+        if ($('#tExclusiveGst').length) $('#tExclusiveGst').text(tExclusiveGst.toFixed(2));
+        if ($('#tSalesTax').length) $('#tSalesTax').text(tSalesTax.toFixed(2));
+        if ($('#tFurtherTax').length) $('#tFurtherTax').text(tFurtherTax.toFixed(2));
         $('#tSub').text(currentInvoiceTotal.toFixed(2));
         $('#tOrderDisc').text(orderDisc.toFixed(2));
         $('#tPrev').text(prev.toFixed(2));
@@ -1366,7 +1406,7 @@
         // ... existing bindings ...
 
         // Inputs -> Calc
-        $(document).on('input', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price',
+        $(document).on('input', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price, .sales-tax-percent, .further-tax-percent, .bonus-qty',
             function() {
                 // If user manually changes the visible price, also update the hidden price-per-piece and normalized base rate
                 if ($(this).hasClass('visible-price')) {

@@ -819,6 +819,20 @@
                                 </div>
                             @endif
 
+                            @if (!empty($item['sales_tax_amount']) || !empty($item['further_tax_amount']))
+                                <div style="font-size: 10.5px; color: #475569; margin-top: 3px; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0;">
+                                    @if(!empty($item['exclusive_gst_amount']))
+                                        <span class="fw-semibold">Excl. GST:</span> {{ number_format($item['exclusive_gst_amount'], 2) }}
+                                    @endif
+                                    @if(!empty($item['sales_tax_amount']))
+                                        <span class="ms-2 text-success"><span class="fw-semibold">ST ({{ (float)($item['sales_tax_percent'] ?? 18) }}%):</span> +{{ number_format($item['sales_tax_amount'], 2) }}</span>
+                                    @endif
+                                    @if(!empty($item['further_tax_amount']))
+                                        <span class="ms-2 text-primary"><span class="fw-semibold">FT ({{ (float)($item['further_tax_percent'] ?? 3) }}%):</span> +{{ number_format($item['further_tax_amount'], 2) }}</span>
+                                    @endif
+                                </div>
+                            @endif
+
                         </td>
 
 
@@ -1556,6 +1570,45 @@
 
                             </tr>
 
+                        @endif
+
+                        @php
+                            $sumExclusiveGst = (float)($sale->total_exclusive_gst ?? collect($saleItems)->sum('exclusive_gst_amount'));
+                            $sumSalesTax = (float)($sale->total_sales_tax ?? collect($saleItems)->sum('sales_tax_amount'));
+                            $sumFurtherTax = (float)($sale->total_further_tax ?? collect($saleItems)->sum('further_tax_amount'));
+                        @endphp
+
+                        @if ($sumExclusiveGst > 0)
+                            <tr>
+                                <td class="text-muted fw-bold">
+                                    Exclusive GST Subtotal
+                                </td>
+                                <td class="text-end fw-bold">
+                                    {{ number_format($sumExclusiveGst, 2) }}
+                                </td>
+                            </tr>
+                        @endif
+
+                        @if ($sumSalesTax > 0)
+                            <tr>
+                                <td class="text-success fw-bold">
+                                    Sales Tax (@18%)
+                                </td>
+                                <td class="text-end text-success fw-bold">
+                                    + {{ number_format($sumSalesTax, 2) }}
+                                </td>
+                            </tr>
+                        @endif
+
+                        @if ($sumFurtherTax > 0)
+                            <tr>
+                                <td class="text-primary fw-bold">
+                                    Further Tax (@3%)
+                                </td>
+                                <td class="text-end text-primary fw-bold">
+                                    + {{ number_format($sumFurtherTax, 2) }}
+                                </td>
+                            </tr>
                         @endif
                         
                         @if ($sale->freight_charges > 0)
