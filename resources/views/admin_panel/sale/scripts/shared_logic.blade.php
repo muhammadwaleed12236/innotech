@@ -104,11 +104,20 @@
         });
 
         $el.off('select2:open').on('select2:open', function() {
+            const $select = $(this);
+            const $wrap = $select.closest('.pos-table-wrap, .table-responsive');
+            
+            // Auto-scroll table container back to the left if scrolled horizontally
+            if ($wrap.length && $wrap.scrollLeft() > 50) {
+                $wrap.animate({ scrollLeft: 0 }, 100);
+            }
+
             setTimeout(function() {
                 const searchInput = document.querySelector('.select2-container--open .select2-search__field');
                 if (searchInput) {
                     searchInput.focus();
                 }
+                $(window).trigger('scroll.select2');
             }, 50);
         });
     }
@@ -213,10 +222,10 @@
       <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
     </td>
 
-    <!-- BONUS -->
-    <td class="col-bonus">
-      <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0">
-    </td>
+    <!-- BONUS (Commented out) -->
+    <!-- <td class="col-bonus"> -->
+      <input type="hidden" class="bonus-qty" name="bonus_qty[]" value="0">
+    <!-- </td> -->
 
     <!-- Loose Pieces -->
     <td style="width:70px;min-width:70px;" class="d-none">
@@ -1492,20 +1501,23 @@
         $('#btnAdd').click(addNewRow);
 
         // --- ENTER KEY NAVIGATION & AUTOMATIC EXCEL NEW ROW OPENING ---
-        $(document).on('keydown', '#salesTableBody input, #salesTableBody select', function(e) {
+        $(document).on('keydown', '#salesTableBody input, #salesTableBody select, .select2-selection', function(e) {
             if (e.key === 'Enter' || e.keyCode === 13) {
+                const $target = $(this);
+
                 // Allow default Select2 selection behavior when dropdown list is actively open
-                if ($('.select2-container--open').length > 0 && $(this).hasClass('select2-search__field')) {
+                if ($('.select2-container--open').length > 0 && ($target.hasClass('select2-search__field') || $target.hasClass('select2-selection'))) {
                     return; 
                 }
                 
                 e.preventDefault();
-                const $currentInput = $(this);
-                const $row = $currentInput.closest('tr');
+                const $row = $target.closest('tr');
+                computeRow($row);
+                updateGrandTotals();
                 
                 // Find all visible, editable inputs/selects in the row
                 const $rowInputs = $row.find('input:visible:not([readonly]):not([disabled]), select:visible:not([disabled])');
-                const currentIndex = $rowInputs.index($currentInput);
+                const currentIndex = $rowInputs.index($target);
                 
                 if (currentIndex !== -1 && currentIndex < $rowInputs.length - 1) {
                     const $nextInput = $rowInputs.eq(currentIndex + 1);
@@ -1514,16 +1526,25 @@
                         $nextInput.select();
                     }
                 } else {
-                    // At last editable cell of row -> automatically open a new row if on last row, or jump to next row
+                    // At last editable cell of row (e.g. FT %) -> scroll table back to left & open new row if on last row, or jump to next row
                     const $allRows = $('#salesTableBody tr');
                     const isLastRow = $row.is($allRows.last());
+                    const $tableWrap = $('#salesTableBody').closest('.pos-table-wrap, .table-responsive');
+
+                    if ($tableWrap.length && $tableWrap.scrollLeft() > 20) {
+                        $tableWrap.animate({ scrollLeft: 0 }, 120);
+                    }
                     
                     if (isLastRow) {
                         addNewRow();
                         const $newRow = $('#salesTableBody tr:last-child');
                         setTimeout(function() {
-                            $newRow.find('.product').select2('open');
-                        }, 80);
+                            const $nextProduct = $newRow.find('.product');
+                            $nextProduct.focus();
+                            if ($nextProduct.data('select2')) {
+                                $nextProduct.select2('open');
+                            }
+                        }, 140);
                     } else {
                         const $nextRow = $row.next('tr');
                         const $nextRowProduct = $nextRow.find('.product');
@@ -1531,8 +1552,11 @@
                             $nextRow.find('.carton-qty').focus().select();
                         } else {
                             setTimeout(function() {
-                                $nextRowProduct.select2('open');
-                            }, 50);
+                                $nextRowProduct.focus();
+                                if ($nextRowProduct.data('select2')) {
+                                    $nextRowProduct.select2('open');
+                                }
+                            }, 100);
                         }
                     }
                 }
@@ -1582,38 +1606,6 @@
             
             computeRow($row);
             updateGrandTotals();
-        });
-
-        // Enter key on any input/select -> compute row, advance focus or add new row & open product select2
-        $('#salesTableBody').on('keydown', 'input, select', function(e) {
-            if (e.key === 'Enter' || e.keyCode === 13) {
-                // If Select2 search is open, let Select2 pick option
-                if ($('.select2-container--open').length > 0 && $(this).hasClass('product')) {
-                    return;
-                }
-                e.preventDefault();
-                const $currentTr = $(this).closest('tr');
-                computeRow($currentTr);
-                updateGrandTotals();
-
-                const $allRows = $('#salesTableBody tr');
-                const currentIndex = $allRows.index($currentTr);
-
-                if (currentIndex === $allRows.length - 1) {
-                    // Last row -> Add new row and focus & open new row's product Select2
-                    addNewRow();
-                    setTimeout(() => {
-                        const $nextProduct = $('#salesTableBody tr:last-child .product');
-                        $nextProduct.focus();
-                        $nextProduct.select2('open');
-                    }, 60);
-                } else {
-                    // Intermediate row -> Focus & open next row's product Select2
-                    const $nextProduct = $allRows.eq(currentIndex + 1).find('.product');
-                    $nextProduct.focus();
-                    $nextProduct.select2('open');
-                }
-            }
         });
 
         // Payment Head Quick Selection Buttons

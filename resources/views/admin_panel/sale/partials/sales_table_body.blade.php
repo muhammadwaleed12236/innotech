@@ -115,82 +115,91 @@
             @endif
         </td>
         <td class="text-nowrap small text-muted">
-            {{ $sale->created_at->format('d/m/Y') }}
+            {{ $sale->created_at ? $sale->created_at->format('d/m/Y') : '' }}
         </td>
-        <td>{!! $statusBadge !!}</td>
         <td class="pe-3 text-center">
-            <div class="dropdown">
-                <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-display="static" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v small me-1"></i> Actions
+            <div class="d-inline-flex align-items-center gap-1">
+                <button type="button" class="btn btn-sm btn-light border text-info shadow-sm btn-view-sale-modal" data-id="{{ $sale->id }}" title="Quick View Sale Details & Taxes" style="height: 32px; width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px;">
+                    <i class="fas fa-eye"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
-                    @can('sales.edit')
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
-                                <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('pos.index') }}?edit_id={{ $sale->id }}">
-                                <i class="fas fa-cash-register text-success fa-fw"></i> Edit (POS Sale)
-                            </a>
-                        </li>
-                    @endcan
-
-                    @if (in_array($sale->sale_status, ['draft', 'booked', 'quotation']))
-                        @can('sales.create')
+                <div class="dropdown">
+                    <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" data-display="static" aria-expanded="false">
+                        <i class="fas fa-ellipsis-v small me-1"></i> Actions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-right border-0 shadow-lg rounded-3">
+                        @can('sales.edit')
                             <li>
-                                <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2">
-                                        <i class="fas fa-check-circle fa-fw"></i> Confirm to Post
-                                    </button>
-                                </form>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
+                                    <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
+                                </a>
                             </li>
-                        @endcan
-                    @endif
-
-                    <li><hr class="dropdown-divider"></li>
-
-                    @can('sales.view')
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
-                                <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
-                                <i class="fas fa-calculator text-secondary fa-fw"></i> View Estimate
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc', $sale->id) }}" target="_blank">
-                                <i class="fas fa-shipping-fast text-warning fa-fw"></i> Delivery Challan (DC)
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_thermal', $sale->id) }}" target="_blank">
-                                <i class="fas fa-truck text-muted fa-fw"></i> DC Thermal
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.receipt', $sale->id) }}" target="_blank">
-                                <i class="fas fa-receipt text-success fa-fw"></i> Receipt
-                            </a>
-                        </li>
-                    @endcan
-
-                    @if ($sale->sale_status !== 'returned')
-                        @can('sales.create')
-                            <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger" href="{{ route('sale.return.show', $sale->id) }}">
-                                    <i class="fas fa-undo fa-fw"></i> Return Sale
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('pos.index') }}?edit_id={{ $sale->id }}">
+                                    <i class="fas fa-cash-register text-success fa-fw"></i> Edit (POS Sale)
                                 </a>
                             </li>
                         @endcan
-                    @endif
-                </ul>
+
+                        @if (in_array($sale->sale_status, ['draft', 'booked', 'quotation']))
+                            @can('sales.create')
+                                <li>
+                                    <form action="{{ route('sales.confirm', $sale->id) }}" method="POST" class="confirm-booking-form">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-success d-flex align-items-center gap-2 py-2">
+                                            <i class="fas fa-check-circle fa-fw"></i> Confirm to Post
+                                        </button>
+                                    </form>
+                                </li>
+                            @endcan
+                        @endif
+
+                        <li><hr class="dropdown-divider"></li>
+
+                        @can('sales.view')
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2 btn-view-sale-modal" href="javascript:void(0)" data-id="{{ $sale->id }}">
+                                    <i class="fas fa-eye text-info fa-fw"></i> Quick Details
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
+                                    <i class="fas fa-calculator text-secondary fa-fw"></i> View Estimate
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-shipping-fast text-warning fa-fw"></i> Delivery Challan (DC)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.dc_thermal', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-truck text-muted fa-fw"></i> DC Thermal
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.receipt', $sale->id) }}" target="_blank">
+                                    <i class="fas fa-receipt text-success fa-fw"></i> Receipt
+                                </a>
+                            </li>
+                        @endcan
+
+                        @if ($sale->sale_status !== 'returned')
+                            @can('sales.create')
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 text-danger" href="{{ route('sale.return.show', $sale->id) }}">
+                                        <i class="fas fa-undo fa-fw"></i> Return Sale
+                                    </a>
+                                </li>
+                            @endcan
+                        @endif
+                    </ul>
+                </div>
             </div>
         </td>
     </tr>

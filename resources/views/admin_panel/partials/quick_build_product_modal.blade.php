@@ -166,7 +166,7 @@
                     <div id="qbGrid">
                     <div class="qb-vhead">
                         <div>Variant Name *</div>
-                        <div>Size</div>
+                        <div>Model</div>
                         <div class="qb-ctn-col">Pcs / Ctn</div>
                         <div>Purchase</div>
                         <div>Sale</div>
@@ -244,7 +244,7 @@
                 '<div class="qb-name-cell">' +
                     '<input type="text" class="form-control qb-name fw-bold" name="variant_name[]" value="' + nameVal + '" placeholder="Variant ' + idx + '" required>' +
                 '</div>' +
-                '<div><input type="text" class="form-control" name="variant_size[]" placeholder="Size"></div>' +
+                '<div><input type="text" class="form-control" name="variant_size[]" placeholder="Model"></div>' +
                 '<div class="qb-ctn-col"><input type="number" class="form-control qb-ctn" name="variant_conv_factor[]" step="any" min="1" value="1" placeholder="e.g. 6"></div>' +
                 '<div><input type="number" class="form-control qb-purch" name="variant_purchase_price[]" step="any" min="0" value="0" placeholder="0.00" required></div>' +
                 '<div><input type="number" class="form-control qb-sale" name="variant_sale_price[]" step="any" min="0" value="0" placeholder="0.00" required></div>' +

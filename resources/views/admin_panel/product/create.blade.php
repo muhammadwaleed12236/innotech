@@ -558,7 +558,14 @@
                                     <div class="row g-3">
                                         <div class="col-md-12">
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required placeholder="e.g. Ceramic Floor Tile 60x60">
+                                            <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required placeholder="e.g. Steller Series 2D 4K System">
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label-pro">Description of Product / Sub-Components (Multiple Sequence)</label>
+                                            <select class="form-select select2-description-tags" name="model[]" multiple="multiple" style="width: 100%;">
+                                            </select>
+                                            <small class="text-muted" style="font-size: 11px;">Type each sub-description (e.g. Camera Unit, Light Source) and press Enter to add in sequence.</small>
                                         </div>
 
                                         <div class="col-md-3">
@@ -637,7 +644,7 @@
                                                 <thead class="table-light">
                                                     <tr>
                                                         <th class="text-uppercase text-muted p-1" style="min-width: 140px; font-size: 10px;">Variant Name</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Size</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Model</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Color</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Unit</th>
                                                         <th class="d-none">Initial Stock</th>
@@ -798,6 +805,13 @@
 @section('js')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $('.select2-description-tags').select2({
+                    tags: true,
+                    tokenSeparators: [','],
+                    placeholder: "Type sub-description and press Enter..."
+                });
+            }
             const form = document.getElementById('productForm');
             const unitDropdown = document.getElementById('unit-dropdown');
 
@@ -1035,7 +1049,7 @@
                         <input type="text" class="form-control-pro form-control-sm base-name-input fw-bold" name="variant_name[]" value="${productName}" placeholder="Name" data-vid="${vid}">
                         <input type="hidden" name="variant_is_base[]" value="1">
                     </td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Model"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" placeholder="Color"></td>
                     <td class="p-1">
                         <select class="form-select form-select-sm fw-bold text-primary px-1" name="variant_unit[]" style="font-size:11px;">
@@ -1209,7 +1223,7 @@
                         <input type="text" class="form-control-pro form-control-sm var-name-input" name="variant_name[]" value="${suggestedName}" placeholder="Name">
                         <input type="hidden" name="variant_is_base[]" value="0">
                     </td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Size (e.g. Small, 30cm)"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" placeholder="Model (e.g. 12/128, 30cm)"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" placeholder="Color"></td>
                     <td class="p-1">
                         <select class="form-select form-select-sm px-1 fw-bold text-dark" name="variant_unit[]" style="font-size:11px;">
@@ -1557,8 +1571,8 @@
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">
-                            <div class="mob-label">Size</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_size[]" value="${sizeVal}" placeholder="XL, M...">
+                            <div class="mob-label">Model</div>
+                            <input type="text" class="mob-input mob-sync" data-field="variant_size[]" value="${sizeVal}" placeholder="12/128, M...">
                         </div>
                         <div class="mob-field-group">
                             <div class="mob-label">Color</div>

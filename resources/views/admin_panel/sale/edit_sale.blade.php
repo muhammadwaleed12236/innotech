@@ -1451,19 +1451,19 @@
                     <table class="table sales-table mb-0">
                         <colgroup>
                             <col style="width:3%;">
-                            <col class="col-product" style="width:21%;">
+                            <col class="col-product" style="width:22%;">
                             <col class="c-stock" style="width:5%;">
-                            <col style="width:7%;">
-                            <col style="width:5%;">
-                            <col style="width:5%;">
+                            <col style="width:8%;">
+                            {{-- <col style="width:5%;"> --}}
+                            <col style="width:6%;">
                             <col class="c-pcs" style="width:5%;">
                             <col class="c-pc" style="width:5%;">
+                            <col style="width:10%;">
                             <col style="width:9%;">
-                            <col style="width:8%;">
-                            <col style="width:6.5%;">
-                            <col style="width:6.5%;">
-                            <col style="width:11%;">
-                            <col style="width:4%;">
+                            <col style="width:7%;">
+                            <col style="width:7%;">
+                            <col style="width:10%;">
+                            <col style="width:3%;">
                         </colgroup>
                         <thead>
                             <tr>
@@ -1471,7 +1471,7 @@
                                 <th class="col-product">Product</th>
                                 <th class="c-stock-th">Stock</th>
                                 <th>Qty</th>
-                                <th>Bonus</th>
+                                {{-- <th>Bonus</th> --}}
                                 <th>Size</th>
                                 <th class="c-pcs-th">Pcs</th>
                                 <th class="col-pcs-ctn-th">Pcs/Ctn</th>
@@ -1533,10 +1533,10 @@
                                     <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
                                 </td>
 
-                                <!-- BONUS -->
-                                <td class="col-bonus">
-                                    <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0">
-                                </td>
+                                <!-- BONUS (Commented out) -->
+                                {{-- <td class="col-bonus"> --}}
+                                    <input type="hidden" class="bonus-qty" name="bonus_qty[]" value="0">
+                                {{-- </td> --}}
 
                                 <!-- SIZE -->
                                 <td class="col-size">
@@ -1612,7 +1612,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="12" class="grid-total-label">GRID TOTAL:</td>
+                                <td colspan="11" class="grid-total-label">GRID TOTAL:</td>
                                 <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
                                 <td></td>
                             </tr>

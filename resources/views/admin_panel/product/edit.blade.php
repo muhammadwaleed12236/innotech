@@ -223,7 +223,7 @@
                                     <div class="row g-3">
                                         <div class="col-md-8">
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required value="{{ $product->item_name }}" placeholder="e.g. Ceramic Floor Tile 60x60">
+                                            <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required value="{{ $product->item_name }}" placeholder="e.g. Steller Series 2D 4K System">
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label-pro">Barcode Auto-Gen</label>
@@ -231,6 +231,23 @@
                                                 <input type="text" class="form-control-pro" id="barcodeInput" name="barcode_path" value="{{ $product->barcode_path }}" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
                                                 <button type="button" class="btn btn-light border" id="generateBarcodeBtn" style="border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md);"><i class="las la-magic"></i></button>
                                             </div>
+                                        </div>
+
+                                        <div class="col-md-12">
+                                            <label class="form-label-pro">Description of Product / Sub-Components (Multiple Sequence)</label>
+                                            <select class="form-select select2-description-tags" name="model[]" multiple="multiple" style="width: 100%;">
+                                                @if(!empty($product->model))
+                                                    @php
+                                                        $existingModels = is_array(json_decode($product->model, true)) ? json_decode($product->model, true) : explode("\n", $product->model);
+                                                    @endphp
+                                                    @foreach($existingModels as $m)
+                                                        @if(trim($m))
+                                                            <option value="{{ trim($m) }}" selected>{{ trim($m) }}</option>
+                                                        @endif
+                                                    @endforeach
+                                                @endif
+                                            </select>
+                                            <small class="text-muted" style="font-size: 11px;">Type each sub-description (e.g. Camera Unit, Light Source) and press Enter to add in sequence.</small>
                                         </div>
                                         
                                         <div class="col-md-3">
@@ -320,7 +337,7 @@
                                                 <thead class="table-light">
                                                     <tr>
                                                         <th class="text-uppercase text-muted p-1" style="min-width: 140px; font-size: 10px;">Variant Name</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Size</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Model</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 80px; font-size: 10px;">Color</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Unit</th>
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">Initial Stock</th>
@@ -549,6 +566,13 @@
 @section('js')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $('.select2-description-tags').select2({
+                    tags: true,
+                    tokenSeparators: [','],
+                    placeholder: "Type sub-description and press Enter..."
+                });
+            }
             // --- UI Elements ---
             const unitDropdown = document.getElementById('unit-dropdown');
             const form = document.getElementById('productForm');
@@ -671,7 +695,7 @@
                         <input type="text" class="form-control-pro form-control-sm base-name-input fw-bold" name="variant_name[]" value="${escapeHtml(nameVal)}" placeholder="Name" data-vid="${vid}">
                         <input type="hidden" name="variant_is_base[]" value="1">
                     </td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="Size"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="Model"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" value="${escapeHtml(colorVal)}" placeholder="Color"></td>
                     <td class="p-1">
                         <select class="form-select form-select-sm fw-bold text-primary px-1" name="variant_unit[]" style="font-size:11px;">
@@ -863,7 +887,7 @@
                         <input type="text" class="form-control-pro form-control-sm var-name-input" name="variant_name[]" value="${escapeHtml(suggestedName)}" placeholder="Name">
                         <input type="hidden" name="variant_is_base[]" value="0">
                     </td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="Size (e.g. Small, 30cm)"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="Model (e.g. 12/128, 30cm)"></td>
                     <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_color[]" value="${escapeHtml(colorVal)}" placeholder="Color"></td>
                     <td class="p-1">
                         <select class="form-select form-select-sm px-1 fw-bold text-dark" name="variant_unit[]" style="font-size:11px;">
@@ -1465,8 +1489,8 @@
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <div class="mob-field-group">
-                            <div class="mob-label">Size</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="XL, M...">
+                            <div class="mob-label">Model</div>
+                            <input type="text" class="mob-input mob-sync" data-field="variant_size[]" value="${escapeHtml(sizeVal)}" placeholder="12/128, M...">
                         </div>
                         <div class="mob-field-group">
                             <div class="mob-label">Color</div>

@@ -319,6 +319,7 @@
                                         <th class="ps-4" style="width:40px;">#</th>
                                         <th>Serial Number</th>
                                         <th>Batch No</th>
+                                        <th>Expiry Date</th>
                                         <th>Warehouse</th>
                                         <th>Cost Price</th>
                                         <th class="text-center">Status</th>
@@ -772,9 +773,23 @@ $(document).ready(function() {
                 $('#badgeWarehouseCount').text(warehouseCount);
                 $('#badgeMovementsCount').text(movementsCount);
 
+                let expiryList = [];
+                if (res.batches && res.batches.length > 0) {
+                    $.each(res.batches, function(i, b) {
+                        if (b.expiry_date && b.expiry_date !== '-') {
+                            expiryList.push(b.expiry_date);
+                        }
+                    });
+                }
+                let expiryBadgeHtml = '';
+                if (expiryList.length > 0) {
+                    expiryBadgeHtml = `<span class="badge bg-warning text-dark border px-2 py-1"><i class="fas fa-calendar-alt me-1"></i>Expiry: ${expiryList[0]}</span>`;
+                }
+
                 $('#modalSummaryBadges').html(`
                     <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-barcode text-primary me-1"></i>Code: ${res.item_code || '-'}</span>
                     <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-layer-group text-success me-1"></i>Category: ${res.category_name || '-'}</span>
+                    ${expiryBadgeHtml}
                     <span class="badge bg-primary text-white px-2 py-1"><i class="fas fa-cubes me-1"></i>Total Stock: ${(res.total_stock || 0).toLocaleString()} ${res.unit_name || ''}</span>
                 `);
 
@@ -797,6 +812,7 @@ $(document).ready(function() {
                                 <td class="ps-4 text-muted" style="font-size:.75rem;">${i + 1}</td>
                                 <td><code class="fw-bold text-primary px-2 py-1 bg-light border rounded" style="font-size:.84rem;">${s.serial_number}</code></td>
                                 <td><span class="badge bg-light text-dark border">${s.batch_no}</span></td>
+                                <td><span class="badge bg-warning text-dark border">${s.expiry_date || '-'}</span></td>
                                 <td class="fw-semibold text-secondary">${s.warehouse_name}</td>
                                 <td class="fw-bold text-dark">Rs ${s.cost_price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                                 <td class="text-center">${stBadge}</td>
@@ -806,7 +822,7 @@ $(document).ready(function() {
                         `);
                     });
                 } else {
-                    sTbody.html('<tr><td colspan="8" class="text-center py-4 text-muted"><i class="fas fa-info-circle me-1"></i> No serial numbers registered for this item.</td></tr>');
+                    sTbody.html('<tr><td colspan="9" class="text-center py-4 text-muted"><i class="fas fa-info-circle me-1"></i> No serial numbers registered for this item.</td></tr>');
                 }
 
                 // 2. Batches

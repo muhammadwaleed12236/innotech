@@ -5,9 +5,9 @@
         /* Modern Sales Management Styles */
         .sale-stat-card {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
+            border: 1.5px solid #e2e8f0;
             border-radius: 12px;
-            padding: 16px;
+            padding: 14px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease-in-out;
             height: 100%;
@@ -17,13 +17,36 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         .sale-stat-icon {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Responsive Status Filter Pills */
+        .sales-status-pills {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+            padding-bottom: 6px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        .sales-status-pills::-webkit-scrollbar {
+            height: 4px;
+        }
+        .sales-status-pills::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .sales-status-pills .btn {
+            flex-shrink: 0 !important;
         }
 
         /* Clean & Bold Filter Panel */
@@ -151,14 +174,13 @@
             overflow: visible !important;
         }
 
-        /* Prevent Dropdowns from Being Clipped */
         .table-responsive {
             border-radius: 8px !important;
-            overflow: visible !important;
+            overflow-x: auto !important;
             min-height: 380px;
         }
 
-        /* Premium Dropdown Menu Customizations */
+        /* Dropdown Menu Customizations */
         .dropdown-menu {
             border: 1.5px solid #cbd5e1 !important;
             border-radius: 8px !important;
@@ -192,11 +214,12 @@
             border-bottom: 3px solid #475569 !important;
             border-right: 1.5px solid #cbd5e1 !important;
             padding: 12px 10px !important;
+            white-space: nowrap;
         }
         
         .premium-table tbody td {
             border: 1.5px solid #e2e8f0 !important;
-            padding: 12px 10px !important;
+            padding: 10px 10px !important;
             font-size: 13px !important;
             color: #334155 !important;
             background-color: #ffffff;
@@ -223,40 +246,54 @@
             justify-content: center !important;
             transition: all 0.2s ease-in-out !important;
         }
-        .btn-premium-action:hover, 
-        .btn-premium-action:focus, 
-        .btn-premium-action[aria-expanded="true"] {
-            background-color: #f1f5f9 !important;
-            border-color: #94a3b8 !important;
-            color: #1e293b !important;
-        }
 
-        /* Responsive Breakpoints (< 768px) */
-        @media (max-width: 768px) {
+        /* Mobile Optimization Rules (< 768px) */
+        @media (max-width: 767.98px) {
+            .sale-stat-card {
+                padding: 10px 12px !important;
+            }
+            .sale-stat-card h4 {
+                font-size: 1.05rem !important;
+                word-break: break-word;
+            }
+            .sale-stat-icon {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 16px !important;
+            }
             .sales-hdr-actions {
                 display: grid !important;
                 grid-template-columns: 1fr 1fr;
                 gap: 8px;
                 width: 100%;
             }
-            .sales-hdr-actions .btn {
-                width: 100%;
-                justify-content: center;
-                height: 38px;
-                font-size: 0.8rem;
+            .sales-hdr-actions a[href*="sale/create"] {
+                grid-column: span 2;
             }
-            .sales-status-pills {
+            .filter-actions-row {
                 display: flex !important;
+                width: 100%;
+                gap: 8px;
+                margin-top: 10px;
+            }
+            .filter-actions-row .btn {
+                flex: 1;
+            }
+            #viewSaleModal .modal-footer {
+                display: flex;
+                flex-wrap: wrap;
                 gap: 6px;
-                overflow-x: auto;
-                padding-bottom: 6px;
-                -webkit-overflow-scrolling: touch;
+                justify-content: space-between;
             }
-            .sales-status-pills .btn {
-                flex: 0 0 auto;
-                white-space: nowrap;
+            #viewSaleModal .modal-footer .btn {
+                flex: 1 1 45%;
+                font-size: 11px !important;
+                padding: 6px 8px !important;
             }
-            /* DataTables Mobile Search Controls */
+            #viewSaleModal .modal-footer .btn-secondary {
+                flex: 1 1 100%;
+                margin-top: 4px;
+            }
             .dataTables_wrapper .dataTables_length,
             .dataTables_wrapper .dataTables_filter {
                 float: none !important;
@@ -268,12 +305,8 @@
                 margin-left: 0 !important;
             }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 768px) {
             .sales-hdr-actions {
-                display: flex;
-                gap: 8px;
-            }
-            .sales-status-pills {
                 display: flex;
                 gap: 8px;
             }
@@ -460,7 +493,7 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                                    <div class="col-12 d-flex justify-content-end gap-2 mt-2 filter-actions-row">
                                         <button type="button" class="btn btn-premium-secondary px-3" id="btnReset">
                                             <i class="fas fa-undo me-1"></i>Reset
                                         </button>
@@ -487,7 +520,6 @@
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Add. Disc</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Net Total</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
                                         <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center">Action</th>
                                     </tr>
                                 </thead>
@@ -732,6 +764,277 @@
                     }
                 });
             });
+
+            // View Sale Modal AJAX Handler
+            $(document).on('click', '.btn-view-sale-modal', function(e) {
+                e.preventDefault();
+                const saleId = $(this).data('id');
+                const $modal = $('#viewSaleModal');
+                const $modalBody = $('#viewSaleModalBody');
+                
+                $('#viewSaleModalTitle').text('Loading Details...');
+                $('#viewSaleModalSubtitle').text('Sale ID #' + saleId);
+                $('#viewSaleStatusBadge').html('');
+                $modalBody.html(`
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>
+                        <p class="text-muted mt-2 small">Fetching sale details & taxes...</p>
+                    </div>
+                `);
+
+                $modal.modal('show');
+
+                $.ajax({
+                    url: '/sales/' + saleId + '/details-modal',
+                    method: 'GET',
+                    success: function(res) {
+                        if (!res.status) {
+                            $modalBody.html('<div class="alert alert-danger">Failed to load details.</div>');
+                            return;
+                        }
+
+                        const sale = res.sale;
+                        const items = res.items || [];
+                        const stats = res.stats || {};
+
+                        $('#viewSaleModalTitle').text('Sale Invoice #' + sale.invoice_no);
+                        $('#viewSaleModalSubtitle').text('Date: ' + sale.created_at_formatted + (sale.reference ? ' | Ref: ' + sale.reference : ''));
+
+                        // Status Badge
+                        let statusHtml = '<span class="badge bg-secondary">Draft</span>';
+                        if (sale.sale_status === 'posted') statusHtml = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Posted</span>';
+                        else if (sale.sale_status === 'booked') statusHtml = '<span class="badge bg-info text-white"><i class="fas fa-bookmark me-1"></i>Booked</span>';
+                        else if (sale.sale_status === 'quotation') statusHtml = '<span class="badge bg-primary"><i class="fas fa-file-alt me-1"></i>Quotation</span>';
+                        else if (sale.sale_status === 'returned') statusHtml = '<span class="badge bg-danger"><i class="fas fa-undo me-1"></i>Returned</span>';
+                        $('#viewSaleStatusBadge').html(statusHtml);
+
+                        // Set Links
+                        $('#modalBtnPrintInvoice').attr('href', '/sales/' + sale.id + '/invoice');
+                        $('#modalBtnPrintDC').attr('href', '/sales/' + sale.id + '/dc');
+                        $('#modalBtnPrintReceipt').attr('href', '/sales/' + sale.id + '/recepit');
+                        $('#modalBtnEditSale').attr('href', '/sales/' + sale.id + '/edit');
+
+                        // Construct Modal Content
+                        let itemsRowsHtml = '';
+                        items.forEach((item, idx) => {
+                            let title = item.item_name || 'Item';
+                            if (item.variant_name && item.variant_name.toLowerCase() !== title.toLowerCase()) {
+                                title += ' — ' + item.variant_name;
+                            }
+
+                            // Serials & Subdescriptions
+                            let extraDetails = '';
+                            if (item.serials) {
+                                let serialsArr = Array.isArray(item.serials) ? item.serials : (typeof item.serials === 'string' ? item.serials.split(',') : []);
+                                if (serialsArr.length > 0) {
+                                    extraDetails += `<div class="fw-bold text-dark mt-1" style="font-size:11px;">SN #: ${serialsArr.join(', ')}</div>`;
+                                }
+                            }
+
+                            let modelVal = item.model || '';
+                            let subDescs = [];
+                            if (modelVal) {
+                                try {
+                                    subDescs = isNaN(modelVal) && modelVal.startsWith('[') ? JSON.parse(modelVal) : modelVal.split('\n');
+                                } catch(e) {
+                                    subDescs = modelVal.split('\n');
+                                }
+                            }
+                            if (subDescs && subDescs.length > 0) {
+                                extraDetails += '<div class="text-muted mt-1" style="font-size:10.5px;">';
+                                subDescs.forEach(sd => {
+                                    if (sd.trim()) extraDetails += `<div>• ${sd.trim()}</div>`;
+                                });
+                                extraDetails += '</div>';
+                            }
+
+                            let qty = item.qty_box || item.qty || item.total_pieces || 0;
+                            let price = item.price || 0;
+                            let gross = item.gross_amount > 0 ? item.gross_amount : (qty * price);
+                            let discAmt = item.discount_amount || 0;
+                            let exclGst = item.exclusive_gst_amount || 0;
+                            let salesTax = item.sales_tax_amount || 0;
+                            let furtherTax = item.further_tax_amount || 0;
+                            let net = item.total || 0;
+
+                            itemsRowsHtml += `
+                                <tr>
+                                    <td class="text-center fw-bold">${idx + 1}</td>
+                                    <td>
+                                        <div class="fw-bold text-dark" style="font-size:12px;">${title}</div>
+                                        ${extraDetails}
+                                    </td>
+                                    <td class="text-center font-monospace fw-bold">${qty} ${item.variant_unit || 'Pcs'}</td>
+                                    <td class="text-end font-monospace">Rs. ${Number(price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace">Rs. ${Number(gross).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace text-danger">Rs. ${Number(discAmt).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace">Rs. ${Number(exclGst).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace text-primary">Rs. ${Number(salesTax).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace text-warning">Rs. ${Number(furtherTax).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace fw-bold text-success">Rs. ${Number(net).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                </tr>
+                            `;
+                        });
+
+                        const bodyHtml = `
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-white">
+                                        <div class="text-uppercase text-muted fw-bold mb-2" style="font-size:11px; letter-spacing:0.5px;"><i class="fas fa-user me-1 text-primary"></i> Customer Information</div>
+                                        <div class="fw-bold text-dark fs-6">${sale.customer_name}</div>
+                                        ${sale.customer_code ? `<div class="text-muted small">Code: <strong>${sale.customer_code}</strong></div>` : ''}
+                                        <div class="text-muted small"><i class="fas fa-phone me-1"></i>${sale.customer_mobile}</div>
+                                        <div class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i>${sale.customer_address}</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-white">
+                                        <div class="text-uppercase text-muted fw-bold mb-2" style="font-size:11px; letter-spacing:0.5px;"><i class="fas fa-info-circle me-1 text-info"></i> Invoice Summary</div>
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span class="text-muted">Invoice No:</span>
+                                            <strong class="font-monospace text-primary">${sale.invoice_no}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span class="text-muted">Date:</span>
+                                            <span>${sale.created_at_formatted}</span>
+                                        </div>
+                                        ${sale.reference ? `
+                                            <div class="d-flex justify-content-between small mb-1">
+                                                <span class="text-muted">Reference / M.Bill:</span>
+                                                <strong class="text-dark">${sale.reference}</strong>
+                                            </div>
+                                        ` : ''}
+                                        ${sale.return_note ? `
+                                            <div class="mt-2 p-2 bg-light rounded text-italic small">
+                                                <strong>Note:</strong> ${sale.return_note}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card border-0 shadow-sm rounded-3 mb-3 bg-white">
+                                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                                    <h6 class="fw-bold text-dark mb-0"><i class="fas fa-list me-2 text-primary"></i> Sale Items & Tax Breakdown</h6>
+                                    <span class="badge bg-light text-dark border">${items.length} Items</span>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0" style="font-size:12px;">
+                                        <thead class="bg-light text-uppercase fw-bold" style="font-size:10.5px;">
+                                            <tr>
+                                                <th class="text-center" style="width:40px;">S.No</th>
+                                                <th>Item Description</th>
+                                                <th class="text-center">Qty</th>
+                                                <th class="text-end">Rate</th>
+                                                <th class="text-end">Gross</th>
+                                                <th class="text-end">Disc</th>
+                                                <th class="text-end">Excl GST</th>
+                                                <th class="text-end">Sales Tax @18%</th>
+                                                <th class="text-end">Further Tax @3%</th>
+                                                <th class="text-end">Net Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${itemsRowsHtml || '<tr><td colspan="10" class="text-center text-muted py-4">No items found</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="row justify-content-end">
+                                <div class="col-md-6">
+                                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                                        <div class="text-uppercase text-muted fw-bold mb-3 border-bottom pb-2" style="font-size:11px; letter-spacing:0.5px;">
+                                            <i class="fas fa-calculator me-1 text-success"></i> Financial Totals & Tax Summary
+                                        </div>
+                                        <div class="d-flex justify-content-between py-1 border-bottom small">
+                                            <span class="text-muted">Gross Amount:</span>
+                                            <span class="fw-bold font-monospace">Rs. ${Number(stats.sum_gross || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between py-1 border-bottom small">
+                                            <span class="text-muted">Inline Item Discounts:</span>
+                                            <span class="text-danger font-monospace">Rs. ${Number(stats.sum_disc || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                        ${sale.total_extradiscount > 0 ? `
+                                            <div class="d-flex justify-content-between py-1 border-bottom small">
+                                                <span class="text-muted">Additional Invoice Discount:</span>
+                                                <span class="text-danger font-monospace">Rs. ${Number(sale.total_extradiscount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            </div>
+                                        ` : ''}
+                                        <div class="d-flex justify-content-between py-1 border-bottom small">
+                                            <span class="text-muted">Exclusive GST Amount:</span>
+                                            <span class="font-monospace">Rs. ${Number(stats.sum_excl_gst || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between py-1 border-bottom small">
+                                            <span class="text-muted">Sales Tax @18%:</span>
+                                            <span class="text-primary font-monospace">Rs. ${Number(stats.sum_sales_tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between py-1 border-bottom small">
+                                            <span class="text-muted">Further Tax @3%:</span>
+                                            <span class="text-warning font-monospace">Rs. ${Number(stats.sum_further_tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between py-2 mt-2 bg-success-subtle rounded px-2" style="background-color: #ecfdf5;">
+                                            <strong class="text-success fs-6">Grand Net Total:</strong>
+                                            <strong class="text-success fs-6 font-monospace">Rs. ${Number(sale.total_net || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        $modalBody.html(bodyHtml);
+                    },
+                    error: function() {
+                        $modalBody.html('<div class="alert alert-danger text-center my-4">Failed to load sale details. Please try again.</div>');
+                    }
+                });
+            });
         });
     </script>
+
+    <!-- Executive Sale Details Modal -->
+    <div class="modal fade" id="viewSaleModal" tabindex="-1" aria-labelledby="viewSaleModalLabel" aria-hidden="true" style="z-index: 1080;">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+                <div class="modal-header bg-dark text-white py-3 px-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 bg-primary rounded-3 text-white">
+                            <i class="fas fa-file-invoice fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0 text-white" id="viewSaleModalTitle">Sale Invoice Details</h5>
+                            <small class="text-white-50" id="viewSaleModalSubtitle">Invoice No: -</small>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="viewSaleStatusBadge"></span>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+                <div class="modal-body p-4 bg-light" id="viewSaleModalBody">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2 small">Loading sale details...</p>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white py-3 px-4 border-top">
+                    <a href="#" id="modalBtnPrintInvoice" target="_blank" class="btn btn-primary fw-bold px-3 btn-sm">
+                        <i class="fas fa-print me-1"></i> Print Invoice
+                    </a>
+                    <a href="#" id="modalBtnPrintDC" target="_blank" class="btn btn-warning fw-bold px-3 btn-sm text-dark">
+                        <i class="fas fa-shipping-fast me-1"></i> Delivery Challan (DC)
+                    </a>
+                    <a href="#" id="modalBtnPrintReceipt" target="_blank" class="btn btn-success fw-bold px-3 btn-sm">
+                        <i class="fas fa-receipt me-1"></i> Receipt
+                    </a>
+                    <a href="#" id="modalBtnEditSale" class="btn btn-outline-secondary fw-bold px-3 btn-sm">
+                        <i class="fas fa-edit me-1"></i> Edit
+                    </a>
+                    <button type="button" class="btn btn-secondary px-4 fw-bold btn-sm ms-auto" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection

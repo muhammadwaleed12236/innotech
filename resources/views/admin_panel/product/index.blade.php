@@ -927,7 +927,7 @@
                         <thead style="background:#f8fafc;">
                             <tr>
                                 <th class="text-start ps-4" style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Variant Name</th>
-                                <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Size</th>
+                                <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Model</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Color</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Stock</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Sale Price</th>

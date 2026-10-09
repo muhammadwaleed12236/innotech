@@ -949,6 +949,60 @@ class SaleController extends Controller
         ]);
     }
 
+    public function getSaleDetailsModal($id)
+    {
+        $sale = Sale::with(['customer_relation', 'items.product'])->findOrFail($id);
+        $items = $this->_getSaleItems($sale);
+
+        $sumGross = 0;
+        $sumDisc = 0;
+        $sumExclGst = 0;
+        $sumSalesTax = 0;
+        $sumFurtherTax = 0;
+
+        foreach ($items as $item) {
+            $qty = (float)($item['qty_box'] ?? $item['qty'] ?? 0);
+            $price = (float)($item['price'] ?? 0);
+            $gross = $item['gross_amount'] > 0 ? $item['gross_amount'] : ($qty * $price);
+            
+            $sumGross += $gross;
+            $sumDisc += (float)($item['discount_amount'] ?? 0);
+            $sumExclGst += (float)($item['exclusive_gst_amount'] ?? 0);
+            $sumSalesTax += (float)($item['sales_tax_amount'] ?? 0);
+            $sumFurtherTax += (float)($item['further_tax_amount'] ?? 0);
+        }
+
+        return response()->json([
+            'status' => true,
+            'sale' => [
+                'id' => $sale->id,
+                'invoice_no' => $sale->invoice_no,
+                'created_at_formatted' => $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : date('d/m/Y'),
+                'sale_status' => $sale->sale_status,
+                'reference' => $sale->reference,
+                'return_note' => $sale->return_note,
+                'total_bill_amount' => (float)$sale->total_bill_amount,
+                'total_extradiscount' => (float)$sale->total_extradiscount,
+                'total_net' => (float)$sale->total_net,
+                'cash' => (float)$sale->cash,
+                'card' => (float)$sale->card,
+                'change' => (float)$sale->change,
+                'customer_name' => $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer'),
+                'customer_code' => $sale->customer_relation->customer_id ?? '',
+                'customer_mobile' => $sale->customer_relation->mobile ?? '—',
+                'customer_address' => $sale->customer_relation->address ?? '—',
+            ],
+            'items' => $items,
+            'stats' => [
+                'sum_gross' => $sumGross,
+                'sum_disc' => $sumDisc,
+                'sum_excl_gst' => $sumExclGst,
+                'sum_sales_tax' => $sumSalesTax,
+                'sum_further_tax' => $sumFurtherTax,
+            ]
+        ]);
+    }
+
     public function saleedit($id)
     {
         // 1. Fetch Sale with relations (including nested items.product for pre-fill)
@@ -2476,6 +2530,7 @@ class SaleController extends Controller
                 'batch_id' => $item->batch_id ?? null,
                 'batch_no' => $item->batch_no ?? null,
                 'serials' => $item->serials ?? null,
+                'model' => $item->product->model ?? null,
                 'bonus_qty' => (float) ($item->bonus_qty ?? 0),
                 'mfg_date' => $item->mfg_date ?? '',
                 'exp_date' => $item->exp_date ?? '',

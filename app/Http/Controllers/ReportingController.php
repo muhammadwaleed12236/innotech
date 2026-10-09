@@ -1028,7 +1028,7 @@ class ReportingController extends Controller
             $batches = [];
             if (\Illuminate\Support\Facades\Schema::hasTable('product_batches')) {
                 try {
-                    $batches = DB::table('product_batches as b')
+                    $batchesCollection = DB::table('product_batches as b')
                         ->leftJoin('warehouses as w', 'w.id', '=', 'b.warehouse_id')
                         ->where('b.product_id', $productId)
                         ->select(
@@ -1036,10 +1036,88 @@ class ReportingController extends Controller
                             DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
                         )
                         ->orderBy('b.expiry_date', 'asc')
-                        ->get()
-                        ->map(function ($b) {
+                        ->get();
+
+                    $batchMap = [];
+                    foreach ($batchesCollection as $b) {
+                        $expDate = $b->expiry_date ?? null;
+                        $mfgDate = $b->mfg_date ?? null;
+
+                        // Fallback to sale_items if exp_date or mfg_date on batch is empty
+                        if (empty($expDate) || empty($mfgDate)) {
+                            $saleFallback = DB::table('sale_items')
+                                ->where('product_id', $productId)
+                                ->where(function($q) use ($b) {
+                                    if (!empty($b->id)) $q->where('batch_id', $b->id);
+                                    if (!empty($b->batch_no)) $q->orWhere('batch_no', $b->batch_no);
+                                })
+                                ->where(function($q) {
+                                    $q->whereNotNull('exp_date')->orWhereNotNull('mfg_date');
+                                })
+                                ->select('exp_date', 'mfg_date')
+                                ->first();
+
+                            if ($saleFallback) {
+                                if (empty($expDate) && !empty($saleFallback->exp_date)) {
+                                    $expDate = $saleFallback->exp_date;
+                                }
+                                if (empty($mfgDate) && !empty($saleFallback->mfg_date)) {
+                                    $mfgDate = $saleFallback->mfg_date;
+                                }
+                            }
+                        }
+
+                        $status = 'active';
+                        if ($expDate) {
+                            try {
+                                $exp = \Carbon\Carbon::parse($expDate);
+                                if ($exp->isPast()) {
+                                    $status = 'expired';
+                                } elseif ($exp->diffInDays(now()) <= 30) {
+                                    $status = 'near_expiry';
+                                }
+                            } catch (\Exception $e) {}
+                        }
+
+                        $bKey = !empty($b->batch_no) ? $b->batch_no : ('BATCH-' . $b->id);
+                        $batchMap[$bKey] = [
+                            'id'             => $b->id ?? 0,
+                            'batch_no'       => $b->batch_no ?? '-',
+                            'variant_key'    => $b->variant_key ?? '-',
+                            'warehouse_name' => $b->warehouse_name ?? 'Main Stock',
+                            'mfg_date'       => !empty($mfgDate) ? date('d M Y', strtotime($mfgDate)) : '-',
+                            'expiry_date'    => !empty($expDate) ? date('d M Y', strtotime($expDate)) : '-',
+                            'qty'            => (float) ($b->qty ?? 0),
+                            'cost_price'     => (float) ($b->cost_price ?? 0),
+                            'remarks'        => $b->remarks ?? '-',
+                            'status'         => $status,
+                        ];
+                    }
+
+                    // Also check if sale_items has batch / expiry entries not in product_batches table
+                    $saleBatches = DB::table('sale_items as si')
+                        ->leftJoin('warehouses as w', 'w.id', '=', 'si.warehouse_id')
+                        ->where('si.product_id', $productId)
+                        ->where(function($q) {
+                            $q->whereNotNull('si.batch_no')->orWhereNotNull('si.exp_date');
+                        })
+                        ->select(
+                            'si.batch_no',
+                            'si.mfg_date',
+                            'si.exp_date',
+                            'si.price',
+                            DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name"),
+                            DB::raw("SUM(si.total_pieces) as qty")
+                        )
+                        ->groupBy('si.batch_no', 'si.mfg_date', 'si.exp_date', 'si.price', 'w.warehouse_name')
+                        ->get();
+
+                    foreach ($saleBatches as $sb) {
+                        $bNo = !empty($sb->batch_no) ? $sb->batch_no : 'SALE-BATCH';
+                        if (!isset($batchMap[$bNo])) {
+                            $expDate = $sb->exp_date ?? null;
+                            $mfgDate = $sb->mfg_date ?? null;
                             $status = 'active';
-                            $expDate = $b->expiry_date ?? null;
                             if ($expDate) {
                                 try {
                                     $exp = \Carbon\Carbon::parse($expDate);
@@ -1050,19 +1128,23 @@ class ReportingController extends Controller
                                     }
                                 } catch (\Exception $e) {}
                             }
-                            return [
-                                'id'             => $b->id ?? 0,
-                                'batch_no'       => $b->batch_no ?? '-',
-                                'variant_key'    => $b->variant_key ?? '-',
-                                'warehouse_name' => $b->warehouse_name ?? 'Main Stock',
-                                'mfg_date'       => !empty($b->mfg_date) ? date('d M Y', strtotime($b->mfg_date)) : '-',
-                                'expiry_date'    => !empty($b->expiry_date) ? date('d M Y', strtotime($b->expiry_date)) : '-',
-                                'qty'            => (float) ($b->qty ?? 0),
-                                'cost_price'     => (float) ($b->cost_price ?? 0),
-                                'remarks'        => $b->remarks ?? '-',
+                            $batchMap[$bNo] = [
+                                'id'             => 0,
+                                'batch_no'       => $bNo,
+                                'variant_key'    => '-',
+                                'warehouse_name' => $sb->warehouse_name ?? 'Main Stock',
+                                'mfg_date'       => !empty($mfgDate) ? date('d M Y', strtotime($mfgDate)) : '-',
+                                'expiry_date'    => !empty($expDate) ? date('d M Y', strtotime($expDate)) : '-',
+                                'qty'            => (float) ($sb->qty ?? 0),
+                                'cost_price'     => (float) ($sb->price ?? 0),
+                                'remarks'        => 'Sale Invoice Batch',
                                 'status'         => $status,
                             ];
-                        });
+                        }
+                    }
+
+                    $batches = array_values($batchMap);
+
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error("Error fetching product batches: " . $e->getMessage());
                 }
@@ -1079,11 +1161,23 @@ class ReportingController extends Controller
                         ->select(
                             's.*',
                             'b.batch_no',
+                            'b.expiry_date',
+                            'b.mfg_date',
                             DB::raw("COALESCE(w.warehouse_name, 'Main Stock') as warehouse_name")
                         )
                         ->orderBy('s.created_at', 'desc')
                         ->get()
-                        ->map(function ($s) {
+                        ->map(function ($s) use ($productId) {
+                            $expDate = $s->expiry_date ?? null;
+                            if (empty($expDate) && !empty($s->batch_no)) {
+                                $saleExp = DB::table('sale_items')
+                                    ->where('product_id', $productId)
+                                    ->where('batch_no', $s->batch_no)
+                                    ->whereNotNull('exp_date')
+                                    ->value('exp_date');
+                                if ($saleExp) $expDate = $saleExp;
+                            }
+
                             return [
                                 'id'             => $s->id ?? 0,
                                 'serial_number'  => $s->serial_number ?? '-',
@@ -1092,6 +1186,7 @@ class ReportingController extends Controller
                                 'warehouse_name' => $s->warehouse_name ?? 'Main Stock',
                                 'status'         => strtolower($s->status ?? 'available'),
                                 'cost_price'     => (float) ($s->cost_price ?? 0),
+                                'expiry_date'    => !empty($expDate) ? date('d M Y', strtotime($expDate)) : '-',
                                 'remarks'        => $s->remarks ?? '-',
                                 'created_at'     => !empty($s->created_at) ? date('d M Y h:i A', strtotime($s->created_at)) : '-',
                             ];
