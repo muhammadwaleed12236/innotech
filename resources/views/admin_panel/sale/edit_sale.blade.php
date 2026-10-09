@@ -630,7 +630,7 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
         .sales-table {
-            min-width: 1300px;
+            min-width: 1380px;
             border-collapse: collapse !important;
             width: 100%;
             margin-bottom: 0;
@@ -638,17 +638,18 @@
             background: #ffffff;
         }
         .sales-table .input-group {
-            flex-wrap: nowrap;
+            flex-wrap: nowrap !important;
         }
         .sales-table .input-group > .form-control {
             border-top-right-radius: 0 !important;
             border-bottom-right-radius: 0 !important;
+            border-right: none !important;
         }
         .sales-table .input-group > .btn,
         .sales-table .input-group > .input-group-text {
             border-top-left-radius: 0 !important;
             border-bottom-left-radius: 0 !important;
-            border-left: 0 !important;
+            border-left: 1px solid #CBD5E1 !important;
             background-color: #F8FAFC;
         }
         .sales-table thead th {
@@ -968,22 +969,26 @@
         /* Grid total footer */
         .sales-table tfoot td {
             background: #F8FAFC;
-            border-top: 1px solid var(--pos-border);
-            padding: 13px 16px;
+            border-top: 2px solid #CBD5E1 !important;
+            border-bottom: 1px solid #CBD5E1 !important;
+            border-left: 1px solid #CBD5E1 !important;
+            border-right: 1px solid #CBD5E1 !important;
+            padding: 12px 14px !important;
         }
         .grid-total-label {
-            font-size: 12px;
-            font-weight: 800;
+            font-size: 13px !important;
+            font-weight: 800 !important;
             text-transform: uppercase;
             letter-spacing: .5px;
-            color: var(--pos-muted);
-            text-align: right;
+            color: #0F172A !important;
+            text-align: right !important;
+            padding-right: 15px !important;
         }
         .grid-total-val {
-            font-size: 17px;
-            font-weight: 800;
-            color: var(--pos-text);
-            text-align: right;
+            font-size: 17px !important;
+            font-weight: 800 !important;
+            color: #0F172A !important;
+            text-align: right !important;
             font-variant-numeric: tabular-nums;
         }
 
@@ -1403,19 +1408,19 @@
                     <table class="table sales-table mb-0">
                         <colgroup>
                             <col style="width:3%;">
-                            <col class="col-product" style="width:20%;">
+                            <col class="col-product" style="width:21%;">
                             <col class="c-stock" style="width:5%;">
-                            <col style="width:8%;">
+                            <col style="width:7%;">
                             <col style="width:5%;">
                             <col style="width:5%;">
                             <col class="c-pcs" style="width:5%;">
                             <col class="c-pc" style="width:5%;">
-                            <col style="width:10%;">
-                            <col style="width:10%;">
-                            <col style="width:7%;">
-                            <col style="width:6%;">
+                            <col style="width:9%;">
                             <col style="width:8%;">
-                            <col style="width:3%;">
+                            <col style="width:6.5%;">
+                            <col style="width:6.5%;">
+                            <col style="width:11%;">
+                            <col style="width:4%;">
                         </colgroup>
                         <thead>
                             <tr>
@@ -1564,7 +1569,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="9" class="grid-total-label">Grid Total:</td>
+                                <td colspan="12" class="grid-total-label">GRID TOTAL:</td>
                                 <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
                                 <td></td>
                             </tr>

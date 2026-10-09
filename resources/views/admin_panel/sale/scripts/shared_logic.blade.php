@@ -202,7 +202,7 @@
     </td>
 
     <!-- Qty cell with Sub-Unit toggle on Right and Left-Aligned Cursor -->
-    <td style="width:95px;min-width:95px;" class="col-qty-wrapper">
+    <td class="col-qty-wrapper">
       <div class="input-group input-group-sm">
         <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
         <button type="button" class="btn btn-outline-primary qty-unit-toggle px-1 py-0 d-none fw-bold" 
@@ -214,7 +214,7 @@
     </td>
 
     <!-- BONUS -->
-    <td style="width:60px;min-width:60px;" class="col-bonus">
+    <td class="col-bonus">
       <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0">
     </td>
 
@@ -272,7 +272,7 @@
     </td>
 
     <!-- ST % (Sales Tax @18%) -->
-    <td style="width:75px;min-width:75px;" class="col-st">
+    <td class="col-st">
       <div class="input-group input-group-sm">
         <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
@@ -281,7 +281,7 @@
     </td>
 
     <!-- FT % (Further Tax @3%) -->
-    <td style="width:70px;min-width:70px;" class="col-ft">
+    <td class="col-ft">
       <div class="input-group input-group-sm">
         <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
@@ -298,7 +298,7 @@
 
     <!-- ACTION -->
     <td class="col-action text-center">
-      <button type="button" class="btn btn-sm btn-outline-danger del-row" tabindex="-1" title="Delete Row"><i class="fas fa-trash-alt"></i></button>
+      <button type="button" class="del-row" tabindex="-1" title="Delete Row"><i class="fas fa-trash-alt"></i></button>
     </td>
   </tr>`;
 
