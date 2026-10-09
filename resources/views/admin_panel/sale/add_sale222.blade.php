@@ -630,12 +630,26 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
         .sales-table {
-            min-width: 1250px;
+            min-width: 1300px;
             border-collapse: collapse !important;
             width: 100%;
             margin-bottom: 0;
             table-layout: fixed;
             background: #ffffff;
+        }
+        .sales-table .input-group {
+            flex-wrap: nowrap;
+        }
+        .sales-table .input-group > .form-control {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+        }
+        .sales-table .input-group > .btn,
+        .sales-table .input-group > .input-group-text {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+            border-left: 0 !important;
+            background-color: #F8FAFC;
         }
         .sales-table thead th {
             background: #F1F5F9 !important;
@@ -1443,19 +1457,19 @@
                     <table class="table sales-table mb-0">
                         <colgroup>
                             <col style="width:3%;">
-                            <col class="col-product" style="width:22%;">
+                            <col class="col-product" style="width:20%;">
                             <col class="c-stock" style="width:5%;">
                             <col style="width:8%;">
                             <col style="width:5%;">
-                            <col style="width:6%;">
-                            <col class="c-pcs" style="width:6%;">
-                            <col class="c-pc" style="width:6%;">
-                            <col style="width:9%;">
-                            <col style="width:9%;">
-                            <col style="width:6%;">
                             <col style="width:5%;">
+                            <col class="c-pcs" style="width:5%;">
+                            <col class="c-pc" style="width:5%;">
                             <col style="width:10%;">
-                            <col style="width:4%;">
+                            <col style="width:10%;">
+                            <col style="width:7%;">
+                            <col style="width:6%;">
+                            <col style="width:8%;">
+                            <col style="width:3%;">
                         </colgroup>
                         <thead>
                             <tr>
@@ -1522,13 +1536,9 @@
 
                                 <!-- QTY -->
                                 <td class="col-qty-wrapper">
-                                    <div class="qty-cell-flex">
+                                    <div class="input-group input-group-sm">
                                         <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
-                                        <button type="button" class="btn btn-sm qty-unit-toggle px-1 py-0 d-none"
-                                                data-unit-mode="main" title="Toggle Unit"
-                                                style="background: #fff; color: #2563EB; border: 1px solid #BFDBFE;">
-                                            Kg
-                                        </button>
+                                        <button type="button" class="btn btn-outline-primary qty-unit-toggle px-1 py-0 d-none fw-bold" data-unit-mode="main" title="Toggle Unit">Kg</button>
                                     </div>
                                     <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
                                 </td>
@@ -1557,13 +1567,9 @@
 
                                 <!-- PRICE -->
                                 <td class="col-price-p">
-                                    <div class="price-cell-flex">
+                                    <div class="input-group input-group-sm">
                                         <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0">
-                                        <button type="button" class="btn btn-sm price-mode-row-toggle px-1 py-0"
-                                                data-mode="retail" title="Retail Mode"
-                                                style="background: #fff; border: 1px solid #BFDBFE; color: #2563EB;">
-                                            R
-                                        </button>
+                                        <button type="button" class="btn btn-outline-primary price-mode-row-toggle px-2 py-0 fw-bold" data-mode="retail" title="Retail Mode">R</button>
                                     </div>
                                     <input type="hidden" class="price-per-piece" name="price_per_piece[]">
                                     <input type="hidden" class="retail-price">
@@ -1573,23 +1579,29 @@
 
                                 <!-- DISCOUNT -->
                                 <td class="col-disc">
-                                    <div class="discount-wrapper">
+                                    <div class="input-group input-group-sm">
                                         <input type="number" class="form-control discount-value text-end" name="item_disc[]" placeholder="0">
                                         <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
-                                        <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="percent" tabindex="-1">%</button>
+                                        <button type="button" class="btn btn-outline-secondary discount-toggle px-2 py-0 fw-bold" data-type="percent" tabindex="-1">%</button>
                                     </div>
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
                                 <!-- ST % (Sales Tax @18%) -->
                                 <td class="col-st">
-                                    <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
+                                        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+                                    </div>
                                     <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
                                 </td>
 
                                 <!-- FT % (Further Tax @3%) -->
                                 <td class="col-ft">
-                                    <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
+                                        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+                                    </div>
                                     <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
                                 </td>
 

@@ -203,10 +203,10 @@
 
     <!-- Qty cell with Sub-Unit toggle on Right and Left-Aligned Cursor -->
     <td style="width:95px;min-width:95px;" class="col-qty-wrapper">
-      <div class="d-flex align-items-center gap-1">
-        <input type="number" step="any" class="form-control carton-qty text-start" name="carton_qty[]" placeholder="0" min="0" value="" style="flex: 1; min-width: 0; height: 26px; font-size: 0.85rem; padding-left: 6px;">
-        <button type="button" class="btn btn-sm btn-outline-primary qty-unit-toggle px-1 py-0 d-none" 
-                data-unit-mode="main" title="Toggle Unit (Ctn ↔ Pcs / Kg ↔ Gm / Ft ↔ In)" style="font-size: 0.65rem; height: 26px; min-width: 28px; font-weight: 700; border-radius: 4px; flex-shrink: 0;">
+      <div class="input-group input-group-sm">
+        <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
+        <button type="button" class="btn btn-outline-primary qty-unit-toggle px-1 py-0 d-none fw-bold" 
+                data-unit-mode="main" title="Toggle Unit (Ctn ↔ Pcs / Kg ↔ Gm / Ft ↔ In)">
           Kg
         </button>
       </div>
@@ -215,7 +215,7 @@
 
     <!-- BONUS -->
     <td style="width:60px;min-width:60px;" class="col-bonus">
-      <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0" style="height: 26px; font-size: 0.85rem; padding: 2px 4px;">
+      <input type="number" step="any" class="form-control bonus-qty text-center" name="bonus_qty[]" placeholder="0" min="0" value="0">
     </td>
 
     <!-- Loose Pieces -->
@@ -243,10 +243,10 @@
  
     <!-- Price/Piece (EDITABLE) -->
     <td class="col-price-p">
-      <div class="d-flex align-items-center gap-1">
-        <input type="text" class="form-control visible-price text-end" name="visible_price[]" placeholder="0" style="flex: 1; min-width: 0;">
-        <button type="button" class="btn btn-sm ${btnClass} price-mode-row-toggle px-1 py-0" 
-                data-mode="${lastSelectedPriceMode}" title="${btnTitle}" style="font-size: 0.65rem; height: 24px; min-width: 20px; font-weight: bold;">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0">
+        <button type="button" class="btn ${btnClass} price-mode-row-toggle px-2 py-0 fw-bold" 
+                data-mode="${lastSelectedPriceMode}" title="${btnTitle}">
           ${btnText}
         </button>
       </div>
@@ -258,28 +258,34 @@
 
     <!-- SINGLE DISCOUNT COLUMN -->
     <td class="col-disc">
-      <div class="discount-wrapper">
+      <div class="input-group input-group-sm">
         <input type="number"
                class="form-control discount-value text-end"
                name="item_disc[]"
                placeholder="0">
         <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
         <button type="button"
-                class="btn btn-outline-secondary discount-toggle"
+                class="btn btn-outline-secondary discount-toggle px-2 py-0 fw-bold"
                 data-type="percent" tabindex="-1">%</button>
       </div>
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
     <!-- ST % (Sales Tax @18%) -->
-    <td style="width:65px;min-width:65px;" class="col-st">
-      <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18" style="height: 26px; font-size: 0.85rem; padding: 2px 4px;">
+    <td style="width:75px;min-width:75px;" class="col-st">
+      <div class="input-group input-group-sm">
+        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
+        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+      </div>
       <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
     </td>
 
     <!-- FT % (Further Tax @3%) -->
-    <td style="width:60px;min-width:60px;" class="col-ft">
-      <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3" style="height: 26px; font-size: 0.85rem; padding: 2px 4px;">
+    <td style="width:70px;min-width:70px;" class="col-ft">
+      <div class="input-group input-group-sm">
+        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
+        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+      </div>
       <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
     </td>
 
