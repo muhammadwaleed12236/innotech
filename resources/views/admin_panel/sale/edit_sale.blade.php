@@ -140,6 +140,54 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
         }
 
+        /* Grouped Customer Search + Action Buttons */
+        .cust-select-container {
+            width: 290px;
+            max-width: 100%;
+            flex-shrink: 0;
+        }
+        .customer-input-group {
+            display: flex;
+            flex-wrap: nowrap !important;
+            align-items: center;
+            width: 100%;
+        }
+        .customer-input-group #customerInputWrapper {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .customer-input-group #customerInputWrapper .select2-container--default .select2-selection--single {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+            border-right: none !important;
+        }
+        .customer-input-group #customerInputWrapper .form-control {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+            border-right: none !important;
+        }
+        .customer-input-group #btnOpenAddCustomerModal {
+            border-radius: 0 !important;
+            border-left: 1px solid var(--pos-border) !important;
+            height: var(--pos-input-h) !important;
+            padding: 0 10px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .customer-input-group #btnToggleCustomerInfo {
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+            border-top-right-radius: 6px !important;
+            border-bottom-right-radius: 6px !important;
+            border-left: 1px solid var(--pos-border) !important;
+            height: var(--pos-input-h) !important;
+            padding: 0 10px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
         /* Select2 Dropdown Clean Modern Styling */
         .select2-dropdown {
             background-color: #ffffff !important;
@@ -1297,37 +1345,31 @@
                     {{-- Left: Customer Dropdown, Grouped Action Buttons, Sale Type --}}
                     <div class="col-xl-7 col-lg-6 col-md-12">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            {{-- Customer Input --}}
-                            <div class="flex-grow-1" style="min-width: 220px;">
+                            {{-- Customer Input Group --}}
+                            <div class="cust-select-container">
                                 <label class="field-label mb-1">Customer</label>
-                                <div id="customerInputWrapper" style="min-width: 0;">
-                                    <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="{{ $sale->walkin_name ?? 'Walk-in Customer' }}" placeholder="Enter Walk-in Name...">
-                                    <select class="form-select" id="customerSelect" name="customer" style="width:100%">
-                                        <option value="">Select Customer...</option>
-                                        @if(isset($customer) && count($customer) > 0)
-                                            @foreach($customer as $c)
-                                                <option value="{{ $c->id }}" 
-                                                        {{ isset($sale) && $sale->customer == $c->id ? 'selected' : '' }}
-                                                        data-mobile="{{ $c->mobile }}" 
-                                                        data-address="{{ $c->address }}" 
-                                                        data-code="{{ $c->customer_id }}"
-                                                        data-prev="{{ $c->previous_balance ?? 0 }}" 
-                                                        data-range="{{ $c->balance_range ?? 0 }}">
-                                                    {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
-                                                </option>
-                                            @endforeach
-                                        @endif
-                                    </select>
-                                </div>
-                            </div>
-
-                            {{-- Action Buttons Group (+ and Eye/View icon) --}}
-                            <div class="align-self-end mb-0">
-                                <label class="field-label mb-1 opacity-0 d-block">&nbsp;</label>
-                                <div class="btn-group" role="group">
+                                <div class="input-group customer-input-group">
+                                    <div id="customerInputWrapper" style="min-width: 0;">
+                                        <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="{{ $sale->walkin_name ?? 'Walk-in Customer' }}" placeholder="Enter Walk-in Name...">
+                                        <select class="form-select" id="customerSelect" name="customer" style="width:100%">
+                                            <option value="">Select Customer...</option>
+                                            @if(isset($customer) && count($customer) > 0)
+                                                @foreach($customer as $c)
+                                                    <option value="{{ $c->id }}" 
+                                                            {{ isset($sale) && $sale->customer == $c->id ? 'selected' : '' }}
+                                                            data-mobile="{{ $c->mobile }}" 
+                                                            data-address="{{ $c->address }}" 
+                                                            data-code="{{ $c->customer_id }}"
+                                                            data-prev="{{ $c->previous_balance ?? 0 }}" 
+                                                            data-range="{{ $c->balance_range ?? 0 }}">
+                                                        {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
+                                                    </option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                    </div>
                                     <button type="button" id="btnOpenAddCustomerModal"
                                             class="btn btn-outline-primary"
-                                            style="height: var(--pos-input-h); padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;"
                                             data-toggle="modal" data-target="#addCustomerModal"
                                             data-bs-toggle="modal" data-bs-target="#addCustomerModal"
                                             title="Quick Add Customer (Alt+C or F2)">
@@ -1335,7 +1377,6 @@
                                     </button>
                                     <button type="button" id="btnToggleCustomerInfo"
                                             class="btn btn-outline-secondary"
-                                            style="height: var(--pos-input-h); padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;"
                                             title="View Customer Details">
                                         <i class="fas fa-eye"></i>
                                     </button>
