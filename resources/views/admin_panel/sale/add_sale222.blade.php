@@ -630,7 +630,7 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
         .sales-table {
-            min-width: 850px;
+            min-width: 1250px;
             border-collapse: collapse !important;
             width: 100%;
             margin-bottom: 0;
@@ -1443,16 +1443,19 @@
                     <table class="table sales-table mb-0">
                         <colgroup>
                             <col style="width:3%;">
-                            <col style="width:27%;">
-                            <col class="c-stock" style="width:6%;">
+                            <col class="col-product" style="width:22%;">
+                            <col class="c-stock" style="width:5%;">
                             <col style="width:8%;">
+                            <col style="width:5%;">
                             <col style="width:6%;">
                             <col class="c-pcs" style="width:6%;">
-                            <col class="c-pc" style="width:7%;">
+                            <col class="c-pc" style="width:6%;">
                             <col style="width:9%;">
-                            <col style="width:8%;">
-                            <col style="width:12%;">
+                            <col style="width:9%;">
+                            <col style="width:6%;">
                             <col style="width:5%;">
+                            <col style="width:10%;">
+                            <col style="width:4%;">
                         </colgroup>
                         <thead>
                             <tr>
