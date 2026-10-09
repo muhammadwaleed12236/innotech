@@ -142,7 +142,7 @@
 
         /* Grouped Customer Search + Action Buttons */
         .cust-select-container {
-            width: 290px;
+            width: 270px;
             max-width: 100%;
             flex-shrink: 0;
         }
@@ -1398,7 +1398,7 @@
             <div class="sale-card mb-3 p-2 px-3">
                 <div class="row g-2 align-items-center">
                     {{-- Left: Customer Dropdown, Grouped Action Buttons, Sale Type --}}
-                    <div class="col-xl-7 col-lg-6 col-md-12">
+                    <div class="col-xl-6 col-lg-6 col-md-12">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             {{-- Customer Input Group --}}
                             <div class="cust-select-container">
@@ -1457,9 +1457,9 @@
                         </div>
                     </div>
 
-                    {{-- Right: Balances on the same line --}}
-                    <div class="col-xl-5 col-lg-6 col-md-12 text-lg-end">
-                        <div class="d-inline-flex align-items-center flex-wrap gap-2 fw-bold" style="font-size: 12.5px;">
+                    {{-- Right: Balances on single line --}}
+                    <div class="col-xl-6 col-lg-6 col-md-12 text-lg-end mt-2 mt-lg-0">
+                        <div class="d-inline-flex align-items-center flex-nowrap gap-2 fw-bold text-nowrap" style="font-size: 12px; white-space: nowrap;">
                             <span class="text-danger">Prev. Due: <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span></span>
                             <span class="text-muted opacity-50">|</span>
                             <span class="text-primary">Current Due: <span id="cc_current_bill">Rs 0</span></span>
