@@ -1832,8 +1832,7 @@
         });
 
         // Toggle Customer Info Modal
-        $(document).on('click', '#btnToggleCustomerInfo', function(e) {
-            if (e) e.preventDefault();
+        function populateCustomerModalDetails() {
             let name = $('#ci_name').text().trim();
             let mobile = $('#ci_mobile').text().trim();
             let address = $('#ci_address').text().trim();
@@ -1856,7 +1855,10 @@
             $('#ci_modal_address').text(address || '—');
             $('#ci_modal_prev').html((prevVal || 'Rs 0') + (prevSuf ? ' <small>' + prevSuf + '</small>' : ''));
             $('#ci_modal_closing').html((closingVal || 'Rs 0') + (closingSuf ? ' <small>' + closingSuf + '</small>' : ''));
+        }
 
+        $(document).on('click', '#btnToggleCustomerInfo', function(e) {
+            populateCustomerModalDetails();
             const modalEl = document.getElementById('modalCustomerDetails');
             if (modalEl) {
                 if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
@@ -1868,6 +1870,10 @@
                     $(modalEl).addClass('show').css('display', 'block').removeAttr('aria-hidden');
                 }
             }
+        });
+
+        $(document).on('show.bs.modal show.bs.modal', '#modalCustomerDetails', function() {
+            populateCustomerModalDetails();
         });
 
         $(document).on('click', '#modalCustomerDetails [data-dismiss="modal"], #modalCustomerDetails [data-bs-dismiss="modal"]', function() {

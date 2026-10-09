@@ -1431,6 +1431,8 @@
                                     </button>
                                     <button type="button" id="btnToggleCustomerInfo"
                                             class="btn btn-outline-secondary"
+                                            data-toggle="modal" data-target="#modalCustomerDetails"
+                                            data-bs-toggle="modal" data-bs-target="#modalCustomerDetails"
                                             title="View Customer Details">
                                         <i class="fas fa-eye"></i>
                                     </button>
