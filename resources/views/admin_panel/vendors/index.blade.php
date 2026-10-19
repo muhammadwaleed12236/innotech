@@ -300,12 +300,14 @@
             <table class="table table-hover align-middle datanew">
                 <thead>
                     <tr>
-                        <th class="text-center" style="width: 60px;">#</th>
+                        <th class="text-center" style="width: 50px;">#</th>
                         <th class="text-start">Vendor Name</th>
-                        <th class="text-start">Contact Phone</th>
+                        <th class="text-start">Contact / Email</th>
+                        <th class="text-start">CNIC</th>
+                        <th class="text-start">NTN / STRN</th>
                         <th class="text-start">Opening Balance</th>
                         <th class="text-start">Address</th>
-                        <th class="text-end pe-4" style="width: 140px;">Action</th>
+                        <th class="text-end pe-4" style="width: 130px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -317,20 +319,48 @@
                                     <div class="vendor-avatar">
                                         {{ strtoupper(substr($v->name, 0, 1)) }}
                                     </div>
-                                    <span class="fw-semibold text-dark">{{ $v->name }}</span>
+                                    <div>
+                                        <span class="fw-semibold text-dark">{{ $v->name }}</span>
+                                    </div>
                                 </div>
                             </td>
                             <td>
-                                @if ($v->phone)
-                                    <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-phone-alt me-1 text-muted"></i>{{ $v->phone }}</span>
+                                <div>
+                                    @if ($v->phone)
+                                        <div><span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-phone-alt me-1 text-muted"></i>{{ $v->phone }}</span></div>
+                                    @endif
+                                    @if ($v->email)
+                                        <div class="small text-muted mt-1"><i class="fas fa-envelope me-1 text-muted"></i>{{ $v->email }}</div>
+                                    @endif
+                                    @if (!$v->phone && !$v->email)
+                                        <span class="text-muted small">—</span>
+                                    @endif
+                                </div>
+                            </td>
+                            <td>
+                                @if ($v->cnic)
+                                    <span class="badge bg-light text-secondary border px-2 py-1 font-monospace">{{ $v->cnic }}</span>
                                 @else
                                     <span class="text-muted small">—</span>
                                 @endif
                             </td>
+                            <td>
+                                <div>
+                                    @if ($v->ntn_number)
+                                        <div><span class="badge bg-info-subtle text-info border border-info px-2 py-1" style="font-size: 11px;">NTN: {{ $v->ntn_number }}</span></div>
+                                    @endif
+                                    @if ($v->strn_number)
+                                        <div class="{{ $v->ntn_number ? 'mt-1' : '' }}"><span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 11px;">STRN: {{ $v->strn_number }}</span></div>
+                                    @endif
+                                    @if (!$v->ntn_number && !$v->strn_number)
+                                        <span class="text-muted small">—</span>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="fw-bold text-success">
                                 Rs. {{ number_format((float) $v->opening_balance, 2) }}
                             </td>
-                            <td class="text-secondary small">{{ Str::limit($v->address, 35) ?: '—' }}</td>
+                            <td class="text-secondary small">{{ Str::limit($v->address, 30) ?: '—' }}</td>
                             <td class="text-end pe-4">
                                 @include('admin_panel.partials.action_buttons', [
                                     'editRoute' => 'javascript:void(0)',
@@ -345,7 +375,11 @@
                             </td>
                             <!-- Hidden inputs for reliable JS edit -->
                             <input type="hidden" class="v-name" value="{{ $v->name }}">
+                            <input type="hidden" class="v-email" value="{{ $v->email }}">
                             <input type="hidden" class="v-phone" value="{{ $v->phone }}">
+                            <input type="hidden" class="v-cnic" value="{{ $v->cnic }}">
+                            <input type="hidden" class="v-ntn" value="{{ $v->ntn_number }}">
+                            <input type="hidden" class="v-strn" value="{{ $v->strn_number }}">
                             <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                             <input type="hidden" class="v-address" value="{{ $v->address }}">
                         </tr>
@@ -372,6 +406,18 @@
                         @if ($v->phone)
                             <div><i class="fas fa-phone me-2 text-primary"></i> <strong>Phone:</strong> {{ $v->phone }}</div>
                         @endif
+                        @if ($v->email)
+                            <div><i class="fas fa-envelope me-2 text-muted"></i> <strong>Email:</strong> {{ $v->email }}</div>
+                        @endif
+                        @if ($v->cnic)
+                            <div><i class="fas fa-id-card me-2 text-secondary"></i> <strong>CNIC:</strong> {{ $v->cnic }}</div>
+                        @endif
+                        @if ($v->ntn_number)
+                            <div><i class="fas fa-file-invoice me-2 text-info"></i> <strong>NTN:</strong> {{ $v->ntn_number }}</div>
+                        @endif
+                        @if ($v->strn_number)
+                            <div><i class="fas fa-certificate me-2 text-success"></i> <strong>STRN:</strong> {{ $v->strn_number }}</div>
+                        @endif
                         <div><i class="fas fa-wallet me-2 text-success"></i> <strong>Opening Balance:</strong> <span class="text-success fw-bold">Rs. {{ number_format((float) $v->opening_balance, 2) }}</span></div>
                         @if ($v->address)
                             <div><i class="fas fa-map-marker-alt me-2 text-muted"></i> <strong>Address:</strong> {{ Str::limit($v->address, 50) }}</div>
@@ -393,7 +439,11 @@
 
                     <!-- Hidden inputs for mobile JS edit -->
                     <input type="hidden" class="v-name" value="{{ $v->name }}">
+                    <input type="hidden" class="v-email" value="{{ $v->email }}">
                     <input type="hidden" class="v-phone" value="{{ $v->phone }}">
+                    <input type="hidden" class="v-cnic" value="{{ $v->cnic }}">
+                    <input type="hidden" class="v-ntn" value="{{ $v->ntn_number }}">
+                    <input type="hidden" class="v-strn" value="{{ $v->strn_number }}">
                     <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                     <input type="hidden" class="v-address" value="{{ $v->address }}">
                 </div>
@@ -405,7 +455,7 @@
 
 {{-- Add/Edit Vendor Modal --}}
 <div class="modal fade" id="vendorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
             <form action="{{ url('vendor/store') }}" method="POST" id="vendorForm">
                 @csrf
@@ -417,25 +467,48 @@
                 </div>
 
                 <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label for="vname" class="form-label fw-semibold text-dark small">Vendor Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control px-3 py-2" name="name" id="vname" placeholder="Enter vendor name..." required style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="vname" class="form-label fw-semibold text-dark small">Vendor Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control px-3 py-2" name="name" id="vname" placeholder="Enter vendor name..." required style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="vphone" class="form-label fw-semibold text-dark small">Phone Number <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="text" class="form-control px-3 py-2" name="phone" id="vphone" placeholder="e.g. 0300-1234567" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                        </div>
                     </div>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label for="vphone" class="form-label fw-semibold text-dark small">Phone Number</label>
-                            <input type="text" class="form-control px-3 py-2" name="phone" id="vphone" placeholder="Phone number..." style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                            <label for="vemail" class="form-label fw-semibold text-dark small">Email Address <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="email" class="form-control px-3 py-2" name="email" id="vemail" placeholder="vendor@example.com" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
                         </div>
                         <div class="col-md-6">
-                            <label for="opening_balance" class="form-label fw-semibold text-dark small">Opening Balance <span class="text-danger">*</span></label>
-                            <input type="number" step="any" class="form-control px-3 py-2" name="opening_balance" id="opening_balance" placeholder="0.00" required style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                            <label for="vcnic" class="form-label fw-semibold text-dark small">CNIC Number <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="text" class="form-control px-3 py-2" name="cnic" id="vcnic" placeholder="e.g. 35201-1234567-1" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
                         </div>
                     </div>
 
-                    <div class="mb-2">
-                        <label for="vaddress" class="form-label fw-semibold text-dark small">Full Address</label>
-                        <textarea class="form-control px-3 py-2" name="address" id="vaddress" placeholder="Enter address details..." style="border-radius: 10px; border: 1.5px solid #cbd5e1; height: 90px;"></textarea>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="vntn" class="form-label fw-semibold text-dark small">NTN Number <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="text" class="form-control px-3 py-2" name="ntn_number" id="vntn" placeholder="NTN (e.g. 1234567-8)" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="vstrn" class="form-label fw-semibold text-dark small">STRN Number <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="text" class="form-control px-3 py-2" name="strn_number" id="vstrn" placeholder="Sales Tax Registration Number" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="opening_balance" class="form-label fw-semibold text-dark small">Opening Balance <span class="text-muted fw-normal">(Optional)</span></label>
+                            <input type="number" step="any" class="form-control px-3 py-2" name="opening_balance" id="opening_balance" placeholder="0.00" value="0" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="vaddress" class="form-label fw-semibold text-dark small">Full Address <span class="text-muted fw-normal">(Optional)</span></label>
+                            <textarea class="form-control px-3 py-2" name="address" id="vaddress" placeholder="Enter address details..." style="border-radius: 10px; border: 1.5px solid #cbd5e1; height: 42px;"></textarea>
+                        </div>
                     </div>
                 </div>
 
@@ -476,6 +549,7 @@
         $('#btnAddVendor').click(function() {
             $('#vendorForm')[0].reset();
             $('#vendor_id').val('');
+            $('#opening_balance').val(0);
             $('#modalTitle').html('<i class="fas fa-truck text-primary me-2"></i>New Vendor');
             $('#opening_balance').prop('readonly', false);
             $('#vendorModal').modal('show');
@@ -486,14 +560,22 @@
             const $container = $(this).closest('tr, .vendor-mcard');
             const id = $(this).data('id');
 
-            const name = $container.find('.v-name').val();
-            const phone = $container.find('.v-phone').val();
-            const balance = $container.find('.v-balance').val();
-            const address = $container.find('.v-address').val();
+            const name = $container.find('.v-name').val() || '';
+            const email = $container.find('.v-email').val() || '';
+            const phone = $container.find('.v-phone').val() || '';
+            const cnic = $container.find('.v-cnic').val() || '';
+            const ntn = $container.find('.v-ntn').val() || '';
+            const strn = $container.find('.v-strn').val() || '';
+            const balance = $container.find('.v-balance').val() || '0';
+            const address = $container.find('.v-address').val() || '';
 
             $('#vendor_id').val(id);
             $('#vname').val(name);
+            $('#vemail').val(email);
             $('#vphone').val(phone);
+            $('#vcnic').val(cnic);
+            $('#vntn').val(ntn);
+            $('#vstrn').val(strn);
             $('#opening_balance').val(balance).prop('readonly', false);
             $('#vaddress').val(address);
 

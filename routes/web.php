@@ -6,6 +6,8 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerConfigurationController;
+use App\Http\Controllers\DynamicFieldConfigurationController;
 use App\Http\Controllers\CustomerImportExportController;
 use App\Http\Controllers\CustomerTypeController;
 use App\Http\Controllers\DiscountController;
@@ -213,6 +215,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/customers/edit/{id}', [CustomerController::class, 'edit'])->middleware('permission:customers.edit')->name('customers.edit');
     Route::post('/customers/update/{id}', [CustomerController::class, 'update'])->middleware('permission:customers.edit')->name('customers.update');
     Route::get('/customers/delete/{id}', [CustomerController::class, 'destroy'])->middleware('permission:customers.delete')->name('customers.destroy');
+
+    // Centralized Dynamic Fields & Module Customizer
+    Route::get('/dynamic-fields', [DynamicFieldConfigurationController::class, 'index'])->name('dynamic_fields.index');
+    Route::post('/dynamic-fields/store', [DynamicFieldConfigurationController::class, 'store'])->name('dynamic_fields.store');
+    Route::post('/dynamic-fields/update/{id}', [DynamicFieldConfigurationController::class, 'update'])->name('dynamic_fields.update');
+    Route::post('/dynamic-fields/toggle/{id}', [DynamicFieldConfigurationController::class, 'toggle'])->name('dynamic_fields.toggle');
+    Route::post('/dynamic-fields/reorder', [DynamicFieldConfigurationController::class, 'reorder'])->name('dynamic_fields.reorder');
+    Route::delete('/dynamic-fields/{id}', [DynamicFieldConfigurationController::class, 'destroy'])->name('dynamic_fields.destroy');
+    Route::post('/dynamic-fields/reset-defaults', [DynamicFieldConfigurationController::class, 'resetDefaults'])->name('dynamic_fields.resetDefaults');
+
+    // Customer Field Configuration (Redirect & Legacy Alias)
+    Route::get('/customers/configuration', function() {
+        return redirect()->route('dynamic_fields.index', ['module' => 'customers']);
+    })->name('customers.configuration.index');
+    Route::post('/customers/configuration', [DynamicFieldConfigurationController::class, 'store'])->name('customers.configuration.store');
+    Route::post('/customers/configuration/update/{id}', [DynamicFieldConfigurationController::class, 'update'])->name('customers.configuration.update');
+    Route::post('/customers/configuration/toggle/{id}', [DynamicFieldConfigurationController::class, 'toggle'])->name('customers.configuration.toggle');
+    Route::post('/customers/configuration/reorder', [DynamicFieldConfigurationController::class, 'reorder'])->name('customers.configuration.reorder');
+    Route::delete('/customers/configuration/{id}', [DynamicFieldConfigurationController::class, 'destroy'])->name('customers.configuration.destroy');
+    Route::post('/customers/configuration/reset-defaults', [DynamicFieldConfigurationController::class, 'resetDefaults'])->name('customers.configuration.resetDefaults');
+
+    // Customer Detailed Info (Modal / View)
+    Route::get('/customers/{id}/details', [CustomerController::class, 'details'])->middleware('permission:customers.view')->name('customers.details');
 
     // New
     Route::get('/customers/inactive', [CustomerController::class, 'inactiveCustomers'])->name('customers.inactive');

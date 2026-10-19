@@ -1,4 +1,5 @@
 @extends('admin_panel.layout.app')
+
 @section('content')
     <style>
         .btn-sm i.fa-toggle-on {
@@ -16,7 +17,7 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 20px;
         }
 
@@ -37,6 +38,39 @@
             font-size: 0.88rem;
             transition: all 0.2s;
         }
+
+        .filter-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .detail-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 10px 14px;
+            border: 1px solid #eef2f6;
+            height: 100%;
+        }
+
+        .detail-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        .detail-val {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: #1e293b;
+            word-break: break-word;
+        }
     </style>
 
     <div class="main-content">
@@ -46,18 +80,26 @@
                 <!-- Header & Toolbar -->
                 <div class="customer-toolbar">
                     <div>
-                        <h3 class="mb-0 fw-bold text-dark">Customer List</h3>
-                        <small class="text-muted">Manage your customer accounts, balances, import &amp; export data.</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <h3 class="mb-0 fw-bold text-dark">Customer Management</h3>
+                            <span class="badge bg-primary text-white" style="font-size: 0.75rem; border-radius: 6px;">Dynamic</span>
+                        </div>
+                        <small class="text-muted">Centrally configured customer records, balances, search, and data exports.</small>
                     </div>
 
                     <div class="customer-actions">
+                        <!-- Field Configuration -->
+                        <a href="{{ route('dynamic_fields.index', ['module' => 'customers']) }}" class="btn btn-outline-dark btn-action-custom" title="Configure dynamic fields, visibility and permissions">
+                            <i class="fas fa-sliders-h text-primary"></i> Field Config
+                        </a>
+
                         <!-- Template Download -->
                         <a href="{{ route('customers.template') }}" class="btn btn-outline-secondary btn-action-custom" title="Download blank CSV template">
                             <i class="fas fa-file-csv text-primary"></i> Template
                         </a>
 
                         <!-- Export CSV -->
-                        <a href="{{ route('customers.export') }}" class="btn btn-outline-success btn-action-custom" title="Export all customers to CSV">
+                        <a href="{{ route('customers.export') }}" class="btn btn-outline-success btn-action-custom" title="Export configured customer columns to CSV">
                             <i class="fas fa-file-download"></i> Export CSV
                         </a>
 
@@ -68,7 +110,7 @@
 
                         @can('customers.create')
                             <a href="{{ route('customers.create') }}" class="btn btn-primary btn-action-custom">
-                                <i class="fas fa-user-plus"></i> + Add New Customer
+                                <i class="fas fa-user-plus"></i> + Add Customer
                             </a>
                         @endcan
 
@@ -82,7 +124,7 @@
                         @endcan
 
                         <a href="{{ route('customers.inactive') }}" class="btn btn-outline-danger btn-action-custom">
-                            <i class="fas fa-user-slash"></i> Inactive Customers
+                            <i class="fas fa-user-slash"></i> Inactive
                         </a>
                     </div>
                 </div>
@@ -105,55 +147,127 @@
                     </div>
                 @endif
 
+                <!-- Dynamic Search & Filter Form -->
+                <div class="filter-card">
+                    <form method="GET" action="{{ route('customers.index') }}" class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted mb-1">Keyword Search</label>
+                            <input type="text" name="search" class="form-control form-control-sm" 
+                                placeholder="Search by name, code, phone, address..." 
+                                value="{{ request('search') }}">
+                        </div>
+
+                        @foreach($searchFields as $sf)
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold text-muted mb-1">{{ $sf->label }}</label>
+                                @if($sf->field_type === 'dropdown')
+                                    <select name="{{ $sf->field_key }}" class="form-control form-control-sm">
+                                        <option value="">All {{ $sf->label }}</option>
+                                        @if($sf->system_column === 'customer_type' && isset($dropdownLookups['customer_types']))
+                                            @foreach($dropdownLookups['customer_types'] as $optVal => $optLabel)
+                                                <option value="{{ $optVal }}" {{ request($sf->field_key) == $optVal ? 'selected' : '' }}>
+                                                    {{ $optLabel }}
+                                                </option>
+                                            @endforeach
+                                        @elseif($sf->system_column === 'zone' && isset($dropdownLookups['zones']))
+                                            @foreach($dropdownLookups['zones'] as $optVal => $optLabel)
+                                                <option value="{{ $optVal }}" {{ request($sf->field_key) == $optVal ? 'selected' : '' }}>
+                                                    {{ $optLabel }}
+                                                </option>
+                                            @endforeach
+                                        @else
+                                            @foreach($sf->getParsedOptions() as $optVal => $optLabel)
+                                                <option value="{{ $optVal }}" {{ request($sf->field_key) == $optVal ? 'selected' : '' }}>
+                                                    {{ $optLabel }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                @else
+                                    <input type="text" name="{{ $sf->field_key }}" 
+                                        class="form-control form-control-sm" 
+                                        placeholder="Filter {{ $sf->label }}"
+                                        value="{{ request($sf->field_key) }}">
+                                @endif
+                            </div>
+                        @endforeach
+
+                        <div class="col-md-auto d-flex gap-2">
+                            <button type="submit" class="btn btn-sm btn-primary px-3">
+                                <i class="fas fa-search me-1"></i> Search
+                            </button>
+                            <a href="{{ route('customers.index') }}" class="btn btn-sm btn-light border px-2" title="Reset Filters">
+                                <i class="fas fa-undo"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Dynamic Customers Table -->
                 <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-body p-0 table-responsive">
                         <table class="table table-bordered table-striped table-hover mb-0" id="customersTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Customer ID</th>
-                                    <th>Name</th>
-                                    <th>Mobile</th>
-                                    <th>Credit Limit</th>
-                                    <th>Status</th>
-                                    <th>Source</th>
-                                    <th style="min-width: 140px;">Actions</th>
+                                    @foreach($listFields as $field)
+                                        <th>{{ $field->label }}</th>
+                                    @endforeach
+                                    <th style="min-width: 170px;" class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse ($customers as $customer)
                                     <tr>
-                                        <td><strong>{{ $customer->customer_id }}</strong></td>
-                                        <td>
-                                            <strong>{{ $customer->customer_name }}</strong>
-                                            @if($customer->customer_name_ur)
-                                                <small class="text-muted d-block" dir="rtl">{{ $customer->customer_name_ur }}</small>
-                                            @endif
-                                            @if($customer->customer_type)
-                                                <span class="badge bg-light text-dark border">{{ $customer->customer_type }}</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $customer->mobile ?: '-' }}</td>
-                                        <td>{{ $customer->balance_range == 0 ? 'Unlimited' : number_format($customer->balance_range, 0) }}</td>
-                                        <td>
-                                            @if($customer->status === 'active')
-                                                <span class="badge bg-success text-white">active</span>
-                                            @else
-                                                <span class="badge bg-secondary text-white">inactive</span>
-                                            @endif
-                                        </td>
-                                        <td>
+                                        @foreach($listFields as $field)
                                             @php
-                                                $source = $customer->source ?? 'Manual';
+                                                $key = $field->field_key;
+                                                $formattedVal = app(\App\Services\CustomerFieldService::class)->getFieldValue($customer, $field, true);
                                             @endphp
-                                            @if($source === 'Website')
-                                                <span class="badge bg-success">Website</span>
-                                            @elseif($source === 'Both')
-                                                <span class="badge bg-info text-dark">Both</span>
-                                            @else
-                                                <span class="badge bg-secondary">Manual</span>
-                                            @endif
-                                        </td>
-                                        <td>
+
+                                            <td>
+                                                @if($key === 'customer_id')
+                                                    <a href="javascript:void(0)" class="btn-view-customer fw-bold text-primary" data-id="{{ $customer->id }}" title="Click to view details">
+                                                        {{ $formattedVal }}
+                                                    </a>
+
+                                                @elseif($key === 'customer_name')
+                                                    <a href="javascript:void(0)" class="btn-view-customer fw-bold text-dark text-decoration-none" data-id="{{ $customer->id }}">
+                                                        {{ $formattedVal }}
+                                                    </a>
+                                                    @if($customer->customer_name_ur)
+                                                        <small class="text-muted d-block" dir="rtl" style="font-family: 'Noto Nastaliq Urdu', serif;">
+                                                            {{ $customer->customer_name_ur }}
+                                                        </small>
+                                                    @endif
+                                                    @if($customer->customer_type)
+                                                        <span class="badge bg-light text-dark border mt-1">{{ $customer->customer_type }}</span>
+                                                    @endif
+
+                                                @elseif($key === 'status')
+                                                    @if($customer->status === 'active')
+                                                        <span class="badge bg-success text-white">active</span>
+                                                    @else
+                                                        <span class="badge bg-secondary text-white">inactive</span>
+                                                    @endif
+
+                                                @elseif($field->field_type === 'url' && !empty($formattedVal) && $formattedVal !== '-')
+                                                    <a href="{{ $formattedVal }}" target="_blank" class="text-primary">
+                                                        <i class="fas fa-external-link-alt me-1"></i> Link
+                                                    </a>
+
+                                                @else
+                                                    {{ $formattedVal }}
+                                                @endif
+                                            </td>
+                                        @endforeach
+
+                                        <!-- Actions Column -->
+                                        <td class="text-center">
+                                            <!-- View Details Button -->
+                                            <button type="button" class="btn btn-sm btn-outline-primary btn-view-customer" data-id="{{ $customer->id }}" title="View Customer Details">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+
                                             @include('admin_panel.partials.action_buttons', [
                                                 'editRoute' => route('customers.edit', $customer->id),
                                                 'deleteRoute' => route('customers.destroy', $customer->id),
@@ -169,19 +283,19 @@
                                                 <a href="{{ route('customers.toggleStatus', $customer->id) }}"
                                                     class="btn btn-sm {{ $customer->status === 'active' ? 'btn-dark' : 'btn-secondary' }}"
                                                     title="Toggle Status">
-                                                    <i
-                                                        class="fa-solid {{ $customer->status === 'active' ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
+                                                    <i class="fa-solid {{ $customer->status === 'active' ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
                                                 </a>
                                             @endcan
+
                                             @can('customers.view')
-                                                <a href="{{ route('customer.payments') }}" class="btn btn-sm btn-info" title="Customer Payments">Payments</a>
+                                                <a href="{{ route('customer.payments') }}" class="btn btn-sm btn-info text-white" title="Customer Payments">Payments</a>
                                             @endcan
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">
-                                            No customers found. Click <strong>+ Add New Customer</strong> or <strong>Import CSV</strong> to add customers.
+                                        <td colspan="{{ count($listFields) + 1 }}" class="text-center py-4 text-muted">
+                                            No customers found matching the criteria. Click <strong>+ Add Customer</strong> or adjust your search filters.
                                         </td>
                                     </tr>
                                 @endforelse
@@ -190,6 +304,70 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    {{-- ══════════════════════════════════════════════════════════════
+         DYNAMIC CUSTOMER VIEW DETAILS MODAL
+    ══════════════════════════════════════════════════════════════ --}}
+    <div class="modal fade" id="customerDetailsModal" tabindex="-1" role="dialog" aria-labelledby="customerDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #1e293b, #334155); color:#fff; border-bottom: none;">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="customerDetailsModalLabel">
+                            <i class="fas fa-user-circle me-2 text-primary"></i> <span id="modalCustomerName">Customer Details</span>
+                        </h5>
+                        <small style="color: rgba(255,255,255,0.75);" id="modalCustomerCode">Loading...</small>
+                    </div>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity:.8; text-shadow:none;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body p-4" style="background:#f8fafc; max-height: calc(85vh - 120px); overflow-y: auto;">
+                    <!-- Loading Spinner -->
+                    <div id="modalLoading" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading customer information...</p>
+                    </div>
+
+                    <!-- Details Content -->
+                    <div id="modalDetailsContent" style="display: none;">
+                        <!-- Top Summary Cards -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-4">
+                                <div class="p-3 bg-white border rounded-3 shadow-xs">
+                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Status</small>
+                                    <div class="h6 mb-0 mt-1" id="modalCustomerStatus">-</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="p-3 bg-white border rounded-3 shadow-xs">
+                                    <small class="text-muted text-uppercase fw-bold" style="font-size: 0.7rem;">Current Balance</small>
+                                    <div class="h6 mb-0 mt-1 text-danger fw-bold" id="modalCustomerBalance">-</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-4 text-end">
+                                <div class="p-3 bg-white border rounded-3 shadow-xs d-flex justify-content-end align-items-center gap-2 h-100">
+                                    <a href="#" id="modalEditLink" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit me-1"></i> Edit Customer
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Fields Grouped by Section -->
+                        <div id="modalDynamicSections"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -278,4 +456,99 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('scripts')
+<script>
+    $(document).ready(function() {
+        // Handle View Details Modal
+        $(document).on('click', '.btn-view-customer', function(e) {
+            e.preventDefault();
+            const customerId = $(this).data('id');
+            if (!customerId) return;
+
+            // Reset modal states
+            $('#modalCustomerName').text('Customer Details');
+            $('#modalCustomerCode').text('Loading...');
+            $('#modalLoading').show();
+            $('#modalDetailsContent').hide();
+            $('#modalDynamicSections').empty();
+
+            // Set edit route dynamically
+            const editUrl = "{{ url('customers') }}/" + customerId + "/edit";
+            $('#modalEditLink').attr('href', editUrl);
+
+            $('#customerDetailsModal').modal('show');
+
+            // Fetch dynamic details
+            $.ajax({
+                url: "{{ url('customers') }}/" + customerId + "/details",
+                type: 'GET',
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        $('#modalCustomerName').text(res.customer.customer_name);
+                        $('#modalCustomerCode').text('Customer Code: ' + (res.customer.customer_id || 'N/A'));
+                        
+                        const statusBadge = res.customer.status === 'active' 
+                            ? '<span class="badge bg-success text-white">active</span>'
+                            : '<span class="badge bg-secondary text-white">inactive</span>';
+                        $('#modalCustomerStatus').html(statusBadge);
+
+                        const balance = parseFloat(res.customer.balance) || 0;
+                        $('#modalCustomerBalance').text('Rs. ' + balance.toLocaleString('en-US', {minimumFractionDigits: 2}));
+
+                        // Group fields by section
+                        const sections = {};
+                        (res.fields || []).forEach(function(f) {
+                            const sec = f.section || 'General Information';
+                            if (!sections[sec]) {
+                                sections[sec] = [];
+                            }
+                            sections[sec].push(f);
+                        });
+
+                        // Render each section
+                        let html = '';
+                        for (const secName in sections) {
+                            html += '<div class="mb-4">';
+                            html += '<h6 class="fw-bold text-primary border-bottom pb-2 mb-3" style="font-size:0.85rem; text-transform:uppercase; letter-spacing:0.04em;">';
+                            html += '<i class="fas fa-folder-open me-2"></i>' + secName;
+                            html += '</h6>';
+                            html += '<div class="row g-2">';
+
+                            sections[secName].forEach(function(item) {
+                                html += '<div class="col-sm-6 col-md-4 mb-2">';
+                                html += '<div class="detail-item">';
+                                html += '<div class="detail-label">' + item.label + '</div>';
+                                
+                                let displayVal = item.formatted;
+                                if (!displayVal || displayVal === '-') {
+                                    displayVal = '<span class="text-muted fst-italic">Not specified</span>';
+                                } else if (item.type === 'url' && item.value) {
+                                    displayVal = '<a href="' + item.value + '" target="_blank" class="text-primary"><i class="fas fa-external-link-alt me-1"></i>' + item.value + '</a>';
+                                }
+                                
+                                html += '<div class="detail-val">' + displayVal + '</div>';
+                                html += '</div>';
+                                html += '</div>';
+                            });
+
+                            html += '</div></div>';
+                        }
+
+                        $('#modalDynamicSections').html(html);
+                        $('#modalLoading').hide();
+                        $('#modalDetailsContent').fadeIn(200);
+                    } else {
+                        $('#modalLoading').html('<div class="alert alert-danger">Failed to load customer details.</div>');
+                    }
+                },
+                error: function() {
+                    $('#modalLoading').html('<div class="alert alert-danger">An error occurred while fetching customer details.</div>');
+                }
+            });
+        });
+    });
+</script>
 @endsection

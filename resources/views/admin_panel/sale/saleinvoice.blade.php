@@ -534,6 +534,44 @@
                             </span>
                         </div>
 
+                        @php
+                            $relCust = $sale->customer_relation;
+                            $custNtn = $relCust ? ($relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null) : null;
+                            $custStrn = $relCust ? ($relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null) : null;
+                            $custCnic = $relCust ? ($relCust->getCustomValue('cnic') ?? $relCust->cnic ?? null) : null;
+                        @endphp
+
+                        @if(!empty($custNtn))
+                            <div>
+                                <span class="info-label">
+                                    NTN:
+                                </span>
+                                <strong style="font-size:11px;">
+                                    {{ $custNtn }}
+                                </strong>
+                            </div>
+                        @endif
+
+                        @if(!empty($custStrn))
+                            <div>
+                                <span class="info-label">
+                                    STRN:
+                                </span>
+                                <strong style="font-size:11px;">
+                                    {{ $custStrn }}
+                                </strong>
+                            </div>
+                        @elseif(!empty($custCnic))
+                            <div>
+                                <span class="info-label">
+                                    CNIC:
+                                </span>
+                                <span style="font-size:11px;">
+                                    {{ $custCnic }}
+                                </span>
+                            </div>
+                        @endif
+
                     </div>
 
                 </div>
@@ -693,7 +731,7 @@
                     </th>
 
                     <th class="text-end" style="width: 6%">
-                        Further Tax @3%
+                        Further Tax {{ ((float)($sale->total_further_tax ?? 0) > 0) ? '@3%' : '(0%)' }}
                     </th>
 
                     <th class="text-end" style="width: 6%">
@@ -1644,6 +1682,20 @@
                 </span>
 
             </div>
+
+            @if(!empty($custNtn))
+                <div class="meta-row">
+                    <span class="meta-label">NTN:</span>
+                    <span class="meta-value">{{ $custNtn }}</span>
+                </div>
+            @endif
+
+            @if(!empty($custStrn))
+                <div class="meta-row">
+                    <span class="meta-label">STRN:</span>
+                    <span class="meta-value">{{ $custStrn }}</span>
+                </div>
+            @endif
 
 
             @if (auth()->check())

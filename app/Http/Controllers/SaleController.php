@@ -1226,6 +1226,16 @@ class SaleController extends Controller
                 SaleItem::where('sale_id', $sale->id)->delete();
             }
 
+            // Check if customer is registered with STRN (Exempt from Further Tax per Sales Tax Act)
+            $customerHasStrn = false;
+            if (!$isWalkin && !empty($request->customer)) {
+                $relCust = Customer::with('customFieldValues')->find($request->customer);
+                if ($relCust) {
+                    $cStrn = $relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null;
+                    $customerHasStrn = !empty(trim((string)$cStrn));
+                }
+            }
+
             $productIds = $request->product_id;
             $quantities = $request->qty; // Assumed pieces based on previous context, or Box?
             // User: "qty > 0". Previous code used qty as boxes and total_pieces as real qty.
@@ -1416,7 +1426,12 @@ class SaleController extends Controller
                 $calcExclusiveGst = max(0, round($lineGross - $calcDiscountAmount, 2));
                 $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? 0);
                 $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
-                $furtherTaxPct = (float) ($request->further_tax_percent[$index] ?? 0);
+                // Further Tax: If customer has STRN, FT is NOT charged (0%)
+                if ($customerHasStrn) {
+                    $furtherTaxPct = 0;
+                } else {
+                    $furtherTaxPct = (float) ($request->further_tax_percent[$index] ?? 0);
+                }
                 $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
                 $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt, 2);
                 $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);

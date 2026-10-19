@@ -54,6 +54,85 @@
     }
 
     /* =========================================
+       CUSTOMER TAX STATUS (STRN / NTN / FT)
+       ========================================= */
+    window.currentCustomerHasStrn = false;
+    window.currentCustomerHasNtn = false;
+    window.currentCustomerStrn = '';
+    window.currentCustomerNtn = '';
+
+    window.applyCustomerTaxStatus = function(customerData, forceRowUpdate = true) {
+        if (!customerData) {
+            window.currentCustomerHasStrn = false;
+            window.currentCustomerHasNtn = false;
+            window.currentCustomerStrn = '';
+            window.currentCustomerNtn = '';
+        } else {
+            const strn = (customerData.strn_number || (customerData.custom_fields && customerData.custom_fields.strn_number) || '').toString().trim();
+            const ntn = (customerData.ntn_number || (customerData.custom_fields && customerData.custom_fields.ntn_number) || '').toString().trim();
+            window.currentCustomerStrn = strn;
+            window.currentCustomerNtn = ntn;
+            window.currentCustomerHasStrn = Boolean(strn !== '');
+            window.currentCustomerHasNtn = Boolean(ntn !== '');
+        }
+
+        const ftPercent = window.currentCustomerHasStrn ? 0 : 3;
+
+        if (forceRowUpdate) {
+            // Update Further Tax percent on all item rows
+            $('#salesTableBody tr').each(function() {
+                const $r = $(this);
+                $r.find('.further-tax-percent').val(ftPercent);
+                if (typeof recalculateRow === 'function') {
+                    recalculateRow($r);
+                }
+            });
+        }
+
+        // Update customer tax badges
+        if (typeof updateCustomerTaxBadges === 'function') {
+            updateCustomerTaxBadges();
+        }
+
+        if (typeof updateGrandTotals === 'function') {
+            updateGrandTotals();
+        }
+    };
+
+    window.updateCustomerTaxBadges = function() {
+        const $container = $('#customerTaxBadgeContainer');
+        if (!$container.length) return;
+
+        if (window.currentCustomerHasStrn) {
+            $container.html(`
+                <span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1" style="font-size: 11px;" title="STRN Registered: Exempt from Further Tax">
+                    <i class="fas fa-check-circle me-1"></i> STRN: ${window.currentCustomerStrn} &bull; FT (0%) Exempt
+                </span>
+                ${window.currentCustomerHasNtn ? `<span class="badge bg-info-subtle text-info border border-info fw-bold px-2 py-1 ms-1" style="font-size: 11px;"><i class="fas fa-id-card me-1"></i> NTN: ${window.currentCustomerNtn}</span>` : ''}
+            `).removeClass('d-none');
+        } else if (window.currentCustomerHasNtn) {
+            $container.html(`
+                <span class="badge bg-info-subtle text-info border border-info fw-bold px-2 py-1" style="font-size: 11px;"><i class="fas fa-id-card me-1"></i> NTN: ${window.currentCustomerNtn}</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered for Sales Tax - Further Tax 3% applied">
+                    <i class="fas fa-exclamation-triangle me-1"></i> No STRN &bull; FT (3%) Applied
+                </span>
+            `).removeClass('d-none');
+        } else {
+            const isWalkin = $('#is_walkin').val() === '1';
+            const hasCust = $('#customerSelect').val();
+            if (hasCust || isWalkin) {
+                $container.html(`
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-bold px-2 py-1" style="font-size: 11px;" title="Unregistered buyer - Further Tax 3% applied">
+                        <i class="fas fa-info-circle me-1"></i> Unregistered (No STRN) &bull; FT (3%) Applied
+                    </span>
+                `).removeClass('d-none');
+            } else {
+                $container.empty().addClass('d-none');
+            }
+        }
+    };
+
+    /* =========================================
        PRODUCT SELECT2
        ========================================= */
     function initProductSelect2($el) {
@@ -289,10 +368,10 @@
       <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
     </td>
 
-    <!-- FT % (Further Tax @3%) -->
+    <!-- FT % (Further Tax: 0% if STRN, 3% if unregistered) -->
     <td class="col-ft">
       <div class="input-group input-group-sm">
-        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
+        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="${window.currentCustomerHasStrn ? 0 : 3}" placeholder="${window.currentCustomerHasStrn ? 0 : 3}">
         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
       </div>
       <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
@@ -1027,6 +1106,9 @@
             if ($('#walkinReceiptsContainer').length) {
                 $('#rvWrapper').appendTo('#walkinReceiptsContainer');
             }
+            if (typeof window.applyCustomerTaxStatus === 'function') {
+                window.applyCustomerTaxStatus(null, true);
+            }
         } else {
             $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
             $('#btnTypeWalkin').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
@@ -1040,6 +1122,17 @@
             $('#totalsCustomerView').removeClass('d-none').addClass('d-flex');
             if ($('#receiptVouchersSection .card-body').length) {
                 $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
+            }
+
+            const currentCustId = $('#customerSelect').val();
+            if (currentCustId) {
+                $.get("{{ url('sale/customers') }}/" + currentCustId + "?t=" + new Date().getTime(), function(d) {
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus(d, true);
+                    }
+                });
+            } else if (typeof window.applyCustomerTaxStatus === 'function') {
+                window.applyCustomerTaxStatus(null, true);
             }
         }
         if (typeof updateGrandTotals === 'function') updateGrandTotals();

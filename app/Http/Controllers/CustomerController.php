@@ -8,11 +8,19 @@ use App\Models\CustomerPayment;
 use App\Models\JournalEntry;
 use App\Models\SalesOfficer;
 use App\Models\Zone;
+use App\Services\CustomerFieldService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CustomerController extends Controller
 {
+    protected $fieldService;
+
+    public function __construct(CustomerFieldService $fieldService)
+    {
+        $this->fieldService = $fieldService;
+    }
+
     // 🔹 Load customers list by type (Main Customer returns all types)
     public function saleindex(Request $request)
     {
@@ -41,11 +49,17 @@ class CustomerController extends Controller
     // 🔹 Single customer detail
     public function show($id)
     {
-        $customer = Customer::findOrFail($id);
+        $customer = Customer::with('customFieldValues')->findOrFail($id);
 
         $data = $customer->toArray();
         $data['previous_balance'] = $customer->previous_balance;
         $data['balance_range'] = $customer->balance_range ?? 0;
+        $customValues = $customer->getAllCustomValues();
+        $data['custom_fields'] = $customValues;
+        $data['ntn_number'] = $customValues['ntn_number'] ?? $customer->ntn_number ?? '';
+        $data['strn_number'] = $customValues['strn_number'] ?? $customer->strn_number ?? '';
+        $data['cnic'] = $customValues['cnic'] ?? $customer->cnic ?? '';
+        $data['filer_type'] = $customValues['filer_type'] ?? $customer->filer_type ?? '';
 
         // Map status to remarks if needed by frontend
         $data['remarks'] = $customer->status ?? '';
@@ -53,17 +67,80 @@ class CustomerController extends Controller
         return response()->json($data);
     }
 
+    // 🔹 Full Dynamic Customer View Details Modal Data
+    public function details($id)
+    {
+        $customer = Customer::with('customFieldValues')->findOrFail($id);
+        $viewFields = $this->fieldService->getFieldsForContext('view');
+
+        $fieldData = [];
+        foreach ($viewFields as $f) {
+            $formattedVal = $this->fieldService->getFieldValue($customer, $f, true);
+            $rawVal = $this->fieldService->getFieldValue($customer, $f, false);
+            $fieldData[] = [
+                'key'         => $f->field_key,
+                'label'       => $f->label,
+                'type'        => $f->field_type,
+                'section'     => $f->section ?: 'General Information',
+                'value'       => $rawVal,
+                'formatted'   => $formattedVal,
+                'is_system'   => $f->is_system,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'customer' => [
+                'id'            => $customer->id,
+                'customer_id'   => $customer->customer_id,
+                'customer_name' => $customer->customer_name,
+                'status'        => $customer->status,
+                'balance'       => $customer->previous_balance,
+            ],
+            'fields' => $fieldData,
+        ]);
+    }
+
     // //////////
 
-    public function index()
+    public function index(Request $request)
     {
-        $customers = Customer::latest()->get(); // no status filter
+        $listFields = $this->fieldService->getFieldsForContext('list');
+        $searchFields = $this->fieldService->getFieldsForContext('search');
+        $dropdownLookups = $this->fieldService->getDropdownLookupData();
 
-        // echo "<pre>";
-        // print_r($customers);
-        // echo "</pre>";
-        // dd();
-        return view('admin_panel.customers.index', compact('customers'));
+        $query = Customer::with('customFieldValues')->latest();
+
+        // Keyword search
+        if ($request->filled('search')) {
+            $s = trim($request->search);
+            $query->where(function ($q) use ($s) {
+                $q->where('customer_name', 'like', "%{$s}%")
+                  ->orWhere('customer_id', 'like', "%{$s}%")
+                  ->orWhere('mobile', 'like', "%{$s}%")
+                  ->orWhere('address', 'like', "%{$s}%");
+            });
+        }
+
+        // Dynamic Field Filters
+        foreach ($searchFields as $sf) {
+            $k = $sf->field_key;
+            if ($request->filled($k)) {
+                $val = trim($request->input($k));
+                if ($sf->is_system && $sf->system_column) {
+                    $query->where($sf->system_column, $val);
+                } else {
+                    $query->whereHas('customFieldValues', function ($q) use ($sf, $val) {
+                        $q->where('field_definition_id', $sf->id)
+                          ->where('value', 'like', "%{$val}%");
+                    });
+                }
+            }
+        }
+
+        $customers = $query->get();
+
+        return view('admin_panel.customers.index', compact('customers', 'listFields', 'searchFields', 'dropdownLookups'));
     }
 
     public function toggleStatus($id)
@@ -104,45 +181,30 @@ class CustomerController extends Controller
     public function create()
     {
         $latestId = 'CUST-'.str_pad(Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
-        $salesOfficers = SalesOfficer::orderBy('name')->get();
-        $zones = Zone::orderBy('zone')->get();
+        $fields = $this->fieldService->getFieldsForContext('create');
+        $groupedFields = $this->fieldService->getGroupedFieldsForForm('create');
+        $dropdownLookups = $this->fieldService->getDropdownLookupData();
 
-        return view('admin_panel.customers.create', compact('latestId', 'salesOfficers', 'zones'));
+        return view('admin_panel.customers.create', compact('latestId', 'fields', 'groupedFields', 'dropdownLookups'));
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'customer_id'      => 'nullable|unique:customers',
-            'customer_name'    => 'nullable',
-            'customer_name_ur' => 'nullable',
-            'cnic'             => 'nullable',
-            'filer_type'       => 'nullable',
-            'zone'             => 'nullable',
-            'contact_person'   => 'nullable',
-            'mobile'           => 'nullable',
-            'email_address'    => 'nullable|email',
-            'contact_person_2' => 'nullable',
-            'mobile_2'         => 'nullable',
-            'email_address_2'  => 'nullable|email',
-            'opening_balance'  => 'nullable|numeric',
-            'balance_range'    => 'nullable|numeric',
-            'address'          => 'nullable',
-            'customer_type'    => 'nullable',
-            'sales_officer_id' => 'nullable|exists:sales_officers,id',
-            'payment_reminder_date' => 'nullable|date',
-            'reminder_day'     => 'nullable|string',
-        ]);
-
-        if (empty($data['customer_id'])) {
-            $data['customer_id'] = 'CUST-'.str_pad(\App\Models\Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
+        // Auto-generate customer_id if empty
+        if (empty($request->customer_id)) {
+            $latestId = 'CUST-'.str_pad(Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
+            $request->merge(['customer_id' => $latestId]);
         }
 
-        // Customer create
-        $customer = Customer::create($data);
+        $rules = $this->fieldService->buildValidationRules('create');
+        $data = $request->validate($rules);
+
+        // Create Customer model instance
+        $customer = new Customer();
+        $this->fieldService->saveCustomerFields($customer, $request->all(), false);
 
         // Ledger & Journal entry agar opening balance dia gaya ho
-        $opening = (float) ($data['opening_balance'] ?? 0);
+        $opening = (float) ($customer->opening_balance ?? 0);
         $this->syncOpeningBalance($customer, $opening);
 
         if ($request->ajax()) {
@@ -158,22 +220,25 @@ class CustomerController extends Controller
 
     public function edit($id)
     {
-        $customer = Customer::findOrFail($id);
-        $salesOfficers = SalesOfficer::orderBy('name')->get();
-        $zones = Zone::orderBy('zone')->get();
+        $customer = Customer::with('customFieldValues')->findOrFail($id);
+        $fields = $this->fieldService->getFieldsForContext('edit');
+        $groupedFields = $this->fieldService->getGroupedFieldsForForm('edit');
+        $dropdownLookups = $this->fieldService->getDropdownLookupData();
 
-        return view('admin_panel.customers.edit', compact('customer', 'salesOfficers', 'zones'));
+        return view('admin_panel.customers.edit', compact('customer', 'fields', 'groupedFields', 'dropdownLookups'));
     }
 
     public function update(Request $request, $id)
     {
-        $customer = Customer::findOrFail($id);
-        $data = $request->except('_token');
+        $customer = Customer::with('customFieldValues')->findOrFail($id);
 
-        $customer->update($data);
+        $rules = $this->fieldService->buildValidationRules('edit', $id);
+        $data = $request->validate($rules);
+
+        $this->fieldService->saveCustomerFields($customer, $request->all(), true);
 
         // Sync opening balance in JournalEntry & CustomerLedger
-        $opening = (float) ($request->opening_balance ?? 0);
+        $opening = (float) ($customer->opening_balance ?? 0);
         $this->syncOpeningBalance($customer, $opening);
 
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');

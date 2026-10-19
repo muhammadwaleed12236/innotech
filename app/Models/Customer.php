@@ -31,6 +31,40 @@ class Customer extends Model
     }
 
     /**
+     * Dynamic custom field values relationship
+     */
+    public function customFieldValues()
+    {
+        return $this->hasMany(CustomerCustomFieldValue::class, 'customer_id');
+    }
+
+    /**
+     * Get a custom field value by key
+     */
+    public function getCustomValue(string $fieldKey, $default = null)
+    {
+        if ($this->relationLoaded('customFieldValues')) {
+            $val = $this->customFieldValues->firstWhere('field_key', $fieldKey);
+            return $val ? $val->value : $default;
+        }
+
+        $val = $this->customFieldValues()->where('field_key', $fieldKey)->value('value');
+        return $val !== null ? $val : $default;
+    }
+
+    /**
+     * Get all custom field values as key => value array
+     */
+    public function getAllCustomValues(): array
+    {
+        if ($this->relationLoaded('customFieldValues')) {
+            return $this->customFieldValues->pluck('value', 'field_key')->toArray();
+        }
+
+        return $this->customFieldValues()->pluck('value', 'field_key')->toArray();
+    }
+
+    /**
      * Get current balance from BalanceService
      */
     public function getPreviousBalanceAttribute()

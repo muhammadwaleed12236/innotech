@@ -6,8 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Vendor extends Model
-{protected $fillable = ['name', 'email', 'phone', 'address','opening_balance']; 
+{
     use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'phone',
+        'cnic',
+        'ntn_number',
+        'strn_number',
+        'address',
+        'opening_balance'
+    ];
 
       public function ledger()
     {

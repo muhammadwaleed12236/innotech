@@ -615,8 +615,28 @@
                                 <input type="text" class="form-control" name="phone" placeholder="Optional">
                             </div>
                             <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">Email Address</label>
+                                <input type="email" class="form-control" name="email" placeholder="Optional">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">CNIC Number</label>
+                                <input type="text" class="form-control" name="cnic" placeholder="Optional">
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold small text-muted">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">NTN Number</label>
+                                <input type="text" class="form-control" name="ntn_number" placeholder="Optional">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small text-muted">STRN Number</label>
+                                <input type="text" class="form-control" name="strn_number" placeholder="Optional">
                             </div>
                         </div>
                         <div class="mb-2">

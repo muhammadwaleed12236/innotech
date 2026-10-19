@@ -168,11 +168,19 @@ class CustomerImportExportController extends Controller
     }
 
     /**
-     * Export existing customers to CSV with exact form fields.
+     * Export existing customers to CSV with dynamically configured fields.
      */
-    public function export(Request $request)
+    public function export(?Request $request = null)
     {
-        $query = Customer::orderBy('id');
+        $request = $request ?: request();
+        $fieldService = app(\App\Services\CustomerFieldService::class);
+        $exportFields = $fieldService->getFieldsForContext('export');
+
+        // Fallback to legacy csvHeaders if no dynamic export fields configured
+        $useDynamic = ($exportFields && $exportFields->count() > 0);
+        $headers = $useDynamic ? $exportFields->pluck('label')->toArray() : $this->csvHeaders();
+
+        $query = Customer::with('customFieldValues')->orderBy('id');
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -182,10 +190,9 @@ class CustomerImportExportController extends Controller
         }
 
         $customers = $query->get();
-        $headers = $this->csvHeaders();
         $zonesMap = Zone::pluck('zone', 'id')->toArray();
 
-        $callback = function () use ($customers, $headers, $zonesMap) {
+        $callback = function () use ($customers, $headers, $exportFields, $useDynamic, $fieldService, $zonesMap) {
             // Clean output buffers so CSV begins on line 1
             while (ob_get_level() > 0) {
                 ob_end_clean();
@@ -196,22 +203,31 @@ class CustomerImportExportController extends Controller
             fputcsv($handle, $headers);
 
             foreach ($customers as $c) {
-                $zoneVal = $c->zone;
-                if (!empty($zoneVal) && isset($zonesMap[$zoneVal])) {
-                    $zoneVal = $zonesMap[$zoneVal];
-                }
+                if ($useDynamic) {
+                    $row = [];
+                    foreach ($exportFields as $f) {
+                        $val = $fieldService->getFieldValue($c, $f, true);
+                        $row[] = ($val === '-') ? '' : $val;
+                    }
+                    fputcsv($handle, $row);
+                } else {
+                    $zoneVal = $c->zone;
+                    if (!empty($zoneVal) && isset($zonesMap[$zoneVal])) {
+                        $zoneVal = $zonesMap[$zoneVal];
+                    }
 
-                fputcsv($handle, [
-                    $c->customer_id,
-                    $c->customer_type ?? 'Main Customer',
-                    $c->customer_name,
-                    $c->mobile ?? '',
-                    $zoneVal ?? '',
-                    $c->address ?? '',
-                    (float) ($c->opening_balance ?? 0),
-                    (float) ($c->balance_range ?? 0),
-                    $c->reminder_day ?? '',
-                ]);
+                    fputcsv($handle, [
+                        $c->customer_id,
+                        $c->customer_type ?? 'Main Customer',
+                        $c->customer_name,
+                        $c->mobile ?? '',
+                        $zoneVal ?? '',
+                        $c->address ?? '',
+                        (float) ($c->opening_balance ?? 0),
+                        (float) ($c->balance_range ?? 0),
+                        $c->reminder_day ?? '',
+                    ]);
+                }
             }
 
             fclose($handle);

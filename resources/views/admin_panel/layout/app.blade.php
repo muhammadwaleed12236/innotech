@@ -653,6 +653,9 @@
                                         <i class="fas fa-cog text-secondary mr-2"></i> Settings
                                     </a>
                                 @endcanany
+                                <a class="dropdown-item d-flex align-items-center text-dark font-weight-bold py-2 mb-1" href="{{ route('dynamic_fields.index') }}" style="border-radius: 8px;">
+                                    <i class="fas fa-sliders-h text-primary mr-2"></i> Dynamic Fields Hub
+                                </a>
                                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                                     @csrf
                                     <button type="submit" class="dropdown-item d-flex align-items-center text-danger font-weight-bold py-2" style="border-radius: 8px; cursor: pointer;">
@@ -835,6 +838,7 @@
                                         @endcan
                                         @can('customers.view')
                                             <li><a href="{{ url('customers') }}"><i class="fas fa-users"></i> Customers</a></li>
+                                            <li><a href="{{ route('dynamic_fields.index', ['module' => 'customers']) }}"><i class="fas fa-sliders-h text-primary"></i> Customer Fields Config</a></li>
                                         @endcan
                                         @can('customer_types.view')
                                             <li><a href="{{ route('customer-types.index') }}"><i class="fas fa-tags"></i> Customer Types</a></li>
@@ -1199,6 +1203,8 @@
                                             <li><a href="{{ route('branch.index') }}"><i class="fa-solid fa-code-branch"></i>
                                                     Branches</a></li>
                                         @endcan
+                                        <li><a href="{{ route('dynamic_fields.index') }}"><i class="fas fa-sliders-h text-primary"></i>
+                                                Dynamic Fields Hub</a></li>
                                     </ul>
                                 </div>
                             @endcanany

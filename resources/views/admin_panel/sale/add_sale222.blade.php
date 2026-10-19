@@ -1437,6 +1437,7 @@
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
+                                <div id="customerTaxBadgeContainer" class="mt-1 d-none"></div>
                             </div>
 
                             {{-- Sale Type --}}
@@ -1930,6 +1931,14 @@
                                 <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0">
                             </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label font-weight-bold fw-bold">NTN Number</label>
+                                <input type="text" class="form-control" name="ntn_number" placeholder="NTN (e.g. 1234567-8)">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label font-weight-bold fw-bold">STRN Number</label>
+                                <input type="text" class="form-control" name="strn_number" placeholder="STRN (FT Exempt)">
+                            </div>
                             <div class="col-12">
                                 <label class="form-label font-weight-bold fw-bold">Address</label>
                                 <input type="text" class="form-control" name="address" placeholder="Address">
@@ -2068,7 +2077,11 @@
                         $('#salesOfficerSelect').val(d.sales_officer_id);
                     }
 
-                    if (typeof updateGrandTotals === 'function') updateGrandTotals();
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus(d, true);
+                    } else if (typeof updateGrandTotals === 'function') {
+                        updateGrandTotals();
+                    }
                 });
             });
 
@@ -2085,6 +2098,9 @@
                 $('#ci_prev_bal, #ci_range_bal').text('0.00');
                 $('#customerInfoCard').addClass('d-none');
                 $('#salesOfficerSelect').val('');
+                if (typeof window.applyCustomerTaxStatus === 'function') {
+                    window.applyCustomerTaxStatus(null, true);
+                }
             }
 
             $('#clearCustomerData').on('click', function() {

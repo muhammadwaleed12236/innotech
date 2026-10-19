@@ -1383,6 +1383,7 @@
                                         <i class="fas fa-eye"></i>
                                     </button>
                                 </div>
+                                <div id="customerTaxBadgeContainer" class="mt-1 d-none"></div>
                             </div>
 
                             {{-- Sale Type --}}
@@ -2013,7 +2014,11 @@
                         $('#salesOfficerSelect').val(d.sales_officer_id);
                     }
 
-                    if (typeof updateGrandTotals === 'function') updateGrandTotals();
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus(d, true);
+                    } else if (typeof updateGrandTotals === 'function') {
+                        updateGrandTotals();
+                    }
                 });
             });
 
@@ -2030,6 +2035,9 @@
                 $('#ci_prev_bal, #ci_range_bal').text('0.00');
                 $('#customerInfoCard').addClass('d-none');
                 $('#salesOfficerSelect').val('');
+                if (typeof window.applyCustomerTaxStatus === 'function') {
+                    window.applyCustomerTaxStatus(null, true);
+                }
             }
 
             $('#clearCustomerData').on('click', function() {
@@ -2037,6 +2045,18 @@
                 clearCustomerInfo();
                 if (typeof updateGrandTotals === 'function') updateGrandTotals();
             });
+
+            // Initialize customer tax status for existing loaded customer
+            const initialCustId = $('#customerSelect').val();
+            if (initialCustId && $('#is_walkin').val() !== '1') {
+                $.get("{{ url('sale/customers') }}/" + initialCustId + "?t=" + new Date().getTime(), function(d) {
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus(d, false);
+                    }
+                });
+            } else if (typeof window.applyCustomerTaxStatus === 'function') {
+                window.applyCustomerTaxStatus(null, false);
+            }
 
             $('#btnPrint').on('click', function() {
                 ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/invoice', '_blank'));
