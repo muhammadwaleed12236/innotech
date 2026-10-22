@@ -147,11 +147,11 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
         }
 
-        /* Grouped Customer Search + Action Buttons */
+        /* Grouped Customer Search + Action Buttons (Auto-adaptive) */
         .cust-select-container {
-            width: 270px;
-            max-width: 100%;
-            flex-shrink: 0;
+            flex: 1 1 280px;
+            min-width: 260px;
+            max-width: 440px;
         }
         .customer-input-group {
             display: flex;
@@ -685,12 +685,72 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
         .sales-table {
-            min-width: 1380px;
+            width: 100% !important;
             border-collapse: collapse !important;
-            width: 100%;
             margin-bottom: 0;
-            table-layout: fixed;
+            table-layout: auto !important;
             background: #ffffff;
+        }
+
+        /* Fluid Auto-Adaptive Column Widths (Matches Image 2 & Auto-expands on column removal) */
+        .col-index-th, .sales-table .row-index-cell, .sales-table .row-index {
+            width: 3% !important;
+            min-width: 34px !important;
+            text-align: center !important;
+        }
+        .col-product-th, .sales-table .col-product {
+            width: 24% !important;
+            min-width: 210px !important;
+            text-align: left !important;
+        }
+        .c-stock-th, .sales-table .col-stock {
+            width: 6% !important;
+            min-width: 60px !important;
+            text-align: center !important;
+        }
+        .col-qty-th, .sales-table .col-qty-wrapper {
+            width: 8% !important;
+            min-width: 75px !important;
+        }
+        .c-size-th, .sales-table .col-size {
+            width: 6% !important;
+            min-width: 60px !important;
+            text-align: center !important;
+        }
+        .c-pcs-th, .sales-table .col-pieces {
+            width: 6% !important;
+            min-width: 60px !important;
+        }
+        .col-pcs-ctn-th, .sales-table .col-pcs-ctn {
+            width: 6% !important;
+            min-width: 65px !important;
+            text-align: center !important;
+        }
+        .col-price-th, .sales-table .col-price-p {
+            width: 10% !important;
+            min-width: 95px !important;
+        }
+        .c-disc-th, .sales-table .col-disc {
+            width: 9% !important;
+            min-width: 90px !important;
+        }
+        .c-st-th, .sales-table .col-st {
+            width: 7% !important;
+            min-width: 68px !important;
+        }
+        .c-ft-th, .sales-table .col-ft {
+            width: 7% !important;
+            min-width: 68px !important;
+        }
+        .col-amount-th, .sales-table .col-amount {
+            width: 10% !important;
+            min-width: 95px !important;
+            text-align: right !important;
+        }
+        .col-action-th, .sales-table .col-action {
+            width: 4% !important;
+            min-width: 38px !important;
+            text-align: center !important;
         }
         .sales-table .input-group {
             flex-wrap: nowrap !important;
@@ -709,12 +769,12 @@
         }
         .sales-table thead th {
             background: #F1F5F9 !important;
-            color: #334155 !important;
+            color: #475569 !important;
             font-size: 11px !important;
             font-weight: 700 !important;
             text-transform: uppercase;
-            letter-spacing: .5px;
-            padding: 9px 6px !important;
+            letter-spacing: .4px;
+            padding: 8px 6px !important;
             border: 1px solid #CBD5E1 !important;
             text-align: center;
             vertical-align: middle;
@@ -749,9 +809,9 @@
         .sales-table tbody .form-control,
         .sales-table tbody .form-select {
             height: 34px !important;
-            border: 1px solid #E2E8F0 !important;
+            border: 1px solid #CBD5E1 !important;
             border-radius: 4px !important;
-            padding: 3px 7px !important;
+            padding: 3px 6px !important;
             font-size: 13px !important;
             font-weight: 500 !important;
             background: #ffffff !important;
@@ -809,7 +869,7 @@
         }
         .sales-table tbody .select2-container .select2-selection--single {
             height: 34px !important;
-            border: 1px solid #E2E8F0 !important;
+            border: 1px solid #CBD5E1 !important;
             border-radius: 4px !important;
             background: #ffffff !important;
             padding: 0 !important;
@@ -828,7 +888,7 @@
             padding-left: 7px !important;
             padding-right: 18px !important;
             font-size: 13px !important;
-            font-weight: 600 !important;
+            font-weight: 500 !important;
             color: #0F172A !important;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -873,15 +933,15 @@
             min-width: 0;
         }
         .price-mode-row-toggle {
-            height: 38px !important;
-            min-width: 32px !important;
-            border-radius: 6px !important;
+            height: 34px !important;
+            min-width: 24px !important;
+            border-radius: 0 4px 4px 0 !important;
             font-size: 11px !important;
             font-weight: 700 !important;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 0 !important;
+            padding: 0 5px !important;
         }
 
         /* Discount cell */
@@ -896,15 +956,16 @@
             text-align: right;
         }
         .discount-wrapper .discount-toggle {
-            width: 32px;
+            width: 24px !important;
+            min-width: 24px !important;
             flex-shrink: 0;
-            height: 38px !important;
+            height: 34px !important;
             border: 1px solid var(--pos-border) !important;
             background: #F8FAFC !important;
             color: var(--pos-muted) !important;
             font-weight: 700 !important;
             font-size: 11px !important;
-            border-radius: 6px !important;
+            border-radius: 0 4px 4px 0 !important;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -925,9 +986,9 @@
 
         /* Row delete button */
         .sales-table .del-row {
-            width: 34px;
-            height: 34px;
-            border-radius: 8px;
+            width: 30px !important;
+            height: 30px !important;
+            border-radius: 6px;
             border: 1px solid #FECACA;
             background: #ffffff;
             color: var(--pos-red);
@@ -996,16 +1057,7 @@
 
         /* Phones: drop non-essential columns (#, Stock, Pcs, Pcs/Ctn) instead of scrolling */
         @media (max-width: 767.98px) {
-            .sales-table col:first-child,
-            .sales-table col.c-stock,
-            .sales-table col.c-pcs,
-            .sales-table col.c-pc {
-                width: 0 !important;
-            }
-            .sales-table col:last-child {
-                width: 10%;
-            }
-            .sales-table thead th:first-child,
+            .sales-table thead th.col-index-th,
             .sales-table thead th.c-stock-th,
             .sales-table thead th.c-pcs-th,
             .sales-table thead th.col-pcs-ctn-th,
@@ -1045,6 +1097,22 @@
             color: #0F172A !important;
             text-align: right !important;
             font-variant-numeric: tabular-nums;
+        }
+
+        /* ---------- CHECKOUT EXTRA FIELDS (AUTO-FLEX) ---------- */
+        .checkout-extra-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .checkout-extra-fields .wrapper-reference {
+            flex: 2 1 200px;
+            min-width: 160px;
+        }
+        .checkout-extra-fields .wrapper-credit-days {
+            flex: 1 1 120px;
+            min-width: 90px;
         }
 
         /* ---------- PAYMENT METHODS ---------- */
@@ -1448,6 +1516,7 @@
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 fw-bold text-secondary" for="displayDateInput">Date:</label>
                         <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('d/m/Y') }}" style="width: 130px; height: 38px;">
+                    </div>
 
                     {{-- Screen Configuration Button --}}
                     <div>
@@ -1463,8 +1532,8 @@
             <div class="sale-card mb-3 p-2 px-3">
                 <div class="row g-2 align-items-center">
                     {{-- Left: Customer Dropdown, Grouped Action Buttons, Sale Type --}}
-                    <div class="col-xl-6 col-lg-6 col-md-12">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="col-xl-7 col-lg-7 col-md-12">
+                        <div class="d-flex align-items-end gap-2 flex-wrap">
                             {{-- Customer Input Group --}}
                             <div class="cust-select-container">
                                 <label class="field-label mb-1">Customer</label>
@@ -1526,7 +1595,7 @@
                     </div>
 
                     {{-- Right: Balances on single line --}}
-                    <div class="col-xl-6 col-lg-6 col-md-12 text-lg-end mt-2 mt-lg-0">
+                    <div class="col-xl-5 col-lg-5 col-md-12 text-xl-end mt-2 mt-xl-0 d-flex justify-content-xl-end justify-content-start align-items-center">
                         <div class="d-inline-flex align-items-center flex-nowrap gap-2 fw-bold text-nowrap" style="font-size: 12px; white-space: nowrap;">
                             <span class="text-danger">Prev. Due: <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span></span>
                             <span class="text-muted opacity-50">|</span>
@@ -1554,7 +1623,7 @@
             <input type="hidden" id="rangeBalance" value="0">
 
             {{-- ============================ ITEMS SECTION ============================ --}}
-            <div class="sale-card mb-3 p-4">
+            <div class="sale-card mb-3 p-3">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                     <div class="items-title">
                         Items
@@ -1569,36 +1638,21 @@
 
                 <div class="pos-table-wrap">
                     <table class="table sales-table mb-0">
-                        <colgroup>
-                            <col style="width:3%;">
-                            <col class="col-product" style="width:22%;">
-                            <col class="c-stock" style="width:5%;">
-                            <col style="width:8%;">
-                            <col class="c-size" style="width:6%;">
-                            <col class="c-pcs" style="width:5%;">
-                            <col class="c-pc" style="width:5%;">
-                            <col style="width:10%;">
-                            <col class="c-disc" style="width:9%;">
-                            <col class="c-st" style="width:7%;">
-                            <col class="c-ft" style="width:7%;">
-                            <col style="width:10%;">
-                            <col style="width:3%;">
-                        </colgroup>
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th class="col-product">Product</th>
+                                <th class="col-index-th">#</th>
+                                <th class="col-product-th col-product">Product</th>
                                 <th class="c-stock-th">Stock</th>
-                                <th>Qty</th>
+                                <th class="col-qty-th">Qty</th>
                                 <th class="c-size-th">Size</th>
                                 <th class="c-pcs-th">Pcs</th>
                                 <th class="col-pcs-ctn-th">Pcs/Ctn</th>
-                                <th>Price</th>
+                                <th class="col-price-th">Price</th>
                                 <th class="c-disc-th">Discount</th>
                                 <th class="c-st-th">ST %</th>
                                 <th class="c-ft-th">FT %</th>
-                                <th>Amount</th>
-                                <th>Action</th>
+                                <th class="col-amount-th">Amount</th>
+                                <th class="col-action-th">Action</th>
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
@@ -1734,9 +1788,12 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="11" class="grid-total-label">GRID TOTAL:</td>
-                                <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
-                                <td></td>
+                                <td colspan="100" class="p-2 px-3 bg-light border-top">
+                                    <div class="d-flex justify-content-end align-items-center gap-3">
+                                        <span class="grid-total-label mb-0" style="padding-right:0 !important; font-size: 13px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: .5px;">GRID TOTAL:</span>
+                                        <span class="grid-total-val mb-0" style="font-size: 17px; font-weight: 800; color: #0F172A;">Rs <span id="totalAmount">0.00</span></span>
+                                    </div>
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1791,12 +1848,12 @@
                         </div>
 
                         <div class="pt-2 border-top mt-3">
-                            <div class="row g-2 mb-2">
-                                <div class="col-8 wrapper-reference">
+                            <div class="checkout-extra-fields mb-2">
+                                <div class="wrapper-reference">
                                     <label class="field-label mb-1" for="remarks" style="font-size: 11px;">Reference / Remarks</label>
                                     <input type="text" class="form-control form-control-sm" name="reference" id="remarks" placeholder="Optional..." style="height: 34px;">
                                 </div>
-                                <div class="col-4 wrapper-credit-days">
+                                <div class="wrapper-credit-days">
                                     <label class="field-label mb-1" for="creditDaysInput" style="font-size: 11px;">Credit Days</label>
                                     <input type="number" class="form-control form-control-sm text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="height: 34px;">
                                 </div>
