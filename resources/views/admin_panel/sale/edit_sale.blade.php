@@ -1,6 +1,13 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+@php
+    $saleConfig = \App\Models\SaleFieldConfiguration::getConfigBundle();
+    $flags = $saleConfig['flags'] ?? [];
+    $visKey = 'edit_visible';
+    $vis = $saleConfig[$visKey] ?? [];
+@endphp
+
     <!-- Loader Overlay -->
     <div id="pageLoader"
         class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column gap-3 justify-content-center align-items-center"
@@ -1307,7 +1314,58 @@
                 width: 100%;
             }
         }
-    </style>
+    
+    /* Dynamic Field Visibility Controls */
+    @if(!($flags['sales_tax'] ?? true) || !($vis['col_sales_tax'] ?? true))
+        .col-st, .c-st-th, .c-st, .row-summary-sales-tax { display: none !important; }
+    @endif
+    @if(!($flags['further_tax'] ?? true) || !($vis['col_further_tax'] ?? true))
+        .col-ft, .c-ft-th, .c-ft, .row-summary-further-tax { display: none !important; }
+    @endif
+    @if(!($flags['exclusive_gst_amount'] ?? true) || !($vis['summary_exclusive_gst'] ?? true))
+        .row-summary-exclusive-gst { display: none !important; }
+    @endif
+    @if(!($vis['col_discount'] ?? true))
+        .col-disc, .c-disc-th, .c-disc { display: none !important; }
+    @endif
+    @if(!($vis['col_stock'] ?? true))
+        .col-stock, .c-stock-th, .c-stock { display: none !important; }
+    @endif
+    @if(!($vis['col_size'] ?? true))
+        .col-size, .c-size-th, .c-size { display: none !important; }
+    @endif
+    @if(!($vis['col_pieces'] ?? true))
+        .col-pieces, .c-pcs-th, .c-pcs { display: none !important; }
+    @endif
+    @if(!($vis['col_pcs_ctn'] ?? true))
+        .col-pcs-ctn, .col-pcs-ctn-th, .c-pc { display: none !important; }
+    @endif
+    @if(!($vis['col_price_mode'] ?? true))
+        .price-mode-row-toggle { display: none !important; }
+    @endif
+    @if(!($vis['summary_gross'] ?? true))
+        .row-summary-gross { display: none !important; }
+    @endif
+    @if(!($vis['summary_line_discount'] ?? true))
+        .row-summary-line-discount { display: none !important; }
+    @endif
+    @if(!($vis['summary_overall_discount'] ?? true))
+        .row-summary-overall-discount { display: none !important; }
+    @endif
+    @if(!($vis['summary_freight'] ?? true))
+        .row-summary-freight { display: none !important; }
+    @endif
+    @if(!($vis['field_credit_days'] ?? true))
+        .wrapper-credit-days { display: none !important; }
+    @endif
+    @if(!($vis['field_reference'] ?? true))
+        .wrapper-reference { display: none !important; }
+    @endif
+    @if(!($vis['field_sale_type'] ?? true))
+        .wrapper-sale-type { display: none !important; }
+    @endif
+
+</style>
 
     <div class="container-fluid px-3 px-lg-4 pt-3 pb-4 sale-page">
 
@@ -1387,7 +1445,7 @@
                             </div>
 
                             {{-- Sale Type --}}
-                            <div class="align-self-end mb-0">
+                            <div class="align-self-end mb-0 wrapper-sale-type">
                                 <label class="field-label mb-1">Sale Type</label>
                                 <div class="seg-toggle" role="group" aria-label="Sale Type">
                                     <button type="button" class="btn {{ $sale->walkin_name ? 'btn-outline-primary' : 'btn-primary active text-white' }}" id="btnTypeCustomer">
@@ -1455,14 +1513,13 @@
                             <col class="col-product" style="width:22%;">
                             <col class="c-stock" style="width:5%;">
                             <col style="width:8%;">
-                            {{-- <col style="width:5%;"> --}}
-                            <col style="width:6%;">
+                            <col class="c-size" style="width:6%;">
                             <col class="c-pcs" style="width:5%;">
                             <col class="c-pc" style="width:5%;">
                             <col style="width:10%;">
-                            <col style="width:9%;">
-                            <col style="width:7%;">
-                            <col style="width:7%;">
+                            <col class="c-disc" style="width:9%;">
+                            <col class="c-st" style="width:7%;">
+                            <col class="c-ft" style="width:7%;">
                             <col style="width:10%;">
                             <col style="width:3%;">
                         </colgroup>
@@ -1472,14 +1529,13 @@
                                 <th class="col-product">Product</th>
                                 <th class="c-stock-th">Stock</th>
                                 <th>Qty</th>
-                                {{-- <th>Bonus</th> --}}
-                                <th>Size</th>
+                                <th class="c-size-th">Size</th>
                                 <th class="c-pcs-th">Pcs</th>
                                 <th class="col-pcs-ctn-th">Pcs/Ctn</th>
                                 <th>Price</th>
-                                <th>Discount</th>
-                                <th>ST %</th>
-                                <th>FT %</th>
+                                <th class="c-disc-th">Discount</th>
+                                <th class="c-st-th">ST %</th>
+                                <th class="c-ft-th">FT %</th>
                                 <th>Amount</th>
                                 <th>Action</th>
                             </tr>
@@ -1581,7 +1637,7 @@
                                 <!-- ST % (Sales Tax @18%) -->
                                 <td class="col-st">
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
+                                        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="{{ (float)($saleConfig['default_st_rate'] ?? 18) }}" placeholder="18">
                                         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
                                     </div>
                                     <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
@@ -1590,7 +1646,7 @@
                                 <!-- FT % (Further Tax @3%) -->
                                 <td class="col-ft">
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="3" placeholder="3">
+                                        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="{{ (float)($saleConfig['default_ft_rate'] ?? 3) }}" placeholder="3">
                                         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
                                     </div>
                                     <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
@@ -1672,11 +1728,11 @@
 
                         <div class="pt-2 border-top mt-3">
                             <div class="row g-2 mb-2">
-                                <div class="col-8">
+                                <div class="col-8 wrapper-reference">
                                     <label class="field-label mb-1" for="remarks" style="font-size: 11px;">Reference / Remarks</label>
                                     <input type="text" class="form-control form-control-sm" name="reference" id="remarks" placeholder="Optional..." value="{{ $sale->reference ?? '' }}" style="height: 34px;">
                                 </div>
-                                <div class="col-4">
+                                <div class="col-4 wrapper-credit-days">
                                     <label class="field-label mb-1" for="creditDaysInput" style="font-size: 11px;">Credit Days</label>
                                     <input type="number" class="form-control form-control-sm text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="height: 34px;">
                                 </div>
@@ -1705,34 +1761,34 @@
                         </div>
 
                         <div>
-                            <div class="s-row">
+                            <div class="s-row row-summary-gross">
                                 <span class="s-label">Subtotal (Gross)</span>
                                 <span class="s-val" id="tGross">0.00</span>
                             </div>
-                            <div class="s-row">
+                            <div class="s-row row-summary-line-discount">
                                 <span class="s-label">Line Discount</span>
                                 <span class="s-val" id="tLineDisc">0.00</span>
                             </div>
-                            <div class="s-row">
+                            <div class="s-row row-summary-exclusive-gst">
                                 <span class="s-label fw-bold text-dark">Exclusive GST Amount</span>
                                 <span class="s-val fw-bold text-dark" id="tExclusiveGst">0.00</span>
                             </div>
-                            <div class="s-row">
-                                <span class="s-label text-success">Sales Tax (@18%)</span>
+                            <div class="s-row row-summary-sales-tax">
+                                <span class="s-label text-success">Sales Tax (@<span id="labelStRate">{{ (float)($saleConfig['default_st_rate'] ?? 18) }}%</span>)</span>
                                 <span class="s-val text-success fw-bold" id="tSalesTax">0.00</span>
                             </div>
-                            <div class="s-row">
-                                <span class="s-label text-primary">Further Tax (@3%)</span>
+                            <div class="s-row row-summary-further-tax">
+                                <span class="s-label text-primary">Further Tax (@<span id="labelFtRate">{{ (float)($saleConfig['default_ft_rate'] ?? 3) }}%</span>)</span>
                                 <span class="s-val text-primary fw-bold" id="tFurtherTax">0.00</span>
                             </div>
-                            <div class="s-row">
+                            <div class="s-row row-summary-overall-discount">
                                 <span class="s-label">Discount (Rs)</span>
                                 <div class="input-group input-group-sm discount-input">
                                     <input type="number" class="form-control text-end" id="walkinDiscountRs" value="0" placeholder="0">
                                     <span class="input-group-text">Rs</span>
                                 </div>
                             </div>
-                            <div class="s-row">
+                            <div class="s-row row-summary-freight">
                                 <span class="s-label">Freight</span>
                                 <div class="input-group input-group-sm discount-input">
                                     <button type="button" class="btn btn-outline-secondary" id="freightTypeToggle" tabindex="-1" style="width: 34px; border-radius: 6px 0 0 6px; font-weight: bold; font-size: 13px; background: #F8FAFC; color: #64748b; border-color: var(--pos-border);">
@@ -1764,6 +1820,13 @@
                                 <span id="bottomChangeVal" class="d-none">-0.00</span>
                             </div>
                         </div>
+
+                    {{-- Screen Configuration Button --}}
+                    <div>
+                        <a href="{{ route('sales.configuration') }}" target="_blank" class="btn btn-outline-secondary d-flex align-items-center gap-1 px-2" style="height: 38px; border-radius: 8px;" title="Configure Sale Fields & Taxes">
+                            <i class="fas fa-sliders-h text-primary"></i>
+                            <span class="d-none d-md-inline small fw-bold">Screen Config</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1898,7 +1961,10 @@
 @endsection
 
 @section('js')
-    @include('admin_panel.sale.scripts.shared_logic')
+    <script>
+    window.saleScreenConfig = @json($saleConfig);
+</script>
+@include('admin_panel.sale.scripts.shared_logic')
 
     <script>
         $(document).ready(function() {

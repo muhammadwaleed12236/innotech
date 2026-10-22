@@ -49,11 +49,11 @@ class DynamicFieldConfigurationController extends Controller
                 'id'          => 'sales',
                 'name'        => 'Sales & Invoicing Module',
                 'icon'        => 'fas fa-file-invoice-dollar',
-                'badge'       => 'Planned Next',
-                'badge_class' => 'bg-secondary text-white',
-                'description' => 'Invoice custom fields, delivery notes, shipping terms, sales remarks, and POS screen custom inputs.',
-                'is_active'   => false,
-                'fields_count'=> 0,
+                'badge'       => 'Active & Dynamic',
+                'badge_class' => 'bg-success text-white',
+                'description' => 'Dynamic taxes (ST/FT/GST), item grid columns, summary calculations, customer tax badges, and POS inputs.',
+                'is_active'   => true,
+                'fields_count'=> \App\Models\SaleFieldConfiguration::count(),
             ],
             'products' => [
                 'id'          => 'products',
@@ -76,6 +76,10 @@ class DynamicFieldConfigurationController extends Controller
                 'fields_count'=> 0,
             ],
         ];
+
+        if ($activeModule === 'sales') {
+            return redirect()->route('sales.configuration');
+        }
 
         $fields = collect();
         $sections = [];

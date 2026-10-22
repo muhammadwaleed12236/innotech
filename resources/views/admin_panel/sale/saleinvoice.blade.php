@@ -403,6 +403,11 @@
 </head>
 
 <body>
+@php
+    $showTaxColumns = \App\Models\SaleFieldConfiguration::isVisibleInPrint('print_tax_breakdown', true) && 
+        (\App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true) || (float)($sale->total_sales_tax ?? 0) > 0);
+@endphp
+
 
     <!-- Print / Action Buttons -->
     <div class="print-btn-container no-print">
@@ -722,17 +727,19 @@
                         Disc %
                     </th>
 
+                    @if($showTaxColumns)
                     <th class="text-end" style="width: 8%">
                         Exclusive GST Amount
                     </th>
 
                     <th class="text-end" style="width: 6%">
-                        Sales Tax @18%
+                        Sales Tax
                     </th>
 
                     <th class="text-end" style="width: 6%">
                         Further Tax {{ ((float)($sale->total_further_tax ?? 0) > 0) ? '@3%' : '(0%)' }}
                     </th>
+                    @endif
 
                     <th class="text-end" style="width: 6%">
                         Net Amount
@@ -880,6 +887,7 @@
                             {{ number_format($discPct, 2) }}
                         </td>
 
+                        @if($showTaxColumns)
                         <td class="text-end">
                             {{ number_format($exclGst, 2) }}
                         </td>
@@ -891,6 +899,7 @@
                         <td class="text-end">
                             {{ number_format($furtherTax, 2) }}
                         </td>
+                        @endif
 
                         <td class="text-end fw-bold">
                             {{ number_format($netAmt, 2) }}
@@ -925,6 +934,7 @@
                         0.00
                     </td>
 
+                    @if($showTaxColumns)
                     <td class="text-end fw-bold">
                         {{ number_format($sumExclGst, 2) }}
                     </td>
@@ -936,6 +946,7 @@
                     <td class="text-end fw-bold">
                         {{ number_format($sumFurtherTax, 2) }}
                     </td>
+                    @endif
 
                     <td class="text-end fw-bold">
                         {{ number_format($sumNetTotal, 2) }}

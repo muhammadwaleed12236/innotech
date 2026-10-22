@@ -1424,15 +1424,25 @@ class SaleController extends Controller
                 }
 
                 $calcExclusiveGst = max(0, round($lineGross - $calcDiscountAmount, 2));
-                $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? 0);
+                // Dynamic Tax Controls
+                $isStEnabled = \App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true);
+                $isFtEnabled = \App\Models\SaleFieldConfiguration::isEnabled('further_tax', true);
+                $strnExemptEnabled = \App\Models\SaleFieldConfiguration::isEnabled('strn_exemption', true);
+
+                $salesTaxPct = $isStEnabled ? (float) ($request->sales_tax_percent[$index] ?? 0) : 0;
                 $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
-                // Further Tax: If customer has STRN, FT is NOT charged (0%)
-                if ($customerHasStrn) {
-                    $furtherTaxPct = 0;
+
+                if ($isFtEnabled) {
+                    if ($customerHasStrn && $strnExemptEnabled) {
+                        $furtherTaxPct = 0;
+                    } else {
+                        $furtherTaxPct = (float) ($request->further_tax_percent[$index] ?? 0);
+                    }
+                    $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
                 } else {
-                    $furtherTaxPct = (float) ($request->further_tax_percent[$index] ?? 0);
+                    $furtherTaxPct = 0;
+                    $furtherTaxAmt = 0;
                 }
-                $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
                 $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt, 2);
                 $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);
                 $mfgDate = $request->mfg_date[$index] ?? null;

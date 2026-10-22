@@ -835,6 +835,7 @@
                                         @endcan
                                         @can('sales.view')
                                             <li><a href="{{ url('sale') }}"><i class="fas fa-list"></i> All Sales</a></li>
+                                            <li><a href="{{ route('sales.configuration') }}"><i class="fas fa-sliders-h text-primary"></i> Sale Fields &amp; Tax Config</a></li>
                                         @endcan
                                         @can('customers.view')
                                             <li><a href="{{ url('customers') }}"><i class="fas fa-users"></i> Customers</a></li>

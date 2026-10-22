@@ -62,6 +62,12 @@
     window.currentCustomerNtn = '';
 
     window.applyCustomerTaxStatus = function(customerData, forceRowUpdate = true) {
+        const cfg = window.saleScreenConfig || {};
+        const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
+        const strnExempt = cfg.strn_exemption !== undefined ? cfg.strn_exemption : true;
+        const defaultFt = isFtEnabled ? (cfg.default_ft_rate !== undefined ? cfg.default_ft_rate : 3) : 0;
+        const badgesEnabled = cfg.flags && cfg.flags.customer_tax_badges !== undefined ? cfg.flags.customer_tax_badges : true;
+
         if (!customerData) {
             window.currentCustomerHasStrn = false;
             window.currentCustomerHasNtn = false;
@@ -76,7 +82,7 @@
             window.currentCustomerHasNtn = Boolean(ntn !== '');
         }
 
-        const ftPercent = window.currentCustomerHasStrn ? 0 : 3;
+        const ftPercent = (!isFtEnabled) ? 0 : ((window.currentCustomerHasStrn && strnExempt) ? 0 : defaultFt);
 
         if (forceRowUpdate) {
             // Update Further Tax percent on all item rows
@@ -102,6 +108,12 @@
     window.updateCustomerTaxBadges = function() {
         const $container = $('#customerTaxBadgeContainer');
         if (!$container.length) return;
+        const cfg = window.saleScreenConfig || {};
+        const badgesEnabled = cfg.flags && cfg.flags.customer_tax_badges !== undefined ? cfg.flags.customer_tax_badges : true;
+        if (!badgesEnabled) {
+            $container.empty().addClass('d-none');
+            return;
+        }
 
         if (window.currentCustomerHasStrn) {
             $container.html(`
@@ -359,19 +371,19 @@
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
-    <!-- ST % (Sales Tax @18%) -->
+    <!-- ST % (Dynamic Sales Tax) -->
     <td class="col-st">
       <div class="input-group input-group-sm">
-        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="18" placeholder="18">
+        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="${window.saleScreenConfig && window.saleScreenConfig.default_st_rate !== undefined ? window.saleScreenConfig.default_st_rate : 18}" placeholder="18">
         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
       </div>
       <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
     </td>
 
-    <!-- FT % (Further Tax: 0% if STRN, 3% if unregistered) -->
+    <!-- FT % (Dynamic Further Tax) -->
     <td class="col-ft">
       <div class="input-group input-group-sm">
-        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="${window.currentCustomerHasStrn ? 0 : 3}" placeholder="${window.currentCustomerHasStrn ? 0 : 3}">
+        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 3)}" placeholder="0">
         <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
       </div>
       <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
@@ -602,12 +614,22 @@
         const exclusiveGst = Math.max(0, gross - dam);
         $row.find('.exclusive-gst-amount').val(exclusiveGst.toFixed(2));
 
-        const salesTaxPct = toNum($row.find('.sales-tax-percent').val());
-        const salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+        const cfg = window.saleScreenConfig || {};
+        const isStEnabled = cfg.flags && cfg.flags.sales_tax !== undefined ? cfg.flags.sales_tax : true;
+        const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
+
+        const salesTaxPct = isStEnabled ? toNum($row.find('.sales-tax-percent').val()) : 0;
+        if (!isStEnabled) {
+            $row.find('.sales-tax-percent').val(0);
+        }
+        const salesTaxAmt = isStEnabled && exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
         $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
 
-        const furtherTaxPct = toNum($row.find('.further-tax-percent').val());
-        const furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
+        const furtherTaxPct = isFtEnabled ? toNum($row.find('.further-tax-percent').val()) : 0;
+        if (!isFtEnabled) {
+            $row.find('.further-tax-percent').val(0);
+        }
+        const furtherTaxAmt = isFtEnabled && exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
         $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
 
         const netRow = exclusiveGst + salesTaxAmt + furtherTaxAmt;

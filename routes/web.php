@@ -23,6 +23,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleConfigurationController;
 use App\Http\Controllers\SalesOfficerController;
 use App\Http\Controllers\StocksController;
 use App\Http\Controllers\StockTransferController;
@@ -235,6 +236,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/customers/configuration/reorder', [DynamicFieldConfigurationController::class, 'reorder'])->name('customers.configuration.reorder');
     Route::delete('/customers/configuration/{id}', [DynamicFieldConfigurationController::class, 'destroy'])->name('customers.configuration.destroy');
     Route::post('/customers/configuration/reset-defaults', [DynamicFieldConfigurationController::class, 'resetDefaults'])->name('customers.configuration.resetDefaults');
+
+    // Sales Screen & Taxes Configuration
+    Route::get('/sales/configuration', [SaleConfigurationController::class, 'index'])->name('sales.configuration');
+    Route::get('/sale/configuration', [SaleConfigurationController::class, 'index'])->name('sale.configuration');
+    Route::post('/sales/configuration/update/{id}', [SaleConfigurationController::class, 'update'])->name('sales.configuration.update');
+    Route::post('/sales/configuration/toggle/{id}', [SaleConfigurationController::class, 'toggle'])->name('sales.configuration.toggle');
+    Route::post('/sales/configuration/update-tax-defaults', [SaleConfigurationController::class, 'updateTaxDefaults'])->name('sales.configuration.updateTaxDefaults');
+    Route::post('/sales/configuration/update-bulk', [SaleConfigurationController::class, 'updateBulk'])->name('sales.configuration.updateBulk');
+    Route::post('/sales/configuration/reset-defaults', [SaleConfigurationController::class, 'resetDefaults'])->name('sales.configuration.resetDefaults');
 
     // Customer Detailed Info (Modal / View)
     Route::get('/customers/{id}/details', [CustomerController::class, 'details'])->middleware('permission:customers.view')->name('customers.details');
