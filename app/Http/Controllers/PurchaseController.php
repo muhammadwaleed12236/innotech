@@ -168,7 +168,12 @@ class PurchaseController extends Controller
         // $userId = Auth::id();
         $Purchase = Purchase::get();
         $Vendor = Vendor::get();
-        $Warehouse = Warehouse::get();
+        $Warehouse = Warehouse::all();
+        $allProducts = \App\Models\Product::where('is_active', true)
+            ->withSum('warehouseStocks', 'total_pieces')
+            ->orderBy('item_name')
+            ->get();
+
         // Filter accounts to only show Cash (1) and Bank (2) heads to prevent logic errors
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
@@ -180,7 +185,7 @@ class PurchaseController extends Controller
             : 'PUR-001';
 
         // Return new V2 view
-        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice'));
+        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts'));
     }
     public function quickCreate()
     {
@@ -466,11 +471,32 @@ class PurchaseController extends Controller
                         'batch_no' => $item->batch_no,
                     ], [
                         'cost_price' => $item->price,
+                        'mfg_date' => $item->mfg_date,
+                        'expiry_date' => $item->exp_date,
                         'qty' => 0,
                     ]);
+                    if (!empty($item->mfg_date) && empty($batch->mfg_date)) {
+                        $batch->mfg_date = $item->mfg_date;
+                    }
+                    if (!empty($item->exp_date) && empty($batch->expiry_date)) {
+                        $batch->expiry_date = $item->exp_date;
+                    }
                     $batch->increment('qty', $baseQty);
+                    $batch->save();
                     $batchId = $batch->id;
                     $item->update(['batch_id' => $batchId]);
+
+                    // Lock product nature to batch
+                    \App\Models\Product::where('id', $item->product_id)->update(['tracking_type' => 'batch']);
+                } elseif (!empty($item->serials) && count((array)$item->serials) > 0) {
+                    // Lock product nature to serial
+                    \App\Models\Product::where('id', $item->product_id)->update(['tracking_type' => 'serial']);
+                } else {
+                    // Lock product nature to simple if not set
+                    $pRec = \App\Models\Product::find($item->product_id);
+                    if ($pRec && empty($pRec->tracking_type)) {
+                        $pRec->update(['tracking_type' => 'simple']);
+                    }
                 }
 
                 // Process Serial / IMEI Numbers Creation
@@ -807,7 +833,13 @@ class PurchaseController extends Controller
 
                 $batchNos = $request->batch_no ?? [];
                 $serialsInputs = $request->serials ?? [];
+                $mfgDates = $request->mfg_date ?? [];
+                $expDates = $request->exp_date ?? [];
+
                 $itemBatchNo = !empty($batchNos[$i]) ? trim($batchNos[$i]) : null;
+                $itemMfgDate = !empty($mfgDates[$i]) ? trim($mfgDates[$i]) : null;
+                $itemExpDate = !empty($expDates[$i]) ? trim($expDates[$i]) : null;
+
                 $itemSerialsRaw = $serialsInputs[$i] ?? null;
                 $itemSerialsParsed = null;
                 if (!empty($itemSerialsRaw)) {
@@ -819,6 +851,8 @@ class PurchaseController extends Controller
                     'product_id' => $pid,
                     'batch_no' => $itemBatchNo,
                     'serials' => $itemSerialsParsed,
+                    'mfg_date' => $itemMfgDate,
+                    'exp_date' => $itemExpDate,
                     'unit' => $unit,
                     'price' => $price,
                     'item_discount' => $discAmount, // Store calculated amount
@@ -1326,7 +1360,12 @@ class PurchaseController extends Controller
             ]);
         }
 
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments'));
+        $allProducts = \App\Models\Product::where('is_active', true)
+            ->withSum('warehouseStocks', 'total_pieces')
+            ->orderBy('item_name')
+            ->get();
+
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts'));
     }
 
     public function update(Request $request, $id)
@@ -1487,7 +1526,13 @@ class PurchaseController extends Controller
 
                 $batchNos = $request->batch_no ?? [];
                 $serialsInputs = $request->serials ?? [];
+                $mfgDates = $request->mfg_date ?? [];
+                $expDates = $request->exp_date ?? [];
+
                 $itemBatchNo = !empty($batchNos[$i]) ? trim($batchNos[$i]) : null;
+                $itemMfgDate = !empty($mfgDates[$i]) ? trim($mfgDates[$i]) : null;
+                $itemExpDate = !empty($expDates[$i]) ? trim($expDates[$i]) : null;
+
                 $itemSerialsRaw = $serialsInputs[$i] ?? null;
                 $itemSerialsParsed = null;
                 if (!empty($itemSerialsRaw)) {
@@ -1499,6 +1544,8 @@ class PurchaseController extends Controller
                     'product_id' => $pid,
                     'batch_no' => $itemBatchNo,
                     'serials' => $itemSerialsParsed,
+                    'mfg_date' => $itemMfgDate,
+                    'exp_date' => $itemExpDate,
                     'unit' => $unit,
                     'price' => $price,
                     'item_discount' => $discAmount,

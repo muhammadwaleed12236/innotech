@@ -72,6 +72,31 @@ class Product extends Model
         return $q->withSum('movements as available_qty', 'qty'); // sum of ledger
     }
 
+    public function isBatch(): bool
+    {
+        return $this->tracking_type === 'batch';
+    }
+
+    public function isSerial(): bool
+    {
+        return $this->tracking_type === 'serial';
+    }
+
+    public function isSimple(): bool
+    {
+        return $this->tracking_type === 'simple' || empty($this->tracking_type);
+    }
+
+    public function batches()
+    {
+        return $this->hasMany(ProductBatch::class, 'product_id');
+    }
+
+    public function serials()
+    {
+        return $this->hasMany(ProductSerial::class, 'product_id');
+    }
+
     public function webImages()
     {
         return $this->hasMany(ProductWebImage::class)->orderBy('sort_order', 'asc');

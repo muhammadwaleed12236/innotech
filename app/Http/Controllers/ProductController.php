@@ -102,7 +102,7 @@ class ProductController extends Controller
         $term = $request->get('term') ?? $request->get('q') ?? '';
 
         $query = Product::query()
-            ->select('id', 'item_name', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
+            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
             ->with(['unit'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
             ->where('is_active', true) /* Only active products */
@@ -361,7 +361,8 @@ class ProductController extends Controller
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                         'sale_discount_percent' => (float)($v['sale_discount_percent'] ?? 0),
                         'purchase_discount_percent' => (float)($v['purchase_discount_percent'] ?? 0),
-                        'variant_data' => base64_encode($variantJson)
+                        'variant_data' => base64_encode($variantJson),
+                        'tracking_type' => $p->tracking_type ?? 'simple'
                     ];
                 }
                 return $expanded;
@@ -387,7 +388,8 @@ class ProductController extends Controller
                 'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
                 'sale_discount_percent' => $p->sale_discount_percent ?? 0,
                 'purchase_discount_percent' => $p->purchase_discount_percent ?? 0,
-                'variant_data' => ''
+                'variant_data' => '',
+                'tracking_type' => $p->tracking_type ?? 'simple'
             ]];
         });
 
@@ -854,6 +856,7 @@ class ProductController extends Controller
                 'sub_category_id' => $request->sub_category_id,
                 'item_code' => $nextCode,
                 'item_name' => $request->product_name,
+                'tracking_type' => $request->tracking_type ?? 'simple',
                 'barcode_path' => $request->barcode_path ?? rand(100000000000, 999999999999),
                 'unit_id' => $request->unit,
                 'brand_id' => $request->brand_id,
@@ -927,6 +930,39 @@ class ProductController extends Controller
                     'ref_type' => 'INIT',
                     'note' => 'Initial Stock',
                 ]);
+
+                // Create initial batch if batch product
+                if ($product->tracking_type === 'batch') {
+                    $initBatchNo = !empty($request->initial_batch_no) ? trim($request->initial_batch_no) : ('BATCH-' . date('Ymd'));
+                    \App\Models\ProductBatch::create([
+                        'product_id' => $product->id,
+                        'warehouse_id' => $targetWh->id,
+                        'batch_no' => $initBatchNo,
+                        'mfg_date' => $request->initial_mfg_date ?: null,
+                        'expiry_date' => $request->initial_expiry_date ?: null,
+                        'qty' => $totalStockQty,
+                        'cost_price' => $product->purchase_price_per_piece ?? 0,
+                        'remarks' => 'Opening Stock Batch',
+                    ]);
+                }
+
+                // Create initial serials if serial product
+                if ($product->tracking_type === 'serial' && !empty($request->initial_serials)) {
+                    $serialsRaw = is_array($request->initial_serials) ? $request->initial_serials : preg_split('/[\r\n,]+/', (string)$request->initial_serials);
+                    foreach ($serialsRaw as $sNum) {
+                        $sNum = trim($sNum);
+                        if ($sNum !== '') {
+                            \App\Models\ProductSerial::create([
+                                'product_id' => $product->id,
+                                'warehouse_id' => $targetWh->id,
+                                'serial_number' => $sNum,
+                                'status' => 'available',
+                                'cost_price' => $product->purchase_price_per_piece ?? 0,
+                                'remarks' => 'Opening Stock IMEI',
+                            ]);
+                        }
+                    }
+                }
             }
 
             // Upload Website Gallery Images
@@ -1781,4 +1817,84 @@ class ProductController extends Controller
 
         return $colorSizeMatch;
     }
+
+    /**
+     * AJAX endpoint to get full tracking details of a product
+     */
+    public function getTrackingInfo(Request $request, $id)
+    {
+        if (strpos((string)$id, '|variant|') !== false) {
+            $parts = explode('|variant|', (string)$id);
+            $id = (int) $parts[0];
+        }
+
+        $product = Product::findOrFail($id);
+        $warehouseId = $request->get('warehouse_id');
+
+        $trackingType = $product->tracking_type ?? 'simple';
+
+        // Available batches with stock > 0
+        $batchQuery = \App\Models\ProductBatch::where('product_id', $product->id)->where('qty', '>', 0);
+        if ($warehouseId) {
+            $batchQuery->where('warehouse_id', $warehouseId);
+        }
+        $batches = $batchQuery->orderBy('expiry_date', 'asc')->get();
+
+        // All batches ever created for this product (for purchase restocking)
+        $allBatches = \App\Models\ProductBatch::where('product_id', $product->id)
+            ->orderBy('id', 'desc')
+            ->get(['id', 'batch_no', 'mfg_date', 'expiry_date', 'qty']);
+
+        // Available serials (status = available)
+        $serialQuery = \App\Models\ProductSerial::where('product_id', $product->id)->where('status', 'available');
+        if ($warehouseId) {
+            $serialQuery->where('warehouse_id', $warehouseId);
+        }
+        $serials = $serialQuery->orderBy('serial_number', 'asc')->get(['id', 'serial_number', 'batch_id', 'status']);
+
+        // Check if product has any transactions
+        $hasTransactions = \App\Models\StockMovement::where('product_id', $product->id)->exists()
+            || \App\Models\SaleItem::where('product_id', $product->id)->exists()
+            || \App\Models\PurchaseItem::where('product_id', $product->id)->exists();
+
+        return response()->json([
+            'success' => true,
+            'product_id' => $product->id,
+            'product_name' => $product->item_name,
+            'tracking_type' => $trackingType,
+            'is_batch' => $trackingType === 'batch',
+            'is_serial' => $trackingType === 'serial',
+            'is_simple' => $trackingType === 'simple',
+            'has_transactions' => $hasTransactions,
+            'batches' => $batches,
+            'all_batches' => $allBatches,
+            'serials' => $serials,
+        ]);
+    }
+
+    /**
+     * Set / Lock product tracking nature (simple, batch, serial)
+     */
+    public function setTrackingType(Request $request, $id)
+    {
+        if (strpos((string)$id, '|variant|') !== false) {
+            $parts = explode('|variant|', (string)$id);
+            $id = (int) $parts[0];
+        }
+
+        $request->validate([
+            'tracking_type' => 'required|in:simple,batch,serial',
+        ]);
+
+        $product = Product::findOrFail($id);
+        $product->tracking_type = $request->tracking_type;
+        $product->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Product tracking set to '{$request->tracking_type}'.",
+            'tracking_type' => $product->tracking_type,
+        ]);
+    }
+
 }

@@ -234,7 +234,7 @@ class SaleReturnController extends Controller
                 'status' => 'posted',
             ]);
 
-            $sale = $validated['sale_id'] ? Sale::find($validated['sale_id']) : null;
+            $sale = $validated['sale_id'] ? Sale::with('items')->find($validated['sale_id']) : null;
             $now = Carbon::now();
             $movements = [];
             $subtotal = 0;
@@ -377,6 +377,23 @@ class SaleReturnController extends Controller
                         'quantity' => $stockQty / $ppb,
                         'price' => 0
                     ]);
+                }
+
+                // Restore serials back to available in the return warehouse if original sale had serials
+                if ($sale) {
+                    $origItem = $sale->items->where('product_id', $productId)->first();
+                    if ($origItem && !empty($origItem->serials)) {
+                        $serialsArr = is_string($origItem->serials) ? json_decode($origItem->serials, true) : (array) $origItem->serials;
+                        if (is_array($serialsArr) && count($serialsArr) > 0) {
+                            $toRestore = array_slice($serialsArr, 0, (int) $stockQty);
+                            \App\Models\ProductSerial::where('product_id', $productId)
+                                ->whereIn('serial_number', $toRestore)
+                                ->update([
+                                    'status' => 'available',
+                                    'warehouse_id' => $validated['warehouse_id'],
+                                ]);
+                        }
+                    }
                 }
 
                 // Stock Movement (IN - goods returned to warehouse)

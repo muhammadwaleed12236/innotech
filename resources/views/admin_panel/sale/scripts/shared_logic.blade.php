@@ -2128,14 +2128,14 @@
 
             // Check Batches first
             $.get('{{ route("sale.get_batches") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
-                if (res.success && (res.is_batch_product || (res.batches && res.batches.length > 0))) {
+                if (res.success && res.is_batch_product) {
                     openBatchSelectModal($row, res.batches || []);
                     return;
                 }
 
                 // If not batch product, check Serials / IMEIs
                 $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
-                    if (sRes.success && (sRes.is_serial_product || (sRes.serials && sRes.serials.length > 0))) {
+                    if (sRes.success && sRes.is_serial_product) {
                         openSerialSelectModal($row, sRes.serials || []);
                     }
                 });
@@ -2163,15 +2163,18 @@
 
                     const expBadge = isExpired ? '<span class="badge bg-danger">Expired</span>' : `<span class="badge bg-light text-dark border">${expDate}</span>`;
 
+                    const whName = b.warehouse ? (b.warehouse.warehouse_name || b.warehouse.name) : (b.warehouse_name || "");
+                    const whBadge = whName ? `<span class="badge bg-light text-dark border me-1"><i class="fas fa-warehouse text-primary me-1"></i>${whName}</span>` : "";
+
                     html += `
                         <tr>
-                            <td class="fw-bold text-primary font-monospace">${b.batch_no}</td>
+                            <td class="fw-bold text-primary font-monospace">${b.batch_no} ${whBadge}</td>
                             <td class="small">${mfgDate}</td>
                             <td>${expBadge}</td>
                             <td><span class="badge bg-success font-monospace fs-6">${b.qty}</span></td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-primary btn-choose-batch py-1 px-3 fw-bold"
-                                        data-batch-id="${b.id}" data-batch-no="${b.batch_no}" data-batch-qty="${b.qty}">
+                                        data-batch-id="${b.id}" data-batch-no="${b.batch_no}" data-batch-qty="${b.qty}" data-warehouse-id="${b.warehouse_id || ""}">
                                     <i class="fas fa-check me-1"></i> Select Batch
                                 </button>
                             </td>
@@ -2193,6 +2196,11 @@
             if ($row.length) {
                 $row.find('.batch-id-hidden').val(batchId);
                 $row.find('.batch-no-hidden').val(batchNo);
+
+                const whId = $(this).data('warehouse-id');
+                if (whId) {
+                    $row.find('.warehouse').val(whId);
+                }
 
                 // Update tracking badges display on row
                 let badgeHtml = `<span class="badge bg-info text-dark" style="font-size:0.7rem;"><i class="fas fa-layer-group me-1"></i>Batch: ${batchNo}</span>`;
@@ -2227,15 +2235,20 @@
             } else {
                 serials.forEach(s => {
                     const isChecked = selectedList.includes(s.serial_number) ? 'checked' : '';
+                    const whName = s.warehouse ? (s.warehouse.warehouse_name || s.warehouse.name) : (s.warehouse_name || '');
+                    const whBadge = whName ? `<span class="badge bg-light text-dark border me-2"><i class="fas fa-warehouse me-1 text-primary"></i>${whName}</span>` : '';
                     html += `
                         <div class="d-flex align-items-center justify-content-between p-2 border-bottom serial-item-row" style="font-size:0.85rem; cursor: pointer; user-select: none;">
-                            <div class="form-check mb-0 flex-grow-1">
-                                <input class="form-check-input serial-chk" type="checkbox" value="${s.serial_number}" id="chk_s_${s.id}" ${isChecked}>
-                                <label class="form-check-label fw-bold text-dark font-monospace w-100" for="chk_s_${s.id}" style="cursor: pointer;">
+                            <div class="form-check mb-0 flex-grow-1 d-flex align-items-center">
+                                <input class="form-check-input serial-chk me-2" type="checkbox" value="${s.serial_number}" data-warehouse-id="${s.warehouse_id || ''}" id="chk_s_${s.id}" ${isChecked}>
+                                <label class="form-check-label fw-bold text-dark font-monospace" for="chk_s_${s.id}" style="cursor: pointer;">
                                     ${s.serial_number}
                                 </label>
                             </div>
-                            <span class="badge bg-success font-monospace">Available</span>
+                            <div class="d-flex align-items-center gap-1">
+                                ${whBadge}
+                                <span class="badge bg-success font-monospace">Available</span>
+                            </div>
                         </div>`;
                 });
             }
@@ -2298,6 +2311,11 @@
                     $row.find('.carton-qty').val(selectedSerials.length);
                     computeRow($row);
                     updateGrandTotals();
+
+                    const firstWh = $('.serial-chk:checked').first().data('warehouse-id');
+                    if (firstWh) {
+                        $row.find('.warehouse').val(firstWh);
+                    }
 
                     let badgeHtml = `<span class="badge bg-secondary text-light" style="font-size:0.7rem;" title="${selectedSerials.join(', ')}"><i class="fas fa-barcode me-1"></i>${selectedSerials.length} IMEI(s)</span>`;
                     $row.find('.row-tracking-badges').html(badgeHtml);

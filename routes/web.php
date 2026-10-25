@@ -345,6 +345,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/search-products', [ProductController::class, 'searchProducts'])->name('search-products');
     Route::get('/products/ajax-search', [ProductController::class, 'ajaxSearch'])->name('products.ajax.search');
     Route::get('/get-price', [ProductController::class, 'getPrice'])->name('get-price');
+    Route::get('/products/{id}/tracking-info', [ProductController::class, 'getTrackingInfo'])->name('product.tracking_info');
+    Route::post('/products/{id}/set-tracking-type', [ProductController::class, 'setTrackingType'])->name('product.set_tracking_type');
     Route::get('/purchase/{id}/invoice', [PurchaseController::class, 'Invoice'])->middleware('permission:purchases.view')->name('purchase.invoice');
     Route::get('/purchase/{id}/receipt', [PurchaseController::class, 'receipt'])->middleware('permission:purchases.view')->name('purchase.receipt');
 

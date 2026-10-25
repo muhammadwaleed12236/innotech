@@ -631,7 +631,48 @@
                                     </div>
                                 </div>
 
+                                <div class="col-12 mt-2">
+                                    <div class="card border rounded-3 p-3 shadow-none" style="background-color: #f8fafd; border-color: #dbeafe !important;">
+                                        <div class="row align-items-center g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label-pro fw-bold mb-1 text-primary"><i class="fas fa-barcode me-1"></i>Product Tracking Nature <span class="badge bg-primary text-white ms-1" style="font-size:0.7rem;">Permanent Nature</span></label>
+                                                <select class="form-select form-control-pro form-select-pro fw-bold" name="tracking_type" id="product_tracking_type">
+                                                    <option value="simple">📦 Simple / Standard (Quantity only)</option>
+                                                    <option value="batch">🏷️ Batch-wise (Batch No, Mfg & Expiry Dates)</option>
+                                                    <option value="serial">🔢 Serial / IMEI-wise (Unique IMEI per piece)</option>
+                                                </select>
+                                                <small class="text-muted d-block mt-1" style="font-size: 11px;">Ek baar purchase ya opening stock add hone par product isi method se track hoga.</small>
+                                            </div>
 
+                                            <div class="col-md-8" id="batchTrackingFields" style="display:none;">
+                                                <div class="border rounded-2 p-2 bg-white">
+                                                    <div class="fw-bold small text-info mb-1"><i class="fas fa-layer-group me-1"></i>Initial Batch Details (Optional Opening Stock)</div>
+                                                    <div class="row g-2">
+                                                        <div class="col-md-4">
+                                                            <label class="form-label-pro mb-0 small">Batch Number</label>
+                                                            <input type="text" class="form-control-pro form-control-sm font-monospace" name="initial_batch_no" placeholder="e.g. B-2026-001">
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label-pro mb-0 small">MFG Date</label>
+                                                            <input type="date" class="form-control-pro form-control-sm" name="initial_mfg_date">
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label class="form-label-pro mb-0 small">Expiry Date</label>
+                                                            <input type="date" class="form-control-pro form-control-sm" name="initial_expiry_date">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-8" id="serialTrackingFields" style="display:none;">
+                                                <div class="border rounded-2 p-2 bg-white">
+                                                    <div class="fw-bold small text-success mb-1"><i class="fas fa-barcode me-1"></i>Initial Serial / IMEIs (Optional Opening Stock)</div>
+                                                    <textarea class="form-control-pro form-control-sm font-monospace" name="initial_serials" rows="2" placeholder="Scan or paste IMEIs (one per line or comma-separated)..."></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div class="col-12 mt-3 pt-3 border-top">
                                     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">

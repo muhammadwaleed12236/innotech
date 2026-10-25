@@ -6,7 +6,7 @@
                 <h5 class="modal-title fw-bold" id="quickAddProductModalLabel">
                     <i class="fa fa-plus-circle text-primary me-2"></i>Quick Add Product
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             <form id="quickAddProductForm">
                 @csrf
@@ -45,6 +45,14 @@
                                 <option value="by_pieces">By Pieces</option>
                             </select>
                         </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted">Tracking Nature</label>
+                            <select class="form-select" name="tracking_type" id="qap_tracking_type">
+                                <option value="simple" selected>📦 Simple (Quantity only)</option>
+                                <option value="batch">🏷️ Batch-wise (Batch No, Exp)</option>
+                                <option value="serial">🔢 Serial / IMEI-wise</option>
+                            </select>
+                        </div>
                         <div class="col-md-6" id="qap_ppb_wrap">
                             <label class="form-label fw-bold small text-muted">Pieces Per Box</label>
                             <input type="number" class="form-control" name="pieces_per_box" id="qap_ppb" value="1" min="1" placeholder="e.g. 12">
@@ -76,7 +84,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnQuickSaveProduct">
                         <i class="fa fa-save me-1"></i>Save Product
                     </button>

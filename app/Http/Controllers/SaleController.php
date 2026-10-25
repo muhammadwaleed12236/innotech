@@ -2768,24 +2768,32 @@ class SaleController extends Controller
     {
         $productId = $request->get('product_id');
         $warehouseId = $request->get('warehouse_id');
+        $strict = $request->boolean('strict_warehouse', false);
 
-        $isBatchProduct = \App\Models\ProductBatch::where('product_id', $productId)->exists();
+        $product = \App\Models\Product::find($productId);
+        if ($product && in_array($product->tracking_type, ['simple', 'serial'])) {
+            return response()->json([
+                'success' => true,
+                'is_batch_product' => false,
+                'batches' => []
+            ]);
+        }
+        $isBatchProduct = ($product && $product->tracking_type === 'batch') || \App\Models\ProductBatch::where('product_id', $productId)->exists();
 
-        $query = \App\Models\ProductBatch::where('product_id', $productId)
+        $query = \App\Models\ProductBatch::with('warehouse')
+            ->where('product_id', $productId)
             ->where('qty', '>', 0);
 
-        if ($warehouseId) {
+        if ($warehouseId && $strict) {
             $query->where('warehouse_id', $warehouseId);
         }
 
-        $batches = $query->orderBy('expiry_date', 'asc')->get();
-
-        if ($batches->isEmpty() && $warehouseId) {
-            $batches = \App\Models\ProductBatch::where('product_id', $productId)
-                ->where('qty', '>', 0)
-                ->orderBy('expiry_date', 'asc')
-                ->get();
+        if ($warehouseId) {
+            $query->orderByRaw("CASE WHEN warehouse_id = ? THEN 0 ELSE 1 END", [$warehouseId]);
         }
+        $batches = $query->orderBy('warehouse_id', 'asc')
+            ->orderBy('expiry_date', 'asc')
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -2802,13 +2810,23 @@ class SaleController extends Controller
         $productId = $request->get('product_id');
         $warehouseId = $request->get('warehouse_id');
         $search = $request->get('search');
+        $strict = $request->boolean('strict_warehouse', false);
 
-        $isSerialProduct = \App\Models\ProductSerial::where('product_id', $productId)->exists();
+        $product = \App\Models\Product::find($productId);
+        if ($product && in_array($product->tracking_type, ['simple', 'batch'])) {
+            return response()->json([
+                'success' => true,
+                'is_serial_product' => false,
+                'serials' => []
+            ]);
+        }
+        $isSerialProduct = ($product && $product->tracking_type === 'serial') || \App\Models\ProductSerial::where('product_id', $productId)->exists();
 
-        $query = \App\Models\ProductSerial::where('product_id', $productId)
+        $query = \App\Models\ProductSerial::with('warehouse')
+            ->where('product_id', $productId)
             ->where('status', 'available');
 
-        if ($warehouseId) {
+        if ($warehouseId && $strict) {
             $query->where('warehouse_id', $warehouseId);
         }
 
@@ -2816,16 +2834,12 @@ class SaleController extends Controller
             $query->where('serial_number', 'like', "%{$search}%");
         }
 
-        $serials = $query->orderBy('serial_number', 'asc')->get();
-
-        if ($serials->isEmpty() && $warehouseId) {
-            $query2 = \App\Models\ProductSerial::where('product_id', $productId)
-                ->where('status', 'available');
-            if (!empty($search)) {
-                $query2->where('serial_number', 'like', "%{$search}%");
-            }
-            $serials = $query2->orderBy('serial_number', 'asc')->get();
+        if ($warehouseId) {
+            $query->orderByRaw("CASE WHEN warehouse_id = ? THEN 0 ELSE 1 END", [$warehouseId]);
         }
+        $serials = $query->orderBy('warehouse_id', 'asc')
+            ->orderBy('serial_number', 'asc')
+            ->get();
 
         return response()->json([
             'success' => true,
