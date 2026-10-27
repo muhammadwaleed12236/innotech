@@ -506,7 +506,7 @@ class OpeningStockController extends Controller
         }
 
         // Log Stock Movement
-        $noteDetails = "Opening Stock [" . strtoupper($trackingType) . "]";
+        $noteDetails = "Warehouse #{$warehouseId} | Opening Stock [" . strtoupper($trackingType) . "]";
         if ($variantKey) {
             $noteDetails .= " | Variant: {$variantKey}";
         }

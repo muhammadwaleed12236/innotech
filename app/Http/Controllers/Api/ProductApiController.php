@@ -198,7 +198,10 @@ class ProductApiController extends Controller
         $adjList = DB::table('stock_movements')
             ->where('product_id', $product->id)
             ->where('type', 'adjustment')
-            ->select('qty', 'note')
+            ->where(function ($q) {
+                $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']);
+            })
+            ->select('qty', 'note', 'ref_type')
             ->get();
 
         foreach ($variants as $idx => $v) {
@@ -331,7 +334,11 @@ class ProductApiController extends Controller
     private function matchAdjustmentToVariant($adjItem, $variant)
     {
         $note = strtolower($adjItem->note ?? '');
-        if (empty($note)) {
+        if (isset($adjItem->ref_type) && in_array($adjItem->ref_type, ['INIT', 'OPENING_STOCK'])) {
+            return false;
+        }
+
+        if (empty($note) || $note === 'initial stock' || str_contains($note, 'opening stock')) {
             return false;
         }
 

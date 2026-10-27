@@ -101,7 +101,7 @@ class ReportingController extends Controller
             $pRetQuery = \DB::table('purchase_return_items as pri')->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')->where('pri.product_id', $product->id);
             if ($warehouseId && $warehouseId !== 'all') $pRetQuery->where('pr.warehouse_id', $warehouseId);
             $parentPReturned = (float) $pRetQuery->sum('pri.qty');
-            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT'); });
+            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']); });
             if ($warehouseId && $warehouseId !== 'all') $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
             $parentAdjustments = (float) $adjQuery->sum('qty');
             $parentOpening = max(0, $parentClosing - $parentPurchased + $parentSold - $parentReturnedQty + $parentPReturned - $parentAdjustments);
@@ -129,7 +129,7 @@ class ReportingController extends Controller
             $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color')->get();
             $pReturnsQuery = \DB::table('purchase_return_items as pri')->where('pri.product_id', $product->id);
             $purchaseReturnsList = $pReturnsQuery->select('pri.qty', 'pri.line_total', 'pri.color')->get();
-            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT'); });
+            $adjQuery = \DB::table('stock_movements')->where('product_id', $product->id)->where('type', 'adjustment')->where(function($q) { $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']); });
             if ($warehouseId && $warehouseId !== 'all') $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
             $adjList = $adjQuery->select('qty', 'note', 'ref_type')->get();
             $saleIds = $returnsList->pluck('sale_id')->unique()->toArray();
@@ -536,7 +536,7 @@ class ReportingController extends Controller
                         ->where('product_id', $product->id)
                         ->where('type', 'adjustment')
                         ->where(function($q) {
-                            $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                            $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']);
                         });
                     if ($warehouseId && $warehouseId !== 'all') {
                         $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
@@ -620,7 +620,7 @@ class ReportingController extends Controller
                         ->where('product_id', $product->id)
                         ->where('type', 'adjustment')
                         ->where(function($q) {
-                            $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                            $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']);
                         });
                     if ($warehouseId && $warehouseId !== 'all') {
                         $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
@@ -884,7 +884,7 @@ class ReportingController extends Controller
                     ->where('product_id', $product->id)
                     ->where('type', 'adjustment')
                     ->where(function($q) {
-                        $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                        $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']);
                     });
                 if ($warehouseId && $warehouseId !== 'all') {
                     $adjQuery->where('note', 'like', "%Warehouse #{$warehouseId}%");
@@ -1362,7 +1362,7 @@ class ReportingController extends Controller
             // Calculate overall product average price (for fallback)
             $initial = (float) DB::table('stock_movements')
                 ->where('product_id', $product->id)
-                ->where('ref_type', 'INIT')
+                ->whereIn('ref_type', ['INIT', 'OPENING_STOCK'])
                 ->sum('qty');
 
             [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id);
@@ -2798,7 +2798,7 @@ class ReportingController extends Controller
             // Initial
             $initial = (float) DB::table('stock_movements')
                 ->where('product_id', $p->id)
-                ->where('ref_type', 'INIT')
+                ->whereIn('ref_type', ['INIT', 'OPENING_STOCK'])
                 ->where('created_at', '<=', $dateEnd)
                 ->sum('qty');
 
@@ -3585,12 +3585,12 @@ class ReportingController extends Controller
      */
     private function matchAdjustmentToVariant($adjItem, $variant)
     {
-        if (isset($adjItem->ref_type) && $adjItem->ref_type === 'INIT') {
+        if (isset($adjItem->ref_type) && in_array($adjItem->ref_type, ['INIT', 'OPENING_STOCK'])) {
             return false;
         }
 
         $note = strtolower($adjItem->note ?? '');
-        if (empty($note) || $note === 'initial stock') {
+        if (empty($note) || $note === 'initial stock' || str_contains($note, 'opening stock')) {
             return false;
         }
 

@@ -2297,12 +2297,13 @@ class SaleController extends Controller
             ->where('product_id', $product->id)
             ->where('type', 'adjustment')
             ->where(function ($q) {
-                $q->whereNull('ref_type')->orWhere('ref_type', '!=', 'INIT');
+                $q->whereNull('ref_type')->orWhereNotIn('ref_type', ['INIT', 'OPENING_STOCK']);
             })
             ->select('qty', 'note')
             ->get();
         foreach ($adjList as $adjItem) {
             $note = strtolower($adjItem->note ?? '');
+            if (empty($note) || $note === 'initial stock' || str_contains($note, 'opening stock')) continue;
             $vSize  = strtolower(trim($matched['size'] ?? '-'));
             $vColor = strtolower(trim($matched['color'] ?? '-'));
             $sizeMatch = true;
