@@ -486,11 +486,17 @@ class PurchaseController extends Controller
                     $batchId = $batch->id;
                     $item->update(['batch_id' => $batchId]);
 
-                    // Lock product nature to batch
-                    \App\Models\Product::where('id', $item->product_id)->update(['tracking_type' => 'batch']);
+                    // Set product nature to batch if not set
+                    $pRec = \App\Models\Product::find($item->product_id);
+                    if ($pRec && empty($pRec->tracking_type)) {
+                        $pRec->update(['tracking_type' => 'batch']);
+                    }
                 } elseif (!empty($item->serials) && count((array)$item->serials) > 0) {
-                    // Lock product nature to serial
-                    \App\Models\Product::where('id', $item->product_id)->update(['tracking_type' => 'serial']);
+                    // Set product nature to serial if not set
+                    $pRec = \App\Models\Product::find($item->product_id);
+                    if ($pRec && empty($pRec->tracking_type)) {
+                        $pRec->update(['tracking_type' => 'serial']);
+                    }
                 } else {
                     // Lock product nature to simple if not set
                     $pRec = \App\Models\Product::find($item->product_id);

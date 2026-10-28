@@ -786,11 +786,16 @@ $(document).ready(function() {
                     expiryBadgeHtml = `<span class="badge bg-warning text-dark border px-2 py-1"><i class="fas fa-calendar-alt me-1"></i>Expiry: ${expiryList[0]}</span>`;
                 }
 
+                let availableSerialsCount = res.available_serials_count !== undefined ? res.available_serials_count : 0;
+                let nonSerialStock = res.non_serial_stock !== undefined ? res.non_serial_stock : Math.max(0, (res.total_stock || 0) - availableSerialsCount);
+
                 $('#modalSummaryBadges').html(`
                     <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-barcode text-primary me-1"></i>Code: ${res.item_code || '-'}</span>
                     <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-layer-group text-success me-1"></i>Category: ${res.category_name || '-'}</span>
                     ${expiryBadgeHtml}
                     <span class="badge bg-primary text-white px-2 py-1"><i class="fas fa-cubes me-1"></i>Total Stock: ${(res.total_stock || 0).toLocaleString()} ${res.unit_name || ''}</span>
+                    <span class="badge bg-success text-white px-2 py-1"><i class="fas fa-check-circle me-1"></i>With Serial: ${availableSerialsCount.toLocaleString()}</span>
+                    <span class="badge bg-warning text-dark border px-2 py-1"><i class="fas fa-box-open me-1"></i>Without Serial: ${nonSerialStock.toLocaleString()}</span>
                 `);
 
                 // 1. Serials

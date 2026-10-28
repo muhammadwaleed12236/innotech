@@ -2136,7 +2136,7 @@
                 // If not batch product, check Serials / IMEIs
                 $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
                     if (sRes.success && sRes.is_serial_product) {
-                        openSerialSelectModal($row, sRes.serials || []);
+                        openSerialSelectModal($row, sRes.serials || [], sRes);
                     }
                 });
             });
@@ -2213,10 +2213,21 @@
 
         // Open Serial / IMEI Modal
         let currentAvailableSerials = [];
-        function openSerialSelectModal($row, serials) {
+        let currentSerialStockInfo = {};
+        function openSerialSelectModal($row, serials, stockInfo = {}) {
             const rowIndex = $('#salesTableBody tr').index($row);
             $('#activeSerialRowIndex').val(rowIndex);
             currentAvailableSerials = serials || [];
+            currentSerialStockInfo = stockInfo || {};
+
+            const totalStock = parseFloat(stockInfo.total_stock || 0);
+            const serialCount = (serials || []).length;
+            const nonSerialStock = Math.max(0, parseFloat(stockInfo.non_serial_stock !== undefined ? stockInfo.non_serial_stock : (totalStock - serialCount)));
+
+            $('#modalTotalStockCount').text(totalStock);
+            $('#modalAvailableSerialsCount').text(serialCount);
+            $('#modalNonSerialStockCount').text(nonSerialStock);
+            $('#modalNonSerialStockHint').text(nonSerialStock);
 
             // Pre-selected serials if any
             let existingSelected = [];
@@ -2228,10 +2239,25 @@
             $('#modalSelectSerial').modal('show');
         }
 
+        // Choose to Sell Without Serial
+        $(document).on('click', '#btnChooseWithoutSerial', function() {
+            const rowIndex = $('#activeSerialRowIndex').val();
+            const $row = $('#salesTableBody tr').eq(rowIndex);
+
+            if ($row.length) {
+                $row.find('.serials-hidden').val('[]');
+                let badgeHtml = `<span class="badge bg-warning text-dark border" style="font-size:0.7rem;"><i class="fas fa-box-open me-1"></i>Without Serial</span>`;
+                $row.find('.row-tracking-badges').html(badgeHtml);
+
+                $('#modalSelectSerial').modal('hide');
+                $row.find('.carton-qty').focus().select();
+            }
+        });
+
         function renderSerialList(serials, selectedList = []) {
             let html = '';
             if (!serials || serials.length === 0) {
-                html = '<div class="text-center text-muted py-3">No available IMEIs / Serial numbers found for this product.</div>';
+                html = '<div class="text-center text-muted py-3">No available IMEIs / Serial numbers found for this product in selected warehouse.</div>';
             } else {
                 serials.forEach(s => {
                     const isChecked = selectedList.includes(s.serial_number) ? 'checked' : '';

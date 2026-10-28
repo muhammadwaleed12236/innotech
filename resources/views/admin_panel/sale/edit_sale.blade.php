@@ -2720,7 +2720,7 @@
         </div>
     </div>
 
-    <!-- Modal: Select Product Serials / IMEIs -->
+    <!-- Modal: Select Product Serials / IMEIs or Sell Without Serial -->
     <div class="modal fade" id="modalSelectSerial" tabindex="-1" aria-labelledby="modalSelectSerialLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -2732,15 +2732,56 @@
                 </div>
                 <div class="modal-body p-3">
                     <input type="hidden" id="activeSerialRowIndex" value="">
-                    <div class="input-group input-group-sm mb-3">
+
+                    <!-- Stock Overview Bar (Serials vs Non-Serial) -->
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-4">
+                            <div class="p-2 border rounded bg-light text-center">
+                                <span class="d-block text-muted small fw-bold text-uppercase" style="font-size:10px;">Total Available Stock</span>
+                                <span class="fw-bold fs-6 text-dark" id="modalTotalStockCount">0</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="p-2 border rounded bg-light text-center">
+                                <span class="d-block text-muted small fw-bold text-uppercase" style="font-size:10px;">With Serial / IMEI</span>
+                                <span class="fw-bold fs-6 text-success" id="modalAvailableSerialsCount">0</span>
+                            </div>
+                        </div>
+                        <div class="col-sm-4">
+                            <div class="p-2 border rounded bg-light text-center border-warning">
+                                <span class="d-block text-muted small fw-bold text-uppercase" style="font-size:10px;">Without Serial Stock</span>
+                                <span class="fw-bold fs-6 text-warning" id="modalNonSerialStockCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option to Sell Without Serial -->
+                    <div class="alert alert-warning border d-flex align-items-center justify-content-between p-2 mb-3" id="boxSellWithoutSerial">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-boxes fs-5 text-warning"></i>
+                            <div>
+                                <span class="fw-bold d-block text-dark small">Bagair Serial ke Sale karna chahte hain?</span>
+                                <span class="text-muted" style="font-size:11px;">Aap is product ko without serial bhi sale kar sakte hain (<span id="modalNonSerialStockHint" class="fw-bold">0</span> Qty available without serial).</span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-warning btn-sm fw-bold px-3 text-dark" id="btnChooseWithoutSerial">
+                            <i class="fas fa-box-open me-1"></i> Sell Without Serial
+                        </button>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-bold text-secondary small"><i class="fas fa-list-check me-1"></i> Or Choose / Scan Serial Numbers:</span>
+                    </div>
+
+                    <div class="input-group input-group-sm mb-2">
                         <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
                         <input type="text" class="form-control" id="serialSearchInput" placeholder="Scan IMEI barcode or search serial number...">
                     </div>
-                    <div class="border rounded p-2 overflow-auto" style="max-height: 280px;" id="serialListContainer">
+                    <div class="border rounded p-2 overflow-auto" style="max-height: 250px;" id="serialListContainer">
                         <div class="text-muted text-center py-3">Loading available serial numbers...</div>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mt-2 px-1">
-                        <span class="small text-muted">Selected IMEIs: <strong id="selectedSerialCount" class="text-primary">0</strong></span>
+                        <span class="small text-muted">Selected IMEIs: <strong id="selectedSerialCount" class="text-primary fs-6">0</strong></span>
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top p-2 px-3">

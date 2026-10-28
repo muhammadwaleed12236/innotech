@@ -2814,14 +2814,15 @@ class SaleController extends Controller
         $strict = $request->boolean('strict_warehouse', false);
 
         $product = \App\Models\Product::find($productId);
-        if ($product && in_array($product->tracking_type, ['simple', 'batch'])) {
+        if ($product && $product->tracking_type === 'batch') {
             return response()->json([
                 'success' => true,
                 'is_serial_product' => false,
-                'serials' => []
+                'serials' => [],
+                'non_serial_stock' => 0,
+                'total_stock' => 0,
             ]);
         }
-        $isSerialProduct = ($product && $product->tracking_type === 'serial') || \App\Models\ProductSerial::where('product_id', $productId)->exists();
 
         $query = \App\Models\ProductSerial::with('warehouse')
             ->where('product_id', $productId)
@@ -2842,10 +2843,33 @@ class SaleController extends Controller
             ->orderBy('serial_number', 'asc')
             ->get();
 
+        $hasSerials = $serials->count() > 0 || \App\Models\ProductSerial::where('product_id', $productId)->exists();
+        $isSerialProduct = ($product && $product->tracking_type === 'serial') || $hasSerials;
+
+        // Compute Total Physical Stock and Non-Serial Stock
+        $stockQuery = \App\Models\WarehouseStock::where('product_id', $productId);
+        if ($warehouseId) {
+            $stockQuery->where('warehouse_id', $warehouseId);
+        }
+        $totalStock = (float) $stockQuery->sum('total_pieces');
+
+        // Count available serials in the matching scope
+        $availableSerialsCountQuery = \App\Models\ProductSerial::where('product_id', $productId)->where('status', 'available');
+        if ($warehouseId) {
+            $availableSerialsCountQuery->where('warehouse_id', $warehouseId);
+        }
+        $serialStockCount = (float) $availableSerialsCountQuery->count();
+
+        // Non-serial stock = max(0, Total Pieces - Available Serials)
+        $nonSerialStock = max(0, $totalStock - $serialStockCount);
+
         return response()->json([
             'success' => true,
             'is_serial_product' => $isSerialProduct,
-            'serials' => $serials
+            'serials' => $serials,
+            'total_stock' => $totalStock,
+            'serial_count' => $serialStockCount,
+            'non_serial_stock' => $nonSerialStock,
         ]);
     }
 }

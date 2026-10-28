@@ -1282,17 +1282,23 @@ class ReportingController extends Controller
                 \Illuminate\Support\Facades\Log::error("Error fetching stock movements: " . $e->getMessage());
             }
 
+            // Calculate available serials count and non-serial stock
+            $availableSerialsCount = collect($serials)->where('status', 'available')->count();
+            $nonSerialStock = max(0, (float)$totalStock - $availableSerialsCount);
+
             return response()->json([
-                'success'          => true,
-                'product_name'     => $product->item_name,
-                'item_code'        => $product->item_code,
-                'category_name'    => $product->category_relation->name ?? 'Standard',
-                'unit_name'        => $unitName,
-                'total_stock'      => (float) $totalStock,
-                'batches'          => $batches,
-                'serials'          => $serials,
-                'warehouse_stocks' => $warehouseStocks,
-                'history'          => $movements
+                'success'                 => true,
+                'product_name'            => $product->item_name,
+                'item_code'               => $product->item_code,
+                'category_name'           => $product->category_relation->name ?? 'Standard',
+                'unit_name'               => $unitName,
+                'total_stock'             => (float) $totalStock,
+                'available_serials_count' => $availableSerialsCount,
+                'non_serial_stock'        => (float) $nonSerialStock,
+                'batches'                 => $batches,
+                'serials'                 => $serials,
+                'warehouse_stocks'        => $warehouseStocks,
+                'history'                 => $movements
             ]);
 
         } catch (\Exception $e) {
