@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\WarehouseStock;
 use App\Models\StockMovement;
 use App\Models\Account;
+use App\Models\ProductBatch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -30,6 +31,7 @@ class SaleReturnController extends Controller
             ->get();
         
         $returnedQtyMap = [];
+        $returnedSerialsMap = [];
         foreach ($pastReturns as $sr) {
             foreach ($sr->items as $srItem) {
                 if ($srItem->is_manual) {
@@ -41,11 +43,23 @@ class SaleReturnController extends Controller
                     $returnedQtyMap[$key] = 0;
                 }
                 $returnedQtyMap[$key] += $srItem->qty;
+
+                // Track already returned serials
+                if (!empty($srItem->serials)) {
+                    $sList = is_string($srItem->serials) ? json_decode($srItem->serials, true) : (array) $srItem->serials;
+                    if (is_array($sList)) {
+                        $pId = $srItem->product_id;
+                        if (!isset($returnedSerialsMap[$pId])) {
+                            $returnedSerialsMap[$pId] = [];
+                        }
+                        $returnedSerialsMap[$pId] = array_merge($returnedSerialsMap[$pId], $sList);
+                    }
+                }
             }
         }
         
         // Format sale items with complete product data
-        $sale->items->each(function ($item) use ($returnedQtyMap) {
+        $sale->items->each(function ($item) use ($returnedQtyMap, $returnedSerialsMap) {
             $product = $item->product;
             if ($item->is_manual) {
                 $key = 'MANUAL_' . strtolower(trim($item->product_name));
@@ -152,9 +166,29 @@ class SaleReturnController extends Controller
                 ? $item->price_per_piece 
                 : ($item->price ?? $item->per_price ?? 0);
             $item->discount = $item->discount_amount ?? $item->discount ?? $item->per_discount ?? 0;
+
+            // Serial / IMEI product identification and sold serial list
+            $soldSerials = [];
+            if (!empty($item->serials)) {
+                $soldSerials = is_string($item->serials) ? json_decode($item->serials, true) : (array) $item->serials;
+                if (!is_array($soldSerials)) {
+                    $soldSerials = array_values(array_filter(array_map('trim', explode(',', $item->serials))));
+                }
+            }
+            $alreadyReturnedSerials = $returnedSerialsMap[$item->product_id] ?? [];
+            $availableSerials = array_values(array_diff($soldSerials, $alreadyReturnedSerials));
+            $isSerialProduct = ($product && $product->tracking_type === 'serial') || count($soldSerials) > 0;
+
+            $item->is_serial_product = $isSerialProduct;
+            $item->available_serials = $availableSerials;
+            $item->sold_serials = $soldSerials;
+            $item->already_returned_serials = $alreadyReturnedSerials;
         });
         
-        return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'returnedQtyMap'));
+        $warehouse = Warehouse::find($sale->warehouse_id ?? 1);
+        $warehouseName = $warehouse ? ($warehouse->warehouse_name ?? $warehouse->name) : 'Main Store';
+
+        return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'returnedQtyMap', 'warehouseName'));
     }
 
     /**
@@ -170,6 +204,8 @@ class SaleReturnController extends Controller
             'product_id' => 'required|array',
             'product_id.*' => 'required|exists:products,id',
             'color' => 'nullable|array',
+            'serials' => 'nullable|array',
+            'serials.*' => 'nullable',
             'qty' => 'required|array',
             'qty.*' => 'required|numeric|min:0',
             'price' => 'required|array',
@@ -319,6 +355,23 @@ class SaleReturnController extends Controller
                 $boxes = floor($qty / $ppb);
                 $loosePieces = $qty % $ppb;
 
+                // Process returned serials if provided
+                $rawSerials = $request->serials[$idx] ?? null;
+                $cleanSerials = [];
+                if (!empty($rawSerials)) {
+                    if (is_array($rawSerials)) {
+                        $cleanSerials = array_values(array_filter($rawSerials));
+                    } elseif (is_string($rawSerials)) {
+                        $decoded = json_decode($rawSerials, true);
+                        if (is_array($decoded)) {
+                            $cleanSerials = array_values(array_filter($decoded));
+                        } else {
+                            $cleanSerials = array_values(array_filter(array_map('trim', explode(',', $rawSerials))));
+                        }
+                    }
+                }
+                $serialsJson = count($cleanSerials) > 0 ? json_encode($cleanSerials) : null;
+
                 // Create Return Item
                 SaleReturnItem::create([
                     'sale_return_id' => $return->id,
@@ -331,6 +384,7 @@ class SaleReturnController extends Controller
                     'price' => $price,
                     'item_discount' => $itemDisc,
                     'unit' => 'pc',
+                    'serials' => $serialsJson,
                     'line_total' => $lineTotal,
                 ]);
 
@@ -379,8 +433,16 @@ class SaleReturnController extends Controller
                     ]);
                 }
 
-                // Restore serials back to available in the return warehouse if original sale had serials
-                if ($sale) {
+                // Restore serials back to available in the return warehouse
+                if (count($cleanSerials) > 0) {
+                    \App\Models\ProductSerial::where('product_id', $productId)
+                        ->whereIn('serial_number', $cleanSerials)
+                        ->update([
+                            'status' => 'available',
+                            'warehouse_id' => $validated['warehouse_id'],
+                        ]);
+                } elseif ($sale) {
+                    // Fallback to original sale serials if not explicitly passed
                     $origItem = $sale->items->where('product_id', $productId)->first();
                     if ($origItem && !empty($origItem->serials)) {
                         $serialsArr = is_string($origItem->serials) ? json_decode($origItem->serials, true) : (array) $origItem->serials;
@@ -392,6 +454,29 @@ class SaleReturnController extends Controller
                                     'status' => 'available',
                                     'warehouse_id' => $validated['warehouse_id'],
                                 ]);
+                        }
+                    }
+                }
+
+                // Restore batch quantity back to the batch if original sale had a batch
+                if ($sale) {
+                    $saleItemId = $request->sale_item_id[$idx] ?? null;
+                    $origSaleItem = null;
+                    if (!empty($saleItemId)) {
+                        $origSaleItem = $sale->items->firstWhere('id', $saleItemId);
+                    }
+                    if (!$origSaleItem) {
+                        $origSaleItem = $sale->items->firstWhere('product_id', $productId);
+                    }
+
+                    if ($origSaleItem) {
+                        if (!empty($origSaleItem->batch_id)) {
+                            ProductBatch::where('id', $origSaleItem->batch_id)
+                                ->increment('qty', $stockQty);
+                        } elseif (!empty($origSaleItem->batch_no)) {
+                            ProductBatch::where('product_id', $productId)
+                                ->where('batch_no', $origSaleItem->batch_no)
+                                ->increment('qty', $stockQty);
                         }
                     }
                 }

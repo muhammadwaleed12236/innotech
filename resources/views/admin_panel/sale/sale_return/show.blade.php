@@ -127,6 +127,18 @@
                                                 @endif
                                                 <br>
                                                 <small class="text-muted">{{ $item->product->item_code ?? $item->product->product_code ?? '' }}</small>
+                                                @if(!empty($item->serials))
+                                                    @php
+                                                        $rSerials = is_string($item->serials) ? json_decode($item->serials, true) : (array)$item->serials;
+                                                    @endphp
+                                                    @if(is_array($rSerials) && count($rSerials) > 0)
+                                                        <div class="mt-1">
+                                                            <span class="badge bg-light text-dark border font-monospace" style="font-size:0.75rem;" title="{{ implode(', ', $rSerials) }}">
+                                                                IMEIs: {{ implode(', ', $rSerials) }}
+                                                            </span>
+                                                        </div>
+                                                    @endif
+                                                @endif
                                             </td>
                                             <td class="text-center">{{ number_format($item->boxes, 2) }}</td>
                                             <td class="text-center">{{ $item->loose_pieces }}</td>

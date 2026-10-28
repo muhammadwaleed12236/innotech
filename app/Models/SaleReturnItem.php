@@ -24,6 +24,7 @@ class SaleReturnItem extends Model
         'price',
         'item_discount',
         'unit',
+        'serials',
         'line_total',
     ];
 

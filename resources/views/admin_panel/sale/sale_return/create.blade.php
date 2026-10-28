@@ -145,6 +145,12 @@
             cursor: not-allowed;
         }
 
+        .table-erp input.form-control.quantity-box,
+        .table-erp input.form-control.serial-qty-box {
+            pointer-events: auto !important;
+            cursor: text !important;
+        }
+
         .summary-card {
             background: #f8f9fa;
             border-radius: 6px;
@@ -271,7 +277,7 @@
                                     style="font-size: 0.7rem;"></i>customer</label>
                             {{-- Read-Only customer Name --}}
                             <input type="text" class="form-control form-control-sm"
-                                value="{{ optional($sale->customer)->name ?? 'Unknown customer' }}" readonly
+                                value="{{ optional($sale->customer_relation)->customer_name ?? optional($sale->customer_relation)->name ?? (optional($sale->customer)->name ?? 'Walk-in Customer') }}" readonly
                                 style="background-color: #e9ecef; border-color: #dee2e6;">
                             {{-- Hidden ID for Form Submission --}}
                             <input type="hidden" name="customer_id" value="{{ $sale->customer_id }}">
@@ -336,9 +342,34 @@
                             </thead>
                             <tbody id="returnItems">
                                 @foreach ($sale->items as $index => $item)
-                                    <tr>
+                                    @php
+                                        $original = $item['original_qty'] ?? $item['qty'];
+                                        $returned = $item['returned_qty'] ?? 0;
+                                        $netRemaining = $item['max_returnable'] ?? ($original - $returned);
+                                        $ppb = $item['pieces_per_box'] ?? 1;
+                                        
+                                        // Format remaining pieces to Box.Piece
+                                        if ($ppb > 1) {
+                                            $remBoxes = floor($netRemaining / $ppb);
+                                            $remPcs = $netRemaining % $ppb;
+                                            $remDisplay = $remBoxes . ($remPcs > 0 ? '.'.$remPcs : '');
+                                        } else {
+                                            $remDisplay = $netRemaining;
+                                        }
+
+                                        $isSerial = !empty($item['is_serial_product']);
+                                        $availableSerials = $item['available_serials'] ?? [];
+                                        $soldSerials = $item['sold_serials'] ?? [];
+                                    @endphp
+                                    <tr class="return-item-row"
+                                        data-row-index="{{ $index }}"
+                                        data-is-serial="{{ $isSerial ? '1' : '0' }}"
+                                        data-available-serials="{{ json_encode(array_values($availableSerials)) }}"
+                                        data-product-name="{{ $item['item_name'] }}">
+                                        <input type="hidden" name="sale_item_id[]" value="{{ $item['id'] ?? ($item->id ?? '') }}">
                                         <input type="hidden" name="product_id[]" value="{{ $item['product_id'] }}">
                                         <input type="hidden" name="color[]" value="{{ $item['color'] ?? '' }}">
+                                        <input type="hidden" name="serials[]" class="row-serials" value="[]">
                                         {{-- Hidden Discount to preserve refund math if needed --}}
                                         <input type="hidden" name="item_disc[]" class="item_disc"
                                             value="{{ $item['discount'] ?? 0 }}" data-original-discount="{{ $item['discount'] ?? 0 }}">
@@ -351,8 +382,7 @@
                                         <td>
                                             <input type="text" class="form-control fw-bold"
                                                 value="{{ $item['item_name'] }}" readonly>
-                                            <small class="text-muted d-block ms-2"
-                                                style="font-size: 0.75rem;">{{ $item['brand'] ?? '' }}</small>
+                                            <small class="text-muted d-block ms-2" style="font-size: 0.75rem;">{{ $item['brand'] ?? '' }}</small>
                                         </td>
 
                                         {{-- Size --}}
@@ -394,21 +424,6 @@
 
                                         {{-- Purchased Qty (Read Only) --}}
                                         <td>
-                                            @php
-                                                $original = $item['original_qty'] ?? $item['qty'];
-                                                $returned = $item['returned_qty'] ?? 0;
-                                                $netRemaining = $item['max_returnable'] ?? ($original - $returned);
-                                                $ppb = $item['pieces_per_box'] ?? 1;
-                                                
-                                                // Format remaining pieces to Box.Piece
-                                                if ($ppb > 1) {
-                                                    $remBoxes = floor($netRemaining / $ppb);
-                                                    $remPcs = $netRemaining % $ppb;
-                                                    $remDisplay = $remBoxes . ($remPcs > 0 ? '.'.$remPcs : '');
-                                                } else {
-                                                    $remDisplay = $netRemaining;
-                                                }
-                                            @endphp
                                             <div class="text-center">
                                                 <span class="fw-bold text-dark fs-6">{{ $remDisplay }}</span>
                                                 <small class="text-muted d-block" style="font-size: 0.65rem;">Remaining Pieces: {{ $netRemaining }}</small>
@@ -425,9 +440,13 @@
                                         {{-- Return Qty (Box.Piece) --}}
                                         <td>
                                             <input type="text" name="qty_box[]"
-                                                class="form-control text-center quantity-box" value="0"
-                                                placeholder="0.0" {{ $netRemaining <= 0 ? 'readonly' : '' }}>
-                                            <small class="text-muted" style="font-size: 0.7rem;">Format: Box.Piece</small>
+                                                class="form-control text-center quantity-box {{ $isSerial ? 'serial-qty-box' : '' }}" value="0"
+                                                placeholder="0.0" {{ $netRemaining <= 0 ? 'readonly' : '' }}
+                                                autocomplete="off">
+                                            <small class="text-muted d-block text-center" style="font-size: 0.7rem;">Format: Box.Piece</small>
+                                            @if($isSerial)
+                                                <div class="row-serial-badges mt-1 text-center" style="cursor: pointer;" title="Click to view/change selected serials"></div>
+                                            @endif
                                         </td>
 
                                         {{-- Total Return Pieces (Read Only, Calculated) --}}
@@ -456,44 +475,44 @@
                     <!-- Footer Summary -->
                     <div class="row mt-4">
                         <div class="col-md-7">
-                            <div class="p-4 bg-light rounded border h-100">
-                                <label class="form-label text-muted small">AMOUNT IN WORDS</label>
-                                <input type="text" name="total_amount_Words"
-                                    class="form-control border-0 bg-transparent fw-bold text-primary fs-5 fst-italic"
-                                    id="amountInWords" readonly placeholder="...">
+                            <div class="d-flex flex-column gap-3">
+                                <div class="p-4 bg-light rounded border">
+                                    <label class="form-label text-muted small">AMOUNT IN WORDS</label>
+                                    <input type="text" name="total_amount_Words"
+                                        class="form-control border-0 bg-transparent fw-bold text-primary fs-5 fst-italic"
+                                        id="amountInWords" readonly placeholder="...">
 
-                                <div class="mt-4 pt-4 border-top">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-cubes text-muted"></i>
-                                        <span class="text-muted small">Total Pieces Returned:</span>
-                                        <strong id="totalPieces" class="text-dark fs-5">0</strong>
+                                    <div class="mt-4 pt-4 border-top">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-cubes text-muted"></i>
+                                            <span class="text-muted small">Total Pieces Returned:</span>
+                                            <strong id="totalPieces" class="text-dark fs-5">0</strong>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Partial Return Status Indicator -->
-                        <div class="col-md-12 mb-3">
-                            <div class="partial-return-indicator shadow-sm border-0 p-3 rounded"
-                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="mb-0 text-white">
-                                        <i class="fas fa-chart-pie me-2"></i>Return Status
-                                    </h6>
-                                    <span id="returnTypeBadge" class="badge bg-light text-dark">
-                                        <i class="fas fa-spinner fa-spin me-1"></i>Calculating...
-                                    </span>
-                                </div>
-                                <div class="progress" style="height: 25px; background: rgba(255,255,255,0.2);">
-                                    <div id="returnProgressBar"
-                                        class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                                        style="width: 0%; background: #10ac84;" aria-valuenow="0" aria-valuemin="0"
-                                        aria-valuemax="100">
-                                        <strong id="returnPercentage">0%</strong>
+                                <!-- Partial Return Status Indicator -->
+                                <div class="partial-return-indicator shadow-sm border-0 p-3 rounded"
+                                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="mb-0 text-white">
+                                            <i class="fas fa-chart-pie me-2"></i>Return Status
+                                        </h6>
+                                        <span id="returnTypeBadge" class="badge bg-light text-dark">
+                                            <i class="fas fa-spinner fa-spin me-1"></i>Calculating...
+                                        </span>
                                     </div>
-                                </div>
-                                <div class="mt-2 text-white small" id="returnStatusText">
-                                    <i class="fas fa-info-circle me-1"></i>Select items to return
+                                    <div class="progress" style="height: 25px; background: rgba(255,255,255,0.2);">
+                                        <div id="returnProgressBar"
+                                            class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                                            style="width: 0%; background: #10ac84;" aria-valuenow="0" aria-valuemin="0"
+                                            aria-valuemax="100">
+                                            <strong id="returnPercentage">0%</strong>
+                                        </div>
+                                    </div>
+                                    <div class="mt-2 text-white small" id="returnStatusText">
+                                        <i class="fas fa-info-circle me-1"></i>Select items to return
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -576,6 +595,61 @@
                     </div>
 
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Select Product Serials / IMEIs to Return -->
+    <div class="modal fade" id="modalSelectSerialReturn" tabindex="-1" aria-labelledby="modalSelectSerialReturnLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header border-bottom bg-light px-3 py-2">
+                    <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectSerialReturnLabel">
+                        <i class="fas fa-list-ol text-success me-1"></i> Select Serial / IMEI Numbers
+                    </h6>
+                    <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="font-size: 1.5rem; line-height: 1; border: none; background: none; cursor: pointer;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-3">
+                    <input type="hidden" id="activeReturnSerialRowIndex" value="">
+                    
+                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                        <span class="small text-muted">Product: <strong id="modalReturnProductName" class="text-dark">—</strong></span>
+                        <span class="badge bg-light text-dark border">
+                            <i class="fas fa-file-invoice me-1 text-primary"></i> Invoice #{{ $sale->invoice_no }}
+                        </span>
+                    </div>
+
+                    <div class="input-group input-group-sm mb-3">
+                        <span class="input-group-text bg-light"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="returnSerialSearchInput" placeholder="Scan IMEI barcode or search serial number...">
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="chkSelectAllReturnSerials">
+                            <label class="form-check-label small fw-bold text-dark" for="chkSelectAllReturnSerials" style="cursor: pointer;">
+                                Select All Sold IMEIs
+                            </label>
+                        </div>
+                        <span class="small text-muted">Sold in this Sale: <strong id="modalTotalAvailableCount" class="text-dark">0</strong></span>
+                    </div>
+
+                    <div class="border rounded p-2 overflow-auto" style="max-height: 280px; min-height: 120px;" id="returnSerialListContainer">
+                        <div class="text-muted text-center py-3">No serial numbers found for this product.</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+                        <span class="small text-muted">Selected IMEIs to Return: <strong id="modalSelectedCount" class="text-primary fs-6">0</strong></span>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top p-2 px-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3" id="btnApplyReturnSerials">
+                        <i class="fas fa-check me-1"></i> Apply Selected IMEIs
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -682,6 +756,18 @@
             $('#btnReturnAll').click(function() {
                 $('#returnItems tr').each(function() {
                     const $row = $(this);
+
+                    // If serial product, return all available serials
+                    if ($row.data('is-serial') == '1') {
+                        let avail = [];
+                        try {
+                            avail = $row.data('available-serials') || [];
+                            if (typeof avail === 'string') avail = JSON.parse(avail);
+                        } catch(e) {}
+                        applySerialsToRow($row, avail);
+                        return;
+                    }
+
                     const maxQty = parseFloat($row.find('.quantity').attr('data-max')) || 0;
                     const ppb = parseFloat($row.find('.pieces-per-box').val()) || 1;
 
@@ -711,12 +797,40 @@
                 recalcSummary();
             });
 
-            // Auto-fill Max on Click/Focus if 0
-            $(document).on('click focus', '.quantity-box', function() {
+            // Click or Focus to type in serial quantity box
+            $(document).on('mousedown click focus', '.serial-qty-box', function(e) {
+                const $row = $(this).closest('tr');
+                e.preventDefault();
+                $(this).blur();
+                openSerialReturnModal($row);
+            });
+
+            // Keydown (typing) in serial quantity box
+            $(document).on('keydown', '.serial-qty-box', function(e) {
+                const $row = $(this).closest('tr');
+                e.preventDefault();
+                let char = '';
+                if (e.key && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    char = e.key;
+                }
+                openSerialReturnModal($row, char);
+            });
+
+            // Click / Focus on general Return Qty Cell (for non-serial items)
+            $(document).on('click focus', '.quantity-box', function(e) {
+                const $row = $(this).closest('tr');
+
+                // If serial product, open Serial / IMEI Selection modal instead
+                if ($row.data('is-serial') == '1' || $(this).hasClass('serial-qty-box')) {
+                    e.preventDefault();
+                    $(this).blur();
+                    openSerialReturnModal($row);
+                    return;
+                }
+
                 const val = $(this).val();
                 // Check if 0, 0.0, or empty
                 if (parseFloat(val) === 0 || val === '') {
-                    const $row = $(this).closest('tr');
                     const maxQty = parseFloat($row.find('.quantity').attr('data-max')) || 0;
                     const ppb = parseFloat($row.find('.pieces-per-box').val()) || 1;
 
@@ -740,9 +854,235 @@
                 }
             });
 
+            // Open Serial Modal on badge click
+            $(document).on('click', '.row-serial-badges', function(e) {
+                e.preventDefault();
+                const $row = $(this).closest('tr');
+                openSerialReturnModal($row);
+            });
+
+            // Close modal button handlers
+            $(document).on('click', '#modalSelectSerialReturn [data-dismiss="modal"], #modalSelectSerialReturn [data-bs-dismiss="modal"]', function(e) {
+                e.preventDefault();
+                closeSerialReturnModal();
+            });
+
+            // ================= SERIAL / IMEI MODAL LOGIC =================
+            let currentActiveRow = null;
+            let currentAvailableSerials = [];
+
+            function openSerialReturnModal($row, initialSearch = '') {
+                currentActiveRow = $row;
+                const prodName = $row.data('product-name') || $row.find('td:first input').val();
+                $('#modalReturnProductName').text(prodName);
+                $('#returnSerialSearchInput').val(initialSearch || '');
+
+                let avail = [];
+                try {
+                    avail = $row.data('available-serials') || [];
+                    if (typeof avail === 'string') {
+                        avail = JSON.parse(avail);
+                    }
+                } catch(e) {
+                    avail = [];
+                }
+                currentAvailableSerials = avail;
+                $('#modalTotalAvailableCount').text(currentAvailableSerials.length);
+
+                // Previously selected serials for this row
+                let existingSelected = [];
+                try {
+                    const rowVal = $row.find('.row-serials').val();
+                    if (rowVal) {
+                        existingSelected = JSON.parse(rowVal);
+                    }
+                } catch(e) {}
+
+                let filtered = currentAvailableSerials;
+                if (initialSearch) {
+                    filtered = currentAvailableSerials.filter(s => String(s).toLowerCase().includes(initialSearch.toLowerCase()));
+                }
+                renderReturnSerialList(filtered, existingSelected);
+
+                // Open modal safely
+                const modalEl = document.getElementById('modalSelectSerialReturn');
+                try {
+                    if (window.bootstrap && bootstrap.Modal) {
+                        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                    } else {
+                        $(modalEl).modal('show');
+                    }
+                } catch(err) {
+                    try {
+                        $(modalEl).modal('show');
+                    } catch(e2) {
+                        $(modalEl).addClass('show').css('display', 'block');
+                    }
+                }
+
+                setTimeout(() => {
+                    $('#returnSerialSearchInput').focus();
+                }, 300);
+            }
+
+            function closeSerialReturnModal() {
+                const modalEl = document.getElementById('modalSelectSerialReturn');
+                try {
+                    if (window.bootstrap && bootstrap.Modal) {
+                        const inst = bootstrap.Modal.getInstance(modalEl);
+                        if (inst) {
+                            inst.hide();
+                            return;
+                        }
+                    }
+                } catch(err) {}
+                try {
+                    $(modalEl).modal('hide');
+                } catch(e2) {
+                    $(modalEl).removeClass('show').css('display', 'none');
+                    $('.modal-backdrop').remove();
+                }
+            }
+
+            function renderReturnSerialList(serials, selectedList = []) {
+                let html = '';
+                const whName = '{{ $warehouseName ?? "Main Store" }}';
+                if (!serials || serials.length === 0) {
+                    html = '<div class="text-center text-muted py-4"><i class="fas fa-info-circle me-1"></i>No serial / IMEI numbers available to return for this product in this sale.</div>';
+                } else {
+                    serials.forEach((s, idx) => {
+                        const isChecked = selectedList.includes(s) ? 'checked' : '';
+                        html += `
+                            <div class="d-flex align-items-center justify-content-between p-2 border-bottom return-serial-row" style="font-size:0.85rem; cursor: pointer; user-select: none;">
+                                <div class="form-check mb-0 flex-grow-1 d-flex align-items-center">
+                                    <input class="form-check-input return-serial-chk me-2" type="checkbox" value="${s}" id="chk_rs_${idx}" ${isChecked}>
+                                    <label class="form-check-label fw-bold text-dark font-monospace" for="chk_rs_${idx}" style="cursor: pointer;">
+                                        ${s}
+                                    </label>
+                                </div>
+                                <div class="d-flex align-items-center gap-1">
+                                    <span class="badge bg-light text-dark border me-1"><i class="fas fa-warehouse me-1 text-primary"></i>${whName}</span>
+                                    <span class="badge bg-success font-monospace">Available</span>
+                                </div>
+                            </div>`;
+                    });
+                }
+                $('#returnSerialListContainer').html(html);
+                updateModalSelectedCount();
+            }
+
+            function updateModalSelectedCount() {
+                const totalVisible = $('.return-serial-chk').length;
+                const count = $('.return-serial-chk:checked').length;
+                $('#modalSelectedCount').text(count);
+                $('#chkSelectAllReturnSerials').prop('checked', totalVisible > 0 && count === totalVisible);
+            }
+
+            // Click row to toggle checkbox
+            $(document).on('click', '.return-serial-row', function(e) {
+                if ($(e.target).is('input[type="checkbox"]') || $(e.target).is('label')) {
+                    return;
+                }
+                const $chk = $(this).find('.return-serial-chk');
+                $chk.prop('checked', !$chk.prop('checked')).trigger('change');
+            });
+
+            $(document).on('change', '.return-serial-chk', function() {
+                updateModalSelectedCount();
+            });
+
+            // Select All checkbox
+            $(document).on('change', '#chkSelectAllReturnSerials', function() {
+                const isChecked = $(this).is(':checked');
+                $('.return-serial-chk').prop('checked', isChecked);
+                updateModalSelectedCount();
+            });
+
+            // Search / Filter / Barcode scan
+            $(document).on('input', '#returnSerialSearchInput', function() {
+                const q = $(this).val().trim().toLowerCase();
+                let existingSelected = [];
+                $('.return-serial-chk:checked').each(function() {
+                    existingSelected.push($(this).val());
+                });
+
+                const filtered = currentAvailableSerials.filter(s => String(s).toLowerCase().includes(q));
+                renderReturnSerialList(filtered, existingSelected);
+
+                // Auto select if barcode scan matches exactly
+                if (q.length > 2) {
+                    const exact = currentAvailableSerials.find(s => String(s).toLowerCase() === q);
+                    if (exact) {
+                        $(`.return-serial-chk[value="${exact}"]`).prop('checked', true).trigger('change');
+                        $('#returnSerialSearchInput').val('').focus();
+                    }
+                }
+            });
+
+            // Apply selected serials to active row
+            $(document).on('click', '#btnApplyReturnSerials', function() {
+                if (!currentActiveRow || !currentActiveRow.length) return;
+
+                let selectedSerials = [];
+                $('.return-serial-chk:checked').each(function() {
+                    selectedSerials.push($(this).val());
+                });
+
+                applySerialsToRow(currentActiveRow, selectedSerials);
+                closeSerialReturnModal();
+            });
+
+            function applySerialsToRow($row, selectedSerials) {
+                $row.find('.row-serials').val(JSON.stringify(selectedSerials));
+
+                const count = selectedSerials.length;
+                const ppb = parseFloat($row.find('.pieces-per-box').val()) || 1;
+
+                let boxDisplay = '';
+                if (ppb > 1) {
+                    const boxes = Math.floor(count / ppb);
+                    const pieces = count % ppb;
+                    boxDisplay = boxes + (pieces > 0 ? '.' + pieces : '');
+                } else {
+                    boxDisplay = count;
+                }
+
+                $row.find('.quantity-box').val(boxDisplay);
+                $row.find('.quantity').val(count);
+                recalcRow($row);
+                recalcSummary();
+
+                // Render badges
+                if (count > 0) {
+                    let displayImeis = selectedSerials.length <= 3 
+                        ? selectedSerials.join(', ') 
+                        : selectedSerials.slice(0, 3).join(', ') + ` (+${selectedSerials.length - 3} more)`;
+                    $row.find('.row-serial-badges').html(`
+                        <span class="badge bg-light text-dark border font-monospace" style="font-size:0.75rem;" title="${selectedSerials.join(', ')}">
+                            ${displayImeis}
+                        </span>
+                    `);
+                } else {
+                    $row.find('.row-serial-badges').html('');
+                }
+            }
+
             // Box.Piece Input Logic
             $(document).on('input', '.quantity-box', function() {
                 const $row = $(this).closest('tr');
+
+                // If serial item has no serials chosen yet and user tries to type directly
+                if ($row.data('is-serial') == '1' || $(this).hasClass('serial-qty-box')) {
+                    let sel = [];
+                    try { sel = JSON.parse($row.find('.row-serials').val() || '[]'); } catch(e){}
+                    if (sel.length === 0 && $(this).val() !== '0' && $(this).val() !== '') {
+                        const inputChar = $(this).val().slice(-1);
+                        $(this).val('0');
+                        openSerialReturnModal($row, inputChar);
+                        return;
+                    }
+                }
+
                 const val = $(this).val();
                 const ppb = num($row.find('.pieces-per-box').val());
 
@@ -843,21 +1183,22 @@
 
                 $('#returnItems tr').each(function() {
                     const $qtyInput = $(this).find('.quantity');
-                    const soldQty = num($qtyInput.attr('data-max')); // Max is original
+                    const origQty = num($qtyInput.attr('data-original')) || num($qtyInput.attr('data-max'));
                     const returningQty = num($qtyInput.val());
 
-                    totalOriginalPieces += soldQty;
+                    totalOriginalPieces += origQty;
                     totalReturningPieces += returningQty;
                 });
 
                 const returnPercentage = totalOriginalPieces > 0 ? (totalReturningPieces / totalOriginalPieces *
                         100) :
                     0;
+                const cappedPercentage = Math.min(100, Math.max(0, returnPercentage));
 
                 // Update progress bar
-                $('#returnProgressBar').css('width', returnPercentage + '%');
-                $('#returnProgressBar').attr('aria-valuenow', returnPercentage);
-                $('#returnPercentage').text(returnPercentage.toFixed(1) + '%');
+                $('#returnProgressBar').css('width', cappedPercentage + '%');
+                $('#returnProgressBar').attr('aria-valuenow', cappedPercentage);
+                $('#returnPercentage').text(cappedPercentage.toFixed(1) + '%');
 
                 // Update badge and status text
                 if (totalReturningPieces === 0) {
