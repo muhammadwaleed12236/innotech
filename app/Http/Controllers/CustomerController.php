@@ -207,6 +207,9 @@ class CustomerController extends Controller
         $opening = (float) ($customer->opening_balance ?? 0);
         $this->syncOpeningBalance($customer, $opening);
 
+        // Sync linked Vendor if party_type is both
+        $this->syncLinkedVendor($customer, $request->party_type ?? $customer->party_type ?? 'customer');
+
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -241,7 +244,67 @@ class CustomerController extends Controller
         $opening = (float) ($customer->opening_balance ?? 0);
         $this->syncOpeningBalance($customer, $opening);
 
+        // Sync linked Vendor if party_type is both
+        $this->syncLinkedVendor($customer, $request->party_type ?? $customer->party_type ?? 'customer');
+
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
+    }
+
+    /**
+     * Synchronize Customer with linked Vendor record when party_type is 'both'
+     */
+    private function syncLinkedVendor(Customer $customer, string $partyType): void
+    {
+        if ($partyType === 'both') {
+            $vendor = null;
+            if ($customer->linked_vendor_id) {
+                $vendor = \App\Models\Vendor::find($customer->linked_vendor_id);
+            }
+            if (!$vendor) {
+                $vendor = \App\Models\Vendor::where('name', $customer->customer_name)
+                    ->orWhere(function($q) use ($customer) {
+                        if (!empty($customer->mobile)) $q->where('phone', $customer->mobile);
+                    })->first();
+            }
+
+            if ($vendor) {
+                $vendor->update([
+                    'name' => $customer->customer_name,
+                    'phone' => $customer->mobile ?: $vendor->phone,
+                    'email' => $customer->email_address ?: $vendor->email,
+                    'cnic' => $customer->cnic ?: $vendor->cnic,
+                    'address' => $customer->address ?: $vendor->address,
+                    'party_type' => 'both',
+                    'linked_customer_id' => $customer->id,
+                ]);
+            } else {
+                $vendor = \App\Models\Vendor::create([
+                    'name' => $customer->customer_name,
+                    'phone' => $customer->mobile,
+                    'email' => $customer->email_address,
+                    'cnic' => $customer->cnic,
+                    'address' => $customer->address,
+                    'party_type' => 'both',
+                    'linked_customer_id' => $customer->id,
+                ]);
+            }
+
+            if ($customer->linked_vendor_id !== $vendor->id || $customer->party_type !== 'both') {
+                $customer->update([
+                    'linked_vendor_id' => $vendor->id,
+                    'party_type' => 'both',
+                ]);
+            }
+        } else {
+            // Party type is customer only
+            if ($customer->linked_vendor_id) {
+                $vendor = \App\Models\Vendor::find($customer->linked_vendor_id);
+                if ($vendor) {
+                    $vendor->update(['party_type' => 'vendor', 'linked_customer_id' => null]);
+                }
+                $customer->update(['linked_vendor_id' => null, 'party_type' => 'customer']);
+            }
+        }
     }
 
     /**

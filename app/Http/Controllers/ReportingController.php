@@ -2521,11 +2521,22 @@ class ReportingController extends Controller
             ];
         });
 
+        // Check if customer is both (Customer & Vendor)
+        $isBoth = ($customer->party_type ?? '') === 'both' || !empty($customer->linked_vendor_id);
+        $linkedVendor = $isBoth ? \App\Models\Vendor::find($customer->linked_vendor_id) : null;
+        $combinedLedger = null;
+        if ($isBoth) {
+            $combinedLedger = $balanceService->getCombinedPartyLedger($customer->id, $customer->linked_vendor_id, $start, $end);
+        }
+
         return response()->json([
             'customer' => $customer,
+            'is_both' => $isBoth,
+            'linked_vendor' => $linkedVendor,
             'opening_balance' => $ledgerData['opening_balance'],
             'closing_balance' => $ledgerData['closing_balance'] ?? $ledgerData['opening_balance'],
             'transactions' => $transactions,
+            'combined_ledger' => $combinedLedger,
             'report_period' => "$start to $end",
         ]);
     }
@@ -2740,11 +2751,22 @@ class ReportingController extends Controller
             ];
         });
 
+        // Check if vendor is both (Customer & Vendor)
+        $isBoth = ($vendor->party_type ?? '') === 'both' || !empty($vendor->linked_customer_id);
+        $linkedCustomer = $isBoth ? \App\Models\Customer::find($vendor->linked_customer_id) : null;
+        $combinedLedger = null;
+        if ($isBoth) {
+            $combinedLedger = $balanceService->getCombinedPartyLedger($vendor->linked_customer_id, $vendor->id, $start, $end);
+        }
+
         return response()->json([
             'vendor' => $vendor,
+            'is_both' => $isBoth,
+            'linked_customer' => $linkedCustomer,
             'opening_balance' => $ledgerData['opening_balance'],
             'closing_balance' => $ledgerData['closing_balance'] ?? $ledgerData['opening_balance'],
             'transactions' => $transactions,
+            'combined_ledger' => $combinedLedger,
             'report_period' => "$start to $end",
         ]);
     }

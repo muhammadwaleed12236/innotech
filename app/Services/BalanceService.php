@@ -426,6 +426,108 @@ class BalanceService
     }
 
     /**
+     * Get Combined Consolidated Ledger for a Party that operates as BOTH Customer and Vendor.
+     * Accounting Convention (Net Balance):
+     * - Debit (Dr) = Sale / Debit Note / Payment to them -> We are owed / Receivable increases
+     * - Credit (Cr) = Purchase / Receipt / Return -> We owe them / Payable increases
+     * - Net Balance > 0: "Lene hain" (Receivable from Party)
+     * - Net Balance < 0: "Dene hain" (Payable to Party)
+     */
+    public function getCombinedPartyLedger(?int $customerId, ?int $vendorId, string $startDate, string $endDate): array
+    {
+        $customer = $customerId ? \App\Models\Customer::find($customerId) : null;
+        $vendor = $vendorId ? \App\Models\Vendor::find($vendorId) : null;
+
+        if (!$customer && $vendor && $vendor->linked_customer_id) {
+            $customer = \App\Models\Customer::find($vendor->linked_customer_id);
+            $customerId = $customer ? $customer->id : null;
+        }
+        if (!$vendor && $customer && $customer->linked_vendor_id) {
+            $vendor = \App\Models\Vendor::find($customer->linked_vendor_id);
+            $vendorId = $vendor ? $vendor->id : null;
+        }
+
+        // Opening Balance calculation before start date
+        // Customer opening (Positive = Receivable / Dr)
+        $custOpening = $customerId ? $this->getCustomerBalanceBeforeDate($customerId, $startDate) : 0;
+        // Vendor opening (Positive in getVendorBalance = Payable / Cr, so subtract to net)
+        $vendOpening = $vendorId ? $this->getVendorBalanceBeforeDate($vendorId, $startDate) : 0;
+        $netOpeningBalance = $custOpening - $vendOpening; // Net > 0 means Receivable (Dr)
+
+        $allRows = collect([]);
+
+        // 1. Customer Transactions (Sales, Returns, Receipts)
+        if ($customerId) {
+            $custEntries = JournalEntry::where('party_type', Customer::class)
+                ->where('party_id', $customerId)
+                ->whereBetween('entry_date', [$startDate, $endDate])
+                ->orderBy('entry_date')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($custEntries as $entry) {
+                $allRows->push([
+                    'date'        => $entry->entry_date,
+                    'type'        => 'Customer',
+                    'ref_no'      => $entry->source_type ? (class_basename($entry->source_type) . ' #' . $entry->source_id) : '-',
+                    'description' => '[Sale/Cust] ' . $entry->description,
+                    'debit'       => (float) $entry->debit,   // Dr = Sale (Receivable increases)
+                    'credit'      => (float) $entry->credit,  // Cr = Receipt/Return (Receivable decreases)
+                    'sort_date'   => $entry->entry_date,
+                    'sort_id'     => $entry->id,
+                ]);
+            }
+        }
+
+        // 2. Vendor Transactions (Purchases, Returns, Payments)
+        if ($vendorId) {
+            $vendLedger = $this->getVendorLedger($vendorId, $startDate, $endDate);
+            foreach ($vendLedger['transactions'] as $tx) {
+                // In Vendor ledger:
+                // tx['credit'] = Purchase (Payable increases) -> In net combined view, this is Credit (Cr)
+                // tx['debit']  = Payment/Return (Payable decreases) -> In net combined view, this is Debit (Dr)
+                $allRows->push([
+                    'date'        => $tx['date'],
+                    'type'        => 'Vendor',
+                    'ref_no'      => $tx['invoice_no'] ?: ($tx['source_type'] ? ($tx['source_type'] . ' #' . $tx['source_id']) : '-'),
+                    'description' => '[Purchase/Vend] ' . $tx['description'],
+                    'debit'       => (float) $tx['debit'],  // Dr = Payment to vendor or Purch Return (We reduce what we owe)
+                    'credit'      => (float) $tx['credit'], // Cr = Purchase (We owe them)
+                    'sort_date'   => $tx['date'],
+                    'sort_id'     => $tx['source_id'] ?? 0,
+                ]);
+            }
+        }
+
+        // Sort all chronologically
+        $sorted = $allRows->sortBy([
+            ['sort_date', 'asc'],
+            ['sort_id', 'asc']
+        ])->values();
+
+        $running = $netOpeningBalance;
+        $transactions = $sorted->map(function ($row) use (&$running) {
+            // Net balance: Dr increases receivable, Cr increases payable
+            $running += ($row['debit'] - $row['credit']);
+            $statusText = $running >= 0 ? 'Lene hain (Dr / Receivable)' : 'Dene hain (Cr / Payable)';
+            return array_merge($row, [
+                'balance' => $running,
+                'status_label' => $statusText,
+                'abs_balance' => abs($running)
+            ]);
+        });
+
+        return [
+            'customer'          => $customer,
+            'vendor'            => $vendor,
+            'opening_balance'   => $netOpeningBalance,
+            'closing_balance'   => $running,
+            'closing_status'    => $running >= 0 ? 'Lene hain (Dr)' : 'Dene hain (Cr)',
+            'transactions'      => $transactions,
+        ];
+    }
+
+    /**
      * Create a Receipt Voucher using VoucherMaster + JournalEntry
      */
     public function createReceiptVoucher(

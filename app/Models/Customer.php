@@ -13,10 +13,15 @@ class Customer extends Model
         'customer_id', 'customer_name', 'customer_name_ur', 'cnic', 'filer_type', 'zone',
         'contact_person', 'mobile', 'email_address', 'contact_person_2', 'mobile_2',
         'email_address_2', 'opening_balance', 'balance_range', 'address', 'status',
-        'customer_type', 'previous_balance', 'sales_officer_id',
+        'customer_type', 'party_type', 'linked_vendor_id', 'previous_balance', 'sales_officer_id',
         'payment_reminder_date', 'reminder_snoozed_at', 'reminder_day', 'source'
     ];
 
+    
+    public function linkedVendor()
+    {
+        return $this->belongsTo(Vendor::class, 'linked_vendor_id');
+    }
     public function salesOfficer()
     {
         return $this->belongsTo(SalesOfficer::class, 'sales_officer_id');

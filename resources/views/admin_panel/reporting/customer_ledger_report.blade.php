@@ -546,14 +546,36 @@
 
                     updateReportTitle(res.customer ? res.customer.customer_name : null);
 
+                    window.currentLedgerResponse = res;
+                    let bothBadge = '';
+                    let navTabs = '';
+                    if (res.is_both) {
+                        bothBadge = `<span class="badge bg-primary text-white me-2 px-2 py-1"><i class="fas fa-sync-alt me-1"></i>Both: Customer &amp; Vendor</span>`;
+                        navTabs = `
+                            <ul class="nav nav-pills mt-2" id="partyLedgerTabs" role="tablist" style="font-size: 0.85rem;">
+                                <li class="nav-item">
+                                    <button class="nav-link active py-1 px-3 fw-bold" id="btnTabCustomerOnly" type="button"><i class="fas fa-user-tag me-1"></i>Customer Statement (Sales &amp; Receipts)</button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link py-1 px-3 fw-bold text-primary" id="btnTabCombinedParty" type="button" style="background:#eef2ff;"><i class="fas fa-layer-group me-1"></i>Combined Consolidated Statement (Sales &amp; Purchases Net)</button>
+                                </li>
+                            </ul>
+                        `;
+                    }
+
                     // Build Header
                     $("#ledgerHeader").html(`
-                        <div>
-                            <h6 class="fw-bold text-dark mb-0">${res.customer.customer_name}</h6>
-                            <small class="text-muted">Period: <strong>${displayStart}</strong> to <strong>${displayEnd}</strong></small>
-                        </div>
-                        <div>
-                             <span class="badge bg-primary text-white p-2 shadow-sm font-monospace">Statement of Account</span>
+                        <div class="w-100">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-0">${res.customer.customer_name} ${bothBadge}</h6>
+                                    <small class="text-muted">Period: <strong>${displayStart}</strong> to <strong>${displayEnd}</strong></small>
+                                </div>
+                                <div>
+                                     <span class="badge bg-primary text-white p-2 shadow-sm font-monospace">Statement of Account</span>
+                                </div>
+                            </div>
+                            ${navTabs}
                         </div>
                     `);
 
@@ -761,6 +783,241 @@
                 let d = new Date(dateStr);
                 let months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                 return d.getDate().toString().padStart(2, '0') + '-' + months[d.getMonth()] + '-' + d.getFullYear();
+            }
+            // Toggle between Customer Ledger and Combined Consolidated Ledger
+            $(document).on('click', '#btnTabCustomerOnly', function() {
+                $('#partyLedgerTabs button').removeClass('active');
+                $(this).addClass('active');
+                if (window.currentLedgerResponse) {
+                    renderCustomerView(window.currentLedgerResponse);
+                }
+            });
+
+            $(document).on('click', '#btnTabCombinedParty', function() {
+                $('#partyLedgerTabs button').removeClass('active');
+                $(this).addClass('active');
+                if (window.currentLedgerResponse && window.currentLedgerResponse.combined_ledger) {
+                    renderCombinedView(window.currentLedgerResponse.combined_ledger);
+                }
+            });
+
+            function renderCombinedView(combined) {
+                let lastBalance = parseFloat(combined.opening_balance || 0);
+                let totalDebit = 0;
+                let totalCredit = 0;
+
+                let formattedOpening = 'Rs ' + Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2}) + ' ' + (lastBalance >= 0 ? '(Dr - Lene)' : '(Cr - Dene)');
+                $('#pillOpeningBalance, #mobPillOpeningBalance').text(formattedOpening);
+
+                let html = `
+                    <tr class="bg-light fw-bold">
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center"><span class="badge bg-secondary">Combined</span></td>
+                        <td class="text-start">Net Opening Balance (B/F)</td>
+                        <td class="text-end">-</td>
+                        <td class="text-end">-</td>
+                        <td class="text-end text-dark">
+                            Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small class="text-muted">${lastBalance >= 0 ? 'Dr (Lene)' : 'Cr (Dene)'}</small>
+                        </td>
+                    </tr>
+                `;
+
+                let mobHtml = `
+                    <div class="mob-card p-2.5 p-2 mb-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong class="text-dark" style="font-size: 12.5px;">Net Opening Balance (B/F)</strong>
+                            <strong class="text-dark" style="font-size: 13px;">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} ${lastBalance >= 0 ? 'Dr' : 'Cr'}</strong>
+                        </div>
+                    </div>
+                `;
+
+                (combined.transactions || []).forEach(t => {
+                    let debit = t.debit && t.debit > 0 ? parseFloat(t.debit) : 0;
+                    let credit = t.credit && t.credit > 0 ? parseFloat(t.credit) : 0;
+                    totalDebit += debit;
+                    totalCredit += credit;
+                    lastBalance = parseFloat(t.balance);
+
+                    let balLabel = lastBalance >= 0 ? 'Dr (Lene hain)' : 'Cr (Dene hain)';
+                    let balClass = lastBalance >= 0 ? 'balance-positive' : 'balance-negative';
+                    let typeBadge = t.type === 'Customer' ? '<span class="badge bg-primary">Sale / Cust</span>' : '<span class="badge bg-warning text-dark">Purch / Vend</span>';
+
+                    html += `
+                        <tr>
+                            <td class="text-center small text-nowrap">${t.date}</td>
+                            <td class="text-center"><span class="badge bg-light text-dark border">${t.ref_no}</span></td>
+                            <td class="text-center">${typeBadge}</td>
+                            <td class="text-start">${t.description}</td>
+                            <td class="text-end text-danger fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                            <td class="text-end text-success fw-semibold">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                            <td class="text-end fw-bold ${balClass}">
+                                Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} 
+                                <small class="d-block text-muted" style="font-size:0.75em">${balLabel}</small>
+                            </td>
+                        </tr>
+                    `;
+
+                    mobHtml += `
+                        <div class="mob-card p-2.5 p-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div>${typeBadge} <span class="badge bg-light text-dark border ms-1">${t.ref_no}</span></div>
+                                <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
+                            </div>
+                            <div class="mb-1">
+                                <small class="text-muted d-block" style="font-size: 11px;">${t.description}</small>
+                            </div>
+                            <div class="border-top pt-2 mt-1">
+                                <div class="row g-1 text-center" style="font-size: 11px;">
+                                    <div class="col-4 border-end">
+                                        <span class="text-muted d-block" style="font-size: 10px;">Debit (Dr)</span>
+                                        <strong class="text-danger">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                    </div>
+                                    <div class="col-4 border-end">
+                                        <span class="text-muted d-block" style="font-size: 10px;">Credit (Cr)</span>
+                                        <strong class="text-success">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <span class="text-muted d-block" style="font-size: 10px;">Net Balance</span>
+                                        <strong class="${balClass}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small>${lastBalance >= 0 ? 'Dr' : 'Cr'}</small></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <tr class="fw-bold bg-light">
+                        <td colspan="4" class="text-end text-dark">Combined Totals:</td>
+                        <td class="text-end text-danger">Rs ${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="text-end text-success">Rs ${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="text-end ${lastBalance >= 0 ? 'balance-positive' : 'balance-negative'}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} ${lastBalance >= 0 ? 'Dr (Lene)' : 'Cr (Dene)'}</td>
+                    </tr>
+                `;
+
+                $("#ledgerBody").html(html);
+                $("#ledgerMobileContainer").html(mobHtml);
+
+                $('#pillTotalDebit, #mobPillTotalDebit').text('Rs ' + totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2}));
+                $('#pillTotalCredit, #mobPillTotalCredit').text('Rs ' + totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2}));
+                $('#pillClosingBalance, #mobPillClosingBalance').text('Rs ' + Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2}) + ' ' + (lastBalance >= 0 ? 'Dr (Lene)' : 'Cr (Dene)'));
+            }
+
+            function renderCustomerView(res) {
+                let totalDebit = 0;
+                let totalCredit = 0;
+                let lastBalance = parseFloat(res.opening_balance);
+
+                let formattedOpening = 'Rs ' + lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                $('#pillOpeningBalance, #mobPillOpeningBalance').text(formattedOpening);
+
+                let html = `
+                    <tr class="bg-light fw-bold">
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-center">-</td>
+                        <td class="text-start">Opening Balance (B/F)</td>
+                        <td class="text-end">-</td>
+                        <td class="text-end">-</td>
+                        <td class="text-end text-dark">
+                            Rs ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})} 
+                        </td>
+                    </tr>
+                `;
+
+                let mobHtml = `
+                    <div class="mob-card p-2.5 p-2 mb-2 bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong class="text-dark" style="font-size: 12.5px;">Opening Balance (B/F)</strong>
+                            <strong class="text-dark" style="font-size: 13px;">Rs ${lastBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</strong>
+                        </div>
+                    </div>
+                `;
+
+                res.transactions.forEach((t, i) => {
+                    let debit = t.debit && t.debit > 0 ? parseFloat(t.debit) : 0;
+                    let credit = t.credit && t.credit > 0 ? parseFloat(t.credit) : 0;
+                    totalDebit += debit;
+                    totalCredit += credit;
+                    lastBalance = parseFloat(t.balance);
+
+                    let balLabel = lastBalance >= 0 ? 'Dr' : 'Cr';
+                    let balClass = lastBalance >= 0 ? 'balance-positive' : 'balance-negative';
+                    let custName = t.customer_name || '-';
+
+                    let invoiceBadge = t.invoice_url 
+                        ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none py-1 px-2 shadow-sm" title="View & Print Invoice" style="cursor: pointer;"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
+                        : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span>`;
+
+                    let mobInvoiceBadge = t.invoice_url 
+                        ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none" title="View & Print Invoice"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
+                        : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? 'REF'}</span>`;
+
+                    html += `
+                        <tr>
+                            <td class="text-center small text-nowrap">${t.date}</td>
+                            <td class="text-center">${invoiceBadge}</td>
+                            <td class="fw-bold text-dark">${custName}</td>
+                            <td class="text-start">${t.description}</td>
+                            <td class="text-end text-danger fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                            <td class="text-end text-success fw-semibold">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
+                            <td class="text-end fw-bold ${balClass}">
+                                Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} 
+                                <small class="text-muted" style="font-size:0.75em">${balLabel}</small>
+                            </td>
+                        </tr>
+                    `;
+
+                    mobHtml += `
+                        <div class="mob-card p-2.5 p-2 mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                ${mobInvoiceBadge}
+                                <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
+                            </div>
+                            <div class="mb-1">
+                                <strong class="text-dark d-block" style="font-size: 12.5px;">${custName}</strong>
+                                <small class="text-muted d-block" style="font-size: 11px;">${t.description}</small>
+                            </div>
+                            <div class="border-top pt-2 mt-1">
+                                <div class="row g-1 text-center" style="font-size: 11px;">
+                                    <div class="col-4 border-end">
+                                        <span class="text-muted d-block" style="font-size: 10px;">Debit (Dr)</span>
+                                        <strong class="text-danger">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                    </div>
+                                    <div class="col-4 border-end">
+                                        <span class="text-muted d-block" style="font-size: 10px;">Credit (Cr)</span>
+                                        <strong class="text-success">${credit > 0 ? 'Rs ' + credit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <span class="text-muted d-block" style="font-size: 10px;">Balance</span>
+                                        <strong class="${balClass}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} <small>${balLabel}</small></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <tr class="fw-bold bg-light">
+                        <td colspan="4" class="text-end text-dark">Totals:</td>
+                        <td class="text-end text-danger">Rs ${totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="text-end text-success">Rs ${totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                        <td class="text-end ${lastBalance >= 0 ? 'balance-positive' : 'balance-negative'}">Rs ${Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2})} ${lastBalance >= 0 ? 'Dr' : 'Cr'}</td>
+                    </tr>
+                `;
+
+                $("#ledgerBody").html(html);
+                $("#ledgerMobileContainer").html(mobHtml);
+
+                let formattedDebit   = 'Rs ' + totalDebit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                let formattedCredit  = 'Rs ' + totalCredit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                let formattedClosing = 'Rs ' + Math.abs(lastBalance).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + (lastBalance >= 0 ? 'Dr' : 'Cr');
+
+                $('#pillTotalDebit, #mobPillTotalDebit').text(formattedDebit);
+                $('#pillTotalCredit, #mobPillTotalCredit').text(formattedCredit);
+                $('#pillClosingBalance, #mobPillClosingBalance').text(formattedClosing);
             }
         });
     </script>

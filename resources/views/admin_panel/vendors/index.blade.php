@@ -321,6 +321,9 @@
                                     </div>
                                     <div>
                                         <span class="fw-semibold text-dark">{{ $v->name }}</span>
+                                        @if(($v->party_type ?? '') === 'both' || !empty($v->linked_customer_id))
+                                            <span class="badge bg-primary text-white ms-1 px-2 py-0" style="font-size: 10px;" title="Linked as Customer & Vendor"><i class="fas fa-sync-alt me-1"></i>Both (Cust &amp; Vend)</span>
+                                        @endif
                                     </div>
                                 </div>
                             </td>
@@ -382,6 +385,7 @@
                             <input type="hidden" class="v-strn" value="{{ $v->strn_number }}">
                             <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                             <input type="hidden" class="v-address" value="{{ $v->address }}">
+                            <input type="hidden" class="v-party-type" value="{{ $v->party_type ?? 'vendor' }}">
                         </tr>
                     @endforeach
                 </tbody>
@@ -468,11 +472,19 @@
 
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label for="vname" class="form-label fw-semibold text-dark small">Vendor Name <span class="text-danger">*</span></label>
+                        <div class="col-md-4">
+                            <label for="vname" class="form-label fw-semibold text-dark small">Vendor / Business Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control px-3 py-2" name="name" id="vname" placeholder="Enter vendor name..." required style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label for="vparty_type" class="form-label fw-semibold text-dark small">Party Category (Role) <span class="text-danger">*</span></label>
+                            <select class="form-control form-select px-3 py-2" name="party_type" id="vparty_type" style="border-radius: 10px; border: 1.5px solid #cbd5e1;">
+                                <option value="vendor">Vendor Only</option>
+                                <option value="both">Both (Customer &amp; Vendor)</option>
+                            </select>
+                            <div class="form-text text-muted small" style="font-size:10px;">If Both is selected, this party will also appear under Customers automatically.</div>
+                        </div>
+                        <div class="col-md-4">
                             <label for="vphone" class="form-label fw-semibold text-dark small">Phone Number <span class="text-muted fw-normal">(Optional)</span></label>
                             <input type="text" class="form-control px-3 py-2" name="phone" id="vphone" placeholder="e.g. 0300-1234567" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
                         </div>
@@ -550,6 +562,7 @@
             $('#vendorForm')[0].reset();
             $('#vendor_id').val('');
             $('#opening_balance').val(0);
+            $('#vparty_type').val('vendor');
             $('#modalTitle').html('<i class="fas fa-truck text-primary me-2"></i>New Vendor');
             $('#opening_balance').prop('readonly', false);
             $('#vendorModal').modal('show');
@@ -568,8 +581,10 @@
             const strn = $container.find('.v-strn').val() || '';
             const balance = $container.find('.v-balance').val() || '0';
             const address = $container.find('.v-address').val() || '';
+            const partyType = $container.find('.v-party-type').val() || 'vendor';
 
             $('#vendor_id').val(id);
+            $('#vparty_type').val(partyType);
             $('#vname').val(name);
             $('#vemail').val(email);
             $('#vphone').val(phone);

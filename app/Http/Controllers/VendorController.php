@@ -22,6 +22,8 @@ class VendorController extends Controller
     // Store or update vendor information
     public function store(Request $request)
     {
+        $partyType = $request->party_type ?? 'vendor';
+
         if ($request->id) {
             // Update existing vendor
             $vendor = Vendor::findOrFail($request->id);
@@ -29,12 +31,18 @@ class VendorController extends Controller
 
             $newOpening = (float) ($request->opening_balance ?? 0);
             $this->syncOpeningBalance($vendor, $newOpening);
+
+            // Sync with Customer if party_type is both
+            $this->syncLinkedCustomer($vendor, $partyType);
         } else {
             // Create a new vendor and ledger entry
             $vendor = Vendor::create($request->all());
 
             $newOpening = (float) ($request->opening_balance ?? 0);
             $this->syncOpeningBalance($vendor, $newOpening);
+
+            // Sync with Customer if party_type is both
+            $this->syncLinkedCustomer($vendor, $partyType);
         }
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -46,6 +54,68 @@ class VendorController extends Controller
         }
 
         return back()->with('success', 'Saved Successfully');
+    }
+
+    /**
+     * Synchronize Vendor with linked Customer record when party_type is 'both'
+     */
+    private function syncLinkedCustomer(Vendor $vendor, string $partyType): void
+    {
+        if ($partyType === 'both') {
+            $customer = null;
+            if ($vendor->linked_customer_id) {
+                $customer = \App\Models\Customer::find($vendor->linked_customer_id);
+            }
+            if (!$customer) {
+                $customer = \App\Models\Customer::where('customer_name', $vendor->name)
+                    ->orWhere(function($q) use ($vendor) {
+                        if (!empty($vendor->phone)) $q->where('mobile', $vendor->phone);
+                    })->first();
+            }
+
+            if ($customer) {
+                $customer->update([
+                    'customer_name' => $vendor->name,
+                    'mobile' => $vendor->phone ?: $customer->mobile,
+                    'email_address' => $vendor->email ?: $customer->email_address,
+                    'cnic' => $vendor->cnic ?: $customer->cnic,
+                    'address' => $vendor->address ?: $customer->address,
+                    'party_type' => 'both',
+                    'linked_vendor_id' => $vendor->id,
+                ]);
+            } else {
+                $maxId = (int) \App\Models\Customer::max('id') + 1;
+                $newCustId = 'CUST-' . str_pad($maxId, 4, '0', STR_PAD_LEFT);
+                $customer = \App\Models\Customer::create([
+                    'customer_id' => $newCustId,
+                    'customer_name' => $vendor->name,
+                    'mobile' => $vendor->phone,
+                    'email_address' => $vendor->email,
+                    'cnic' => $vendor->cnic,
+                    'address' => $vendor->address,
+                    'customer_type' => 'Main Customer',
+                    'party_type' => 'both',
+                    'linked_vendor_id' => $vendor->id,
+                    'status' => 'active',
+                ]);
+            }
+
+            if ($vendor->linked_customer_id !== $customer->id || $vendor->party_type !== 'both') {
+                $vendor->update([
+                    'linked_customer_id' => $customer->id,
+                    'party_type' => 'both',
+                ]);
+            }
+        } else {
+            // Party type is vendor only
+            if ($vendor->linked_customer_id) {
+                $customer = \App\Models\Customer::find($vendor->linked_customer_id);
+                if ($customer) {
+                    $customer->update(['party_type' => 'customer', 'linked_vendor_id' => null]);
+                }
+                $vendor->update(['linked_customer_id' => null, 'party_type' => 'vendor']);
+            }
+        }
     }
 
     /**

@@ -17,10 +17,17 @@ class Vendor extends Model
         'ntn_number',
         'strn_number',
         'address',
+        'party_type',
+        'linked_customer_id',
         'opening_balance'
     ];
 
-      public function ledger()
+      
+    public function linkedCustomer()
+    {
+        return $this->belongsTo(Customer::class, 'linked_customer_id');
+    }
+    public function ledger()
     {
         return $this->hasOne(VendorLedger::class);
     }
