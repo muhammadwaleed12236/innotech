@@ -1,3 +1,4 @@
+{{-- Sony branch live sync verified --}}
 @extends('admin_panel.layout.app')
 
 @section('content')
