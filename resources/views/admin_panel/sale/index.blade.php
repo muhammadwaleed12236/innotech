@@ -909,6 +909,11 @@
                                         <div class="text-muted small text-truncate" style="font-size:11px;" title="${sale.customer_address}">
                                             <i class="fas fa-map-marker-alt me-1 text-danger"></i>${sale.customer_address}
                                         </div>
+                                        ${sale.sales_officer_name ? `
+                                            <div class="text-primary small mt-1" style="font-size:11px;">
+                                                <i class="fas fa-user-tie me-1"></i>Sales Officer: <strong>${sale.sales_officer_name}</strong>
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 </div>
                                 <div class="col-md-5">
@@ -924,6 +929,12 @@
                                             <span class="text-muted">Date:</span>
                                             <span>${sale.created_at_formatted}</span>
                                         </div>
+                                        ${sale.po_no ? `
+                                            <div class="d-flex justify-content-between align-items-center py-0" style="font-size:11.5px;">
+                                                <span class="text-muted">PO # (Mail):</span>
+                                                <strong class="text-success">${sale.po_no} ${sale.po_date ? `(${sale.po_date})` : ''}</strong>
+                                            </div>
+                                        ` : ''}
                                         ${sale.reference ? `
                                             <div class="d-flex justify-content-between align-items-center py-0" style="font-size:11.5px;">
                                                 <span class="text-muted">Ref / M.Bill:</span>

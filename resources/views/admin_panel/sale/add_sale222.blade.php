@@ -1106,13 +1106,25 @@
             gap: 10px;
             align-items: flex-end;
         }
+        .checkout-extra-fields .wrapper-officer {
+            flex: 1.5 1 170px;
+            min-width: 140px;
+        }
+        .checkout-extra-fields .wrapper-po-no {
+            flex: 1.2 1 140px;
+            min-width: 120px;
+        }
+        .checkout-extra-fields .wrapper-po-date {
+            flex: 1 1 120px;
+            min-width: 110px;
+        }
         .checkout-extra-fields .wrapper-reference {
-            flex: 2 1 200px;
-            min-width: 160px;
+            flex: 1.8 1 180px;
+            min-width: 150px;
         }
         .checkout-extra-fields .wrapper-credit-days {
-            flex: 1 1 120px;
-            min-width: 90px;
+            flex: 0.8 1 90px;
+            min-width: 80px;
         }
 
         /* ---------- PAYMENT METHODS ---------- */
@@ -1549,7 +1561,8 @@
                                                             data-address="{{ $c->address }}" 
                                                             data-code="{{ $c->customer_id }}"
                                                             data-prev="{{ $c->previous_balance ?? 0 }}" 
-                                                            data-range="{{ $c->balance_range ?? 0 }}">
+                                                            data-range="{{ $c->balance_range ?? 0 }}"
+                                                            data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
                                                         {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
                                                     </option>
                                                 @endforeach
@@ -1849,10 +1862,46 @@
 
                         <div class="pt-2 border-top mt-3">
                             <div class="checkout-extra-fields mb-2">
+                                {{-- Sales Officer / Person --}}
+                                <div class="wrapper-officer">
+                                    <label class="field-label mb-1" for="salesOfficerSelect" style="font-size: 11px;">
+                                        <i class="fas fa-user-tie text-primary me-1"></i> Sales Officer
+                                    </label>
+                                    <select class="form-select form-select-sm" name="sales_officer_id" id="salesOfficerSelect" style="height: 34px; font-size: 12px;">
+                                        <option value="">Choose Sales Officer...</option>
+                                        @if(isset($salesOfficers) && count($salesOfficers) > 0)
+                                            @foreach($salesOfficers as $so)
+                                                <option value="{{ $so->id }}" {{ (isset($sale) && $sale->sales_officer_id == $so->id) ? 'selected' : '' }}>
+                                                    {{ $so->name }} {{ $so->mobile ? '(' . $so->mobile . ')' : '' }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+
+                                {{-- PO Number (Customer Mail Order / PO) --}}
+                                <div class="wrapper-po-no">
+                                    <label class="field-label mb-1" for="inputPoNo" style="font-size: 11px;">
+                                        <i class="fas fa-receipt text-secondary me-1"></i> PO # (Mail Order)
+                                    </label>
+                                    <input type="text" class="form-control form-control-sm" name="po_no" id="inputPoNo" placeholder="e.g. PO-786" value="{{ $sale->po_no ?? '' }}" style="height: 34px;">
+                                </div>
+
+                                {{-- PO Date --}}
+                                <div class="wrapper-po-date">
+                                    <label class="field-label mb-1" for="inputPoDate" style="font-size: 11px;">
+                                        <i class="fas fa-calendar-alt text-secondary me-1"></i> PO Date
+                                    </label>
+                                    <input type="date" class="form-control form-control-sm" name="po_date" id="inputPoDate" value="{{ isset($sale) && $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('Y-m-d') : '' }}" style="height: 34px;">
+                                </div>
+
+                                {{-- Reference / Remarks --}}
                                 <div class="wrapper-reference">
                                     <label class="field-label mb-1" for="remarks" style="font-size: 11px;">Reference / Remarks</label>
-                                    <input type="text" class="form-control form-control-sm" name="reference" id="remarks" placeholder="Optional..." style="height: 34px;">
+                                    <input type="text" class="form-control form-control-sm" name="reference" id="remarks" placeholder="Optional..." value="{{ $sale->reference ?? '' }}" style="height: 34px;">
                                 </div>
+
+                                {{-- Credit Days --}}
                                 <div class="wrapper-credit-days">
                                     <label class="field-label mb-1" for="creditDaysInput" style="font-size: 11px;">Credit Days</label>
                                     <input type="number" class="form-control form-control-sm text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="height: 34px;">
@@ -2196,8 +2245,9 @@
                     $('#ci_prev_bal').text(prev.toFixed(2));
                     $('#ci_range_bal').text(range.toFixed(2));
 
-                    if (d.sales_officer_id) {
-                        $('#salesOfficerSelect').val(d.sales_officer_id);
+                    let officerId = d.sales_officer_id || $(this).find(':selected').data('sales-officer');
+                    if (officerId) {
+                        $('#salesOfficerSelect').val(officerId);
                     }
 
                     if (typeof window.applyCustomerTaxStatus === 'function') {

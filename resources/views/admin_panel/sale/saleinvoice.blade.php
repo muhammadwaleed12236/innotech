@@ -618,6 +618,30 @@
                                 : date('d/m/Y') }}
                         </div>
 
+                        @if($sale->po_no)
+                            <div>
+                                <span class="info-label">
+                                    PO #:
+                                </span>
+                                <strong>{{ $sale->po_no }}</strong>
+                                @if($sale->po_date)
+                                    <span style="font-size: 10px; color: #555;">({{ \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') }})</span>
+                                @endif
+                            </div>
+                        @endif
+
+                        @php
+                            $salesOfficerName = $sale->salesOfficer->name ?? ($sale->customer_relation->salesOfficer->name ?? null);
+                        @endphp
+                        @if($salesOfficerName)
+                            <div>
+                                <span class="info-label">
+                                    Officer:
+                                </span>
+                                <strong>{{ $salesOfficerName }}</strong>
+                            </div>
+                        @endif
+
                         @if($sale->reference)
 
                             <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #ddd;">

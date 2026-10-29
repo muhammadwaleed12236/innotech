@@ -124,7 +124,8 @@ class SaleController extends Controller
 
     public function addsale()
     {
-        $customer = Customer::all();
+        $customer = Customer::with('salesOfficer')->get();
+        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
         $warehouse = Warehouse::all();
         
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
@@ -144,7 +145,7 @@ class SaleController extends Controller
 
         return view('admin_panel.sale.add_sale222', compact(
             'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 
-            'recentProducts', 'allProducts', 'allSeries', 'activePrefix'
+            'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'
         ));
     }
 
@@ -951,7 +952,7 @@ class SaleController extends Controller
 
     public function getSaleDetailsModal($id)
     {
-        $sale = Sale::with(['customer_relation', 'items.product'])->findOrFail($id);
+        $sale = Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product'])->findOrFail($id);
         $items = $this->_getSaleItems($sale);
 
         $sumGross = 0;
@@ -980,6 +981,9 @@ class SaleController extends Controller
                 'created_at_formatted' => $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : date('d/m/Y'),
                 'sale_status' => $sale->sale_status,
                 'reference' => $sale->reference,
+                'po_no' => $sale->po_no,
+                'po_date' => $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') : null,
+                'sales_officer_name' => $sale->salesOfficer->name ?? ($sale->customer_relation->salesOfficer->name ?? null),
                 'return_note' => $sale->return_note,
                 'total_bill_amount' => (float)$sale->total_bill_amount,
                 'total_extradiscount' => (float)$sale->total_extradiscount,
@@ -1014,8 +1018,9 @@ class SaleController extends Controller
         }
 
         // 2. Data for Dropdowns (Same as addsale)
-        $customer = Customer::all();
+        $customer = Customer::with('salesOfficer')->get();
         $warehouse = Warehouse::all();
+        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
         $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
@@ -1033,7 +1038,7 @@ class SaleController extends Controller
         $nextInvoiceNumber = $sale->invoice_no;
 
         // 4. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix'));
+        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'));
     }
 
     public function updatesale(Request $request, $id)
@@ -1153,6 +1158,9 @@ class SaleController extends Controller
             // 2. Prepare Header Data
             $isNew = ! $sale->exists;
             $sale->customer_id = $request->customer;
+            $sale->sales_officer_id = $request->filled('sales_officer_id') ? $request->sales_officer_id : null;
+            $sale->po_no = $request->filled('po_no') ? trim($request->po_no) : null;
+            $sale->po_date = $request->filled('po_date') ? \Carbon\Carbon::parse($request->po_date)->format('Y-m-d') : null;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?

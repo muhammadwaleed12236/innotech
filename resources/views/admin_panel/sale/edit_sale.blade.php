@@ -1419,7 +1419,8 @@
                                                             data-address="{{ $c->address }}" 
                                                             data-code="{{ $c->customer_id }}"
                                                             data-prev="{{ $c->previous_balance ?? 0 }}" 
-                                                            data-range="{{ $c->balance_range ?? 0 }}">
+                                                            data-range="{{ $c->balance_range ?? 0 }}"
+                                                            data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
                                                         {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
                                                     </option>
                                                 @endforeach
@@ -1728,11 +1729,47 @@
 
                         <div class="pt-2 border-top mt-3">
                             <div class="row g-2 mb-2">
-                                <div class="col-8 wrapper-reference">
+                                {{-- Sales Officer / Person --}}
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="field-label mb-1" for="salesOfficerSelect" style="font-size: 11px;">
+                                        <i class="fas fa-user-tie text-primary me-1"></i> Sales Officer
+                                    </label>
+                                    <select class="form-select form-select-sm" name="sales_officer_id" id="salesOfficerSelect" style="height: 34px; font-size: 12px;">
+                                        <option value="">Choose Sales Officer...</option>
+                                        @if(isset($salesOfficers) && count($salesOfficers) > 0)
+                                            @foreach($salesOfficers as $so)
+                                                <option value="{{ $so->id }}" {{ (isset($sale) && $sale->sales_officer_id == $so->id) ? 'selected' : '' }}>
+                                                    {{ $so->name }} {{ $so->mobile ? '(' . $so->mobile . ')' : '' }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
+
+                                {{-- PO Number (Customer Mail Order / PO) --}}
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="field-label mb-1" for="inputPoNo" style="font-size: 11px;">
+                                        <i class="fas fa-receipt text-secondary me-1"></i> PO # (Mail Order)
+                                    </label>
+                                    <input type="text" class="form-control form-control-sm" name="po_no" id="inputPoNo" placeholder="e.g. PO-786" value="{{ $sale->po_no ?? '' }}" style="height: 34px;">
+                                </div>
+
+                                {{-- PO Date --}}
+                                <div class="col-md-6 col-lg-2">
+                                    <label class="field-label mb-1" for="inputPoDate" style="font-size: 11px;">
+                                        <i class="fas fa-calendar-alt text-secondary me-1"></i> PO Date
+                                    </label>
+                                    <input type="date" class="form-control form-control-sm" name="po_date" id="inputPoDate" value="{{ isset($sale) && $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('Y-m-d') : '' }}" style="height: 34px;">
+                                </div>
+
+                                {{-- Reference / Remarks --}}
+                                <div class="col-md-6 col-lg-2 wrapper-reference">
                                     <label class="field-label mb-1" for="remarks" style="font-size: 11px;">Reference / Remarks</label>
                                     <input type="text" class="form-control form-control-sm" name="reference" id="remarks" placeholder="Optional..." value="{{ $sale->reference ?? '' }}" style="height: 34px;">
                                 </div>
-                                <div class="col-4 wrapper-credit-days">
+
+                                {{-- Credit Days --}}
+                                <div class="col-md-6 col-lg-2 wrapper-credit-days">
                                     <label class="field-label mb-1" for="creditDaysInput" style="font-size: 11px;">Credit Days</label>
                                     <input type="number" class="form-control form-control-sm text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="height: 34px;">
                                 </div>
@@ -2076,8 +2113,9 @@
                     $('#ci_prev_bal').text(prev.toFixed(2));
                     $('#ci_range_bal').text(range.toFixed(2));
 
-                    if (d.sales_officer_id) {
-                        $('#salesOfficerSelect').val(d.sales_officer_id);
+                    let officerId = d.sales_officer_id || $(this).find(':selected').data('sales-officer');
+                    if (officerId) {
+                        $('#salesOfficerSelect').val(officerId);
                     }
 
                     if (typeof window.applyCustomerTaxStatus === 'function') {
