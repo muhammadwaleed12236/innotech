@@ -204,6 +204,31 @@
             margin: 6px 0 !important;
         }
         
+        .premium-table thead th::before,
+        .premium-table thead th::after,
+        .premium-table thead th:before,
+        .premium-table thead th:after,
+        #sales-table thead th::before,
+        #sales-table thead th::after,
+        #sales-table thead th:before,
+        #sales-table thead th:after,
+        table.dataTable thead .sorting::before,
+        table.dataTable thead .sorting::after,
+        table.dataTable thead .sorting:before,
+        table.dataTable thead .sorting:after,
+        table.dataTable thead .sorting_asc::before,
+        table.dataTable thead .sorting_asc::after,
+        table.dataTable thead .sorting_asc:before,
+        table.dataTable thead .sorting_asc:after,
+        table.dataTable thead .sorting_desc::before,
+        table.dataTable thead .sorting_desc::after,
+        table.dataTable thead .sorting_desc:before,
+        table.dataTable thead .sorting_desc:after {
+            display: none !important;
+            content: "" !important;
+            background-image: none !important;
+        }
+        
         .premium-table thead th {
             background-color: #f1f5f9 !important;
             color: #1e293b !important;
