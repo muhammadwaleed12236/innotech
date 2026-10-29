@@ -322,9 +322,10 @@ Route::middleware('auth')->group(function () {
 
     // Sales Officer
     Route::get('sales-officers', [SalesOfficerController::class, 'index'])->middleware('permission:sales.officers.view')->name('sales.officer.index');
-    Route::post('sales-officers/store', [SalesOfficerController::class, 'store'])->middleware('permission:sales.officers.create')->name('sales-officer.store');
+    Route::post('sales-officers/store', [SalesOfficerController::class, 'store'])->middleware('permission:sales.officers.create|sales.officers.edit')->name('sales-officer.store');
     Route::get('sales-officers/edit/{id}', [SalesOfficerController::class, 'edit'])->middleware('permission:sales.officers.edit')->name('sales.officer.edit');
     Route::delete('sales-officers/{id}', [SalesOfficerController::class, 'destroy'])->middleware('permission:sales.officers.delete')->name('sales-officer.delete');
+    Route::get('sales-officers/delete/{id}', [SalesOfficerController::class, 'destroy'])->middleware('permission:sales.officers.delete')->name('sales-officer.delete.get');
 
     // products
 
@@ -580,6 +581,10 @@ Route::middleware('auth')->group(function () {
     // Settings & Notifications
     Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->middleware('permission:settings.view|settings.read')->name('settings.index');
     Route::post('/settings', [App\Http\Controllers\SettingsController::class, 'update'])->middleware('permission:settings.edit|settings.update')->name('settings.update');
+    Route::post('/settings/terms', [App\Http\Controllers\SettingsController::class, 'storeTerm'])->middleware('permission:settings.edit|settings.update')->name('settings.terms.store');
+    Route::put('/settings/terms/{id}', [App\Http\Controllers\SettingsController::class, 'updateTerm'])->middleware('permission:settings.edit|settings.update')->name('settings.terms.update');
+    Route::delete('/settings/terms/{id}', [App\Http\Controllers\SettingsController::class, 'deleteTerm'])->middleware('permission:settings.edit|settings.update')->name('settings.terms.delete');
+    Route::post('/settings/terms/{id}/toggle', [App\Http\Controllers\SettingsController::class, 'toggleTerm'])->middleware('permission:settings.edit|settings.update')->name('settings.terms.toggle');
 
     // Website Settings
     Route::get('/website-settings', [App\Http\Controllers\WebsiteSettingsController::class, 'index'])->middleware('permission:website-settings.view')->name('website_settings.index');

@@ -1,6 +1,5 @@
 <?php
 
-// app/Http/Controllers/SalesOfficerController.php
 namespace App\Http\Controllers;
 
 use App\Models\SalesOfficer;
@@ -16,32 +15,61 @@ class SalesOfficerController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string',
-            'name_urdu' => 'nullable|string',
-            'mobile' => 'required|string',
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'name_urdu' => 'nullable|string|max:255',
+            'mobile' => 'required|string|max:50',
+            'edit_id' => 'nullable|integer|exists:sales_officers,id',
         ]);
 
-        if ($request->edit_id) {
+        if (!empty($request->edit_id)) {
             $officer = SalesOfficer::findOrFail($request->edit_id);
-            $officer->update($request->only('name', 'name_urdu', 'mobile'));
+            $officer->update([
+                'name' => $validated['name'],
+                'name_urdu' => $validated['name_urdu'] ?? null,
+                'mobile' => $validated['mobile'],
+            ]);
+            $message = 'Sales Officer updated successfully.';
         } else {
-            SalesOfficer::create($request->only('name', 'name_urdu', 'mobile'));
+            $officer = SalesOfficer::create([
+                'name' => $validated['name'],
+                'name_urdu' => $validated['name_urdu'] ?? null,
+                'mobile' => $validated['mobile'],
+            ]);
+            $message = 'Sales Officer created successfully.';
         }
 
-        return response()->json(['success' => true]);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $officer,
+            ]);
+        }
+
+        return redirect()->route('sales.officer.index')->with('success', $message);
     }
 
     public function edit($id)
     {
-        return response()->json(SalesOfficer::findOrFail($id));
+        $officer = SalesOfficer::findOrFail($id);
+        return response()->json($officer);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $officer = SalesOfficer::findOrFail($id);
         $officer->delete();
 
-        return response()->json(['success' => true]);
+        $message = 'Sales Officer deleted successfully.';
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+        }
+
+        return redirect()->route('sales.officer.index')->with('success', $message);
     }
 }

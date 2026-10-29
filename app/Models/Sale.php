@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Sale extends Model
 {
+    protected $casts = ['selected_terms' => 'array'];
     protected $fillable = [
         'customer_id', 'sales_officer_id', 'reference', 'po_no', 'po_date', 'total_amount_Words', 'total_bill_amount',
         'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
-        'freight_charges', 'freight_type',
+        'freight_charges', 'freight_type', 'selected_terms',
         'total_gross', 'total_exclusive_gst', 'total_sales_tax', 'total_further_tax', 'total_bonus_qty'
     ];
 

@@ -27,6 +27,8 @@ Route::post('/register', [\App\Http\Controllers\Api\AuthApiController::class, 'r
 Route::post('/login', [\App\Http\Controllers\Api\AuthApiController::class, 'login']);
 
 Route::get('/settings', [\App\Http\Controllers\Api\WebsiteSettingsApiController::class, 'index']);
+
+Route::get('/terms-and-conditions', [\App\Http\Controllers\Api\WebsiteSettingsApiController::class, 'termsAndConditions']);
 Route::get('/categories', [\App\Http\Controllers\Api\CategoryApiController::class, 'index']);
 Route::get('/products', [\App\Http\Controllers\Api\ProductApiController::class, 'index']);
 Route::get('/products/{id}', [\App\Http\Controllers\Api\ProductApiController::class, 'show']);

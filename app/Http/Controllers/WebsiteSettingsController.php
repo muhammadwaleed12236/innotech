@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Setting;
+use App\Models\TermsAndCondition;
 use Illuminate\Support\Facades\Cache;
 
 class WebsiteSettingsController extends Controller
@@ -17,7 +18,9 @@ class WebsiteSettingsController extends Controller
         $settings = Setting::where('group', 'website')->pluck('value', 'key')->toArray();
         $categories = \App\Models\Category::all();
         
-        return view('admin_panel.website_settings.index', compact('settings', 'categories'));
+        $termsAndConditions = TermsAndCondition::ordered()->get();
+        
+        return view('admin_panel.website_settings.index', compact('settings', 'categories', 'termsAndConditions'));
     }
 
     public function update(Request $request)
@@ -235,5 +238,103 @@ class WebsiteSettingsController extends Controller
         Cache::forget('api_web_categories');
 
         return redirect()->back()->with('success', 'Category website settings updated successfully.');
+    }
+
+    /**
+     * Store a new terms and condition
+     */
+    public function storeTermsAndCondition(Request $request)
+    {
+        if (!auth()->user()->hasAnyPermission(['website-settings.edit', 'website-settings.update', 'website-settings.create'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $validated = $request->validate([
+            'heading' => 'required|string|max:255',
+            'paragraph' => 'required|string',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $validated['sort_order'] = $validated['sort_order'] ?? TermsAndCondition::max('sort_order') + 1;
+
+        $term = TermsAndCondition::create($validated);
+
+        Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms & Condition added successfully.',
+            'term' => $term
+        ]);
+    }
+
+    /**
+     * Update an existing terms and condition
+     */
+    public function updateTermsAndCondition(Request $request, $id)
+    {
+        if (!auth()->user()->hasAnyPermission(['website-settings.edit', 'website-settings.update'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $validated = $request->validate([
+            'heading' => 'required|string|max:255',
+            'paragraph' => 'required|string',
+            'sort_order' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $term = TermsAndCondition::findOrFail($id);
+        $term->update($validated);
+
+        Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms & Condition updated successfully.',
+            'term' => $term
+        ]);
+    }
+
+    /**
+     * Delete a terms and condition
+     */
+    public function deleteTermsAndCondition($id)
+    {
+        if (!auth()->user()->hasAnyPermission(['website-settings.edit', 'website-settings.delete'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $term = TermsAndCondition::findOrFail($id);
+        $term->delete();
+
+        Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms & Condition deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Toggle active status of a terms and condition
+     */
+    public function toggleTermsAndCondition($id)
+    {
+        if (!auth()->user()->hasAnyPermission(['website-settings.edit', 'website-settings.update'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $term = TermsAndCondition::findOrFail($id);
+        $term->is_active = !$term->is_active;
+        $term->save();
+
+        Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status updated successfully.',
+            'is_active' => $term->is_active
+        ]);
     }
 }

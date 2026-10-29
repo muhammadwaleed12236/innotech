@@ -8,7 +8,174 @@
 
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #0f172a;
+            --secondary-color: #334155;
+            --border-color: #e2e8f0;
+            --header-bg: #f8fafc;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 11.5px;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* Screen Layout */
+        .invoice-container {
+            max-width: 210mm;
+            margin: 15px auto;
+            background: #fff;
+            padding: 28px 32px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            min-height: 297mm;
+            position: relative;
+            color: #0f172a;
+            border-radius: 4px;
+        }
+
+        /* Modern Corporate Header */
+        .company-header-wrapper {
+            text-align: center;
+            padding-bottom: 14px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #0f172a;
+        }
+
+        .company-header-wrapper .company-brand {
+            font-size: 26px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            line-height: 1.1;
+        }
+
+        .company-header-wrapper .company-meta {
+            font-size: 11.5px;
+            color: #334155;
+            font-weight: 500;
+            margin: 0 auto;
+            max-width: 580px;
+            line-height: 1.5;
+        }
+
+        .company-header-wrapper .company-meta .meta-pill {
+            display: inline-block;
+            margin: 0 4px;
+        }
+
+        /* Invoice Badge Title */
+        .invoice-title-wrapper {
+            text-align: center;
+            margin: 14px 0 16px 0;
+        }
+
+        .invoice-badge-title {
+            display: inline-block;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: #0f172a;
+            padding: 4px 22px;
+            border: 1.5px solid #0f172a;
+            border-radius: 4px;
+            background: #fff;
+        }
+
+        /* Two-Column Meta Cards (Customer & Shipper) */
+        .header-meta-grid {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 12px 0;
+            margin-bottom: 16px;
+        }
+
+        .header-meta-card {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+
+        .header-meta-card .card-head {
+            background: #f1f5f9;
+            color: #0f172a;
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            padding: 6px 12px;
+            border-bottom: 1px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-meta-card .card-body-meta {
+            padding: 8px 12px 10px 12px;
+        }
+
+        .meta-field-row {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 4px;
+            font-size: 10.5px;
+            line-height: 1.4;
+        }
+
+        .meta-field-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .meta-field-row .meta-field-label {
+            width: 145px;
+            min-width: 145px;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.2px;
+        }
+
+        .meta-field-row .meta-field-colon {
+            width: 10px;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .meta-field-row .meta-field-value {
+            flex: 1;
+            color: #0f172a;
+            font-weight: 700;
+            text-transform: uppercase;
+            word-break: break-word;
+        }
+
+        .meta-field-row .meta-field-value.highlight-val {
+            color: #0f172a;
+            font-weight: 800;
+        }
+
         :root {
             --primary-color: #000;
             --accent-color: #000;
@@ -454,246 +621,208 @@
 
     <div class="invoice-container screen-only">
 
-        <!-- Company Header -->
-
+        <!-- Modern Corporate Header -->
         @if(!($isEstimate ?? false))
+            @php
+                $companyName = \App\Models\Setting::get('company_name', 'Innot Tech');
+                $companyAddress = \App\Models\Setting::get('company_address', 'Hyderabad, Pakistan');
+                $companyPhone = \App\Models\Setting::get('company_phone', '0327-9226901');
+                $companyLogo = \App\Models\Setting::get('web_site_logo') ?? \App\Models\Setting::get('company_logo');
+            @endphp
 
-            <div class="company-info">
-
-                <div class="company-name">
-                    {{ \App\Models\Setting::get('company_name', 'prowave technogies') }}
+            <div class="company-header-wrapper">
+                @if(!empty($companyLogo) && file_exists(public_path($companyLogo)))
+                    <div style="margin-bottom: 6px;">
+                        <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" style="max-height: 52px; object-fit: contain;">
+                    </div>
+                @endif
+                <div class="company-brand">{{ $companyName }}</div>
+                <div class="company-meta">
+                    @if(!empty($companyAddress))
+                        <div style="margin-bottom: 3px;">{{ $companyAddress }}</div>
+                    @endif
+                    @if(!empty($companyPhone))
+                        <div style="font-weight: 700;"><i class="fas fa-phone-alt" style="font-size: 10px; margin-right: 3px;"></i> {{ $companyPhone }}</div>
+                    @endif
                 </div>
-
-                <div style="font-size: 12px;">
-                    {{ \App\Models\Setting::get('company_address', 'Hyderabad') }}
-                </div>
-
-                <p>
-                    {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}
-                </p>
-
             </div>
-
         @endif
 
-
-        <div class="invoice-title">
-            @if($sale->sale_status === 'quotation' || ($isQuotation ?? false))
-                Quotation
-            @elseif($isEstimate ?? false)
-                Estimate
-            @else
-                Sales Invoice
-            @endif
+        <!-- Document Type Title Badge -->
+        <div class="invoice-title-wrapper">
+            <span class="invoice-badge-title">
+                @if($sale->sale_status === 'quotation' || ($isQuotation ?? false))
+                    QUOTATION
+                @elseif($isEstimate ?? false)
+                    ESTIMATE
+                @else
+                    SALES INVOICE
+                @endif
+            </span>
         </div>
 
-
-        <!-- Info Grid -->
-
+        <!-- Customer & Shipper Information Header (Structured 2-Column Cards) -->
         @if(!($isEstimate ?? false))
+            @php
+                $relCust = $sale->customer_relation;
+                $custNtn = $relCust ? ($relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null) : null;
+                $custStrn = $relCust ? ($relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null) : null;
+                $custCnic = $relCust ? ($relCust->getCustomValue('cnic') ?? $relCust->cnic ?? null) : null;
+                $custMobile = $sale->walkin_mobile ?? ($relCust->mobile ?? $relCust->phone ?? null);
+                $custContactPerson = $relCust ? ($relCust->contact_person ?? $relCust->getCustomValue('contact_person') ?? null) : null;
 
-            <div class="row g-2 mb-2">
+                $compNtn = \App\Models\Setting::get('company_ntn', 'H126850-4');
+                $compStrn = \App\Models\Setting::get('company_strn', '32-77-8763-950-94');
+                $compPhone = \App\Models\Setting::get('company_phone', '0333-6722263');
 
-                <!-- Customer -->
+                $salesOfficerName = $sale->salesOfficer->name ?? ($relCust->salesOfficer->name ?? null);
 
-                <div class="col-6">
 
-                    <div class="info-box">
+            @endphp
 
-                        <div class="info-box-header">
-                            Customer
+            <div class="header-meta-grid">
+                <!-- CUSTOMER INFORMATION CARD -->
+                <div class="header-meta-card">
+                    <div class="card-head">
+                        <i class="fas fa-user-tie" style="font-size: 11px;"></i> CUSTOMER INFORMATION
+                    </div>
+                    <div class="card-body-meta">
+                        <div class="meta-field-row">
+                            <span class="meta-field-label">Customer Name</span>
+                            <span class="meta-field-colon">:</span>
+                            <span class="meta-field-value highlight-val">{{ $sale->walkin_name ?? ($relCust->customer_name ?? 'WALKING CUSTOMER') }}</span>
                         </div>
 
-                        @if($sale->customer_relation?->customer_id)
-
-                            <div style="font-size: 11px; color: #555;">
-                                Code:
-                                <strong>
-                                    {{ $sale->customer_relation->customer_id }}
-                                </strong>
+                        @if(!empty($relCust->address))
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">Address</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $relCust->address }}</span>
                             </div>
-
                         @endif
 
-                        <div>
-                            <span class="info-label">
-                                Name:
-                            </span>
+                        @if($sale->po_no)
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">Purchase Order No</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $sale->po_no }}</span>
+                            </div>
+                        @endif
 
-                            <strong>
-                                {{ $sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer') }}
-                            </strong>
-                        </div>
-
-                        <div>
-                            <span class="info-label">
-                                Address:
-                            </span>
-
-                            <span style="font-size:11px;">
-                                {{ $sale->customer_relation->address ?? '—' }}
-                            </span>
-                        </div>
-
-                        <div>
-                            <span class="info-label">
-                                Mob:
-                            </span>
-
-                            <span style="font-size:11px;">
-                                {{ $sale->customer_relation->mobile ?? '—' }}
-                            </span>
-                        </div>
-
-                        @php
-                            $relCust = $sale->customer_relation;
-                            $custNtn = $relCust ? ($relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null) : null;
-                            $custStrn = $relCust ? ($relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null) : null;
-                            $custCnic = $relCust ? ($relCust->getCustomValue('cnic') ?? $relCust->cnic ?? null) : null;
-                        @endphp
+                        @if($sale->po_date)
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">Purchase Order Date</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ \Carbon\Carbon::parse($sale->po_date)->format('d-F-Y') }}</span>
+                            </div>
+                        @endif
 
                         @if(!empty($custNtn))
-                            <div>
-                                <span class="info-label">
-                                    NTN:
-                                </span>
-                                <strong style="font-size:11px;">
-                                    {{ $custNtn }}
-                                </strong>
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">NTN Number</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $custNtn }}</span>
                             </div>
                         @endif
 
                         @if(!empty($custStrn))
-                            <div>
-                                <span class="info-label">
-                                    STRN:
-                                </span>
-                                <strong style="font-size:11px;">
-                                    {{ $custStrn }}
-                                </strong>
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">STRN Number</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $custStrn }}</span>
                             </div>
                         @elseif(!empty($custCnic))
-                            <div>
-                                <span class="info-label">
-                                    CNIC:
-                                </span>
-                                <span style="font-size:11px;">
-                                    {{ $custCnic }}
-                                </span>
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">CNIC Number</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $custCnic }}</span>
                             </div>
                         @endif
 
+                        @if(!empty($custMobile))
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">Contact Details</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">
+                                    @if($custContactPerson)
+                                        {{ $custContactPerson }} ({{ $custMobile }})
+                                    @else
+                                        {{ $custMobile }}
+                                    @endif
+                                </span>
+                            </div>
+                        @endif
                     </div>
-
                 </div>
 
-
-                <!-- Reference -->
-
-                <div class="col-6">
-
-                    <div class="info-box">
-
-                        <div class="info-box-header">
-                            Reference
-                        </div>
-
-                        <div>
-                            <span class="info-label">
-                                {{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quot #:' : 'Inv #:' }}
-                            </span>
-
-                            <strong>
-                                {{ $sale->invoice_no }}
-                            </strong>
-                        </div>
-
-                        <div>
-                            <span class="info-label">
-                                Date:
-                            </span>
-
-                            {{ $sale->created_at
-                                ? $sale->created_at->format('d/m/Y')
-                                : date('d/m/Y') }}
-                        </div>
-
-                        @if($sale->po_no)
-                            <div>
-                                <span class="info-label">
-                                    PO #:
-                                </span>
-                                <strong>{{ $sale->po_no }}</strong>
-                                @if($sale->po_date)
-                                    <span style="font-size: 10px; color: #555;">({{ \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') }})</span>
-                                @endif
-                            </div>
-                        @endif
-
-                        @php
-                            $salesOfficerName = $sale->salesOfficer->name ?? ($sale->customer_relation->salesOfficer->name ?? null);
-                        @endphp
-                        @if($salesOfficerName)
-                            <div>
-                                <span class="info-label">
-                                    Officer:
-                                </span>
-                                <strong>{{ $salesOfficerName }}</strong>
-                            </div>
-                        @endif
-
-                        @if($sale->reference)
-
-                            <div style="margin-top:4px; padding-top:4px; border-top:1px dashed #ddd;">
-
-                                <span class="info-label">
-                                    Remarks:
-                                </span>
-
-                                <span style="font-size:11px; color:#333;">
-                                    {{ $sale->reference }}
-                                </span>
-
-                            </div>
-
-                        @endif
-
+                <!-- SHIPPER INFORMATION CARD -->
+                <div class="header-meta-card">
+                    <div class="card-head">
+                        <i class="fas fa-building" style="font-size: 11px;"></i> SHIPPER INFORMATION
                     </div>
+                    <div class="card-body-meta">
+                        <div class="meta-field-row">
+                            <span class="meta-field-label">{{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quotation Number' : 'Invoice Number' }}</span>
+                            <span class="meta-field-colon">:</span>
+                            <span class="meta-field-value highlight-val">{{ $sale->invoice_no }}</span>
+                        </div>
 
+                        <div class="meta-field-row">
+                            <span class="meta-field-label">{{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quotation Date' : 'Invoice Date' }}</span>
+                            <span class="meta-field-colon">:</span>
+                            <span class="meta-field-value">{{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}</span>
+                        </div>
+
+                        @if(!empty($compNtn))
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">NTN Number</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $compNtn }}</span>
+                            </div>
+                        @endif
+
+                        @if(!empty($compStrn))
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">STRN Number</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $compStrn }}</span>
+                            </div>
+                        @endif
+
+
+
+                        @if(!empty($salesOfficerName) || !empty($sale->reference))
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">Sales Reference</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $salesOfficerName ?: $sale->reference }}</span>
+                            </div>
+                        @endif
+
+                        @if(!empty($compPhone))
+                            <div class="meta-field-row">
+                                <span class="meta-field-label">Contact Details</span>
+                                <span class="meta-field-colon">:</span>
+                                <span class="meta-field-value">{{ $compPhone }}</span>
+                            </div>
+                        @endif
+                    </div>
                 </div>
-
             </div>
-
         @else
-
             <div class="row g-2 mb-2">
-
                 <div class="col-12 text-end">
-
                     <div class="info-box">
-
                         <div>
-
-                            <span class="info-label">
-                                Date:
-                            </span>
-
-                            {{ $sale->created_at
-                                ? $sale->created_at->format('d/m/Y')
-                                : date('d/m/Y') }}
-
+                            <span class="info-label">Date:</span>
+                            {{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}
                         </div>
-
                     </div>
-
                 </div>
-
             </div>
-
         @endif
 
-
-        <!-- Return Note -->
+                <!-- Return Note -->
 
         @if ($sale->return_note)
 
@@ -1260,43 +1389,38 @@
 
             <div class="col-7">
 
-                <div class="terms-box pt-2">
+                                @php
+                    $saleTermsList = null;
+                    if (!empty($sale->selected_terms)) {
+                        $selectedTermIds = is_array($sale->selected_terms) ? $sale->selected_terms : json_decode($sale->selected_terms, true);
+                        if (!empty($selectedTermIds)) {
+                            $saleTermsList = \App\Models\TermsAndCondition::whereIn('id', $selectedTermIds)->ordered()->get();
+                        }
+                    }
+                    if (is_null($saleTermsList)) {
+                        $activeTerms = \App\Models\TermsAndCondition::active()->ordered()->get();
+                        if ($activeTerms->count() > 0) {
+                            $saleTermsList = $activeTerms;
+                        }
+                    }
+                @endphp
 
-                    <p class="fw-bold mb-1">
-                        Terms & Conditions:
-                    </p>
+                @if($saleTermsList && $saleTermsList->count() > 0)
+                    <div class="terms-box pt-2">
+                        <p class="fw-bold mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Terms & Conditions:
+                        </p>
 
-                    <ul style="font-size: 10px;">
-
-                        @php
-
-                            $invoiceTerms =
-                                \App\Models\Setting::get(
-                                    'invoice_terms',
-                                    "10% will be deducted on return of purchase goods within 7 days.\nLoose & Water Soak products will not be RETURNED.\nPlease bring this invoice for any returns or exchanges."
-                                );
-
-                            $termLines =
-                                explode("\n", $invoiceTerms);
-
-                        @endphp
-
-
-                        @foreach($termLines as $line)
-
-                            @if(trim($line))
-
-                                <li>
-                                    {{ trim($line) }}
-                                </li>
-
-                            @endif
-
-                        @endforeach
-
-                    </ul>
-
-                </div>
+                        <div style="font-size: 10px; line-height: 1.45;">
+                            @foreach($saleTermsList as $st)
+                                <div class="mb-1">
+                                    <strong style="text-transform: uppercase; font-weight: 700;">{{ $st->heading }}:</strong>
+                                    <span>{{ $st->paragraph }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
 
                 <div class="mt-4 pt-2">

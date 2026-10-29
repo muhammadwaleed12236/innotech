@@ -1907,6 +1907,38 @@
                                     <input type="number" class="form-control form-control-sm text-center" id="creditDaysInput" name="credit_days" placeholder="0" min="0" value="{{ $sale->credit_days ?? '0' }}" style="height: 34px;">
                                 </div>
                             </div>
+                                                        @php
+                                $allTerms = isset($termsAndConditions) ? $termsAndConditions : \App\Models\TermsAndCondition::active()->ordered()->get();
+                                $savedTerms = isset($sale) && !empty($sale->selected_terms) ? (is_array($sale->selected_terms) ? $sale->selected_terms : json_decode($sale->selected_terms, true)) : null;
+                            @endphp
+                            @if($allTerms->count() > 0)
+                                <div class="mt-3 pt-2 border-top">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <label class="field-label mb-0 fw-bold text-dark" style="font-size: 12px;">
+                                            <i class="fas fa-file-contract text-primary me-1"></i> Print Terms & Conditions on Invoice
+                                        </label>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 10px;" id="selectAllTermsBtn">Select All</button>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 10px;" id="clearAllTermsBtn">Clear</button>
+                                        </div>
+                                    </div>
+                                    <div class="p-2 rounded bg-light border" style="max-height: 180px; overflow-y: auto;">
+                                        @foreach($allTerms as $term)
+                                            @php
+                                                $isChecked = is_null($savedTerms) ? true : in_array($term->id, $savedTerms);
+                                            @endphp
+                                            <div class="form-check form-check-inline d-flex align-items-start mb-2 pb-1 border-bottom">
+                                                <input class="form-check-input me-2 mt-1 term-checkbox" type="checkbox" name="selected_terms[]" value="{{ $term->id }}" id="term_check_{{ $term->id }}" {{ $isChecked ? 'checked' : '' }}>
+                                                <label class="form-check-label w-100" for="term_check_{{ $term->id }}" style="cursor: pointer; font-size: 11px;">
+                                                    <strong class="text-dark d-block">{{ $term->heading }}</strong>
+                                                    <span class="text-muted" style="font-size: 10.5px; line-height: 1.3; display: block;">{{ Str::limit($term->paragraph, 90) }}</span>
+                                                </label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <small class="text-muted" style="font-size: 10px;">Only checked terms will be printed on this invoice/quotation.</small>
+                                </div>
+                            @endif
                             <div class="change-row mt-2" id="changeAccountRow" style="display:none;">
                                 <span class="change-label me-2 fw-semibold text-muted small">
                                     <i class="fas fa-exchange-alt me-1"></i> Change Account
@@ -2137,6 +2169,13 @@
 
     <script>
         $(document).ready(function() {
+    // Terms Select All / Clear Handlers
+    $(document).on('click', '#selectAllTermsBtn', function() {
+        $('.term-checkbox').prop('checked', true);
+    });
+    $(document).on('click', '#clearAllTermsBtn', function() {
+        $('.term-checkbox').prop('checked', false);
+    });
             // --- Initial Setup ---
             $('#salesTableBody tr').each(function() {
                 initProductSelect2($(this).find('.product'));

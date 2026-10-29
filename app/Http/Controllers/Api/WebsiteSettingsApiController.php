@@ -21,4 +21,16 @@ class WebsiteSettingsApiController extends Controller
             'data' => $settings
         ]);
     }
+
+    public function termsAndConditions()
+    {
+        $terms = Cache::remember('api_terms_and_conditions', 600, function () {
+            return \App\Models\TermsAndCondition::active()->ordered()->get(['id', 'heading', 'paragraph', 'sort_order']);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $terms
+        ]);
+    }
 }

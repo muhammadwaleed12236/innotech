@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Models\TermsAndCondition;
 use App\Models\SystemNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,8 @@ class SettingsController extends Controller
 
         $settings = Setting::getAllGrouped();
         
-        return view('admin_panel.settings.index', compact('settings'));
+        $termsAndConditions = TermsAndCondition::ordered()->get();
+        return view('admin_panel.settings.index', compact('settings', 'termsAndConditions'));
     }
 
     /**
@@ -180,5 +182,102 @@ class SettingsController extends Controller
             ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Store a new terms and condition (ERP Settings)
+     */
+    public function storeTerm(Request $request)
+    {
+        if (!auth()->user()->hasAnyPermission(['settings.edit', 'settings.update'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $validated = $request->validate([
+            'heading' => 'required|string|max:255',
+            'paragraph' => 'required|string',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $validated['sort_order'] = $validated['sort_order'] ?? (TermsAndCondition::max('sort_order') + 1);
+
+        $term = TermsAndCondition::create($validated);
+
+        \Illuminate\Support\Facades\Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms & Condition added successfully.',
+            'term' => $term
+        ]);
+    }
+
+    /**
+     * Update an existing terms and condition (ERP Settings)
+     */
+    public function updateTerm(Request $request, $id)
+    {
+        if (!auth()->user()->hasAnyPermission(['settings.edit', 'settings.update'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $validated = $request->validate([
+            'heading' => 'required|string|max:255',
+            'paragraph' => 'required|string',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $term = TermsAndCondition::findOrFail($id);
+        $term->update($validated);
+
+        \Illuminate\Support\Facades\Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms & Condition updated successfully.',
+            'term' => $term
+        ]);
+    }
+
+    /**
+     * Delete a terms and condition (ERP Settings)
+     */
+    public function deleteTerm($id)
+    {
+        if (!auth()->user()->hasAnyPermission(['settings.edit', 'settings.update'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $term = TermsAndCondition::findOrFail($id);
+        $term->delete();
+
+        \Illuminate\Support\Facades\Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Terms & Condition deleted successfully.'
+        ]);
+    }
+
+    /**
+     * Toggle active status of a terms and condition (ERP Settings)
+     */
+    public function toggleTerm($id)
+    {
+        if (!auth()->user()->hasAnyPermission(['settings.edit', 'settings.update'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $term = TermsAndCondition::findOrFail($id);
+        $term->is_active = !$term->is_active;
+        $term->save();
+
+        \Illuminate\Support\Facades\Cache::forget('api_terms_and_conditions');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status updated successfully.',
+            'is_active' => $term->is_active
+        ]);
     }
 }

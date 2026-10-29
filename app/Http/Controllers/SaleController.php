@@ -143,7 +143,8 @@ class SaleController extends Controller
             ->orderBy('title')
             ->get();
 
-        return view('admin_panel.sale.add_sale222', compact(
+        $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
+        return view('admin_panel.sale.add_sale222', compact('termsAndConditions', 
             'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 
             'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'
         ));
@@ -1038,7 +1039,8 @@ class SaleController extends Controller
         $nextInvoiceNumber = $sale->invoice_no;
 
         // 4. Return the Edit Sale View
-        return view('admin_panel.sale.edit_sale', compact('warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'));
+        $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
+        return view('admin_panel.sale.edit_sale', compact('termsAndConditions', 'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'));
     }
 
     public function updatesale(Request $request, $id)
@@ -1163,6 +1165,7 @@ class SaleController extends Controller
             $sale->po_date = $request->filled('po_date') ? \Carbon\Carbon::parse($request->po_date)->format('Y-m-d') : null;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;
             $sale->reference = $request->reference;
+            $sale->selected_terms = $request->has('selected_terms') ? $request->input('selected_terms') : null;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;
 

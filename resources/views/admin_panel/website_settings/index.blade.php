@@ -609,6 +609,105 @@
         </div>
     </form>
 
+    {{-- Terms & Conditions Management --}}
+    <div class="section-card-custom">
+        <div class="card-header-pro-custom text-primary d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-gavel"></i> Terms & Conditions</span>
+            @if($canEdit || $canCreate)
+                <button type="button" class="btn btn-sm btn-primary-custom" id="addTermBtn" style="height: 34px; padding: 0 16px; font-size: 0.8rem;">
+                    <i class="fas fa-plus"></i> Add New Term
+                </button>
+            @endif
+        </div>
+        <div class="card-body-pro-custom">
+            {{-- Add/Edit Form (Hidden by default) --}}
+            <div id="termFormWrapper" style="display: none;" class="mb-4 p-3" style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <div style="background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; padding: 20px;">
+                    <h6 class="mb-3 fw-semibold" id="termFormTitle" style="color: #1e293b; font-size: 0.9rem;">
+                        <i class="fas fa-plus-circle text-primary me-2"></i>Add New Term
+                    </h6>
+                    <input type="hidden" id="termEditId" value="">
+                    <div class="mb-3">
+                        <label class="form-label-custom">Heading <span class="text-danger">*</span></label>
+                        <input type="text" id="termHeading" class="form-control-custom" placeholder="e.g. Privacy Policy, Refund Policy, Delivery Terms...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label-custom">Paragraph <span class="text-danger">*</span></label>
+                        <textarea id="termParagraph" class="form-control-custom" rows="5" placeholder="Write detailed terms and conditions paragraph here..."></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label-custom">Sort Order</label>
+                            <input type="number" id="termSortOrder" class="form-control-custom" value="0" min="0" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn-primary-custom" id="saveTermBtn" style="height: 38px; font-size: 0.85rem;">
+                            <i class="fas fa-save"></i> Save Term
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="cancelTermBtn" style="height: 38px; border-radius: 8px; font-size: 0.85rem; padding: 0 20px;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Terms List --}}
+            <div id="termsListContainer">
+                @if(isset($termsAndConditions) && $termsAndConditions->count() > 0)
+                    @foreach($termsAndConditions as $term)
+                        <div class="term-item mb-3" id="term-item-{{ $term->id }}" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; transition: all 0.2s;">
+                            <div class="d-flex justify-content-between align-items-start p-3" style="border-bottom: 1px solid #f1f5f9;">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge {{ $term->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size: 0.7rem; padding: 3px 8px; border-radius: 4px;">
+                                            {{ $term->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                        <small class="text-muted" style="font-size: 0.75rem;">Order: {{ $term->sort_order }}</small>
+                                    </div>
+                                    <h6 class="mb-0 fw-semibold" style="color: #1e293b; font-size: 0.95rem;">{{ $term->heading }}</h6>
+                                </div>
+                                @if($canEdit || $canDelete)
+                                    <div class="d-flex gap-1">
+                                        @if($canEdit)
+                                            <button type="button" class="btn btn-sm btn-outline-primary edit-term-btn" 
+                                                data-id="{{ $term->id }}" 
+                                                data-heading="{{ $term->heading }}" 
+                                                data-paragraph="{{ $term->paragraph }}" 
+                                                data-sort-order="{{ $term->sort_order }}"
+                                                style="border-radius: 6px; padding: 4px 10px; font-size: 0.8rem;">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning toggle-term-btn" 
+                                                data-id="{{ $term->id }}"
+                                                style="border-radius: 6px; padding: 4px 10px; font-size: 0.8rem;"
+                                                title="{{ $term->is_active ? 'Deactivate' : 'Activate' }}">
+                                                <i class="fas {{ $term->is_active ? 'fa-eye-slash' : 'fa-eye' }}"></i>
+                                            </button>
+                                        @endif
+                                        @if($canDelete)
+                                            <button type="button" class="btn btn-sm btn-outline-danger delete-term-btn" 
+                                                data-id="{{ $term->id }}" data-heading="{{ $term->heading }}"
+                                                style="border-radius: 6px; padding: 4px 10px; font-size: 0.8rem;">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="p-3" style="color: #475569; font-size: 0.875rem; line-height: 1.6; white-space: pre-line;">{{ $term->paragraph }}</div>
+                        </div>
+                    @endforeach
+                @else
+                    <div id="noTermsMessage" class="text-center py-5">
+                        <i class="fas fa-gavel text-muted mb-3" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                        <p class="text-muted mb-0" style="font-size: 0.9rem;">No terms & conditions added yet.</p>
+                        <p class="text-muted" style="font-size: 0.8rem;">Click "Add New Term" to get started.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
     {{-- Category Website Settings --}}
     <form action="{{ route('website_settings.categories.update') }}" method="POST" enctype="multipart/form-data" class="mt-4">
         @csrf
@@ -758,6 +857,213 @@
         }
 
         renderLocations();
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addTermBtn = document.getElementById('addTermBtn');
+        const termFormWrapper = document.getElementById('termFormWrapper');
+        const saveTermBtn = document.getElementById('saveTermBtn');
+        const cancelTermBtn = document.getElementById('cancelTermBtn');
+        const termEditId = document.getElementById('termEditId');
+        const termHeading = document.getElementById('termHeading');
+        const termParagraph = document.getElementById('termParagraph');
+        const termSortOrder = document.getElementById('termSortOrder');
+        const termFormTitle = document.getElementById('termFormTitle');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]')?.value;
+
+        // Show Add Form
+        if (addTermBtn) {
+            addTermBtn.addEventListener('click', function() {
+                termEditId.value = '';
+                termHeading.value = '';
+                termParagraph.value = '';
+                termSortOrder.value = '0';
+                termFormTitle.innerHTML = '<i class="fas fa-plus-circle text-primary me-2"></i>Add New Term';
+                termFormWrapper.style.display = 'block';
+                termHeading.focus();
+                termFormWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+        }
+
+        // Cancel Form
+        if (cancelTermBtn) {
+            cancelTermBtn.addEventListener('click', function() {
+                termFormWrapper.style.display = 'none';
+                termEditId.value = '';
+                termHeading.value = '';
+                termParagraph.value = '';
+                termSortOrder.value = '0';
+            });
+        }
+
+        // Save Term (Add/Edit)
+        if (saveTermBtn) {
+            saveTermBtn.addEventListener('click', function() {
+                const heading = termHeading.value.trim();
+                const paragraph = termParagraph.value.trim();
+                const sortOrder = termSortOrder.value || 0;
+                const editId = termEditId.value;
+
+                if (!heading) {
+                    Swal.fire({ icon: 'warning', title: 'Required', text: 'Please enter a heading.', timer: 2000 });
+                    termHeading.focus();
+                    return;
+                }
+                if (!paragraph) {
+                    Swal.fire({ icon: 'warning', title: 'Required', text: 'Please enter a paragraph.', timer: 2000 });
+                    termParagraph.focus();
+                    return;
+                }
+
+                const isEdit = editId !== '';
+                const url = isEdit 
+                    ? `/website-settings/terms/${editId}` 
+                    : '/website-settings/terms';
+                const method = isEdit ? 'PUT' : 'POST';
+
+                saveTermBtn.disabled = true;
+                saveTermBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        heading: heading,
+                        paragraph: paragraph,
+                        sort_order: parseInt(sortOrder)
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    saveTermBtn.disabled = false;
+                    saveTermBtn.innerHTML = '<i class="fas fa-save"></i> Save Term';
+
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Success!', text: data.message, timer: 1500 });
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error!', text: data.message || 'Something went wrong.' });
+                    }
+                })
+                .catch(error => {
+                    saveTermBtn.disabled = false;
+                    saveTermBtn.innerHTML = '<i class="fas fa-save"></i> Save Term';
+                    
+                    if (error.response) {
+                        error.response.json().then(data => {
+                            let errorMsg = data.message || 'Something went wrong.';
+                            if (data.errors) {
+                                errorMsg = Object.values(data.errors).flat().join('\n');
+                            }
+                            Swal.fire({ icon: 'error', title: 'Validation Error', text: errorMsg });
+                        });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error!', text: 'Network error. Please try again.' });
+                    }
+                });
+            });
+        }
+
+        // Edit Term
+        document.querySelectorAll('.edit-term-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const heading = this.getAttribute('data-heading');
+                const paragraph = this.getAttribute('data-paragraph');
+                const sortOrder = this.getAttribute('data-sort-order');
+
+                termEditId.value = id;
+                termHeading.value = heading;
+                termParagraph.value = paragraph;
+                termSortOrder.value = sortOrder;
+                termFormTitle.innerHTML = '<i class="fas fa-edit text-primary me-2"></i>Edit Term';
+                termFormWrapper.style.display = 'block';
+                termFormWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                termHeading.focus();
+            });
+        });
+
+        // Toggle Term Active/Inactive
+        document.querySelectorAll('.toggle-term-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                
+                fetch(`/website-settings/terms/${id}/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Success!', text: data.message, timer: 1200 });
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error!', text: data.message });
+                    }
+                })
+                .catch(() => {
+                    Swal.fire({ icon: 'error', title: 'Error!', text: 'Network error.' });
+                });
+            });
+        });
+
+        // Delete Term
+        document.querySelectorAll('.delete-term-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const heading = this.getAttribute('data-heading');
+
+                Swal.fire({
+                    title: 'Delete Term?',
+                    html: `Are you sure you want to delete <strong>"${heading}"</strong>?<br>This action cannot be undone.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '<i class="fas fa-trash-alt"></i> Yes, Delete',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/website-settings/terms/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire({ icon: 'success', title: 'Deleted!', text: data.message, timer: 1200 });
+                                const termItem = document.getElementById(`term-item-${id}`);
+                                if (termItem) {
+                                    termItem.style.transition = 'opacity 0.3s, transform 0.3s';
+                                    termItem.style.opacity = '0';
+                                    termItem.style.transform = 'translateX(-20px)';
+                                    setTimeout(() => termItem.remove(), 300);
+                                }
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Error!', text: data.message });
+                            }
+                        })
+                        .catch(() => {
+                            Swal.fire({ icon: 'error', title: 'Error!', text: 'Network error.' });
+                        });
+                    }
+                });
+            });
+        });
     });
 </script>
 @endsection
