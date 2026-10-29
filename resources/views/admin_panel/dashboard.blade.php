@@ -1,6 +1,8 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<!-- Font Awesome 6 fallback CDN -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
@@ -32,9 +34,28 @@
         --radius-xl: 20px;
     }
 
-    .db-wrap, .db-wrap * {
-        font-family: var(--f) !important;
+    /* Base typography & box sizing: Exempt all icon classes from font override */
+    .db-wrap {
+        font-family: var(--f);
         box-sizing: border-box;
+    }
+    .db-wrap *:not(i):not([class*="fa-"]):not(.fa):not(.fas):not(.far):not(.fab):not(.fa-solid):not(.fa-regular):not(.fa-brands) {
+        font-family: var(--f);
+        box-sizing: border-box;
+    }
+    .db-wrap i,
+    .db-wrap .fa,
+    .db-wrap .fas,
+    .db-wrap .far,
+    .db-wrap .fa-solid,
+    .db-wrap .fa-regular {
+        font-family: "Font Awesome 6 Free" !important;
+        font-style: normal;
+    }
+    .db-wrap .fab,
+    .db-wrap .fa-brands {
+        font-family: "Font Awesome 6 Brands" !important;
+        font-style: normal;
     }
 
     .db-wrap {
@@ -970,15 +991,33 @@
         </div>
         <div class="grid-3col">
 
-            {{-- 1. Sales Trend Line Chart --}}
+            {{-- 1. Sales vs Purchase Comparative Trajectory Chart --}}
             <div class="panel-card">
-                <div class="panel-hd">
-                    <span class="panel-title"><i class="fas fa-chart-area" style="color:var(--brand-indigo);"></i> Sales Overview Trend</span>
-                    <span class="panel-badge">7-Day Trajectory</span>
+                <div class="panel-hd d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <span class="panel-title"><i class="fas fa-chart-area" style="color:var(--brand-indigo);"></i> Sales & Purchase Trajectory</span>
+                    <div class="d-flex align-items-center gap-1">
+                        <div class="btn-group btn-group-sm" role="group" id="salesPeriodToggle">
+                            <button type="button" class="btn btn-xs btn-primary active" data-period="daily" style="font-size: 11px; padding: 2px 8px; border-radius: 6px 0 0 6px;">Daily</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary" data-period="weekly" style="font-size: 11px; padding: 2px 8px;">Weekly</button>
+                            <button type="button" class="btn btn-xs btn-outline-secondary" data-period="monthly" style="font-size: 11px; padding: 2px 8px; border-radius: 0 6px 6px 0;">Monthly</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="panel-body-flex">
                     <div style="height: 240px; position: relative;">
                         <canvas id="chartSalesOverview"></canvas>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center gap-4 mt-2 pt-2 border-top" style="font-size: 11.5px; font-weight: 600;">
+                        <div class="d-flex align-items-center gap-1">
+                            <span style="display:inline-block; width:12px; height:3px; background:#4f46e5; border-radius:2px;"></span>
+                            <span style="color:var(--text-secondary);">Sales Revenue</span>
+                        </div>
+                        @can('purchases.view')
+                        <div class="d-flex align-items-center gap-1">
+                            <span style="display:inline-block; width:12px; height:3px; background:#f43f5e; border-radius:2px;"></span>
+                            <span style="color:var(--text-secondary);">Purchases</span>
+                        </div>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -1085,6 +1124,7 @@
         </div>
 
         {{-- Cash Flow Receipts vs Payments --}}
+        @canany(['vouchers.view', 'expense.voucher.view', 'recovery.report.view', 'payable.report.view'])
         <div class="panel-card">
             <div class="panel-hd">
                 <span class="panel-title"><i class="fas fa-exchange-alt" style="color:var(--brand-emerald);"></i> Cash Flow</span>
@@ -1096,8 +1136,10 @@
                 </div>
             </div>
         </div>
+        @endcanany
 
         {{-- Expense Breakdown --}}
+        @canany(['expense.voucher.view', 'profit.loss.report.view', 'executive.report.view'])
         <div class="panel-card">
             <div class="panel-hd">
                 <span class="panel-title"><i class="fas fa-receipt" style="color:var(--brand-rose);"></i> Expenses</span>
@@ -1109,6 +1151,7 @@
                 <div class="legend-list w-100" id="expLegend"></div>
             </div>
         </div>
+        @endcanany
 
         {{-- Recent Feed (Sales + Purchases) --}}
         <div class="panel-card">
@@ -1256,43 +1299,101 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    // ── 1. SALES OVERVIEW LINE CHART ──────────────────────
+    // ── 1. SALES & PURCHASE DUAL LINE CHART (WITH LIVE RANGE SWITCHER) ──────────────────────
     const soCtx = document.getElementById('chartSalesOverview');
     if (soCtx) {
         const ctx = soCtx.getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 240);
-        gradient.addColorStop(0, 'rgba(79, 70, 229, 0.22)');
-        gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
+        const gradientSales = ctx.createLinearGradient(0, 0, 0, 240);
+        gradientSales.addColorStop(0, 'rgba(79, 70, 229, 0.25)');
+        gradientSales.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
 
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: salesStats.daily?.categories || [],
-                datasets: [{
+        const gradientPurch = ctx.createLinearGradient(0, 0, 0, 240);
+        gradientPurch.addColorStop(0, 'rgba(244, 63, 94, 0.20)');
+        gradientPurch.addColorStop(1, 'rgba(244, 63, 94, 0.0)');
+
+        const canSeePurchases = {{ Auth::user()->can('purchases.view') ? 'true' : 'false' }};
+
+        function buildDatasets(periodKey) {
+            const periodData = salesStats[periodKey] || { categories: [], sales: [], purchases: [] };
+            const ds = [
+                {
                     label: 'Sales Revenue',
-                    data: salesStats.daily?.series[0]?.data || [],
+                    data: periodData.sales || [],
                     borderColor: '#4f46e5',
                     borderWidth: 2.5,
-                    backgroundColor: gradient,
+                    backgroundColor: gradientSales,
                     fill: true,
-                    tension: 0.4,
+                    tension: 0.38,
                     pointBackgroundColor: '#4f46e5',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2,
                     pointRadius: 4,
                     pointHoverRadius: 6
-                }]
-            },
+                }
+            ];
+
+            if (canSeePurchases && periodData.purchases && periodData.purchases.length) {
+                ds.push({
+                    label: 'Purchases',
+                    data: periodData.purchases || [],
+                    borderColor: '#f43f5e',
+                    borderWidth: 2.5,
+                    backgroundColor: gradientPurch,
+                    fill: true,
+                    tension: 0.38,
+                    pointBackgroundColor: '#f43f5e',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                });
+            }
+            return {
+                labels: periodData.categories || [],
+                datasets: ds
+            };
+        }
+
+        const initialData = buildDatasets('daily');
+
+        const salesChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: initialData,
             options: {
                 ...baseChartOpts,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
                 plugins: {
                     ...baseChartOpts.plugins,
                     tooltip: {
                         ...baseChartOpts.plugins.tooltip,
-                        callbacks: { label: c => ` Sales: Rs ${parseFloat(c.raw || 0).toLocaleString()}` }
+                        callbacks: { 
+                            label: c => ` ${c.dataset.label}: Rs ${parseFloat(c.raw || 0).toLocaleString()}` 
+                        }
                     }
                 }
             }
+        });
+
+        // Toggle Buttons Handler
+        const toggleBtns = document.querySelectorAll('#salesPeriodToggle button');
+        toggleBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                toggleBtns.forEach(b => {
+                    b.classList.remove('btn-primary', 'active');
+                    b.classList.add('btn-outline-secondary');
+                });
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-primary', 'active');
+
+                const chosen = this.getAttribute('data-period');
+                const newData = buildDatasets(chosen);
+                salesChartInstance.data.labels = newData.labels;
+                salesChartInstance.data.datasets = newData.datasets;
+                salesChartInstance.update();
+            });
         });
     }
 

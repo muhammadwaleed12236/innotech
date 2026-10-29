@@ -115,17 +115,27 @@ class HomeController extends Controller
                         ->sum('net_amount');
                 }
 
-                // Sales Trend Chart (Last 7 Days)
-                $dailyLabels = collect(range(6, 0))->map(fn($i) => Carbon::today()->subDays($i)->format('Y-m-d'));
-                $dailyData = $dailyLabels->map(function ($date) {
+                // Sales vs Purchase Comparative Trajectory (Last 7 Days)
+                $dailyLabels = collect(range(6, 0))->map(fn($i) => Carbon::today()->subDays($i)->format('d M'));
+                $dailySalesData = collect(range(6, 0))->map(function ($i) {
+                    $date = Carbon::today()->subDays($i)->format('Y-m-d');
                     return (float) DB::table('sales')
                         ->whereDate('created_at', $date)
                         ->whereNotIn('sale_status', ['cancelled', 'returned'])
                         ->sum('total_net');
                 });
 
+                $dailyPurchasesData = collect(range(6, 0))->map(function ($i) use ($user) {
+                    if (!$user->can('purchases.view')) return 0;
+                    $date = Carbon::today()->subDays($i)->format('Y-m-d');
+                    return (float) DB::table('purchases')
+                        ->whereDate('purchase_date', $date)
+                        ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                        ->sum('net_amount');
+                });
+
                 $weeklyLabels = ['2 Weeks Ago', 'Last Week', 'This Week'];
-                $weeklyData = collect([2, 1, 0])->map(function ($i) {
+                $weeklySalesData = collect([2, 1, 0])->map(function ($i) {
                     $wStart = Carbon::now()->startOfWeek()->subWeeks($i);
                     $wEnd = $wStart->copy()->endOfWeek();
                     return (float) DB::table('sales')
@@ -133,21 +143,50 @@ class HomeController extends Controller
                         ->whereNotIn('sale_status', ['cancelled', 'returned'])
                         ->sum('total_net');
                 });
+                $weeklyPurchData = collect([2, 1, 0])->map(function ($i) use ($user) {
+                    if (!$user->can('purchases.view')) return 0;
+                    $wStart = Carbon::now()->startOfWeek()->subWeeks($i);
+                    $wEnd = $wStart->copy()->endOfWeek();
+                    return (float) DB::table('purchases')
+                        ->whereBetween('purchase_date', [$wStart->format('Y-m-d'), $wEnd->format('Y-m-d')])
+                        ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                        ->sum('net_amount');
+                });
 
                 $months = range(1, Carbon::now()->month);
                 $monthLabels = collect($months)->map(fn($m) => Carbon::create()->month($m)->format('M'));
-                $monthlyData = collect($months)->map(function ($m) {
+                $monthlySalesData = collect($months)->map(function ($m) {
                     return (float) DB::table('sales')
                         ->whereMonth('created_at', $m)
                         ->whereYear('created_at', Carbon::now()->year)
                         ->whereNotIn('sale_status', ['cancelled', 'returned'])
                         ->sum('total_net');
                 });
+                $monthlyPurchData = collect($months)->map(function ($m) use ($user) {
+                    if (!$user->can('purchases.view')) return 0;
+                    return (float) DB::table('purchases')
+                        ->whereMonth('purchase_date', $m)
+                        ->whereYear('purchase_date', Carbon::now()->year)
+                        ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                        ->sum('net_amount');
+                });
 
                 $salesChartStats = [
-                    'daily' => ['categories' => $dailyLabels, 'series' => [['name' => 'Sales', 'data' => $dailyData]]],
-                    'weekly' => ['categories' => $weeklyLabels, 'series' => [['name' => 'Sales', 'data' => $weeklyData]]],
-                    'monthly' => ['categories' => $monthLabels, 'series' => [['name' => 'Sales', 'data' => $monthlyData]]]
+                    'daily' => [
+                        'categories' => $dailyLabels, 
+                        'sales' => $dailySalesData,
+                        'purchases' => $dailyPurchasesData
+                    ],
+                    'weekly' => [
+                        'categories' => $weeklyLabels, 
+                        'sales' => $weeklySalesData,
+                        'purchases' => $weeklyPurchData
+                    ],
+                    'monthly' => [
+                        'categories' => $monthLabels, 
+                        'sales' => $monthlySalesData,
+                        'purchases' => $monthlyPurchData
+                    ]
                 ];
 
                 // Sales by Category
