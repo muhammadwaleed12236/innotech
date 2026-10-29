@@ -1050,6 +1050,7 @@
                                             <li><a href="{{ route('report.sale') }}"><i class="fa-solid fa-users"></i> Sale
                                                     Report</a></li>
                                             <li><a href="{{ route('report.product_sale_customer_wise') }}"><i class="fa-solid fa-users-between-lines"></i> Product Sale (Customer Wise)</a></li>
+                                            <li><a href="{{ route('report.sales_officer_sale') }}"><i class="fa-solid fa-user-tie"></i> Sales Officer Sale Report</a></li>
                                         @endcan
                                         @can('customer.ledger.view')
                                             <li><a href="{{ route('report.customer.ledger') }}"><i

@@ -2108,7 +2108,8 @@ class ReportingController extends Controller
     public function sale_report()
     {
         $customers = \App\Models\Customer::orderBy('customer_name')->get();
-        return view('admin_panel.reporting.sale_report', compact('customers'));
+        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+        return view('admin_panel.reporting.sale_report', compact('customers', 'salesOfficers'));
     }
 
     public function fetchsaleReport(Request $request)
@@ -2117,9 +2118,10 @@ class ReportingController extends Controller
             $start = $request->start_date;
             $end = $request->end_date;
             $customerId = $request->customer_id;
+            $salesOfficerId = $request->sales_officer_id;
 
             // Use Eloquent to handle relations and new table structure
-            $query = \App\Models\Sale::with(['customer_relation', 'items.product', 'returns']);
+            $query = \App\Models\Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product', 'returns']);
 
             if ($start && $end) {
                 $query->whereBetween('created_at', [
@@ -2134,6 +2136,18 @@ class ReportingController extends Controller
 
             if ($customerId && $customerId !== 'all') {
                 $query->where('customer_id', $customerId);
+            }
+
+            if ($salesOfficerId && $salesOfficerId !== 'all') {
+                $query->where(function($q) use ($salesOfficerId) {
+                    $q->where('sales_officer_id', $salesOfficerId)
+                      ->orWhere(function($sub) use ($salesOfficerId) {
+                          $sub->whereNull('sales_officer_id')
+                              ->whereHas('customer_relation', function($custQ) use ($salesOfficerId) {
+                                  $custQ->where('sales_officer_id', $salesOfficerId);
+                              });
+                      });
+                });
             }
 
             $sales = $query->orderBy('created_at', 'desc')->get();
@@ -2242,6 +2256,9 @@ class ReportingController extends Controller
                     'total_net' => $netAmount,
                     'created_at' => $sale->created_at ? $sale->created_at->format('Y-m-d h:i A') : '-',
                     'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in'),
+                    'sales_officer_name' => $sale->salesOfficer->name ?? ($sale->customer_relation->salesOfficer->name ?? '-'),
+                    'po_no' => $sale->po_no ?? '',
+                    'po_date' => $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') : '',
                     'returns' => $sale->returns->map(function($ret) {
                          // Robust return display handling both legacy strings and new relation items
                          $retItems = $ret->items;
@@ -3858,4 +3875,140 @@ class ReportingController extends Controller
             'customers' => array_values($grouped)
         ]);
     }
+
+    /**
+     * Sales Officer Wise Sale Report
+     */
+    public function sales_officer_sale_report(Request $request)
+    {
+        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+        $customers = \App\Models\Customer::orderBy('customer_name')->get();
+        return view('admin_panel.reporting.sales_officer_sale_report', compact('salesOfficers', 'customers'));
+    }
+
+    /**
+     * Fetch Sales Officer Wise Sale Report (Detailed & Summary)
+     */
+    public function fetchSalesOfficerSaleReport(Request $request)
+    {
+        $start = $request->start_date;
+        $end = $request->end_date;
+        $salesOfficerId = $request->sales_officer_id;
+        $customerId = $request->customer_id;
+
+        $query = \App\Models\Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product', 'returns'])
+            ->whereNotIn('sale_status', ['cancelled']);
+
+        if ($start && $end) {
+            $query->whereBetween('created_at', [
+                \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'),
+                \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s')
+            ]);
+        } elseif ($start) {
+            $query->where('created_at', '>=', \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'));
+        } elseif ($end) {
+            $query->where('created_at', '<=', \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s'));
+        }
+
+        if ($customerId && $customerId !== 'all') {
+            $query->where('customer_id', $customerId);
+        }
+
+        if ($salesOfficerId && $salesOfficerId !== 'all') {
+            $query->where(function($q) use ($salesOfficerId) {
+                $q->where('sales_officer_id', $salesOfficerId)
+                  ->orWhere(function($sub) use ($salesOfficerId) {
+                      $sub->whereNull('sales_officer_id')
+                          ->whereHas('customer_relation', function($custQ) use ($salesOfficerId) {
+                              $custQ->where('sales_officer_id', $salesOfficerId);
+                          });
+                  });
+            });
+        }
+
+        $sales = $query->orderBy('created_at', 'desc')->get();
+
+        // Group summary by Sales Officer
+        $officerSummary = [];
+        $transformed = [];
+
+        foreach ($sales as $sale) {
+            $officerObj = $sale->salesOfficer ?: ($sale->customer_relation ? $sale->customer_relation->salesOfficer : null);
+            $officerId = $officerObj ? $officerObj->id : 0;
+            $officerName = $officerObj ? $officerObj->name : 'Unassigned / Direct';
+
+            $gross = (float) $sale->total_bill_amount;
+            $inlineDisc = 0;
+            $totalQty = 0;
+            $itemsList = [];
+
+            foreach ($sale->items as $it) {
+                $inlineDisc += (float) ($it->discount_amount ?? 0);
+                $totalQty += (float) ($it->qty ?? $it->total_pieces ?? 0);
+                $pName = $it->product ? $it->product->item_name : ($it->is_manual ? $it->product_name : 'Item');
+                $itemsList[] = $pName . ' (' . (float)$it->qty . ')';
+            }
+
+            if ($gross <= 0) {
+                $gross = (float) $sale->total_net + $inlineDisc + (float) $sale->total_extradiscount;
+            }
+
+            $addDisc = (float) $sale->total_extradiscount;
+            $net = (float) $sale->total_net;
+            $retAmount = $sale->returns ? (float) $sale->returns->sum('net_amount') : 0;
+
+            if (!isset($officerSummary[$officerId])) {
+                $officerSummary[$officerId] = [
+                    'officer_id' => $officerId,
+                    'officer_name' => $officerName,
+                    'total_invoices' => 0,
+                    'total_qty' => 0,
+                    'total_gross' => 0,
+                    'total_discount' => 0,
+                    'total_net' => 0,
+                    'total_returns' => 0,
+                ];
+            }
+
+            $officerSummary[$officerId]['total_invoices'] += 1;
+            $officerSummary[$officerId]['total_qty'] += $totalQty;
+            $officerSummary[$officerId]['total_gross'] += $gross;
+            $officerSummary[$officerId]['total_discount'] += ($inlineDisc + $addDisc);
+            $officerSummary[$officerId]['total_net'] += $net;
+            $officerSummary[$officerId]['total_returns'] += $retAmount;
+
+            $transformed[] = [
+                'id' => $sale->id,
+                'invoice_no' => $sale->invoice_no,
+                'created_at_formatted' => $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : '',
+                'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in'),
+                'customer_code' => $sale->customer_relation->customer_id ?? '',
+                'sales_officer_id' => $officerId,
+                'sales_officer_name' => $officerName,
+                'po_no' => $sale->po_no ?? '',
+                'po_date' => $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') : '',
+                'reference' => $sale->reference ?? '',
+                'status' => $sale->sale_status,
+                'products' => implode(', ', $itemsList),
+                'total_qty' => $totalQty,
+                'gross_amount' => $gross,
+                'discount' => ($inlineDisc + $addDisc),
+                'net_amount' => $net,
+                'returns' => $retAmount,
+            ];
+        }
+
+        return response()->json([
+            'sales' => $transformed,
+            'summary' => array_values($officerSummary),
+            'totals' => [
+                'total_sales' => count($transformed),
+                'total_gross' => array_sum(array_column($officerSummary, 'total_gross')),
+                'total_discount' => array_sum(array_column($officerSummary, 'total_discount')),
+                'total_net' => array_sum(array_column($officerSummary, 'total_net')),
+                'total_returns' => array_sum(array_column($officerSummary, 'total_returns')),
+            ]
+        ]);
+    }
+
 }

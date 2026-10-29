@@ -813,6 +813,7 @@
     <div class="db-nav-pills">
         @can('sale.report.view')
             <a href="{{ route('report.sale') }}" class="db-pill"><i class="fa-solid fa-receipt" style="color: var(--brand-emerald);"></i> Sales Report</a>
+            <a href="{{ route('report.sales_officer_sale') }}" class="db-pill"><i class="fa-solid fa-user-tie" style="color: var(--brand-indigo);"></i> Sales Officer Report</a>
         @endcan
         @can('purchase.report.view')
             <a href="{{ route('report.purchase') }}" class="db-pill"><i class="fa-solid fa-cart-shopping" style="color: var(--brand-sky);"></i> Purchase Report</a>

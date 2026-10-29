@@ -558,6 +558,9 @@ Route::middleware('auth')->group(function () {
     Route::get('report/product-sale-customer-wise', [ReportingController::class, 'product_sale_customer_wise_report'])->middleware('permission:sale.report.view')->name('report.product_sale_customer_wise');
     Route::get('report/product-sale-customer-wise/fetch', [ReportingController::class, 'fetchProductSaleCustomerWise'])->middleware('permission:sale.report.view')->name('report.product_sale_customer_wise.fetch');
 
+    Route::get('report/sales-officer-sale', [ReportingController::class, 'sales_officer_sale_report'])->middleware('permission:sale.report.view')->name('report.sales_officer_sale');
+    Route::get('report/sales-officer-sale/fetch', [ReportingController::class, 'fetchSalesOfficerSaleReport'])->middleware('permission:sale.report.view')->name('report.sales_officer_sale.fetch');
+
     Route::get('report/customer/ledger', [ReportingController::class, 'customer_ledger_report'])->middleware('permission:customer.ledger.view')->name('report.customer.ledger');
     Route::get('report/customer-ledger/fetch', [ReportingController::class, 'fetch_customer_ledger'])->middleware('permission:customer.ledger.view')->name('report.customer.ledger.fetch');
 
@@ -582,6 +585,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/website-settings', [App\Http\Controllers\WebsiteSettingsController::class, 'index'])->middleware('permission:website-settings.view')->name('website_settings.index');
     Route::post('/website-settings', [App\Http\Controllers\WebsiteSettingsController::class, 'update'])->middleware('permission:website-settings.edit|website-settings.update|website-settings.create|website-settings.delete|website-settings.upload_manage')->name('website_settings.update');
     Route::post('/website-settings/categories', [App\Http\Controllers\WebsiteSettingsController::class, 'updateCategories'])->middleware('permission:website-settings.edit|website-settings.update|website-settings.create|website-settings.delete|website-settings.upload_manage')->name('website_settings.categories.update');
+
+    // Terms & Conditions Management
+    Route::post('/website-settings/terms', [App\Http\Controllers\WebsiteSettingsController::class, 'storeTermsAndCondition'])->middleware('permission:website-settings.edit|website-settings.update|website-settings.create')->name('website_settings.terms.store');
+    Route::put('/website-settings/terms/{id}', [App\Http\Controllers\WebsiteSettingsController::class, 'updateTermsAndCondition'])->middleware('permission:website-settings.edit|website-settings.update')->name('website_settings.terms.update');
+    Route::delete('/website-settings/terms/{id}', [App\Http\Controllers\WebsiteSettingsController::class, 'deleteTermsAndCondition'])->middleware('permission:website-settings.edit|website-settings.delete')->name('website_settings.terms.delete');
+    Route::post('/website-settings/terms/{id}/toggle', [App\Http\Controllers\WebsiteSettingsController::class, 'toggleTermsAndCondition'])->middleware('permission:website-settings.edit|website-settings.update')->name('website_settings.terms.toggle');
 
     // Web Orders
     Route::get('/web-orders', [App\Http\Controllers\WebOrderController::class, 'index'])->middleware('permission:web_orders.view|web_orders.read')->name('web_orders.index');
