@@ -797,21 +797,32 @@
                         const items = res.items || [];
                         const stats = res.stats || {};
 
-                        $('#viewSaleModalTitle').text('Sale Invoice #' + sale.invoice_no);
+                        const isQuotation = sale.sale_status === 'quotation';
+                        const isBooked = sale.sale_status === 'booked';
+                        const isReturned = sale.sale_status === 'returned';
+                        
+                        let docTitle = isQuotation ? 'Quotation #' + (sale.invoice_no || sale.id) : (isBooked ? 'Booking #' + (sale.invoice_no || sale.id) : 'Sale Invoice #' + sale.invoice_no);
+                        $('#viewSaleModalTitle').text(docTitle);
                         $('#viewSaleModalSubtitle').text('Date: ' + sale.created_at_formatted + (sale.reference ? ' | Ref: ' + sale.reference : ''));
 
                         // Status Badge
                         let statusHtml = '<span class="badge bg-secondary">Draft</span>';
                         if (sale.sale_status === 'posted') statusHtml = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Posted</span>';
-                        else if (sale.sale_status === 'booked') statusHtml = '<span class="badge bg-info text-white"><i class="fas fa-bookmark me-1"></i>Booked</span>';
-                        else if (sale.sale_status === 'quotation') statusHtml = '<span class="badge bg-primary"><i class="fas fa-file-alt me-1"></i>Quotation</span>';
-                        else if (sale.sale_status === 'returned') statusHtml = '<span class="badge bg-danger"><i class="fas fa-undo me-1"></i>Returned</span>';
+                        else if (isBooked) statusHtml = '<span class="badge bg-info text-white"><i class="fas fa-bookmark me-1"></i>Booked</span>';
+                        else if (isQuotation) statusHtml = '<span class="badge bg-primary"><i class="fas fa-file-alt me-1"></i>Quotation</span>';
+                        else if (isReturned) statusHtml = '<span class="badge bg-danger"><i class="fas fa-undo me-1"></i>Returned</span>';
                         $('#viewSaleStatusBadge').html(statusHtml);
 
-                        // Set Links
-                        $('#modalBtnPrintInvoice').attr('href', '/sales/' + sale.id + '/invoice');
-                        $('#modalBtnPrintDC').attr('href', '/sales/' + sale.id + '/dc');
-                        $('#modalBtnPrintReceipt').attr('href', '/sales/' + sale.id + '/recepit');
+                        // Set Links & Button Texts based on status
+                        if (isQuotation) {
+                            $('#modalBtnPrintInvoice').attr('href', '/sales/' + sale.id + '/invoice').html('<i class="fas fa-print me-1"></i> Print Quotation');
+                            $('#modalBtnPrintDC').hide();
+                            $('#modalBtnPrintReceipt').hide();
+                        } else {
+                            $('#modalBtnPrintInvoice').attr('href', '/sales/' + sale.id + '/invoice').html('<i class="fas fa-print me-1"></i> Print Invoice');
+                            $('#modalBtnPrintDC').show().attr('href', '/sales/' + sale.id + '/dc');
+                            $('#modalBtnPrintReceipt').show().attr('href', '/sales/' + sale.id + '/recepit');
+                        }
                         $('#modalBtnEditSale').attr('href', '/sales/' + sale.id + '/edit');
 
                         // Construct Modal Content
@@ -876,36 +887,51 @@
                             `;
                         });
 
+                        const summaryHeading = isQuotation ? 'Quotation Summary' : 'Invoice Summary';
+                        const itemsHeading = isQuotation ? 'Quotation Items & Pricing' : 'Sale Items & Tax Breakdown';
+                        const docNumberLabel = isQuotation ? 'Quotation No:' : 'Invoice No:';
+
                         const bodyHtml = `
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-white">
-                                        <div class="text-uppercase text-muted fw-bold mb-2" style="font-size:11px; letter-spacing:0.5px;"><i class="fas fa-user me-1 text-primary"></i> Customer Information</div>
-                                        <div class="fw-bold text-dark fs-6">${sale.customer_name}</div>
-                                        ${sale.customer_code ? `<div class="text-muted small">Code: <strong>${sale.customer_code}</strong></div>` : ''}
-                                        <div class="text-muted small"><i class="fas fa-phone me-1"></i>${sale.customer_mobile}</div>
-                                        <div class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i>${sale.customer_address}</div>
+                            {{-- Compact Header: Customer info & Document summary side-by-side --}}
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <div class="card border-0 shadow-sm rounded-2 p-2 bg-white h-100">
+                                        <div class="d-flex align-items-center justify-content-between border-bottom pb-1 mb-1">
+                                            <span class="text-uppercase text-muted fw-bold" style="font-size:10px; letter-spacing:0.5px;">
+                                                <i class="fas fa-user me-1 text-primary"></i> Customer Information
+                                            </span>
+                                            ${sale.customer_code ? `<span class="badge bg-light text-dark border py-0 px-1" style="font-size:9.5px;">Code: ${sale.customer_code}</span>` : ''}
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="fw-bold text-dark" style="font-size:12.5px;">${sale.customer_name}</span>
+                                            <span class="text-muted small"><i class="fas fa-phone me-1"></i>${sale.customer_mobile}</span>
+                                        </div>
+                                        <div class="text-muted small text-truncate" style="font-size:11px;" title="${sale.customer_address}">
+                                            <i class="fas fa-map-marker-alt me-1 text-danger"></i>${sale.customer_address}
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="card border-0 shadow-sm rounded-3 h-100 p-3 bg-white">
-                                        <div class="text-uppercase text-muted fw-bold mb-2" style="font-size:11px; letter-spacing:0.5px;"><i class="fas fa-info-circle me-1 text-info"></i> Invoice Summary</div>
-                                        <div class="d-flex justify-content-between small mb-1">
-                                            <span class="text-muted">Invoice No:</span>
+                                <div class="col-md-5">
+                                    <div class="card border-0 shadow-sm rounded-2 p-2 bg-white h-100">
+                                        <div class="text-uppercase text-muted fw-bold border-bottom pb-1 mb-1" style="font-size:10px; letter-spacing:0.5px;">
+                                            <i class="fas fa-info-circle me-1 text-info"></i> ${summaryHeading}
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center py-0" style="font-size:11.5px;">
+                                            <span class="text-muted">${docNumberLabel}</span>
                                             <strong class="font-monospace text-primary">${sale.invoice_no}</strong>
                                         </div>
-                                        <div class="d-flex justify-content-between small mb-1">
+                                        <div class="d-flex justify-content-between align-items-center py-0" style="font-size:11.5px;">
                                             <span class="text-muted">Date:</span>
                                             <span>${sale.created_at_formatted}</span>
                                         </div>
                                         ${sale.reference ? `
-                                            <div class="d-flex justify-content-between small mb-1">
-                                                <span class="text-muted">Reference / M.Bill:</span>
+                                            <div class="d-flex justify-content-between align-items-center py-0" style="font-size:11.5px;">
+                                                <span class="text-muted">Ref / M.Bill:</span>
                                                 <strong class="text-dark">${sale.reference}</strong>
                                             </div>
                                         ` : ''}
                                         ${sale.return_note ? `
-                                            <div class="mt-2 p-2 bg-light rounded text-italic small">
+                                            <div class="mt-1 p-1 bg-light rounded text-muted" style="font-size:10px;">
                                                 <strong>Note:</strong> ${sale.return_note}
                                             </div>
                                         ` : ''}
@@ -913,69 +939,76 @@
                                 </div>
                             </div>
 
-                            <div class="card border-0 shadow-sm rounded-3 mb-3 bg-white">
-                                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-                                    <h6 class="fw-bold text-dark mb-0"><i class="fas fa-list me-2 text-primary"></i> Sale Items & Tax Breakdown</h6>
-                                    <span class="badge bg-light text-dark border">${items.length} Items</span>
+                            {{-- Compact Items Table --}}
+                            <div class="card border-0 shadow-sm rounded-2 mb-2 bg-white">
+                                <div class="card-header bg-white py-1 px-3 border-bottom d-flex align-items-center justify-content-between">
+                                    <h6 class="fw-bold text-dark mb-0" style="font-size:12px;">
+                                        <i class="fas fa-list me-1 text-primary"></i> ${itemsHeading}
+                                    </h6>
+                                    <span class="badge bg-light text-dark border py-0 px-2" style="font-size:10px;">${items.length} Items</span>
                                 </div>
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0" style="font-size:12px;">
-                                        <thead class="bg-light text-uppercase fw-bold" style="font-size:10.5px;">
+                                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover align-middle mb-0" style="font-size:11px;">
+                                        <thead class="bg-light text-uppercase fw-bold sticky-top" style="font-size:10px; z-index:1;">
                                             <tr>
-                                                <th class="text-center" style="width:40px;">S.No</th>
-                                                <th>Item Description</th>
-                                                <th class="text-center">Qty</th>
-                                                <th class="text-end">Rate</th>
-                                                <th class="text-end">Gross</th>
-                                                <th class="text-end">Disc</th>
-                                                <th class="text-end">Excl GST</th>
-                                                <th class="text-end">Sales Tax @18%</th>
-                                                <th class="text-end">Further Tax @3%</th>
-                                                <th class="text-end">Net Amount</th>
+                                                <th class="text-center py-1" style="width:35px;">#</th>
+                                                <th class="py-1">Description</th>
+                                                <th class="text-center py-1">Qty</th>
+                                                <th class="text-end py-1">Rate</th>
+                                                <th class="text-end py-1">Gross</th>
+                                                <th class="text-end py-1">Disc</th>
+                                                <th class="text-end py-1">Excl GST</th>
+                                                <th class="text-end py-1">Sales Tax</th>
+                                                <th class="text-end py-1">Further Tax</th>
+                                                <th class="text-end py-1">Net Amount</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            ${itemsRowsHtml || '<tr><td colspan="10" class="text-center text-muted py-4">No items found</td></tr>'}
+                                            ${itemsRowsHtml || '<tr><td colspan="10" class="text-center text-muted py-3">No items found</td></tr>'}
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
 
-                            <div class="row justify-content-end">
-                                <div class="col-md-6">
-                                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white">
-                                        <div class="text-uppercase text-muted fw-bold mb-3 border-bottom pb-2" style="font-size:11px; letter-spacing:0.5px;">
-                                            <i class="fas fa-calculator me-1 text-success"></i> Financial Totals & Tax Summary
-                                        </div>
-                                        <div class="d-flex justify-content-between py-1 border-bottom small">
+                            {{-- Compact Totals Summary Bar --}}
+                            <div class="row g-2 justify-content-end">
+                                <div class="col-md-7 col-lg-6">
+                                    <div class="card border-0 shadow-sm rounded-2 p-2 bg-white">
+                                        <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:11px;">
                                             <span class="text-muted">Gross Amount:</span>
                                             <span class="fw-bold font-monospace">Rs. ${Number(stats.sum_gross || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                         </div>
-                                        <div class="d-flex justify-content-between py-1 border-bottom small">
-                                            <span class="text-muted">Inline Item Discounts:</span>
-                                            <span class="text-danger font-monospace">Rs. ${Number(stats.sum_disc || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                        </div>
+                                        ${stats.sum_disc > 0 ? `
+                                            <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:11px;">
+                                                <span class="text-muted">Item Discounts:</span>
+                                                <span class="text-danger font-monospace">Rs. ${Number(stats.sum_disc || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            </div>
+                                        ` : ''}
                                         ${sale.total_extradiscount > 0 ? `
-                                            <div class="d-flex justify-content-between py-1 border-bottom small">
-                                                <span class="text-muted">Additional Invoice Discount:</span>
+                                            <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:11px;">
+                                                <span class="text-muted">Additional Discount:</span>
                                                 <span class="text-danger font-monospace">Rs. ${Number(sale.total_extradiscount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                             </div>
                                         ` : ''}
-                                        <div class="d-flex justify-content-between py-1 border-bottom small">
-                                            <span class="text-muted">Exclusive GST Amount:</span>
+                                        <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:11px;">
+                                            <span class="text-muted">Excl. GST Amount:</span>
                                             <span class="font-monospace">Rs. ${Number(stats.sum_excl_gst || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                         </div>
-                                        <div class="d-flex justify-content-between py-1 border-bottom small">
-                                            <span class="text-muted">Sales Tax @18%:</span>
-                                            <span class="text-primary font-monospace">Rs. ${Number(stats.sum_sales_tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between py-1 border-bottom small">
-                                            <span class="text-muted">Further Tax @3%:</span>
-                                            <span class="text-warning font-monospace">Rs. ${Number(stats.sum_further_tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between py-2 mt-2 bg-success-subtle rounded px-2" style="background-color: #ecfdf5;">
-                                            <strong class="text-success fs-6">Grand Net Total:</strong>
-                                            <strong class="text-success fs-6 font-monospace">Rs. ${Number(sale.total_net || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+                                        ${stats.sum_sales_tax > 0 ? `
+                                            <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:11px;">
+                                                <span class="text-muted">Sales Tax @18%:</span>
+                                                <span class="text-primary font-monospace">Rs. ${Number(stats.sum_sales_tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            </div>
+                                        ` : ''}
+                                        ${stats.sum_further_tax > 0 ? `
+                                            <div class="d-flex justify-content-between py-1 border-bottom" style="font-size:11px;">
+                                                <span class="text-muted">Further Tax @3%:</span>
+                                                <span class="text-warning font-monospace">Rs. ${Number(stats.sum_further_tax || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                            </div>
+                                        ` : ''}
+                                        <div class="d-flex justify-content-between align-items-center py-1 mt-1 rounded px-2" style="background-color: #ecfdf5;">
+                                            <strong class="text-success" style="font-size:12.5px;">${isQuotation ? 'Quotation Net Total:' : 'Grand Net Total:'}</strong>
+                                            <strong class="text-success font-monospace" style="font-size:14px;">Rs. ${Number(sale.total_net || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -994,9 +1027,9 @@
 
     <!-- Executive Sale Details Modal -->
     <div class="modal fade" id="viewSaleModal" tabindex="-1" aria-labelledby="viewSaleModalLabel" aria-hidden="true" style="z-index: 1080;">
-        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
-                <div class="modal-header bg-dark text-white py-3 px-4">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header bg-dark text-white py-2 px-3">
                     <div class="d-flex align-items-center gap-2">
                         <div class="p-2 bg-primary rounded-3 text-white">
                             <i class="fas fa-file-invoice fs-5"></i>
@@ -1011,7 +1044,7 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
                     </div>
                 </div>
-                <div class="modal-body p-4 bg-light" id="viewSaleModalBody">
+                <div class="modal-body p-3 bg-light" id="viewSaleModalBody">
                     <div class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -1019,7 +1052,7 @@
                         <p class="text-muted mt-2 small">Loading sale details...</p>
                     </div>
                 </div>
-                <div class="modal-footer bg-white py-3 px-4 border-top">
+                <div class="modal-footer bg-white py-2 px-3 border-top">
                     <a href="#" id="modalBtnPrintInvoice" target="_blank" class="btn btn-primary fw-bold px-3 btn-sm">
                         <i class="fas fa-print me-1"></i> Print Invoice
                     </a>

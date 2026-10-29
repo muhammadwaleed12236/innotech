@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - {{ $sale->invoice_no }}</title>
+    <title>{{ ($isQuotation ?? ($sale->sale_status === "quotation")) ? "Quotation" : (($isEstimate ?? false) ? "Estimate" : "Invoice") }} - {{ $sale->invoice_no }}</title>
 
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
 
@@ -478,7 +478,13 @@
 
 
         <div class="invoice-title">
-            {{ ($isEstimate ?? false) ? 'Estimate' : 'Sales Invoice' }}
+            @if($sale->sale_status === 'quotation' || ($isQuotation ?? false))
+                Quotation
+            @elseif($isEstimate ?? false)
+                Estimate
+            @else
+                Sales Invoice
+            @endif
         </div>
 
 
@@ -594,7 +600,7 @@
 
                         <div>
                             <span class="info-label">
-                                Inv #:
+                                {{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quot #:' : 'Inv #:' }}
                             </span>
 
                             <strong>
