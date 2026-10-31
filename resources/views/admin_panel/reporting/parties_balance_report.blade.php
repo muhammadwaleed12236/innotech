@@ -154,6 +154,36 @@
                             </select>
                         </div>
 
+                                                <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">Province:</label>
+                            <select id="province_parties_desk" class="form-select form-select-sm fw-bold provincePartiesInput" style="height: 32px; width: 110px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All</option>
+                                @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">City:</label>
+                            <select id="city_parties_desk" class="form-select form-select-sm fw-bold cityPartiesInput" style="height: 32px; width: 115px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All Cities</option>
+                                @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                    <option value="{{ $c }}">{{ $c }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">Area:</label>
+                            <select id="area_parties_desk" class="form-select form-select-sm fw-bold areaPartiesInput" style="height: 32px; width: 115px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All Areas</option>
+                                @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                    <option value="{{ $a }}">{{ $a }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="d-flex align-items-center gap-1">
                             <label class="sale-filter-label mb-0 ms-1 me-1">Address:</label>
                             <input type="text" id="address_desk" class="form-control form-control-sm fw-bold addressInput" placeholder="Area..." style="height: 32px; width: 130px; font-size: .78rem; border-radius: 6px;">
@@ -233,6 +263,33 @@
                         </select>
                     </div>
 
+                                        <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Province</label>
+                        <select id="province_parties_mob" class="form-select form-select-sm provincePartiesInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">City</label>
+                        <select id="city_parties_mob" class="form-select form-select-sm cityPartiesInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Area</label>
+                        <select id="area_parties_mob" class="form-select form-select-sm areaPartiesInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Address</label>
                         <input type="text" id="address_mob" class="form-control form-control-sm addressInput" placeholder="Area..." style="font-size: 11px;">
@@ -417,7 +474,11 @@
                             <tr>
                                 <td class="text-center text-muted fw-bold">${row.sr}</td>
                                 <td class="fw-bold text-secondary" style="font-size: 11px;">${row.code}</td>
-                                <td class="fw-semibold text-dark">${row.title}</td>
+                                ${(() => {
+    let locStr = (row.city || '') + (row.area ? ' (' + row.area + ')' : '');
+    let locBadge = locStr ? `<br><small class="text-muted"><i class="fas fa-map-marker-alt text-primary me-1"></i>${locStr}</small>` : '';
+    return `<td class="fw-semibold text-dark">${row.title}${locBadge}</td>`;
+})()}
                                 <td class="text-center">${typeBadge}</td>
                                 <td class="text-muted" style="font-size: 11.5px;">${row.mobile || '-'}</td>
                                 <td class="text-muted" style="font-size: 11.5px;">${row.zone || '-'}</td>
@@ -547,6 +608,16 @@
 
         // Load report on initial page load
         loadReport();
+    });
+</script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '.provincePartiesInput',
+            city: '.cityPartiesInput',
+            area: '.areaPartiesInput'
+        });
     });
 </script>
 @endsection

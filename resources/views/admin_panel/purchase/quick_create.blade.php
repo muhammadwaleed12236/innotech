@@ -139,7 +139,13 @@
                                     <input type="text" class="form-control" name="new_vendor_name" id="new_vendor_name" placeholder="Type new vendor name...">
                                 </div>
                             </div>
-                            <div class="col-md-4" id="openingBalanceWrapper" style="display: none;">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="fw-bold text-dark">Vendor Ref # / Bill #</label>
+                                    <input type="text" class="form-control" name="purchase_order_no" id="purchase_order_no" placeholder="Vendor Ref #">
+                                </div>
+                            </div>
+                            <div class="col-md-4 mt-2" id="openingBalanceWrapper" style="display: none;">
                                 <div class="form-group">
                                     <label class="fw-bold text-dark">Opening Balance (New Vendor)</label>
                                     <div class="input-group">
@@ -151,6 +157,16 @@
                         </div>
 
                         <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="fw-bold text-dark"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse <span class="text-danger">*</span></label>
+                                    <select class="form-select select2" name="warehouse_id" id="warehouse_id" style="width: 100%;" required>
+                                        @foreach($Warehouse as $wh)
+                                            <option value="{{ $wh->id }}">{{ $wh->warehouse_name ?? $wh->name ?? ('Warehouse ' . $wh->id) }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label class="fw-bold text-dark">Category <span class="text-danger">*</span></label>

@@ -281,6 +281,62 @@
         </div>
     </div>
 
+        {{-- Location & Keyword Single-Line Filter Bar --}}
+    <div class="card border-0 shadow-sm mb-3 py-2 px-3" style="border-radius: 12px; background: #ffffff;">
+        <form method="GET" action="{{ route('vendors.index') }}" class="d-flex align-items-center flex-wrap flex-xl-nowrap gap-2">
+            <!-- Keyword Search -->
+            <div class="flex-grow-1" style="min-width: 250px;">
+                <div class="position-relative">
+                    <i class="fas fa-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px;"></i>
+                    <input type="text" name="search" class="form-control form-control-sm ps-4" 
+                        placeholder="Search vendor name, phone, email, address..." 
+                        value="{{ request('search') }}" 
+                        style="height: 36px; padding-left: 34px !important; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                </div>
+            </div>
+
+            <!-- Province -->
+            <div style="width: 150px; flex-shrink: 0;">
+                <select name="province" id="vend_filter_province" class="form-select form-select-sm" style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                    <option value="">All Provinces</option>
+                    @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                        <option value="{{ $p }}" {{ request('province') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- City -->
+            <div style="width: 150px; flex-shrink: 0;">
+                <select name="city" id="vend_filter_city" class="form-select form-select-sm" style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                    <option value="">All Cities</option>
+                    @foreach(app(\App\Services\LocationService::class)->getCities(request('province')) as $c)
+                        <option value="{{ $c }}" {{ request('city') == $c ? 'selected' : '' }}>{{ $c }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Area -->
+            <div style="width: 150px; flex-shrink: 0;">
+                <select name="area" id="vend_filter_area" class="form-select form-select-sm" style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                    <option value="">All Areas</option>
+                    @foreach(app(\App\Services\LocationService::class)->getAreas(request('city')) as $a)
+                        <option value="{{ $a }}" {{ request('area') == $a ? 'selected' : '' }}>{{ $a }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold" style="height: 36px; border-radius: 8px; white-space: nowrap;">
+                    <i class="fas fa-search me-1"></i> Search
+                </button>
+                <a href="{{ route('vendors.index') }}" class="btn btn-light border btn-sm px-2.5 text-secondary" title="Reset Filters" style="height: 36px; border-radius: 8px; display: inline-flex; align-items: center;">
+                    <i class="fas fa-undo"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
     {{-- Main Content Card --}}
     <div class="vendor-card">
         <div class="vendor-card-header">
@@ -306,6 +362,7 @@
                         <th class="text-start">CNIC</th>
                         <th class="text-start">NTN / STRN</th>
                         <th class="text-start">Opening Balance</th>
+                        <th class="text-start">Location</th>
                         <th class="text-start">Address</th>
                         <th class="text-end pe-4" style="width: 130px;">Action</th>
                     </tr>
@@ -363,6 +420,16 @@
                             <td class="fw-bold text-success">
                                 Rs. {{ number_format((float) $v->opening_balance, 2) }}
                             </td>
+                            <td>
+                                @if($v->city || $v->area)
+                                    <div><i class="fas fa-map-marker-alt text-primary me-1"></i><span class="fw-semibold text-dark">{{ $v->city ?: '—' }}</span></div>
+                                    @if($v->area)
+                                        <small class="text-muted">{{ $v->area }}</small>
+                                    @endif
+                                @else
+                                    <span class="text-muted small">—</span>
+                                @endif
+                            </td>
                             <td class="text-secondary small">{{ Str::limit($v->address, 30) ?: '—' }}</td>
                             <td class="text-end pe-4">
                                 @include('admin_panel.partials.action_buttons', [
@@ -385,6 +452,9 @@
                             <input type="hidden" class="v-strn" value="{{ $v->strn_number }}">
                             <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                             <input type="hidden" class="v-address" value="{{ $v->address }}">
+                            <input type="hidden" class="v-province" value="{{ $v->province }}">
+                            <input type="hidden" class="v-city" value="{{ $v->city }}">
+                            <input type="hidden" class="v-area" value="{{ $v->area }}">
                             <input type="hidden" class="v-party-type" value="{{ $v->party_type ?? 'vendor' }}">
                         </tr>
                     @endforeach
@@ -422,6 +492,9 @@
                         @if ($v->strn_number)
                             <div><i class="fas fa-certificate me-2 text-success"></i> <strong>STRN:</strong> {{ $v->strn_number }}</div>
                         @endif
+                        @if ($v->city || $v->area)
+                            <div><i class="fas fa-map-marker-alt me-2 text-primary"></i> <strong>Location:</strong> {{ $v->city }}{{ $v->area ? ' ('.$v->area.')' : '' }}</div>
+                        @endif
                         <div><i class="fas fa-wallet me-2 text-success"></i> <strong>Opening Balance:</strong> <span class="text-success fw-bold">Rs. {{ number_format((float) $v->opening_balance, 2) }}</span></div>
                         @if ($v->address)
                             <div><i class="fas fa-map-marker-alt me-2 text-muted"></i> <strong>Address:</strong> {{ Str::limit($v->address, 50) }}</div>
@@ -450,6 +523,9 @@
                     <input type="hidden" class="v-strn" value="{{ $v->strn_number }}">
                     <input type="hidden" class="v-balance" value="{{ $v->opening_balance }}">
                     <input type="hidden" class="v-address" value="{{ $v->address }}">
+                            <input type="hidden" class="v-province" value="{{ $v->province }}">
+                            <input type="hidden" class="v-city" value="{{ $v->city }}">
+                            <input type="hidden" class="v-area" value="{{ $v->area }}">
                 </div>
             @endforeach
         </div>
@@ -513,6 +589,46 @@
                     </div>
 
                     <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label for="vprovince" class="form-label fw-semibold text-dark small">Province <span class="text-muted fw-normal">(Optional)</span></label>
+                            <select class="form-select form-control px-3 py-2" name="province" id="vprovince" style="border-radius: 10px; border: 1.5px solid #cbd5e1; height: 42px;">
+                                <option value="">-- Select Province --</option>
+                                @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="vcity" class="form-label fw-semibold text-dark small">City <span class="text-muted fw-normal">(Optional)</span></label>
+                            <div class="input-group">
+                                <select class="form-select form-control px-3 py-2" name="city" id="vcity" style="border-radius: 8px 0 0 8px; border: 1.5px solid #cbd5e1; height: 42px;">
+                                    <option value="">-- Select City --</option>
+                                    @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                        <option value="{{ $c }}">{{ $c }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-quick-add-city px-2.5" title="Add New City" style="border-radius: 0 8px 8px 0; border: 1.5px solid #cbd5e1; border-left: none; height: 42px;">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="varea" class="form-label fw-semibold text-dark small">Area / Sector <span class="text-muted fw-normal">(Optional)</span></label>
+                            <div class="input-group">
+                                <select class="form-select form-control px-3 py-2" name="area" id="varea" style="border-radius: 8px 0 0 8px; border: 1.5px solid #cbd5e1; height: 42px;">
+                                    <option value="">-- Select Area --</option>
+                                    @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                        <option value="{{ $a }}">{{ $a }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-outline-primary btn-quick-add-area px-2.5" title="Add New Area" style="border-radius: 0 8px 8px 0; border: 1.5px solid #cbd5e1; border-left: none; height: 42px;">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+<div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label for="opening_balance" class="form-label fw-semibold text-dark small">Opening Balance <span class="text-muted fw-normal">(Optional)</span></label>
                             <input type="number" step="any" class="form-control px-3 py-2" name="opening_balance" id="opening_balance" placeholder="0.00" value="0" style="border-radius: 10px; border: 1.5px solid #cbd5e1;" />
@@ -563,6 +679,9 @@
             $('#vendor_id').val('');
             $('#opening_balance').val(0);
             $('#vparty_type').val('vendor');
+            $('#vprovince').val('');
+            $('#vcity').val('');
+            $('#varea').val('');
             $('#modalTitle').html('<i class="fas fa-truck text-primary me-2"></i>New Vendor');
             $('#opening_balance').prop('readonly', false);
             $('#vendorModal').modal('show');
@@ -581,6 +700,9 @@
             const strn = $container.find('.v-strn').val() || '';
             const balance = $container.find('.v-balance').val() || '0';
             const address = $container.find('.v-address').val() || '';
+            const province = $container.find('.v-province').val() || '';
+            const city = $container.find('.v-city').val() || '';
+            const area = $container.find('.v-area').val() || '';
             const partyType = $container.find('.v-party-type').val() || 'vendor';
 
             $('#vendor_id').val(id);
@@ -593,9 +715,27 @@
             $('#vstrn').val(strn);
             $('#opening_balance').val(balance).prop('readonly', false);
             $('#vaddress').val(address);
+            $('#vprovince').val(province);
+            $('#vcity').val(city);
+            $('#varea').val(area);
 
             $('#modalTitle').html('<i class="fas fa-edit text-primary me-2"></i>Edit Vendor');
             $('#vendorModal').modal('show');
+        });
+    });
+</script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '#vend_filter_province',
+            city: '#vend_filter_city',
+            area: '#vend_filter_area'
+        });
+        setupLocationCascade({
+            province: '#vprovince',
+            city: '#vcity',
+            area: '#varea'
         });
     });
 </script>

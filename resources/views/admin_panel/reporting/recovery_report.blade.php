@@ -131,6 +131,36 @@
                             <label for="end_date_desk" class="sale-filter-label mb-0 ms-2 me-1">End:</label>
                             <input type="date" name="end_date" id="end_date_desk" class="form-control form-control-sm fw-bold endDateInput" value="{{ date('Y-m-d') }}" style="height: 32px; width: 135px; font-size: .78rem; border-radius: 6px;">
                         </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">Province:</label>
+                            <select id="province_rec_desk" class="form-select form-select-sm fw-bold provinceRecInput" style="height: 32px; width: 110px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All</option>
+                                @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                    <option value="{{ $p }}">{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">City:</label>
+                            <select id="city_rec_desk" class="form-select form-select-sm fw-bold cityRecInput" style="height: 32px; width: 115px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All Cities</option>
+                                @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                    <option value="{{ $c }}">{{ $c }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-1">
+                            <label class="sale-filter-label mb-0 ms-1 me-1">Area:</label>
+                            <select id="area_rec_desk" class="form-select form-select-sm fw-bold areaRecInput" style="height: 32px; width: 115px; font-size: .78rem; border-radius: 6px;">
+                                <option value="">All Areas</option>
+                                @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                    <option value="{{ $a }}">{{ $a }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     {{-- Last Buttons with X-Axis Gap --}}
@@ -170,6 +200,33 @@
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">End Date</label>
                         <input type="date" name="end_date" id="end_date_mob" class="form-control form-control-sm endDateInput" value="{{ date('Y-m-d') }}" style="font-size: 11px;">
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Province</label>
+                        <select name="province" id="province_rec_mob" class="form-select form-select-sm provinceRecInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">City</label>
+                        <select name="city" id="city_rec_mob" class="form-select form-select-sm cityRecInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Area</label>
+                        <select name="area" id="area_rec_mob" class="form-select form-select-sm areaRecInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     {{-- 2. Full Width Generate Button --}}
@@ -298,6 +355,9 @@
         // Sync Inputs between Desktop & Mobile
         $('.startDateInput').on('change', function() { $('.startDateInput').val($(this).val()); });
         $('.endDateInput').on('change', function() { $('.endDateInput').val($(this).val()); });
+        $('.provinceRecInput').on('change input', function() { $('.provinceRecInput').val($(this).val()); });
+        $('.cityRecInput').on('change input', function() { $('.cityRecInput').val($(this).val()); });
+        $('.areaRecInput').on('change input', function() { $('.areaRecInput').val($(this).val()); });
 
         function fmt(amount) {
             let val = parseFloat(amount || 0);
@@ -311,7 +371,7 @@
             $("#loader").show();
             $("#reportBox").hide();
 
-            $.get("{{ route('report.recovery.fetch') }}", { start_date: start, end_date: end }, function(res) {
+            $.get("{{ route('report.recovery.fetch') }}", { start_date: start, end_date: end, province: $('#province_rec_desk').val() || $('#province_rec_mob').val() || '', city: $('#city_rec_desk').val() || $('#city_rec_mob').val() || '', area: $('#area_rec_desk').val() || $('#area_rec_mob').val() || '' }, function(res) {
                 $("#loader").hide();
                 $("#reportBox").show();
 
@@ -323,7 +383,11 @@
                         rowsHtml += `
                             <tr>
                                 <td class="text-center text-muted fw-bold">${row.sr}</td>
-                                <td class="fw-semibold text-dark">${row.party}</td>
+                                ${(() => {
+    let locStr = (row.city || '') + (row.area ? ' (' + row.area + ')' : '');
+    let locBadge = locStr ? `<br><small class="text-muted"><i class="fas fa-map-marker-alt text-primary me-1"></i>${locStr}</small>` : '';
+    return `<td class="fw-semibold text-dark">${row.party}${locBadge}</td>`;
+})()}
                                 <td class="text-end">${row.opening != 0 ? fmt(row.opening) : '-'}</td>
                                 <td class="text-end text-primary fw-semibold">${row.sales != 0 ? fmt(row.sales) : '-'}</td>
                                 <td class="text-end text-success fw-semibold">${row.received != 0 ? fmt(row.received) : '-'}</td>
@@ -412,6 +476,16 @@
 
         // Load initially
         loadReport();
+    });
+</script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '.provinceRecInput',
+            city: '.cityRecInput',
+            area: '.areaRecInput'
+        });
     });
 </script>
 @endsection

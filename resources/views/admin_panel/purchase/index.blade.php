@@ -383,7 +383,7 @@
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Bill#</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Invoice No</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor Inv#</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor Ref#</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Remarks</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor</th>

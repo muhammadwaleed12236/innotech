@@ -294,10 +294,22 @@
       <input type="hidden" class="size-mode-text">
     </td>
 
+    <!-- WAREHOUSE -->
+    <td class="col-warehouse" style="width: 140px; min-width: 130px;">
+      <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
+        @if(isset($warehouse) && count($warehouse) > 0)
+          @foreach($warehouse as $wh)
+            <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $wh->id ? 'selected' : '' }}>
+              {{ $wh->warehouse_name }}
+            </option>
+          @endforeach
+        @endif
+      </select>
+    </td>
+
     <!-- STOCK -->
     <td class="col-stock">
       <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
-      <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
       <input type="hidden" class="variant-stock-value">
     </td>
 
@@ -407,6 +419,11 @@
         if ($initialOpts.length > 0) {
             $row.find('.product').html($initialOpts);
         }
+        const $initialWhOpts = $('#salesTableBody tr:first-child .warehouse option').clone();
+        if ($initialWhOpts.length > 0) {
+            $row.find('.warehouse').html($initialWhOpts);
+        }
+        $row.find('.warehouse').val($('#headerWarehouseSelect').val() || "{{ auth()->user()->warehouse_id ?? 1 }}");
         $('#salesTableBody').append($row);
         initProductSelect2($row.find('.product'));
         updateRowIndexes();
@@ -469,21 +486,12 @@
 
     function loadWarehousesForProduct($row, productId, preSelectId = null) {
         var $whInput = $row.find('.warehouse');
-        if (!$whInput.val()) {
-            $whInput.val("{{ auth()->user()->warehouse_id ?? 1 }}");
-        }
-
-        const variantStockVal = $row.find('.variant-stock-value').val();
-        if (variantStockVal !== '' && variantStockVal !== undefined) {
-            $row.find('.stock').val(variantStockVal);
-            return;
-        }
+        var targetWhId = preSelectId || $whInput.val() || $('#headerWarehouseSelect').val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
 
         $.get('{{ route('warehouses.get') }}', {
                 product_id: productId
             })
             .done(function(warehouses) {
-                var targetWhId = preSelectId || $whInput.val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
                 var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
                 var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
                 if (!matched && validWarehouses.length > 0) {
@@ -510,15 +518,24 @@
                     } else {
                         disp = matched.stock;
                     }
-                    if (!$row.find('.stock').val()) {
-                        $row.find('.stock').val(disp);
-                    }
+                    $row.find('.stock').val(disp);
+                    $row.find('.variant-stock-value').val(disp);
                 }
             })
             .fail(function(xhr) {
                 console.error('Warehouse fetch error:', xhr);
             });
     }
+
+    // Row inline warehouse change handler
+    $(document).on('change', '.sales-table .warehouse', function() {
+        const $row = $(this).closest('tr');
+        const productId = $row.find('.product-id-hidden').val() || $row.find('.product').val();
+        const selectedWh = $(this).val();
+        if (productId) {
+            loadWarehousesForProduct($row, productId, selectedWh);
+        }
+    });
 
 
     // --- Calculation ---

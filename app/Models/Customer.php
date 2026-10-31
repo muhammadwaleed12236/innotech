@@ -14,7 +14,7 @@ class Customer extends Model
         'contact_person', 'mobile', 'email_address', 'contact_person_2', 'mobile_2',
         'email_address_2', 'opening_balance', 'balance_range', 'address', 'status',
         'customer_type', 'party_type', 'linked_vendor_id', 'previous_balance', 'sales_officer_id',
-        'payment_reminder_date', 'reminder_snoozed_at', 'reminder_day', 'source'
+        'payment_reminder_date', 'reminder_snoozed_at', 'reminder_day', 'source', 'province', 'city', 'area'
     ];
 
     

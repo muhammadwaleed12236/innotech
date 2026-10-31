@@ -219,6 +219,7 @@ class PurchaseController extends Controller
                 'category_id' => 'required',
                 'sub_category_id' => 'nullable',
                 'base_product_name' => 'required|string',
+                'purchase_order_no' => 'nullable|string|max:255',
                 'payment_account_id' => 'nullable|exists:accounts,id',
                 'payment_amount' => 'nullable|numeric|min:0',
                 
@@ -267,10 +268,11 @@ class PurchaseController extends Controller
 
             $purchase = Purchase::create([
                 'branch_id' => 1,
-                'warehouse_id' => 1, // Default warehouse
+                'warehouse_id' => (int) ($request->warehouse_id ?: 1),
                 'vendor_id' => $vendorId,
                 'purchase_date' => now(),
                 'invoice_no' => $nextInvoice,
+                'purchase_order_no' => $validated['purchase_order_no'] ?? null,
                 'note' => 'Quick Purchase: ' . $validated['base_product_name'],
                 'subtotal' => 0,
                 'discount' => 0,
@@ -404,6 +406,7 @@ class PurchaseController extends Controller
         if (! $hasGatepass) {
             $movRows = [];
             foreach ($purchase->items as $item) {
+                $itemWarehouseId = (int) ($item->warehouse_id ?: $warehouseId);
                 // Determine conversion factor and unit
                 $convFactor = 1;
                 $unit = strtolower(trim($item->unit ?? ''));
@@ -460,14 +463,14 @@ class PurchaseController extends Controller
                     'updated_at' => now(),
                 ];
                 // stocks
-                $this->upsertStocks($item->product_id, +$baseQty, $branchId, $warehouseId);
+                $this->upsertStocks($item->product_id, +$baseQty, $branchId, $itemWarehouseId);
 
                 // Process Batch Creation/Stock
                 $batchId = null;
                 if (!empty($item->batch_no)) {
                     $batch = \App\Models\ProductBatch::firstOrCreate([
                         'product_id' => $item->product_id,
-                        'warehouse_id' => $warehouseId,
+                        'warehouse_id' => $itemWarehouseId,
                         'batch_no' => $item->batch_no,
                     ], [
                         'cost_price' => $item->price,
@@ -515,7 +518,7 @@ class PurchaseController extends Controller
                                 'product_id' => $item->product_id,
                                 'serial_number' => $sNum,
                             ], [
-                                'warehouse_id' => $warehouseId,
+                                'warehouse_id' => $itemWarehouseId,
                                 'batch_id' => $batchId,
                                 'status' => 'available',
                                 'cost_price' => $item->price,
@@ -709,7 +712,8 @@ class PurchaseController extends Controller
                 'vendor_id' => 'required|exists:vendors,id',
                 'purchase_date' => 'nullable|date',
                 'branch_id' => 'nullable|exists:branches,id',
-                'warehouse_id' => 'required|exists:warehouses,id',
+                'warehouse_id' => 'required',
+                'header_warehouse_id' => 'nullable',
                 'note' => 'nullable|string',
                 'discount' => 'nullable|numeric|min:0',
                 'extra_cost' => 'nullable|numeric|min:0',
@@ -742,8 +746,23 @@ class PurchaseController extends Controller
                 ? 'PUR-'.str_pad(((int) preg_replace('/[^0-9]/', '', $lastInvoice)) + 1, 3, '0', STR_PAD_LEFT)
                 : 'PUR-001';
 
-            $branchId = (int) ($validated['branch_id'] ?? 1);                 // ✅ use real branch
-            $warehouseId = (int) $validated['warehouse_id'];
+            $user = auth()->user();
+            $canSelectWarehouse = $user && (
+                (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                $user->can('warehouse.view')
+            );
+            $userDefaultWhId = (int) ($user?->warehouse_id ?: 1);
+
+            $branchId = (int) ($validated['branch_id'] ?? 1);
+            $headerWhId = $canSelectWarehouse
+                ? (int) ($request->header_warehouse_id ?: (is_numeric($request->warehouse_id) ? $request->warehouse_id : (is_array($request->warehouse_id) ? ($request->warehouse_id[0] ?? $userDefaultWhId) : $userDefaultWhId)))
+                : $userDefaultWhId;
+            $warehouseId = $headerWhId;
+
+            $rowWhIds = ($canSelectWarehouse && is_array($request->warehouse_id))
+                ? $request->warehouse_id
+                : array_fill(0, count($pids), $userDefaultWhId);
 
             // Status Logic
             $status = ($request->action === 'save_only') ? 'draft' : 'approved';
@@ -852,8 +871,11 @@ class PurchaseController extends Controller
                     $itemSerialsParsed = is_array($itemSerialsRaw) ? $itemSerialsRaw : json_decode($itemSerialsRaw, true);
                 }
 
+                $itemWh = !empty($rowWhIds[$i]) ? (int)$rowWhIds[$i] : $warehouseId;
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
+                    'warehouse_id' => $itemWh,
                     'product_id' => $pid,
                     'batch_no' => $itemBatchNo,
                     'serials' => $itemSerialsParsed,
@@ -1405,11 +1427,26 @@ class PurchaseController extends Controller
             $oldNetAmount = (float) $purchase->net_amount;
             $oldPaidAmount = (float) $purchase->paid_amount;
             $oldVendorId = $purchase->vendor_id;
+            $user = auth()->user();
+            $canSelectWarehouse = $user && (
+                (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                $user->can('warehouse.view')
+            );
+            $userDefaultWhId = (int) ($user?->warehouse_id ?: 1);
+
             $oldWarehouseId = (int) $purchase->warehouse_id;
             $oldBranchId = (int) ($purchase->branch_id ?? 1);
 
+            $headerWhId = $canSelectWarehouse
+                ? (int) ($request->header_warehouse_id ?: (is_numeric($request->warehouse_id) ? $request->warehouse_id : ($purchase->warehouse_id ?? $userDefaultWhId)))
+                : $userDefaultWhId;
+            $warehouseId = $headerWhId;
             $branchId = (int) ($validated['branch_id'] ?? $purchase->branch_id ?? 1);
-            $warehouseId = (int) ($validated['warehouse_id'] ?? $purchase->warehouse_id);
+
+            $rowWhIds = ($canSelectWarehouse && is_array($request->warehouse_id))
+                ? $request->warehouse_id
+                : array_fill(0, count($pids), $userDefaultWhId);
 
             // Map old totals per product for Stock Delta Logic (in base pieces)
             $oldMap = $purchase->items->groupBy('product_id')->map(function ($items) {
@@ -1545,8 +1582,11 @@ class PurchaseController extends Controller
                     $itemSerialsParsed = is_array($itemSerialsRaw) ? $itemSerialsRaw : json_decode($itemSerialsRaw, true);
                 }
 
+                $itemWh = !empty($rowWhIds[$i]) ? (int)$rowWhIds[$i] : $warehouseId;
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
+                    'warehouse_id' => $itemWh,
                     'product_id' => $pid,
                     'batch_no' => $itemBatchNo,
                     'serials' => $itemSerialsParsed,

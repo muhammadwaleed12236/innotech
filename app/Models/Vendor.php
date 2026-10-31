@@ -19,7 +19,10 @@ class Vendor extends Model
         'address',
         'party_type',
         'linked_customer_id',
-        'opening_balance'
+        'opening_balance',
+        'province',
+        'city',
+        'area'
     ];
 
       

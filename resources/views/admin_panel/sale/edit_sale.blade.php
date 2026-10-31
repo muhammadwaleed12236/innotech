@@ -1542,6 +1542,7 @@
                             <tr>
                                 <th>#</th>
                                 <th class="col-product">Product</th>
+                                <th class="col-warehouse-th text-center" style="width: 140px; min-width: 130px;">Warehouse</th>
                                 <th class="c-stock-th">Stock</th>
                                 <th>Qty</th>
                                 <th class="c-size-th">Size</th>
@@ -1589,10 +1590,22 @@
                                     <input type="hidden" class="size-mode-text">
                                 </td>
 
+                                <!-- WAREHOUSE -->
+                                <td class="col-warehouse" style="width: 140px; min-width: 130px;">
+                                    <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
+                                        @if(isset($warehouse) && count($warehouse) > 0)
+                                            @foreach($warehouse as $wh)
+                                                <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $wh->id ? 'selected' : '' }}>
+                                                    {{ $wh->warehouse_name }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </td>
+
                                 <!-- STOCK -->
                                 <td class="col-stock text-center">
                                     <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
-                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                                     <input type="hidden" class="variant-stock-value">
                                 </td>
 
@@ -2085,15 +2098,40 @@
                             </div>
                                                         <div class="col-12 col-md-4">
                                 <label class="form-label font-weight-bold fw-bold">Province</label>
-                                <input type="text" class="form-control" name="province" list="provinceList" placeholder="Province">
+                                <select class="form-select form-control" name="province">
+                                    <option value="">-- Select Province --</option>
+                                    @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                        <option value="{{ $p }}">{{ $p }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="col-12 col-md-4">
                                 <label class="form-label font-weight-bold fw-bold">City</label>
-                                <input type="text" class="form-control" name="city" list="cityList" placeholder="City">
+                                <div class="input-group">
+                                    <select class="form-select form-control" name="city">
+                                        <option value="">-- Select City --</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                            <option value="{{ $c }}">{{ $c }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-quick-add-city px-2" title="Add New City">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-12 col-md-4">
                                 <label class="form-label font-weight-bold fw-bold">Area</label>
-                                <input type="text" class="form-control" name="area" list="areaList" placeholder="Area">
+                                <div class="input-group">
+                                    <select class="form-select form-control" name="area">
+                                        <option value="">-- Select Area --</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                            <option value="{{ $a }}">{{ $a }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-quick-add-area px-2" title="Add New Area">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
 <div class="col-12">
                                 <label class="form-label font-weight-bold fw-bold">Address</label>
@@ -2259,7 +2297,7 @@
                     $('#ci_prev_bal').text(prev.toFixed(2));
                     $('#ci_range_bal').text(range.toFixed(2));
 
-                    let officerId = d.sales_officer_id || $(this).find(':selected').data('sales-officer');
+                    let officerId = d.sales_officer_id || $('#customerSelect').find(':selected').data('sales-officer');
                     if (officerId) {
                         $('#salesOfficerSelect').val(officerId);
                     }
@@ -2326,23 +2364,31 @@
             // ══════════════════════════════════════════════════════════════
             // Function to add customer to select, refresh Select2, and auto-select
             window.selectCreatedCustomer = function(c) {
+                if (!c || !c.id) return;
+
                 // 1. Ensure Walk-in mode is turned OFF and Customer mode is ON
                 $('#is_walkin').val('0');
-                $('#partyTypeSelect').val('Main Customer');
+                if (c.customer_type) {
+                    $('#partyTypeSelect').val(c.customer_type);
+                } else {
+                    $('#partyTypeSelect').val('Main Customer');
+                }
                 $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
                 $('#btnTypeWalkin').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
                 $('#walkinNameInput').addClass('d-none');
                 $('#customerSelect').removeClass('d-none');
+                $('#customerSelect').next('.select2-container').removeClass('d-none').show();
+                $('#customerInputWrapper .select2-container').removeClass('d-none').show();
                 $('#receiptVouchersSection').show();
                 $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
                 $('#totalsWalkinView').addClass('d-none').removeClass('d-flex');
                 $('#totalsCustomerView').removeClass('d-none').addClass('d-flex');
-                if ($('#receiptVouchersSection .card-body').length) {
+                if ($('#receiptVouchersSection .card-body').length && $('#rvWrapper').length) {
                     $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
                 }
 
                 // 2. Format display text and create/update option element
-                let displayText = (c.customer_id ? c.customer_id + ' — ' : '') + c.customer_name + (c.mobile ? ' (' + c.mobile + ')' : '');
+                let displayText = (c.customer_id ? c.customer_id + ' — ' : '') + (c.customer_name || 'Customer #' + c.id) + (c.mobile ? ' (' + c.mobile + ')' : '');
                 let $sel = $('#customerSelect');
                 let $existing = $sel.find("option[value='" + c.id + "']");
                 
@@ -2353,34 +2399,58 @@
                         .attr('data-code', c.customer_id || '')
                         .attr('data-prev', c.opening_balance || 0)
                         .attr('data-range', c.balance_range || 0)
-                        .attr('data-sales-officer', c.sales_officer_id || '')
-                        .prop('selected', true);
+                        .attr('data-sales-officer', c.sales_officer_id || '');
                 } else {
-                    let opt = document.createElement('option');
-                    opt.value = String(c.id);
-                    opt.text = displayText;
-                    opt.selected = true;
-                    opt.setAttribute('data-mobile', c.mobile || '');
-                    opt.setAttribute('data-address', c.address || '');
-                    opt.setAttribute('data-code', c.customer_id || '');
-                    opt.setAttribute('data-prev', c.opening_balance || 0);
-                    opt.setAttribute('data-range', c.balance_range || 0);
-                    opt.setAttribute('data-sales-officer', c.sales_officer_id || '');
-                    $sel[0].appendChild(opt);
+                    let newOption = new Option(displayText, c.id, true, true);
+                    $(newOption).attr({
+                        'data-mobile': c.mobile || '',
+                        'data-address': c.address || '',
+                        'data-code': c.customer_id || '',
+                        'data-prev': c.opening_balance || 0,
+                        'data-range': c.balance_range || 0,
+                        'data-sales-officer': c.sales_officer_id || ''
+                    });
+                    // Insert at top right after placeholder so it's instantly visible in dropdown
+                    if ($sel.find('option[value=""]').length) {
+                        $sel.find('option[value=""]').after(newOption);
+                    } else {
+                        $sel.prepend(newOption);
+                    }
                 }
+
+                // Explicitly mark new option selected in DOM select
+                $sel.find('option').prop('selected', false);
+                $sel.find("option[value='" + c.id + "']").prop('selected', true);
 
                 // 3. Re-initialize Select2 so the entire option list and internal search index are updated
                 if (typeof initCustomerSelect2 === 'function') {
                     initCustomerSelect2();
                 }
 
-                // 4. Set the value on Select2 and trigger change to load balances and details
-                $sel.val(String(c.id)).trigger('change');
-                try { $sel.select2('close'); } catch(e) {}
+                // 4. Set the value and trigger change and select2:select
+                $sel.val(String(c.id)).trigger('change.select2').trigger('change');
+                $sel.trigger({
+                    type: 'select2:select',
+                    params: {
+                        data: {
+                            id: c.id,
+                            text: displayText
+                        }
+                    }
+                });
 
-                // 5. Explicitly populate UI cards immediately
+                try { $sel.select2('close'); } catch(e) {}
+                $('.select2-search__field').val('');
+
+                // 5. Force update rendered display text in Select2
+                let $containerText = $('#select2-customerSelect-container');
+                if ($containerText.length) {
+                    $containerText.text(displayText).attr('title', displayText);
+                }
+
+                // 6. Explicitly populate UI cards immediately
                 $('#ci_code').text(c.customer_id || '—');
-                $('#ci_name').text(c.customer_name || '—');
+                $('#ci_name').text(c.customer_name || displayText);
                 $('#ci_mobile').text(c.mobile || '—');
                 $('#ci_address').text(c.address || '—');
                 let prevBal = parseFloat(c.opening_balance || 0);
@@ -2389,6 +2459,14 @@
                 $('#tel').val(c.mobile || '');
                 $('#address').val(c.address || '');
                 $('#cc_customer_name').text(c.customer_name || displayText);
+
+                if (c.sales_officer_id) {
+                    $('#salesOfficerSelect').val(c.sales_officer_id);
+                }
+
+                if (typeof window.applyCustomerTaxStatus === 'function') {
+                    window.applyCustomerTaxStatus(c, true);
+                }
 
                 if (typeof updateGrandTotals === 'function') {
                     updateGrandTotals();
@@ -2457,7 +2535,8 @@
             });
 
             // AJAX Customer Submit
-            $('#btnSaveAjaxCustomer').on('click', function() {
+            $('#btnSaveAjaxCustomer').on('click', function(e) {
+                if (e) e.preventDefault();
                 let form = $('#ajaxAddCustomerForm');
                 if (!form[0].checkValidity()) {
                     form[0].reportValidity();
@@ -2471,18 +2550,26 @@
                     url: '{{ route('customers.store') }}',
                     type: 'POST',
                     data: form.serialize(),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    dataType: 'json',
                     success: function(res) {
                         btn.prop('disabled', false).html('<i class="fas fa-save me-1 mr-1"></i> Save Customer');
-                        if (res.success && res.customer) {
+                        let customerData = res.customer || res.data || res;
+                        if ((res.success || res.ok) && customerData && customerData.id) {
                             closeCustomerModal();
                             form[0].reset();
-                            selectCreatedCustomer(res.customer);
+                            selectCreatedCustomer(customerData);
                             if (typeof showAlert === 'function') {
                                 showAlert('success', 'Customer added and selected successfully!');
                             }
                         } else {
                             if (typeof showAlert === 'function') {
                                 showAlert('error', res.message || 'Failed to save customer.');
+                            } else {
+                                alert(res.message || 'Failed to save customer.');
                             }
                         }
                     },

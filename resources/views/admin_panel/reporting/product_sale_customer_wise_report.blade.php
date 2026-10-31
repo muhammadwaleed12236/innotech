@@ -158,13 +158,44 @@
                     </div>
                 </div>
 
+                                {{-- Location Hierarchy Row --}}
+                <div class="row g-2 mb-2 pb-2 border-bottom">
+                    <div class="col-md-4">
+                        <label class="sale-filter-label mb-1">Province:</label>
+                        <select name="province" id="filterProvinceDesk" class="form-select form-select-sm provinceLocInput" style="height: 32px; font-size: .78rem; border-radius: 6px;">
+                            <option value="">All Provinces</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="sale-filter-label mb-1">City:</label>
+                        <select name="city" id="filterCityDesk" class="form-select form-select-sm cityLocInput" style="height: 32px; font-size: .78rem; border-radius: 6px;">
+                            <option value="">All Cities</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="sale-filter-label mb-1">Area / Sector:</label>
+                        <select name="area" id="filterAreaDesk" class="form-select form-select-sm areaLocInput" style="height: 32px; font-size: .78rem; border-radius: 6px;">
+                            <option value="">All Areas</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
                 {{-- Bottom Section: Customer, Product, Category, Brand Dropdowns --}}
                 <div class="row g-2">
                     <div class="col-md-3">
                         <label for="filterCustomerDesk" class="sale-filter-label mb-1">Customer (Multi):</label>
                         <select name="customer_id[]" id="filterCustomerDesk" class="form-select form-select-sm select2-multi filterCustomerSelect" multiple data-placeholder="All Customers">
                             @foreach($customers as $c)
-                                <option value="{{ $c->id }}">{{ $c->customer_id ?? 'CUST' }} - {{ $c->customer_name }}</option>
+                                <option value="{{ $c->id }}" data-province="{{ $c->province }}" data-city="{{ $c->city }}" data-area="{{ $c->area }}">{{ $c->customer_id ?? 'CUST' }} - {{ $c->customer_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -203,12 +234,39 @@
         <div class="card-body p-3">
             <form id="reportFilterFormMobile">
                 <div class="row g-2">
+                                        <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Province</label>
+                        <select name="province" id="filterProvinceMob" class="form-select form-select-sm provinceLocInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">City</label>
+                        <select name="city" id="filterCityMob" class="form-select form-select-sm cityLocInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Area</label>
+                        <select name="area" id="filterAreaMob" class="form-select form-select-sm areaLocInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     {{-- 1. Customer --}}
                     <div class="col-12 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Customer</label>
                         <select name="customer_id[]" class="form-select form-select-sm select2-multi filterCustomerSelect" multiple data-placeholder="-- All Customers --">
                             @foreach($customers as $c)
-                                <option value="{{ $c->id }}">{{ $c->customer_id ?? 'CUST' }} - {{ $c->customer_name }}</option>
+                                <option value="{{ $c->id }}" data-province="{{ $c->province }}" data-city="{{ $c->city }}" data-area="{{ $c->area }}">{{ $c->customer_id ?? 'CUST' }} - {{ $c->customer_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -410,6 +468,9 @@
             $('#filterFromDateMob').on('change', function() { $('#filterFromDateDesk').val($(this).val()); });
             $('#filterToDateDesk').on('change', function() { $('#filterToDateMob').val($(this).val()); });
             $('#filterToDateMob').on('change', function() { $('#filterToDateDesk').val($(this).val()); });
+            $('.provinceLocInput').on('change input', function() { $('.provinceLocInput').val($(this).val()); });
+            $('.cityLocInput').on('change input', function() { $('.cityLocInput').val($(this).val()); });
+            $('.areaLocInput').on('change input', function() { $('.areaLocInput').val($(this).val()); });
 
             function loadReportData() {
                 $('#reportDataContainer').html(`
@@ -472,7 +533,11 @@
                                             <div>
                                                 <span class="badge bg-primary text-white font-monospace me-1" style="font-size: 11px;">${cust.customer_code}</span>
                                                 <strong class="text-dark" style="font-size: 13px;">${cust.customer_name}</strong>
-                                                <small class="text-muted ms-2 d-block d-sm-inline" style="font-size: 11px;"><i class="fas fa-phone-alt me-1"></i>${cust.customer_mobile} | <i class="fas fa-map-marker-alt me-1"></i>${cust.customer_city}</small>
+                                                ${(() => {
+    let locParts = [cust.customer_province, cust.customer_city, cust.customer_area].filter(Boolean).filter(x => x !== '-');
+    let locStr = locParts.length > 0 ? locParts.join(', ') : 'Not specified';
+    return `<small class="text-muted ms-2 d-block d-sm-inline" style="font-size: 11px;"><i class="fas fa-phone-alt me-1"></i>${cust.customer_mobile} | <i class="fas fa-map-marker-alt me-1 text-primary"></i>${locStr}</small>`;
+})()}
                                             </div>
                                             <div class="text-end">
                                                 <small class="text-muted me-1" style="font-size: 11px;">Customer Total Net:</small>
@@ -624,6 +689,7 @@
             $('.btnResetTrigger').on('click', function() {
                 $('#filterFromDateDesk, #filterFromDateMob').val('{{ date("Y-m-01") }}');
                 $('#filterToDateDesk, #filterToDateMob').val('{{ date("Y-m-d") }}');
+                $('.provinceLocInput, .cityLocInput, .areaLocInput').val('');
                 $('.select2-multi').val(null).trigger('change');
                 loadReportData();
             });
@@ -656,4 +722,15 @@
             });
         });
     </script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '.provinceLocInput',
+            city: '.cityLocInput',
+            area: '.areaLocInput',
+            customer: '.filterCustomerSelect'
+        });
+    });
+</script>
 @endsection

@@ -497,9 +497,9 @@
                         <input type="text" class="form-control text-center fw-bold input-readonly" name="invoice_no" value="{{ $purchase->invoice_no }}" readonly style="width: 140px; height: 38px;">
                     </div>
 
-                    {{-- Vendor Bill # --}}
+                    {{-- Vendor Ref # --}}
                     <div class="d-flex align-items-center gap-2">
-                        <label class="field-label mb-0 fw-bold text-secondary">Bill #:</label>
+                        <label class="field-label mb-0 fw-bold text-secondary">Vendor Ref #:</label>
                         <input type="text" class="form-control text-center fw-bold" name="purchase_order_no" placeholder="Vendor Ref #" value="{{ $purchase->purchase_order_no }}" style="width: 140px; height: 38px;">
                     </div>
 
@@ -553,25 +553,16 @@
                     </div>
 
                     {{-- Warehouse Select --}}
-                    @php
-                        $user = auth()->user();
-                        $canSelectWarehouse = $user && ($user->can('warehouse.view') || (method_exists($user, 'hasRole') && $user->hasRole('Super Admin')));
-                    @endphp
-
-                    @if($canSelectWarehouse)
-                        <div class="d-flex align-items-center gap-2">
-                            <label class="field-label mb-0 text-nowrap fw-bold">Warehouse:</label>
-                            <select class="form-select form-select-sm" name="warehouse_id" id="warehouseSelect" style="width: 170px;">
-                                @foreach ($Warehouse as $w)
-                                    <option value="{{ $w->id }}" {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
-                                        {{ $w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @else
-                        <input type="hidden" name="warehouse_id" id="warehouseSelect" value="{{ $purchase->warehouse_id ?? ($user?->warehouse_id ?? ($Warehouse->first()->id ?? 1)) }}">
-                    @endif
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 text-nowrap fw-bold"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse:</label>
+                        <select class="form-select form-select-sm fw-bold border-primary shadow-sm" name="warehouse_id" id="warehouseSelect" style="min-width: 170px;">
+                            @foreach ($Warehouse as $w)
+                                <option value="{{ $w->id }}" {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
+                                    {{ $w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
                     {{-- Previous Balance --}}
                     <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-2 ms-auto">
@@ -600,6 +591,7 @@
                             <tr>
                                 <th style="width: 36px;" class="text-center">#</th>
                                 <th class="col-product">Product Description</th>
+                                <th style="width: 140px; min-width: 130px;">Warehouse</th>
                                 <th style="width: 80px;">Unit</th>
                                 <th style="width: 90px;">Qty</th>
                                 <th style="width: 120px;">Price</th>
@@ -684,6 +676,15 @@
                                             @endif
                                         </div>
                                     </td>
+                                    <td>
+                                        <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
+                                            @foreach ($Warehouse as $w)
+                                                <option value="{{ $w->id }}" {{ ($item->warehouse_id ?: $purchase->warehouse_id) == $w->id ? 'selected' : '' }}>
+                                                    {{ $w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id) }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
                                     <td class="text-center align-middle">
                                         <button type="button" class="btn btn-sm {{ $btnClass }} fw-bold unit-toggle-btn" data-unit="{{ $unitName }}" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)">{{ $unitName }}</button>
                                         <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
@@ -711,7 +712,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="7" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
+                                <td colspan="8" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
                                 <td class="text-end fw-bold fs-6 text-dark py-2 pe-2" style="background:#F8FAFC;"><span id="totalAmount">0.00</span></td>
                                 <td style="background:#F8FAFC;"></td>
                             </tr>
@@ -902,7 +903,46 @@
                                 <input type="text" class="form-control" name="strn_number" placeholder="Optional">
                             </div>
                         </div>
-                        <div class="mb-2">
+                                                <div class="row g-2 mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-muted">Province</label>
+                                <select class="form-select form-control" name="province">
+                                    <option value="">Optional</option>
+                                    @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                        <option value="{{ $p }}">{{ $p }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-muted">City</label>
+                                <div class="input-group">
+                                    <select class="form-select form-control" name="city">
+                                        <option value="">Optional</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                            <option value="{{ $c }}">{{ $c }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm btn-quick-add-city px-2" title="Add New City">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-muted">Area</label>
+                                <div class="input-group">
+                                    <select class="form-select form-control" name="area">
+                                        <option value="">Optional</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                            <option value="{{ $a }}">{{ $a }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm btn-quick-add-area px-2" title="Add New Area">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+<div class="mb-2">
                             <label class="form-label fw-bold small text-muted">Address</label>
                             <textarea class="form-control" name="address" rows="2" placeholder="Optional"></textarea>
                         </div>
@@ -1228,6 +1268,14 @@
             });
 
             function addBlankRow() {
+                const curHeaderWh = $('#warehouseSelect').val() || 1;
+                let whOptionsHtml = '';
+                @if(isset($Warehouse) && count($Warehouse) > 0)
+                    @foreach($Warehouse as $w)
+                        whOptionsHtml += `<option value="{{ $w->id }}" ${curHeaderWh == '{{ $w->id }}' ? 'selected' : ''}>{{ addslashes($w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id)) }}</option>`;
+                    @endforeach
+                @endif
+
                 const html = `
                 <tr>
                     <td class="row-index-cell text-center">1</td>
@@ -1251,6 +1299,11 @@
                         <input type="hidden" class="serials-hidden" name="serials[]" value="">
                         <input type="hidden" class="tracking-type-hidden" name="tracking_type[]" value="">
                         <div class="row-tracking-badges d-flex flex-wrap gap-1 px-1 py-0"></div>
+                    </td>
+                    <td>
+                        <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
+                            ${whOptionsHtml}
+                        </select>
                     </td>
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)">Pcs</button>
@@ -1439,6 +1492,11 @@
             }
 
             // Remove Row
+            $('#warehouseSelect').on('change', function() {
+                const newWh = $(this).val();
+                $('.row-warehouse-select').val(newWh);
+            });
+
             $(document).on('click', '.remove-row', function() {
                 if ($('#purchaseTableBody tr').length <= 1) {
                     addBlankRow();
@@ -1791,7 +1849,7 @@
             // --- Product Tracking for Purchase (Exact Persistence: Simple / Batch / Serial) ---
             window.checkAndOpenProductTracking = function($row, productId, warehouseId) {
                 if (!productId) return;
-                warehouseId = warehouseId || $('#warehouseSelect').val() || 1;
+                warehouseId = warehouseId || $row.find('.row-warehouse-select').val() || $('#warehouseSelect').val() || 1;
 
                 const url = '{{ route("product.tracking_info", ["id" => "__ID__"]) }}'.replace('__ID__', productId);
                 $.get(url, { warehouse_id: warehouseId }).done(function(res) {
@@ -2066,4 +2124,5 @@
             recalcAll();
         });
     </script>
+@include('admin_panel.partials.location_selector_script')
 @endsection

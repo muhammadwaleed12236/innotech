@@ -18,7 +18,6 @@ class WarehouseStockController extends Controller
         $this->stockService = $stockService;
     }
 
-    // /////////
     public function getByWarehouse($warehouseId)
     {
         $products = WarehouseStock::with('product')
@@ -34,8 +33,6 @@ class WarehouseStockController extends Controller
 
         return response()->json($products);
     }
-
-    // ////////////////
 
     public function searchWarehouses(Request $request)
     {
@@ -57,19 +54,32 @@ class WarehouseStockController extends Controller
         }));
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $stocks = WarehouseStock::with('warehouse', 'product')->latest()->paginate(10);
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $query = WarehouseStock::with('warehouse', 'product');
 
-        return view('admin_panel.warehouses.warehouse_stocks.index', compact('stocks'));
+        if ($request->filled('warehouse_id') && $request->warehouse_id !== 'all') {
+            $query->where('warehouse_id', $request->warehouse_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('product', function ($q) use ($search) {
+                $q->where('item_name', 'like', "%{$search}%")
+                  ->orWhere('item_code', 'like', "%{$search}%");
+            });
+        }
+
+        $stocks = $query->latest()->paginate(25)->appends($request->query());
+
+        return view('admin_panel.warehouses.warehouse_stocks.index', compact('stocks', 'warehouses'));
     }
 
     public function show($id)
     {
         return redirect()->route('warehouse_stocks.index');
     }
-
-    // Removed create() and edit() pages as per request
 
     public function store(Request $request)
     {
@@ -103,17 +113,11 @@ class WarehouseStockController extends Controller
         }
     }
 
-    /**
-     * Get data for editing a stock record via AJAX.
-     * This allows us to populate the same modal for editing.
-     */
     public function editData($id)
     {
         $stock = WarehouseStock::with(['product', 'warehouse'])->findOrFail($id);
 
         $piecesPerBox = $stock->product->pieces_per_box ?? 0;
-
-        // Calculate current boxes/loose for display if needed
         $boxes = 0;
         $loose = $stock->total_pieces;
 
@@ -133,22 +137,11 @@ class WarehouseStockController extends Controller
             'total_pieces' => $stock->total_pieces,
             'image' => $stock->product->image ? asset('uploads/products/'.$stock->product->image) : null,
             'remarks' => $stock->remarks,
-            // For editing, we might want to let them adjust the total quantity directly or add to it.
-            // But usually "Edit" means setting the state.
-            // However, the prompt implies "Add Stock" modal style for both.
-            // If it is a true "Edit", we usually allow changing the absolute value.
-            // Given the context of "Add Stock" modal, we will pre-fill getting ready for an *update*.
-            // Since the user asked for "Edit" to open the "same model", we'll treat it as managing that record.
         ]);
     }
 
     public function update(Request $request, $id)
     {
-        // For now, let's assume 'update' means adjusting the stock to a new value OR adding to it.
-        // If we reuse the "Add Stock" modal logic, it usually *adds* to stock.
-        // But "Edit" button implies changing the existing record.
-        // Let's implement a standard update that *sets* the value, but logs the difference.
-
         $warehouseStock = WarehouseStock::findOrFail($id);
 
         $request->validate([
@@ -162,20 +155,20 @@ class WarehouseStockController extends Controller
             $delta = $newQty - $oldQty;
 
             if ($delta != 0) {
-                // Update
+                $ppb = ($warehouseStock->product && $warehouseStock->product->pieces_per_box > 0) ? $warehouseStock->product->pieces_per_box : 1;
                 $warehouseStock->total_pieces = $newQty;
+                $warehouseStock->quantity = $newQty / $ppb;
                 $warehouseStock->remarks = $request->remarks;
                 $warehouseStock->save();
 
-                // Log Movement
+                // Log Movement safely without non-existent warehouse_id column
                 DB::table('stock_movements')->insert([
                     'product_id' => $warehouseStock->product_id,
-                    'warehouse_id' => $warehouseStock->warehouse_id,
-                    'type' => 'adjustment', // 'adjustment' for edit
-                    'qty' => $delta, // Can be negative
+                    'type' => 'adjustment',
+                    'qty' => $delta,
                     'ref_type' => 'MANUAL_EDIT_MODAL',
                     'ref_id' => $warehouseStock->id,
-                    'note' => 'Manual Stock Edit via Modal',
+                    'note' => 'Manual Stock Edit via Modal (WH #' . $warehouseStock->warehouse_id . ')',
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -194,8 +187,6 @@ class WarehouseStockController extends Controller
 
         return back()->with('success', 'Stock deleted successfully.');
     }
-
-    // --- AJAX Methods ---
 
     public function searchProducts(Request $request)
     {

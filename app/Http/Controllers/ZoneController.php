@@ -19,12 +19,20 @@ class ZoneController extends Controller
             'zone' => 'required|string|max:255'
         ]);
 
-        Zone::updateOrCreate(
+        $zone = Zone::updateOrCreate(
             ['id' => $request->edit_id],
-            ['zone' => $request->zone]
+            ['zone' => trim($request->zone)]
         );
 
-        return response()->json(['status' => 'success']);
+        return response()->json([
+            'status' => 'success',
+            'success' => true,
+            'zone' => $zone,
+            'item' => [
+                'id' => $zone->id,
+                'name' => $zone->zone,
+            ]
+        ]);
     }
 
     public function edit($id)

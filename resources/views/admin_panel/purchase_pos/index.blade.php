@@ -795,7 +795,7 @@
                         
                         <div class="row g-2 mb-2">
                             <!-- Vendor Selection -->
-                            <div class="col-12">
+                            <div class="col-8">
                                 <div class="form-group" id="registeredVendorGroup">
                                     <label class="d-flex justify-content-between align-items-center w-100" style="margin-bottom: 2px;">
                                         Vendor
@@ -807,6 +807,12 @@
                                             <option value="{{ $c->id }}">{{ $c->name }}</option>
                                         @endforeach
                                     </select>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="form-group">
+                                    <label style="margin-bottom: 2px; font-size: 12px; font-weight: 600;">Vendor Ref #</label>
+                                    <input type="text" class="form-control form-control-sm" name="purchase_order_no" id="pos_purchase_order_no" placeholder="Ref #" style="height: 38px;">
                                 </div>
                             </div>
                         </div>
@@ -943,7 +949,48 @@
                         <label>Mobile Number <span class="text-danger">*</span></label>
                         <input type="text" name="mobile" class="form-control" required>
                     </div>
-                    <div class="form-group mb-0">
+                                        <div class="form-group mb-3">
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <label class="small text-muted fw-bold">Province</label>
+                                <select name="province" class="form-select form-control form-control-sm">
+                                    <option value="">Optional</option>
+                                    @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                        <option value="{{ $p }}">{{ $p }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <label class="small text-muted fw-bold">City</label>
+                                <div class="input-group">
+                                    <select name="city" class="form-select form-control form-control-sm">
+                                        <option value="">Optional</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                            <option value="{{ $c }}">{{ $c }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm btn-quick-add-city px-2" title="Add New City">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <label class="small text-muted fw-bold">Area</label>
+                                <div class="input-group">
+                                    <select name="area" class="form-select form-control form-control-sm">
+                                        <option value="">Optional</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                            <option value="{{ $a }}">{{ $a }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm btn-quick-add-area px-2" title="Add New Area">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+<div class="form-group mb-0">
                         <label>Address</label>
                         <textarea name="address" class="form-control" rows="2"></textarea>
                     </div>
@@ -1231,6 +1278,7 @@
         View Cart <i class="fas fa-arrow-right ms-1"></i>
     </button>
 </div>
+@include('admin_panel.partials.location_selector_script')
 @endsection
 
 @section('js')
@@ -2302,6 +2350,9 @@
                 if (editPurchaseData.vendor_id) {
                     $('#VendorSelect').val(editPurchaseData.vendor_id).trigger('change');
                 }
+                if (editPurchaseData.purchase_order_no) {
+                    $('#pos_purchase_order_no').val(editPurchaseData.purchase_order_no);
+                }
 
                 if ($('#pos_edit_id').length === 0) {
                     $('#posCheckoutForm').append('<input type="hidden" name="edit_id" id="pos_edit_id" value="' + editPurchaseData.id + '">');
@@ -2345,4 +2396,5 @@
 
     });
 </script>
+@include('admin_panel.partials.location_selector_script')
 @endsection

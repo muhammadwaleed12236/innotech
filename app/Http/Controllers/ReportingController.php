@@ -169,20 +169,6 @@ class ReportingController extends Controller
                 $adjustments = $parentAdjustments / $factor;
                 $balance = $parentClosing / $factor;
             } else {
-                $vRawStock = (string) ($v['stock'] ?? '0');
-                if ($isCartonMode && $ppb > 1) {
-                    if (strpos($vRawStock, '.') !== false) {
-                        $parts = explode('.', $vRawStock);
-                        $boxes = (int) ($parts[0] ?? 0);
-                        $looseP = (int) ($parts[1] ?? 0);
-                        $initial = ($boxes * $ppb) + $looseP;
-                    } else {
-                        $initial = (float) $vRawStock * $ppb;
-                    }
-                } else {
-                    $initial = (float) $vRawStock;
-                }
-                
                 $purchased = 0;
                 foreach ($purchasesList as $pItem) {
                     if ($this->matchSaleItemToVariant($pItem, $v)) {
@@ -238,8 +224,53 @@ class ReportingController extends Controller
                         $adjustments += (float) $adjItem->qty;
                     }
                 }
+
+                // Determine warehouse-specific closing stock accurately
+                $whPieces = ($warehouseId && $warehouseId !== 'all')
+                    ? (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces')
+                    : (float) $product->warehouseStocks->sum('total_pieces');
+
+                $vBatchStock = null;
+                if ($product->tracking_type === 'batch') {
+                    $bQuery = \App\Models\ProductBatch::where('product_id', $product->id);
+                    if (count($parsedVariants) > 1) {
+                        $cleanVKey = str_replace(' ', '', $vKey);
+                        $bQuery->where(function($q) use ($vKey, $cleanVKey, $vName) {
+                            $q->where('variant_key', $vKey)
+                              ->orWhere('variant_key', $cleanVKey)
+                              ->orWhere('variant_key', $vName);
+                        });
+                    }
+                    if ($warehouseId && $warehouseId !== 'all') {
+                        $bQuery->where('warehouse_id', $warehouseId);
+                    }
+                    $vBatchStock = (float) $bQuery->sum('qty');
+                } elseif ($product->tracking_type === 'serial') {
+                    $sQuery = \App\Models\ProductSerial::where('product_id', $product->id)->where('status', 'available');
+                    if ($warehouseId && $warehouseId !== 'all') {
+                        $sQuery->where('warehouse_id', $warehouseId);
+                    }
+                    $vBatchStock = (float) $sQuery->count();
+                }
+
+                if ($vBatchStock !== null) {
+                    $balance = max(0, $vBatchStock);
+                } elseif (count($parsedVariants) === 1) {
+                    $balance = max(0, $whPieces);
+                } else {
+                    $totalVRawStock = 0;
+                    foreach ($parsedVariants as $pv) {
+                        $totalVRawStock += (float) ($pv['stock'] ?? 0);
+                    }
+                    $vRaw = (float) ($v['stock'] ?? 0);
+                    if ($totalVRawStock > 0 && $whPieces > 0) {
+                        $balance = max(0, round(($vRaw / $totalVRawStock) * $whPieces, 2));
+                    } else {
+                        $balance = ($warehouseId && $warehouseId !== 'all') ? 0 : max(0, $whPieces);
+                    }
+                }
                 
-                $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+                $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
             }
             
             $results[] = [
@@ -682,21 +713,6 @@ class ReportingController extends Controller
                         $adjustments    = $parentAdjustments / $factor;
                         $balance        = $parentClosing / $factor;
                     } else {
-                        // Initial Stock in Pieces
-                        $vRawStock = (string) ($v['stock'] ?? '0');
-                        if ($isCartonMode && $ppb > 1) {
-                            if (strpos($vRawStock, '.') !== false) {
-                                $parts = explode('.', $vRawStock);
-                                $boxes = (int) ($parts[0] ?? 0);
-                                $looseP = (int) ($parts[1] ?? 0);
-                                $initial = ($boxes * $ppb) + $looseP;
-                            } else {
-                                $initial = (float) $vRawStock * $ppb;
-                            }
-                        } else {
-                            $initial = (float) $vRawStock;
-                        }
-
                         // Purchased for variant
                         $purchased = 0; $purchaseAmount = 0;
                         foreach ($purchasesList as $pItem) {
@@ -763,8 +779,54 @@ class ReportingController extends Controller
                             }
                         }
 
-                        // Balance in Total Pieces = Initial + Purchased - Sold + Returned - Purchased Returned + Adjustments
-                        $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+                        // Determine warehouse-specific closing stock accurately
+                        $whPieces = ($warehouseId && $warehouseId !== 'all')
+                            ? (float) $product->warehouseStocks->where('warehouse_id', $warehouseId)->sum('total_pieces')
+                            : (float) $product->warehouseStocks->sum('total_pieces');
+
+                        $vBatchStock = null;
+                        if ($product->tracking_type === 'batch') {
+                            $bQuery = \App\Models\ProductBatch::where('product_id', $product->id);
+                            if (count($parsedVariants) > 1) {
+                                $cleanVKey = str_replace(' ', '', $vKey);
+                                $bQuery->where(function($q) use ($vKey, $cleanVKey, $vName) {
+                                    $q->where('variant_key', $vKey)
+                                      ->orWhere('variant_key', $cleanVKey)
+                                      ->orWhere('variant_key', $vName);
+                                });
+                            }
+                            if ($warehouseId && $warehouseId !== 'all') {
+                                $bQuery->where('warehouse_id', $warehouseId);
+                            }
+                            $vBatchStock = (float) $bQuery->sum('qty');
+                        } elseif ($product->tracking_type === 'serial') {
+                            $sQuery = \App\Models\ProductSerial::where('product_id', $product->id)->where('status', 'available');
+                            if ($warehouseId && $warehouseId !== 'all') {
+                                $sQuery->where('warehouse_id', $warehouseId);
+                            }
+                            $vBatchStock = (float) $sQuery->count();
+                        }
+
+                        if ($vBatchStock !== null) {
+                            $balance = max(0, $vBatchStock);
+                        } elseif (count($parsedVariants) === 1) {
+                            $balance = max(0, $whPieces);
+                        } else {
+                            $totalVRawStock = 0;
+                            foreach ($parsedVariants as $pv) {
+                                $totalVRawStock += (float) ($pv['stock'] ?? 0);
+                            }
+                            $vRaw = (float) ($v['stock'] ?? 0);
+                            if ($totalVRawStock > 0 && $whPieces > 0) {
+                                $balance = max(0, round(($vRaw / $totalVRawStock) * $whPieces, 2));
+                            } else {
+                                $balance = ($warehouseId && $warehouseId !== 'all') ? 0 : max(0, $whPieces);
+                            }
+                        }
+
+                        // Initial Stock for this warehouse context:
+                        // Initial = Balance - Purchased + Sold - Returned + Purchased Returned - Adjustments
+                        $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
                     }
 
                     // Weighted Average Purchase Price
@@ -1315,7 +1377,17 @@ class ReportingController extends Controller
     {
         $products = Product::orderBy('item_name')->get();
         $categories = Category::orderBy('name')->get();
-        $customers = DB::table('customers')->orderBy('customer_name')->get();
+        $custQuery = DB::table('customers')->orderBy('customer_name');
+        if ($request->province && $request->province !== 'all') {
+            $custQuery->where('province', $request->province);
+        }
+        if ($request->city && $request->city !== 'all') {
+            $custQuery->where('city', $request->city);
+        }
+        if ($request->area && $request->area !== 'all') {
+            $custQuery->where('area', $request->area);
+        }
+        $customers = $custQuery->get();
 
         return view('admin_panel.reporting.profit_loss_report', compact('products', 'categories', 'customers'));
     }
@@ -2138,6 +2210,28 @@ class ReportingController extends Controller
                 $query->where('customer_id', $customerId);
             }
 
+            $province = $request->province;
+            $city = $request->city;
+            $area = $request->area;
+
+            if ($province && $province !== 'all') {
+                $query->whereHas('customer_relation', function($q) use ($province) {
+                    $q->where('province', $province);
+                });
+            }
+
+            if ($city && $city !== 'all') {
+                $query->whereHas('customer_relation', function($q) use ($city) {
+                    $q->where('city', $city);
+                });
+            }
+
+            if ($area && $area !== 'all') {
+                $query->whereHas('customer_relation', function($q) use ($area) {
+                    $q->where('area', $area);
+                });
+            }
+
             if ($salesOfficerId && $salesOfficerId !== 'all') {
                 $query->where(function($q) use ($salesOfficerId) {
                     $q->where('sales_officer_id', $salesOfficerId)
@@ -2256,6 +2350,9 @@ class ReportingController extends Controller
                     'total_net' => $netAmount,
                     'created_at' => $sale->created_at ? $sale->created_at->format('Y-m-d h:i A') : '-',
                     'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in'),
+                    'customer_province' => $sale->customer_relation->province ?? '',
+                    'customer_city' => $sale->customer_relation->city ?? '',
+                    'customer_area' => $sale->customer_relation->area ?? '',
                     'sales_officer_name' => $sale->salesOfficer->name ?? ($sale->customer_relation->salesOfficer->name ?? '-'),
                     'po_no' => $sale->po_no ?? '',
                     'po_date' => $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') : '',
@@ -2356,7 +2453,7 @@ class ReportingController extends Controller
 
     public function customer_ledger_report()
     {
-        $customers = DB::table('customers')->select('id', 'customer_name', 'zone')->get();
+        $customers = DB::table('customers')->select('id', 'customer_name', 'zone', 'province', 'city', 'area')->get();
         $zones = \App\Models\Zone::orderBy('zone')->get();
 
         return view('admin_panel.reporting.customer_ledger_report', compact('customers', 'zones'));
@@ -2391,6 +2488,18 @@ class ReportingController extends Controller
                 // Filter allIds to only those customers who belong to the selected zone
                 $validZoneIds = \App\Models\Customer::where('zone', $zoneId)->pluck('id')->toArray();
                 $allIds = array_intersect($allIds, $validZoneIds);
+            }
+
+            $provLedger = $request->province;
+            $cityLedger = $request->city;
+            $areaLedger = $request->area;
+            if (($provLedger && $provLedger !== 'all') || ($cityLedger && $cityLedger !== 'all') || ($areaLedger && $areaLedger !== 'all')) {
+                $locQ = \App\Models\Customer::query();
+                if ($provLedger && $provLedger !== 'all') $locQ->where('province', $provLedger);
+                if ($cityLedger && $cityLedger !== 'all') $locQ->where('city', $cityLedger);
+                if ($areaLedger && $areaLedger !== 'all') $locQ->where('area', $areaLedger);
+                $validLocIds = $locQ->pluck('id')->toArray();
+                $allIds = array_intersect($allIds, $validLocIds);
             }
 
             $allTransactions = [];
@@ -2828,7 +2937,11 @@ class ReportingController extends Controller
         }
 
         // Account Receivables
-        $customers = DB::table('customers')->get();
+        $custQuery = DB::table('customers');
+            if ($request->province && $request->province !== 'all') $custQuery->where('province', $request->province);
+            if ($request->city && $request->city !== 'all') $custQuery->where('city', $request->city);
+            if ($request->area && $request->area !== 'all') $custQuery->where('area', $request->area);
+            $customers = $custQuery->get();
         $totalReceivables = 0;
         foreach ($customers as $c) {
             $bal = $balanceService->getCustomerBalanceBeforeDate($c->id, $dateEnd);
@@ -2886,7 +2999,11 @@ class ReportingController extends Controller
         $totalAssets = $currentAssetsTotal + $fixedAssetsTotal;
 
         // 2. Liabilities
-        $vendors = DB::table('vendors')->get();
+        $vendQuery = DB::table('vendors');
+            if ($request->province && $request->province !== 'all') $vendQuery->where('province', $request->province);
+            if ($request->city && $request->city !== 'all') $vendQuery->where('city', $request->city);
+            if ($request->area && $request->area !== 'all') $vendQuery->where('area', $request->area);
+            $vendors = $vendQuery->get();
         $totalPayables = 0;
         foreach ($vendors as $v) {
             $bal = $balanceService->getVendorBalanceBeforeDate($v->id, $dateEnd);
@@ -2930,7 +3047,17 @@ class ReportingController extends Controller
         $dateEndParams = $endDate . ' 23:59:59';
         
         $balanceService = app(\App\Services\BalanceService::class);
-        $customers = DB::table('customers')->orderBy('customer_name')->get();
+        $custQuery = DB::table('customers')->orderBy('customer_name');
+        if ($request->province && $request->province !== 'all') {
+            $custQuery->where('province', $request->province);
+        }
+        if ($request->city && $request->city !== 'all') {
+            $custQuery->where('city', $request->city);
+        }
+        if ($request->area && $request->area !== 'all') {
+            $custQuery->where('area', $request->area);
+        }
+        $customers = $custQuery->get();
         
         $rows = [];
         $totalOpening = 0;
@@ -2971,6 +3098,8 @@ class ReportingController extends Controller
                 $rows[] = [
                     'sr' => count($rows) + 1,
                     'party' => $c->customer_name,
+                    'city' => $c->city ?? '',
+                    'area' => $c->area ?? '',
                     'opening' => $opening,
                     'sales' => $sales,
                     'received' => $received,
@@ -3121,6 +3250,9 @@ class ReportingController extends Controller
                 if ($searchMobile && stripos($c->mobile, $searchMobile) === false) continue;
                 if ($searchZone && (string)$c->zone !== (string)$searchZone) continue;
                 if ($searchAddress && stripos($c->address, $searchAddress) === false) continue;
+                if ($request->province && $request->province !== 'all' && (string)$c->province !== (string)$request->province) continue;
+                if ($request->city && $request->city !== 'all' && (string)$c->city !== (string)$request->city) continue;
+                if ($request->area && $request->area !== 'all' && (string)$c->area !== (string)$request->area) continue;
                 
                 $balance = (float) ($custBalances[$c->id] ?? 0);
                 $parties[] = [
@@ -3129,6 +3261,8 @@ class ReportingController extends Controller
                     'mobile' => $c->mobile,
                     'zone' => $c->zone_name,
                     'address' => $c->address,
+                    'city' => $c->city ?? '',
+                    'area' => $c->area ?? '',
                     'balance' => $balance,
                     'type' => 'customer'
                 ];
@@ -3144,11 +3278,18 @@ class ReportingController extends Controller
                 ->groupBy('party_id')
                 ->pluck('balance', 'party_id');
 
-            $vendors = DB::table('vendors')->get();
+            $vendQuery = DB::table('vendors');
+            if ($request->province && $request->province !== 'all') $vendQuery->where('province', $request->province);
+            if ($request->city && $request->city !== 'all') $vendQuery->where('city', $request->city);
+            if ($request->area && $request->area !== 'all') $vendQuery->where('area', $request->area);
+            $vendors = $vendQuery->get();
             foreach ($vendors as $v) {
                 if ($searchParty && stripos($v->name, $searchParty) === false) continue;
                 if ($searchMobile && stripos($v->phone, $searchMobile) === false) continue;
                 if ($searchAddress && stripos($v->address, $searchAddress) === false) continue;
+                if ($request->province && $request->province !== 'all' && (string)$v->province !== (string)$request->province) continue;
+                if ($request->city && $request->city !== 'all' && (string)$v->city !== (string)$request->city) continue;
+                if ($request->area && $request->area !== 'all' && (string)$v->area !== (string)$request->area) continue;
                 
                 $balance = (float) ($vendorBalances[$v->id] ?? 0);
                 $parties[] = [
@@ -3157,6 +3298,8 @@ class ReportingController extends Controller
                     'mobile' => $v->phone,
                     'zone' => '-',
                     'address' => $v->address,
+                    'city' => $v->city ?? '',
+                    'area' => $v->area ?? '',
                     'balance' => -$balance,
                     'type' => 'vendor'
                 ];
@@ -3193,6 +3336,8 @@ class ReportingController extends Controller
                 'mobile' => $p['mobile'] ?? '-',
                 'zone' => $p['zone'] ?? '-',
                 'address' => $p['address'] ?? '-',
+                'city' => $p['city'] ?? '',
+                'area' => $p['area'] ?? '',
                 'receivable' => $receivable,
                 'payable' => $payable,
                 'notes' => ''
@@ -3235,7 +3380,11 @@ class ReportingController extends Controller
 
         if ($type === 'receivable') {
             // Customer Aging: Each Sale invoice outstanding
-            $customers = DB::table('customers')->get();
+            $custQuery = DB::table('customers');
+            if ($request->province && $request->province !== 'all') $custQuery->where('province', $request->province);
+            if ($request->city && $request->city !== 'all') $custQuery->where('city', $request->city);
+            if ($request->area && $request->area !== 'all') $custQuery->where('area', $request->area);
+            $customers = $custQuery->get();
 
             foreach ($customers as $c) {
                 $totalBalance = $balanceService->getCustomerBalance($c->id);
@@ -3302,7 +3451,11 @@ class ReportingController extends Controller
             }
         } else {
             // Vendor Aging (Payable)
-            $vendors = DB::table('vendors')->get();
+            $vendQuery = DB::table('vendors');
+            if ($request->province && $request->province !== 'all') $vendQuery->where('province', $request->province);
+            if ($request->city && $request->city !== 'all') $vendQuery->where('city', $request->city);
+            if ($request->area && $request->area !== 'all') $vendQuery->where('area', $request->area);
+            $vendors = $vendQuery->get();
 
             foreach ($vendors as $v) {
                 $totalBalance = $balanceService->getVendorBalance($v->id);
@@ -3440,7 +3593,11 @@ class ReportingController extends Controller
             ->value('total') ?? 0;
 
         // Top 10 Customers by Profit
-        $customers = DB::table('customers')->get();
+        $custQuery = DB::table('customers');
+            if ($request->province && $request->province !== 'all') $custQuery->where('province', $request->province);
+            if ($request->city && $request->city !== 'all') $custQuery->where('city', $request->city);
+            if ($request->area && $request->area !== 'all') $custQuery->where('area', $request->area);
+            $customers = $custQuery->get();
         $customerProfits = [];
         foreach ($customers as $c) {
             $saleStats = DB::table('sale_items')
@@ -3703,7 +3860,9 @@ class ReportingController extends Controller
                 DB::raw("COALESCE(customers.customer_name, 'Walking Customer') as customer_name"),
                 DB::raw("COALESCE(customers.customer_id, 'N/A') as customer_code"),
                 'customers.mobile as customer_mobile',
-                'customers.address as customer_city',
+                'customers.province as customer_province',
+                'customers.city as customer_city',
+                'customers.area as customer_area',
                 'sale_items.product_id',
                 DB::raw("COALESCE(products.item_code, 'MANUAL') as product_code"),
                 DB::raw("COALESCE(sale_items.product_name, products.item_name) as product_name"),
@@ -3734,12 +3893,28 @@ class ReportingController extends Controller
             $salesQuery->whereIn('products.brand_id', $brandIds);
         }
 
+        $pLoc = $request->province;
+        $cLoc = $request->city;
+        $aLoc = $request->area;
+
+        if ($pLoc && $pLoc !== 'all') {
+            $salesQuery->where('customers.province', $pLoc);
+        }
+        if ($cLoc && $cLoc !== 'all') {
+            $salesQuery->where('customers.city', $cLoc);
+        }
+        if ($aLoc && $aLoc !== 'all') {
+            $salesQuery->where('customers.area', $aLoc);
+        }
+
         $salesData = $salesQuery->groupBy(
             'sales.customer_id',
             'customers.customer_name',
             'customers.customer_id',
             'customers.mobile',
-            'customers.address',
+            'customers.province',
+            'customers.city',
+            'customers.area',
             'sale_items.product_id',
             'products.item_code',
             'sale_items.product_name',
@@ -3770,6 +3945,13 @@ class ReportingController extends Controller
         }
         if (!empty($productIds)) {
             $returnQuery->whereIn('sale_return_items.product_id', $productIds);
+        }
+
+        if (($pLoc && $pLoc !== 'all') || ($cLoc && $cLoc !== 'all') || ($aLoc && $aLoc !== 'all')) {
+            $returnQuery->join('customers', 'sale_returns.customer_id', '=', 'customers.id');
+            if ($pLoc && $pLoc !== 'all') $returnQuery->where('customers.province', $pLoc);
+            if ($cLoc && $cLoc !== 'all') $returnQuery->where('customers.city', $cLoc);
+            if ($aLoc && $aLoc !== 'all') $returnQuery->where('customers.area', $aLoc);
         }
 
         $returnsData = $returnQuery->groupBy('sale_returns.customer_id', 'sale_return_items.product_id')->get();
@@ -3804,7 +3986,9 @@ class ReportingController extends Controller
                     'customer_name' => $custName,
                     'customer_code' => $row->customer_code,
                     'customer_mobile' => $row->customer_mobile ?: '-',
+                    'customer_province' => $row->customer_province ?: '-',
                     'customer_city' => $row->customer_city ?: '-',
+                    'customer_area' => $row->customer_area ?: '-',
                     'gross_amount' => 0,
                     'return_amount' => 0,
                     'net_amount' => 0,
@@ -3899,6 +4083,19 @@ class ReportingController extends Controller
         $query = \App\Models\Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product', 'returns'])
             ->whereNotIn('sale_status', ['cancelled']);
 
+        $pSO = $request->province;
+        $cSO = $request->city;
+        $aSO = $request->area;
+        if ($pSO && $pSO !== 'all') {
+            $query->whereHas('customer_relation', fn($q) => $q->where('province', $pSO));
+        }
+        if ($cSO && $cSO !== 'all') {
+            $query->whereHas('customer_relation', fn($q) => $q->where('city', $cSO));
+        }
+        if ($aSO && $aSO !== 'all') {
+            $query->whereHas('customer_relation', fn($q) => $q->where('area', $aSO));
+        }
+
         if ($start && $end) {
             $query->whereBetween('created_at', [
                 \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'),
@@ -3982,6 +4179,9 @@ class ReportingController extends Controller
                 'invoice_no' => $sale->invoice_no,
                 'created_at_formatted' => $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : '',
                 'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in'),
+                    'customer_province' => $sale->customer_relation->province ?? '',
+                    'customer_city' => $sale->customer_relation->city ?? '',
+                    'customer_area' => $sale->customer_relation->area ?? '',
                 'customer_code' => $sale->customer_relation->customer_id ?? '',
                 'sales_officer_id' => $officerId,
                 'sales_officer_name' => $officerName,

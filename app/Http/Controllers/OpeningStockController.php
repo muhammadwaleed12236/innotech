@@ -367,7 +367,14 @@ class OpeningStockController extends Controller
     private function executeSingleOpeningStock(array $data)
     {
         $rawProductId = $data['product_id'];
-        $warehouseId  = $data['warehouse_id'];
+        $user = auth()->user();
+        $canSelectWarehouse = $user && (
+            (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+            (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+            $user->can('warehouse.view')
+        );
+        $userDefaultWhId = (int) ($user?->warehouse_id ?: 1);
+        $warehouseId  = $canSelectWarehouse ? ($data['warehouse_id'] ?? $userDefaultWhId) : $userDefaultWhId;
         $trackingType = $data['tracking_type'] ?? 'simple';
         $variantKey   = $data['variant_key'] ?? null;
         $inputQty     = (float) ($data['qty'] ?? 0);

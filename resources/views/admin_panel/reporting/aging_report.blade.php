@@ -102,6 +102,33 @@
                         <label class="form-label text-muted fw-semibold">Current Date:</label>
                         <input type="text" id="as_of_date" class="form-control datepicker-custom" value="{{ date('Y-m-d') }}">
                     </div>
+                                        <div class="col-md-2">
+                        <label class="form-label text-muted fw-semibold">Province:</label>
+                        <select id="aging_province" class="form-select form-control">
+                            <option value="">All Provinces</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted fw-semibold">City:</label>
+                        <select id="aging_city" class="form-select form-control">
+                            <option value="">All Cities</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted fw-semibold">Area:</label>
+                        <select id="aging_area" class="form-select form-control">
+                            <option value="">All Areas</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-md-2">
                         <button class="btn btn-primary w-100 mt-1" id="btnGenerate">Generate</button>
                     </div>
@@ -239,5 +266,15 @@ $(document).ready(function() {
     $('#btnGenerate').click(loadReport);
     loadReport(); // auto-load
 });
+</script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '#aging_province',
+            city: '#aging_city',
+            area: '#aging_area'
+        });
+    });
 </script>
 @endsection

@@ -23,6 +23,9 @@ class VendorController extends Controller
     public function store(Request $request)
     {
         $partyType = $request->party_type ?? 'vendor';
+        if (empty($request->phone) && !empty($request->mobile)) {
+            $request->merge(['phone' => $request->mobile]);
+        }
 
         if ($request->id) {
             // Update existing vendor
@@ -80,6 +83,9 @@ class VendorController extends Controller
                     'email_address' => $vendor->email ?: $customer->email_address,
                     'cnic' => $vendor->cnic ?: $customer->cnic,
                     'address' => $vendor->address ?: $customer->address,
+                    'province' => $vendor->province ?: $customer->province,
+                    'city' => $vendor->city ?: $customer->city,
+                    'area' => $vendor->area ?: $customer->area,
                     'party_type' => 'both',
                     'linked_vendor_id' => $vendor->id,
                 ]);
@@ -93,6 +99,9 @@ class VendorController extends Controller
                     'email_address' => $vendor->email,
                     'cnic' => $vendor->cnic,
                     'address' => $vendor->address,
+                    'province' => $vendor->province,
+                    'city' => $vendor->city,
+                    'area' => $vendor->area,
                     'customer_type' => 'Main Customer',
                     'party_type' => 'both',
                     'linked_vendor_id' => $vendor->id,

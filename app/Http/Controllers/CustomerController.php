@@ -226,7 +226,8 @@ class CustomerController extends Controller
         // Sync linked Vendor if party_type is both
         $this->syncLinkedVendor($customer, $request->party_type ?? $customer->party_type ?? 'customer');
 
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
+            $customer = $customer->fresh() ?? $customer;
             return response()->json([
                 'success' => true,
                 'message' => 'Customer created successfully.',

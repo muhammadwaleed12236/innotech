@@ -168,6 +168,37 @@
                     </div>
                 </div>
 
+                                {{-- Location Hierarchy Row --}}
+                <div class="row g-2 mb-2 pb-2 border-bottom">
+                    <div class="col-md-4">
+                        <label class="sale-filter-label mb-1">Province:</label>
+                        <select name="province" id="province_ledger_desk" class="form-select form-select-sm provinceLedgerInput" style="height: 32px; font-size: .78rem; border-radius: 6px;">
+                            <option value="">All Provinces</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="sale-filter-label mb-1">City:</label>
+                        <select name="city" id="city_ledger_desk" class="form-select form-select-sm cityLedgerInput" style="height: 32px; font-size: .78rem; border-radius: 6px;">
+                            <option value="">All Cities</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="sale-filter-label mb-1">Area / Sector:</label>
+                        <select name="area" id="area_ledger_desk" class="form-select form-select-sm areaLedgerInput" style="height: 32px; font-size: .78rem; border-radius: 6px;">
+                            <option value="">All Areas</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
                 {{-- Bottom Section: Zone, Customer, Quick Filter --}}
                 <div class="row g-2">
                     <div class="col-md-4">
@@ -184,7 +215,7 @@
                         <select name="customer_id" id="customer_id_desk" class="form-select form-select-sm select2 customerSelect">
                             <option value="all" data-zone="">-- All Customers --</option>
                             @foreach ($customers as $c)
-                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}">{{ $c->customer_name }}</option>
+                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}" data-province="{{ $c->province ?? '' }}" data-city="{{ $c->city ?? '' }}" data-area="{{ $c->area ?? '' }}">{{ $c->customer_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -215,6 +246,33 @@
                         </span>
                     </div>
 
+                                        <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Province</label>
+                        <select name="province" id="province_ledger_mob" class="form-select form-select-sm provinceLedgerInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                <option value="{{ $p }}">{{ $p }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">City</label>
+                        <select name="city" id="city_ledger_mob" class="form-select form-select-sm cityLedgerInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                <option value="{{ $c }}">{{ $c }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-4 mb-1">
+                        <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Area</label>
+                        <select name="area" id="area_ledger_mob" class="form-select form-select-sm areaLedgerInput" style="font-size: 11px;">
+                            <option value="">All</option>
+                            @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     {{-- 1. Zone --}}
                     <div class="col-12 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Zone</label>
@@ -232,7 +290,7 @@
                         <select name="customer_id" class="form-select form-select-sm select2 customerSelect">
                             <option value="all" data-zone="">-- All Customers --</option>
                             @foreach ($customers as $c)
-                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}">{{ $c->customer_name }}</option>
+                                <option value="{{ $c->id }}" data-zone="{{ $c->zone }}" data-province="{{ $c->province ?? '' }}" data-city="{{ $c->city ?? '' }}" data-area="{{ $c->area ?? '' }}">{{ $c->customer_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -434,6 +492,9 @@
             // Sync Inputs between Desktop & Mobile
             $('.startDateInput').on('change', function() { $('.startDateInput').val($(this).val()); });
             $('.endDateInput').on('change', function() { $('.endDateInput').val($(this).val()); });
+            $('.provinceLedgerInput').on('change input', function() { $('.provinceLedgerInput').val($(this).val()); });
+            $('.cityLedgerInput').on('change input', function() { $('.cityLedgerInput').val($(this).val()); });
+            $('.areaLedgerInput').on('change input', function() { $('.areaLedgerInput').val($(this).val()); });
             $('.zoneSelect').on('change', function() {
                 let selectedZone = $(this).val();
                 $('.zoneSelect').val(selectedZone);
@@ -492,6 +553,7 @@
                 $('.endDateInput').val('{{ date("Y-m-d") }}');
                 $('.zoneSelect').val('').trigger('change');
                 $('.customerSelect').val('all').trigger('change');
+                $('.provinceLedgerInput, .cityLedgerInput, .areaLedgerInput').val('');
                 $('.quickFilterSelect').val('custom');
                 loadLedger();
             });
@@ -536,7 +598,10 @@
                     zone_id: zid,
                     customer_id: cid || 'all',
                     start_date: start,
-                    end_date: end
+                    end_date: end,
+                    province: $('#province_ledger_desk').val() || $('#province_ledger_mob').val() || '',
+                    city: $('#city_ledger_desk').val() || $('#city_ledger_mob').val() || '',
+                    area: $('#area_ledger_desk').val() || $('#area_ledger_mob').val() || ''
                 }, function(res) {
                     $("#loader").hide();
                     $("#ledgerBox").show();
@@ -1021,4 +1086,15 @@
             }
         });
     </script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '.provinceLedgerInput',
+            city: '.cityLedgerInput',
+            area: '.areaLedgerInput',
+            customer: '.customerSelect'
+        });
+    });
+</script>
 @endsection

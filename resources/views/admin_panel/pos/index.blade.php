@@ -854,7 +854,48 @@
                         <label>Mobile Number <span class="text-danger">*</span></label>
                         <input type="text" name="mobile" class="form-control" required>
                     </div>
-                    <div class="form-group mb-0">
+                                        <div class="form-group mb-2">
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <label class="small text-muted fw-bold">Province</label>
+                                <select name="province" class="form-select form-control form-control-sm">
+                                    <option value="">Optional</option>
+                                    @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                        <option value="{{ $p }}">{{ $p }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <label class="small text-muted fw-bold">City</label>
+                                <div class="input-group">
+                                    <select name="city" class="form-select form-control form-control-sm">
+                                        <option value="">Optional</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                                            <option value="{{ $c }}">{{ $c }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm btn-quick-add-city px-2" title="Add New City">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <label class="small text-muted fw-bold">Area</label>
+                                <div class="input-group">
+                                    <select name="area" class="form-select form-control form-control-sm">
+                                        <option value="">Optional</option>
+                                        @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                                            <option value="{{ $a }}">{{ $a }}</option>
+                                        @endforeach
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary btn-sm btn-quick-add-area px-2" title="Add New Area">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+<div class="form-group mb-0">
                         <label>Address</label>
                         <textarea name="address" class="form-control" rows="2"></textarea>
                     </div>
@@ -1125,6 +1166,7 @@
         </div>
     </div>
 </div>
+@include('admin_panel.partials.location_selector_script')
 @endsection
 
 @section('js')
@@ -2262,4 +2304,5 @@
 
     });
 </script>
+@include('admin_panel.partials.location_selector_script')
 @endsection

@@ -589,6 +589,9 @@ Route::middleware('auth')->group(function () {
     // Location Cascading Routes
     Route::get('/locations/cascade', [\App\Http\Controllers\LocationController::class, 'cascade'])->name('locations.cascade');
     Route::get('/locations/hierarchy', [\App\Http\Controllers\LocationController::class, 'hierarchy'])->name('locations.hierarchy');
+    Route::post('/locations/zone/store', [\App\Http\Controllers\LocationController::class, 'storeZone'])->name('locations.zone.store');
+    Route::post('/locations/city/store', [\App\Http\Controllers\LocationController::class, 'storeCity'])->name('locations.city.store');
+    Route::post('/locations/area/store', [\App\Http\Controllers\LocationController::class, 'storeArea'])->name('locations.area.store');
 
     // Settings & Notifications
     Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->middleware('permission:settings.view|settings.read')->name('settings.index');

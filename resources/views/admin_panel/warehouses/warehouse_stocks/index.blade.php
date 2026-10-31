@@ -104,13 +104,46 @@
                     <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-warehouse me-2 text-success"></i> Warehouse Stock</h5>
                     <p class="text-muted mb-0 small">View and manage warehouse stock inventories</p>
                 </div>
-                @can('warehouse.stock.create')
-                    <button onclick="openAddModal()" class="btn btn-success shadow-sm rounded-pill px-4 fw-bold">
-                        <i class="fas fa-plus me-1"></i> Add Stock
-                    </button>
-                @endcan
+                <div class="d-flex gap-2">
+                    <a href="{{ route('warehouse.working_report') }}" class="btn btn-outline-info rounded-pill px-3 fw-bold">
+                        <i class="fas fa-chart-line me-1"></i> Working Report
+                    </a>
+                    @can('warehouse.stock.create')
+                        <button onclick="openAddModal()" class="btn btn-success shadow-sm rounded-pill px-4 fw-bold">
+                            <i class="fas fa-plus me-1"></i> Add Stock
+                        </button>
+                    @endcan
+                </div>
             </div>
             <div class="card-body">
+                {{-- Quick Filter --}}
+                <form method="GET" action="{{ route('warehouse_stocks.index') }}" class="mb-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-secondary mb-1">Filter by Warehouse</label>
+                            <select name="warehouse_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="all">All Warehouses</option>
+                                @if(isset($warehouses))
+                                    @foreach($warehouses as $w)
+                                        <option value="{{ $w->id }}" {{ request('warehouse_id') == $w->id ? 'selected' : '' }}>
+                                            {{ $w->warehouse_name }} ({{ $w->location ?? 'Main' }})
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold text-secondary mb-1">Search Product</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" placeholder="Search product name or SKU..." value="{{ request('search') }}">
+                                <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i> Search</button>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                        </div>
+                    </div>
+                </form>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle" id="stockTable">
                         <thead class="bg-light text-muted">

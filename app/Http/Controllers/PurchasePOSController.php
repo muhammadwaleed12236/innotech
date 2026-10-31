@@ -333,6 +333,7 @@ class PurchasePOSController extends Controller
                 $editPurchaseData = [
                     'id' => $purchase->id,
                     'invoice_no' => $purchase->invoice_no,
+                    'purchase_order_no' => $purchase->purchase_order_no ?? '',
                     'vendor_id' => $purchase->vendor_id,
                     'warehouse_id' => $purchase->warehouse_id,
                     'note' => $purchase->note ?? '',
@@ -356,6 +357,7 @@ class PurchasePOSController extends Controller
         $data["payment_amount"] = $request->input("payment_amount");
         $data["payment_account_id"] = $request->input("payment_account_id");
         $data["action"] = "post";
+        $data["purchase_order_no"] = $request->input("purchase_order_no");
         
         // Map POS cart fields to Purchase fields
         $data["price"] = $request->input("price_per_piece");

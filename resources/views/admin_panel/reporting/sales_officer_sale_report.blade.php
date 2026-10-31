@@ -117,6 +117,34 @@
 
             {{-- Filter Row --}}
             <div class="row g-2 align-items-end mt-1">
+                {{-- Location Hierarchy Filters --}}
+                <div class="col-md-4 col-sm-6">
+                    <label class="so-filter-label">Province:</label>
+                    <select id="so_province" name="province" class="form-select form-select-sm">
+                        <option value="">All Provinces</option>
+                        @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                            <option value="{{ $p }}">{{ $p }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <label class="so-filter-label">City:</label>
+                    <select id="so_city" name="city" class="form-select form-select-sm">
+                        <option value="">All Cities</option>
+                        @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
+                            <option value="{{ $c }}">{{ $c }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4 col-sm-6">
+                    <label class="so-filter-label">Area / Sector:</label>
+                    <select id="so_area" name="area" class="form-select form-select-sm">
+                        <option value="">All Areas</option>
+                        @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
+                            <option value="{{ $a }}">{{ $a }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 {{-- Date Range --}}
                 <div class="col-md-3 col-sm-6">
                     <label class="so-filter-label">Start Date:</label>
@@ -144,7 +172,7 @@
                     <select id="customer_id" name="customer_id" class="form-select form-select-sm select2-customer">
                         <option value="all">-- All Customers --</option>
                         @foreach($customers as $c)
-                            <option value="{{ $c->id }}">{{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }}</option>
+                            <option value="{{ $c->id }}" data-province="{{ $c->province }}" data-city="{{ $c->city }}" data-area="{{ $c->area }}">{{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -367,7 +395,19 @@
             $('#end_date').val('{{ date('Y-m-d') }}');
             $('#sales_officer_id').val('all').trigger('change');
             $('#customer_id').val('all').trigger('change');
+            $('#so_province, #so_city, #so_area').val('');
             loadReport();
+        });
+    });
+</script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+    $(document).ready(function() {
+        setupLocationCascade({
+            province: '#so_province',
+            city: '#so_city',
+            area: '#so_area',
+            customer: '#customer_id'
         });
     });
 </script>

@@ -498,8 +498,9 @@
                         <thead>
                             <tr>
                                 <th class="text-center" style="width: 35px;">#</th>
-                                <th style="width: 30%;">PRODUCT & VARIANT <span class="text-danger">*</span></th>
-                                <th style="width: 210px;">TRACKING MODE</th>
+                                <th style="width: 28%;">PRODUCT & VARIANT <span class="text-danger">*</span></th>
+                                <th style="width: 175px;">WAREHOUSE <span class="text-danger">*</span></th>
+                                <th style="width: 180px;">TRACKING MODE</th>
                                 <th>ENTRY DETAILS & SPECIFICATIONS</th>
                                 <th class="text-end" style="width: 120px;">TOTAL (PKR)</th>
                                 <th class="text-center" style="width: 45px;">ACT</th>
@@ -769,6 +770,15 @@
             allowClear: true
         });
 
+        $('#globalWarehouseSelect').on('change', function() {
+            const newWh = $(this).val();
+            $('.row-warehouse-select').each(function() {
+                $(this).val(newWh);
+                const rId = $(this).closest('tr').attr('data-row-id');
+                if (rId) onRowWarehouseChange(rId);
+            });
+        });
+
         $('#quickProductSearch').on('change', function() {
             const pVal = $(this).val();
             if (pVal) {
@@ -818,6 +828,12 @@
             productOptions += `<option value="{{ $p['value'] }}" data-variant="{{ $p['variant_key'] }}">{{ addslashes($p['label']) }}</option>`;
         @endforeach
 
+        const curGlobalWh = $('#globalWarehouseSelect').val();
+        let warehouseOptions = '';
+        @foreach($warehouses as $wh)
+            warehouseOptions += `<option value="{{ $wh->id }}" ${curGlobalWh == '{{ $wh->id }}' ? 'selected' : ''}>{{ addslashes($wh->warehouse_name) }}</option>`;
+        @endforeach
+
         const html = `
             <tr id="${rowId}" data-row-id="${rowId}">
                 <td class="text-center">
@@ -832,7 +848,13 @@
                 </td>
 
                 <td>
-                    <select class="form-select os-input row-mode-select fw-bold" style="min-width: 190px;" name="items[${rowId}][tracking_type]" onchange="onRowModeChange('${rowId}')">
+                    <select class="form-select os-input row-warehouse-select fw-bold" name="items[${rowId}][warehouse_id]" onchange="onRowWarehouseChange('${rowId}')" required>
+                        ${warehouseOptions}
+                    </select>
+                </td>
+
+                <td>
+                    <select class="form-select os-input row-mode-select fw-bold" style="min-width: 170px;" name="items[${rowId}][tracking_type]" onchange="onRowModeChange('${rowId}')">
                         <option value="simple">📦 Simple</option>
                         <option value="batch">🏷️ Batch Wise</option>
                         <option value="serial">📱 Serial / IMEI</option>
@@ -960,6 +982,10 @@
         });
     }
 
+    function onRowWarehouseChange(rowId) {
+        onRowProductChange(rowId);
+    }
+
     function onRowProductChange(rowId) {
         const row = $(`#${rowId}`);
         const pVal = row.find('.row-product-select').val();
@@ -969,8 +995,8 @@
         const vKey = opt.attr('data-variant') || null;
         row.find('.row-variant-key-hidden').val(vKey);
 
-        const globalWh = $('#globalWarehouseSelect').val();
-        fetch(`{{ url('opening-stock/product-details') }}/${encodeURIComponent(pVal)}?warehouse_id=${globalWh}`)
+        const rowWh = row.find('.row-warehouse-select').val() || $('#globalWarehouseSelect').val();
+        fetch(`{{ url('opening-stock/product-details') }}/${encodeURIComponent(pVal)}?warehouse_id=${rowWh}`)
         .then(r => r.json())
         .then(data => {
             if (data.success) {
@@ -1481,10 +1507,12 @@
                 return false;
             }
 
+            const rowWh = $(this).find('.row-warehouse-select').val() || globalWh;
+
             payloadItems.push({
                 product_id: pId,
                 variant_key: vKey,
-                warehouse_id: globalWh,
+                warehouse_id: rowWh,
                 tracking_type: mode,
                 qty: q,
                 cost_price: c,

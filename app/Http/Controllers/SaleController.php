@@ -1270,8 +1270,22 @@ class SaleController extends Controller
             // Looking at invoice blade: $item['qty'] is boxes.
             // Let's assume input 'qty' is BOXES.
 
-            $headerWhId = is_numeric($request->warehouse_id) ? (int)$request->warehouse_id : (auth()->user()->warehouse_id ?? 1);
-            $warehouses = is_array($request->warehouse_id) ? $request->warehouse_id : [];
+            $user = auth()->user();
+            $canSelectWarehouse = $user && (
+                (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                $user->can('warehouse.view')
+            );
+            $userDefaultWhId = (int) ($user?->warehouse_id ?: 1);
+
+            $headerWhId = $canSelectWarehouse
+                ? (is_numeric($request->warehouse_id) ? (int)$request->warehouse_id : $userDefaultWhId)
+                : $userDefaultWhId;
+
+            $warehouses = ($canSelectWarehouse && is_array($request->warehouse_id))
+                ? $request->warehouse_id
+                : array_fill(0, count($productIds), $userDefaultWhId);
+
             $defaultWhId = $headerWhId;
             $discounts = $request->item_disc ?? [];
 
@@ -1666,6 +1680,7 @@ class SaleController extends Controller
                             $saleReturnTotalAmount += $lineTotal;
                             $totalReturnAmountForNet += $lineTotal;
 
+                            $retWhId = (int) ($origSaleItem->warehouse_id ?: $headerWhId);
                             \App\Models\SaleReturnItem::create([
                                 'sale_return_id' => $returnHeader->id,
                                 'product_id' => $rIsManual ? null : $rPid,
@@ -1674,7 +1689,7 @@ class SaleController extends Controller
                                 'vendor_id' => $rIsManual ? $origSaleItem->vendor_id : null,
                                 'purchase_price' => $rIsManual ? $origSaleItem->purchase_price : null,
                                 'color' => $rColor,
-                                'warehouse_id' => 1,
+                                'warehouse_id' => $retWhId,
                                 'qty' => $rQty,
                                 'boxes' => $rQty / $ppb,
                                 'loose_pieces' => $rQty % $ppb,
@@ -1711,7 +1726,7 @@ class SaleController extends Controller
                                     } catch (\Exception $e) {}
                                 }
                                 // Restore stock
-                                $stock = \App\Models\WarehouseStock::where('warehouse_id', 1)
+                                $stock = \App\Models\WarehouseStock::where('warehouse_id', $retWhId)
                                     ->where('product_id', $rPid)
                                     ->lockForUpdate()
                                     ->first();
@@ -1723,7 +1738,7 @@ class SaleController extends Controller
                                     $stock->save();
                                 } else {
                                     \App\Models\WarehouseStock::create([
-                                        'warehouse_id' => 1,
+                                        'warehouse_id' => $retWhId,
                                         'product_id' => $rPid,
                                         'total_pieces' => $stockQty,
                                         'quantity' => $stockQty / $ppb,
@@ -2171,6 +2186,7 @@ class SaleController extends Controller
                     \App\Models\ProductBatch::where('id', $item->batch_id)->decrement('qty', $qtyPieces);
                 } elseif (!empty($item->batch_no)) {
                     \App\Models\ProductBatch::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $targetWhId)
                         ->where('batch_no', $item->batch_no)
                         ->decrement('qty', $qtyPieces);
                 }

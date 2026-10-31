@@ -28,7 +28,7 @@ class CustomerFieldService
 
         return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
             // If empty, auto-seed default fields on first run
-            if (CustomerFieldDefinition::count() === 0) {
+            if (CustomerFieldDefinition::where('field_key', 'customer_name')->doesntExist() || CustomerFieldDefinition::count() < 10) {
                 $this->seedDefaultDefinitions();
             }
 
@@ -203,10 +203,27 @@ class CustomerFieldService
             }
         }
 
+        // Also capture province, city, area directly if provided
+        foreach (['province', 'city', 'area'] as $locKey) {
+            if (array_key_exists($locKey, $input)) {
+                $systemAttributes[$locKey] = !empty($input[$locKey]) ? trim($input[$locKey]) : null;
+            }
+        }
+
         // Auto-assign customer_id if not present during creation
         if (!$isEdit && empty($customer->customer_id) && empty($systemAttributes['customer_id'])) {
             $maxId = (int) Customer::max('id') + 1;
             $systemAttributes['customer_id'] = 'CUST-' . str_pad($maxId, 4, '0', STR_PAD_LEFT);
+        }
+
+        // Ensure party_type has default
+        if (empty($customer->party_type) && empty($systemAttributes['party_type'])) {
+            $systemAttributes['party_type'] = 'customer';
+        }
+
+        // Ensure opening_balance is not null for new records
+        if (!$isEdit && (!isset($systemAttributes['opening_balance']) || $systemAttributes['opening_balance'] === null || $systemAttributes['opening_balance'] === '')) {
+            $systemAttributes['opening_balance'] = 0;
         }
 
         // Update system attributes on customer model
@@ -300,6 +317,29 @@ class CustomerFieldService
     {
         $defaults = [
             [
+                'field_key'         => 'party_type',
+                'label'             => 'Party Category (Role)',
+                'field_type'        => 'dropdown',
+                'is_system'         => true,
+                'system_column'     => 'party_type',
+                'section'           => 'Basic Information',
+                'options'           => ['customer', 'vendor', 'both'],
+                'default_value'     => 'customer',
+                'placeholder'       => 'Select Party Role',
+                'help_text'         => 'Select if Customer Only, Vendor Only, or Both',
+                'is_required'       => true,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => true,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => false,
+                'visible_in_export' => true,
+                'sort_order'        => 5,
+            ],
+            [
                 'field_key'         => 'customer_id',
                 'label'             => 'Customer Code',
                 'field_type'        => 'text',
@@ -316,7 +356,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 10,
             ],
@@ -359,7 +399,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 30,
             ],
@@ -390,7 +430,7 @@ class CustomerFieldService
                 'field_type'        => 'phone',
                 'is_system'         => true,
                 'system_column'     => 'mobile',
-                'section'           => 'Basic Information',
+                'section'           => 'Contact & Location',
                 'placeholder'       => '0300-1234567',
                 'help_text'         => 'Primary contact number',
                 'is_required'       => false,
@@ -401,7 +441,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 50,
             ],
@@ -411,7 +451,7 @@ class CustomerFieldService
                 'field_type'        => 'dropdown',
                 'is_system'         => true,
                 'system_column'     => 'zone',
-                'section'           => 'Basic Information',
+                'section'           => 'Contact & Location',
                 'placeholder'       => 'Select Region / Zone',
                 'help_text'         => 'Geographical zone or sales territory',
                 'is_required'       => false,
@@ -422,9 +462,73 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 60,
+            ],
+            [
+                'field_key'         => 'province',
+                'label'             => 'Province',
+                'field_type'        => 'dropdown',
+                'is_system'         => true,
+                'system_column'     => 'province',
+                'section'           => 'Contact & Location',
+                'placeholder'       => 'Select Province',
+                'help_text'         => 'Administrative province / state (Optional)',
+                'options'           => ['Sindh', 'Punjab', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad Capital Territory', 'Azad Jammu & Kashmir', 'Gilgit-Baltistan'],
+                'is_required'       => false,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => true,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => true,
+                'visible_in_export' => true,
+                'sort_order'        => 65,
+            ],
+            [
+                'field_key'         => 'city',
+                'label'             => 'City',
+                'field_type'        => 'text',
+                'is_system'         => true,
+                'system_column'     => 'city',
+                'section'           => 'Contact & Location',
+                'placeholder'       => 'e.g. Karachi, Hyderabad',
+                'help_text'         => 'City or metropolitan district (Optional)',
+                'is_required'       => false,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => true,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => true,
+                'visible_in_export' => true,
+                'sort_order'        => 66,
+            ],
+            [
+                'field_key'         => 'area',
+                'label'             => 'Area / Town',
+                'field_type'        => 'text',
+                'is_system'         => true,
+                'system_column'     => 'area',
+                'section'           => 'Contact & Location',
+                'placeholder'       => 'e.g. Latifabad, Saddar, Clifton',
+                'help_text'         => 'Neighborhood, town or local area (Optional)',
+                'is_required'       => false,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => true,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => true,
+                'visible_in_export' => true,
+                'sort_order'        => 67,
             ],
             [
                 'field_key'         => 'address',
@@ -453,7 +557,7 @@ class CustomerFieldService
                 'field_type'        => 'number',
                 'is_system'         => true,
                 'system_column'     => 'opening_balance',
-                'section'           => 'Financial Information',
+                'section'           => 'Financial Details',
                 'default_value'     => '0',
                 'placeholder'       => '0.00',
                 'help_text'         => 'Initial debit balance when customer was onboarded',
@@ -475,7 +579,7 @@ class CustomerFieldService
                 'field_type'        => 'number',
                 'is_system'         => true,
                 'system_column'     => 'balance_range',
-                'section'           => 'Financial Information',
+                'section'           => 'Financial Details',
                 'default_value'     => '0',
                 'placeholder'       => '0 = Unlimited',
                 'help_text'         => 'Maximum allowed outstanding balance. Enter 0 for unlimited.',
@@ -497,7 +601,7 @@ class CustomerFieldService
                 'field_type'        => 'dropdown',
                 'is_system'         => true,
                 'system_column'     => 'reminder_day',
-                'section'           => 'Financial Information',
+                'section'           => 'Financial Details',
                 'options'           => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
                 'placeholder'       => 'Select Reminder Day',
                 'help_text'         => 'Fixed weekly day for automated payment follow-up reminders',
@@ -552,7 +656,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 120,
             ],
@@ -572,7 +676,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 130,
             ],
@@ -602,7 +706,7 @@ class CustomerFieldService
                 'field_type'        => 'text',
                 'is_system'         => true,
                 'system_column'     => 'contact_person',
-                'section'           => 'Additional Contacts',
+                'section'           => 'Additional Information',
                 'placeholder'       => 'Manager / Representative Name',
                 'help_text'         => 'Name of primary coordinator or branch manager',
                 'is_required'       => false,
@@ -613,6 +717,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 150,
             ],
@@ -622,7 +727,7 @@ class CustomerFieldService
                 'field_type'        => 'email',
                 'is_system'         => true,
                 'system_column'     => 'email_address',
-                'section'           => 'Additional Contacts',
+                'section'           => 'Additional Information',
                 'placeholder'       => 'customer@example.com',
                 'help_text'         => 'Official email address for electronic invoices',
                 'is_required'       => false,
@@ -633,6 +738,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 160,
             ],
@@ -642,7 +748,7 @@ class CustomerFieldService
                 'field_type'        => 'dropdown',
                 'is_system'         => true,
                 'system_column'     => 'status',
-                'section'           => 'System Status',
+                'section'           => 'Additional Information',
                 'options'           => ['active', 'inactive'],
                 'default_value'     => 'active',
                 'help_text'         => 'Active or Inactive status in customer directory',
@@ -654,7 +760,7 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => false,
                 'visible_in_edit'   => true,
-                'visible_in_search' => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 170,
             ],
@@ -674,11 +780,11 @@ class CustomerFieldService
                 'visible_in_view'   => true,
                 'visible_in_create' => true,
                 'visible_in_edit'   => true,
+                'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 180,
             ],
         ];
-
         foreach ($defaults as $item) {
             CustomerFieldDefinition::updateOrCreate(
                 ['field_key' => $item['field_key']],

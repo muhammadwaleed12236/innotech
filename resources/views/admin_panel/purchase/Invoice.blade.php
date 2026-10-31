@@ -265,8 +265,11 @@
     <!-- Sticky Responsive Action Bar -->
     <div class="action-bar no-print">
         <div class="container-fluid d-flex align-items-center justify-content-between gap-2 px-2 px-md-3">
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary text-white fw-bold px-2 py-1" style="font-size: 0.75rem; white-space: nowrap;">#{{ $purchase->invoice_no }}</span>
+                @if(!empty($purchase->purchase_order_no))
+                    <span class="badge bg-secondary text-white fw-medium px-2 py-1" style="font-size: 0.75rem; white-space: nowrap;">Ref: {{ $purchase->purchase_order_no }}</span>
+                @endif
             </div>
             <div class="d-flex align-items-center gap-2">
                 <button onclick="window.print()" class="btn btn-primary btn-sm px-3 fw-bold shadow-sm d-flex align-items-center gap-1" style="border-radius: 8px; font-size: 0.8rem; white-space: nowrap;">
@@ -321,11 +324,9 @@
             <div class="col-12 col-md-4">
                 <div class="info-box">
                     <div class="info-box-header">Reference</div>
-                    <div><span class="info-label">Inv #:</span> <strong>INV-{{ $purchase->id }}</strong></div>
+                    <div><span class="info-label">Inv #:</span> <strong>{{ $purchase->invoice_no ?: ('PUR-' . str_pad($purchase->id, 3, '0', STR_PAD_LEFT)) }}</strong></div>
                     <div><span class="info-label">Date:</span> {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</div>
-                    @if(!empty($purchase->purchase_order_no))
-                        <div><span class="info-label">Vendor Inv #:</span> <strong>{{ $purchase->purchase_order_no }}</strong></div>
-                    @endif
+                    <div><span class="info-label">Vendor Ref #:</span> <strong>{{ $purchase->purchase_order_no ?: ($purchase->note ?: '—') }}</strong></div>
                 </div>
             </div>
         </div>

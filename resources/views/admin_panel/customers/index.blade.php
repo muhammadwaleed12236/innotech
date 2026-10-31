@@ -147,60 +147,127 @@
                     </div>
                 @endif
 
-                <!-- Dynamic Search & Filter Form -->
-                <div class="filter-card">
-                    <form method="GET" action="{{ route('customers.index') }}" class="row g-2 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted mb-1">Keyword Search</label>
-                            <input type="text" name="search" class="form-control form-control-sm" 
-                                placeholder="Search by name, code, phone, address..." 
-                                value="{{ request('search') }}">
+                <!-- Modern Single-Line Filter Bar -->
+                <div class="filter-card py-2.5 px-3 mb-3" style="background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                    <form method="GET" action="{{ route('customers.index') }}" class="d-flex align-items-center flex-wrap flex-xl-nowrap gap-2">
+                        
+                        <!-- 1. Universal Search Input -->
+                        <div class="flex-grow-1" style="min-width: 250px;">
+                            <div class="position-relative">
+                                <i class="fas fa-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px;"></i>
+                                <input type="text" name="search" class="form-control form-control-sm" 
+                                    placeholder="Search by name, code, phone, address..." 
+                                    value="{{ request('search') }}" 
+                                    style="height: 36px; padding-left: 34px !important; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                            </div>
                         </div>
 
-                        @foreach($searchFields as $sf)
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold text-muted mb-1">{{ $sf->label }}</label>
-                                @if($sf->field_type === 'dropdown')
-                                    <select name="{{ $sf->field_key }}" class="form-control form-control-sm">
-                                        <option value="">All {{ $sf->label }}</option>
-                                        @if($sf->system_column === 'customer_type' && isset($dropdownLookups['customer_types']))
-                                            @foreach($dropdownLookups['customer_types'] as $optVal => $optLabel)
-                                                <option value="{{ $optVal }}" {{ request($sf->field_key) == $optVal ? 'selected' : '' }}>
-                                                    {{ $optLabel }}
-                                                </option>
-                                            @endforeach
-                                        @elseif($sf->system_column === 'zone' && isset($dropdownLookups['zones']))
-                                            @foreach($dropdownLookups['zones'] as $optVal => $optLabel)
-                                                <option value="{{ $optVal }}" {{ request($sf->field_key) == $optVal ? 'selected' : '' }}>
-                                                    {{ $optLabel }}
-                                                </option>
-                                            @endforeach
-                                        @else
-                                            @foreach($sf->getParsedOptions() as $optVal => $optLabel)
-                                                <option value="{{ $optVal }}" {{ request($sf->field_key) == $optVal ? 'selected' : '' }}>
-                                                    {{ $optLabel }}
-                                                </option>
-                                            @endforeach
-                                        @endif
-                                    </select>
-                                @else
-                                    <input type="text" name="{{ $sf->field_key }}" 
-                                        class="form-control form-control-sm" 
-                                        placeholder="Filter {{ $sf->label }}"
-                                        value="{{ request($sf->field_key) }}">
-                                @endif
-                            </div>
-                        @endforeach
+                        <!-- 2. Province Filter -->
+                        <div style="width: 140px; flex-shrink: 0;">
+                            <select name="province" id="cust_search_province" class="form-select form-select-sm" 
+                                style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                                <option value="">All Provinces</option>
+                                @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
+                                    <option value="{{ $p }}" {{ request('province') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                        <div class="col-md-auto d-flex gap-2">
-                            <button type="submit" class="btn btn-sm btn-primary px-3">
+                        <!-- 3. City Filter -->
+                        <div style="width: 140px; flex-shrink: 0;">
+                            <select name="city" id="cust_search_city" class="form-select form-select-sm" 
+                                style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                                <option value="">All Cities</option>
+                                @foreach(app(\App\Services\LocationService::class)->getCities(request('province')) as $c)
+                                    <option value="{{ $c }}" {{ request('city') == $c ? 'selected' : '' }}>{{ $c }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- 4. Area Filter -->
+                        <div style="width: 140px; flex-shrink: 0;">
+                            <select name="area" id="cust_search_area" class="form-select form-select-sm" 
+                                style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                                <option value="">All Areas</option>
+                                @foreach(app(\App\Services\LocationService::class)->getAreas(request('city')) as $a)
+                                    <option value="{{ $a }}" {{ request('area') == $a ? 'selected' : '' }}>{{ $a }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- 5. Customer Type Dropdown -->
+                        <div style="width: 160px; flex-shrink: 0;">
+                            <select name="customer_type" class="form-select form-select-sm" style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                                <option value="">All Types</option>
+                                @if(isset($dropdownLookups['customer_types']))
+                                    @foreach($dropdownLookups['customer_types'] as $optVal => $optLabel)
+                                        <option value="{{ $optVal }}" {{ request('customer_type') == $optVal ? 'selected' : '' }}>
+                                            {{ $optLabel }}
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+
+                        <!-- 6. Action Buttons -->
+                        <div class="d-flex align-items-center gap-1" style="flex-shrink: 0;">
+                            <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold" style="height: 36px; border-radius: 8px; white-space: nowrap;">
                                 <i class="fas fa-search me-1"></i> Search
                             </button>
-                            <a href="{{ route('customers.index') }}" class="btn btn-sm btn-light border px-2" title="Reset Filters">
+                            <a href="{{ route('customers.index') }}" class="btn btn-light border btn-sm px-2.5 text-secondary" title="Reset Filters" style="height: 36px; border-radius: 8px; display: inline-flex; align-items: center;">
                                 <i class="fas fa-undo"></i>
                             </a>
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2.5" data-bs-toggle="collapse" data-bs-target="#moreCustomerFilters" data-toggle="collapse" data-target="#moreCustomerFilters" title="More Filters" style="height: 36px; border-radius: 8px; display: inline-flex; align-items: center;">
+                                <i class="fas fa-sliders-h"></i>
+                            </button>
                         </div>
                     </form>
+
+                    <!-- Collapsible Extra Filters (Cleanly Hidden by Default to keep 1 Line) -->
+                    <div class="collapse pt-2.5 mt-2 border-top {{ (request('party_type') || request('zone') || request('filer_type') || request('status') || request('ntn_number')) ? 'show' : '' }}" id="moreCustomerFilters">
+                        <form method="GET" action="{{ route('customers.index') }}" class="row g-2 align-items-center">
+                            <input type="hidden" name="search" value="{{ request('search') }}">
+                            <input type="hidden" name="province" value="{{ request('province') }}">
+                            <input type="hidden" name="city" value="{{ request('city') }}">
+                            <input type="hidden" name="area" value="{{ request('area') }}">
+                            <input type="hidden" name="customer_type" value="{{ request('customer_type') }}">
+
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small text-muted mb-1 fw-bold">Party Category (Role)</label>
+                                <select name="party_type" class="form-select form-select-sm" style="height: 34px; border-radius: 8px;">
+                                    <option value="">All Categories</option>
+                                    <option value="customer" {{ request('party_type') == 'customer' ? 'selected' : '' }}>Customer Only</option>
+                                    <option value="both" {{ request('party_type') == 'both' ? 'selected' : '' }}>Both (Customer & Vendor)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small text-muted mb-1 fw-bold">Region / Zone</label>
+                                <select name="zone" class="form-select form-select-sm" style="height: 34px; border-radius: 8px;">
+                                    <option value="">All Zones</option>
+                                    @if(isset($dropdownLookups['zones']))
+                                        @foreach($dropdownLookups['zones'] as $optVal => $optLabel)
+                                            <option value="{{ $optVal }}" {{ request('zone') == $optVal ? 'selected' : '' }}>
+                                                {{ $optLabel }}
+                                            </option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small text-muted mb-1 fw-bold">Tax Status (Filer)</label>
+                                <select name="filer_type" class="form-select form-select-sm" style="height: 34px; border-radius: 8px;">
+                                    <option value="">All Tax Status</option>
+                                    <option value="filer" {{ request('filer_type') == 'filer' ? 'selected' : '' }}>Filer</option>
+                                    <option value="non_filer" {{ request('filer_type') == 'non_filer' ? 'selected' : '' }}>Non-Filer</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 col-sm-6 d-flex align-items-end pt-3">
+                                <button type="submit" class="btn btn-sm btn-dark px-3 w-100 fw-semibold" style="height: 34px; border-radius: 8px;">
+                                    Apply Extra Filters
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Dynamic Customers Table -->
@@ -456,6 +523,16 @@
             </div>
         </div>
     </div>
+@include('admin_panel.partials.location_selector_script')
+<script>
+$(document).ready(function() {
+    setupLocationCascade({
+        province: '#cust_search_province',
+        city: '#cust_search_city',
+        area: '#cust_search_area'
+    });
+});
+</script>
 @endsection
 
 @section('scripts')
@@ -550,5 +627,15 @@
             });
         });
     });
+</script>
+@include('admin_panel.partials.location_selector_script')
+<script>
+$(document).ready(function() {
+    setupLocationCascade({
+        province: '#cust_search_province',
+        city: '#cust_search_city',
+        area: '#cust_search_area'
+    });
+});
 </script>
 @endsection
