@@ -140,7 +140,7 @@ class SaleController extends Controller
         $chequeAccount = \App\Models\Account::firstOrCreate(
             ['title' => 'Cheques in Hand'],
             [
-                'head_id' => 2,
+                'head_id' => (\App\Models\AccountHead::where('name', 'LIKE', '%cheque%')->orWhere('name', 'LIKE', '%cash%')->value('id')) ?: (\App\Models\AccountHead::firstOrCreate(['name' => 'Cheque'], ['type' => 'Asset', 'level' => 1, 'opening_balance' => 0])->id ?? null),
                 'opening_balance' => 0,
                 'current_balance' => 0,
                 'type' => 'Debit',
@@ -148,7 +148,7 @@ class SaleController extends Controller
             ]
         );
         $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+            $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank', 'Cheque', 'cheque']);
         })->where('status', 1)
             ->where('title', '!=', 'Cheques in Hand')
             ->orderBy('title')
@@ -258,7 +258,7 @@ class SaleController extends Controller
 
         // Get Cash/Bank accounts for payment voucher
         $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+            $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank', 'Cheque', 'cheque']);
         })->where('status', 1)
             ->where('title', '!=', 'Cheques in Hand')
             ->orderBy('title')
@@ -1044,7 +1044,7 @@ class SaleController extends Controller
         $chequeAccount = \App\Models\Account::where('title', 'Cheques in Hand')->first();
         $existingCheque = \App\Models\Cheque::where('note', 'like', "%#{$sale->invoice_no}%")->first();
         $accounts = \App\Models\Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+            $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank', 'Cheque', 'cheque']);
         })->where('status', 1)
             ->where('title', '!=', 'Cheques in Hand')
             ->orderBy('title')
