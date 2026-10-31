@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'Item Stock Report')
+
 @section('content')
 <style>
     /* ── ERP Item Stock & Movement Ledger System ── */
@@ -920,6 +922,10 @@ $(document).ready(function() {
         let csv = 'Item Code,Item Name,Category,Unit,Current Stock,Cartons,Avg Price (Rs),Stock Value (Rs)\n';
         $.each(currentReportData, function (i, r) {
             csv += `"${r.item_code || ''}","${r.item_name}","${r.category_name}","${r.unit_name}","${r.balance}","${r.cartons}","${r.average_price}","${r.stock_value}"\n`;
+        });
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'Item Stock Report';
         });
 
         let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

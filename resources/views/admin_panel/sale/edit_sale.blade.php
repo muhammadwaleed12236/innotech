@@ -1669,7 +1669,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="11" class="grid-total-label">GRID TOTAL:</td>
+                                <td colspan="11" class="grid-total-label">GRAND TOTAL:</td>
                                 <td class="grid-total-val">Rs <span id="totalAmount">0.00</span></td>
                                 <td></td>
                             </tr>

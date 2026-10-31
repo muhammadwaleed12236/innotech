@@ -1,5 +1,7 @@
 @extends('admin_panel.layout.app')
 
+@section('title', 'On Hand Stock Report')
+
 @section('content')
 <style>
     /* Standardized Sale Report Pattern Styling */
@@ -373,6 +375,11 @@
 
         // Print Handler
         $('.btnPrintReport').on('click', function() {
+
+        window.addEventListener('beforeprint', function() {
+            document.title = 'On Hand Stock Report';
+        });
+            document.title = 'On Hand Stock Report';
             window.print();
         });
 

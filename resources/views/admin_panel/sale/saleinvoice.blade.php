@@ -4,7 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - {{ $sale->invoice_no }}</title>
+@php
+    $rawCustomerName = $sale->customer_relation?->customer_name ?? ($sale->walkin_name ?? 'Walking Customer');
+    $cleanCustomerName = trim(preg_replace('/[\/\\:*?"<>|]/', ' ', $rawCustomerName));
+    $cleanCustomerName = preg_replace('/\s+/', ' ', $cleanCustomerName);
+    if (empty($cleanCustomerName)) {
+        $cleanCustomerName = 'Customer';
+    }
+    $pageTitle = $cleanCustomerName . ' - ' . $sale->invoice_no;
+@endphp
+    <title>{{ $pageTitle }}</title>
 
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
 
@@ -2290,6 +2299,7 @@
     <script>
 
         function printA4() {
+            document.title = "{{ addslashes($pageTitle) }}";
             let style = document.createElement('style');
             style.id = 'a4-print-style';
             style.innerHTML = `
@@ -2316,6 +2326,10 @@
                 }
             }, 500);
         }
+
+        window.addEventListener('beforeprint', function() {
+            document.title = "{{ addslashes($pageTitle) }}";
+        });
 
         function handleGoBack() {
 

@@ -4,7 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Challan - {{ $sale->invoice_no }}</title>
+@php
+    $rawCustomerName = $sale->customer_relation?->customer_name ?? ($sale->walkin_name ?? 'Walking Customer');
+    $cleanCustomerName = trim(preg_replace('/[\/\\:*?"<>|]/', ' ', $rawCustomerName));
+    $cleanCustomerName = preg_replace('/\s+/', ' ', $cleanCustomerName);
+    if (empty($cleanCustomerName)) {
+        $cleanCustomerName = 'Customer';
+    }
+    $pageTitle = $cleanCustomerName . ' - Delivery Challan - ' . $sale->invoice_no;
+@endphp
+    <title>{{ $pageTitle }}</title>
     <!-- Use Bootstrap for grid and utilities -->
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
     <style>
@@ -450,6 +459,9 @@
     </div>
 
     <script>
+        window.addEventListener('beforeprint', function() {
+            document.title = "{{ addslashes($pageTitle) }}";
+        });
         function handleGoBack() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('from') === 'pos' || (document.referrer && document.referrer.indexOf('/pos') !== -1)) {

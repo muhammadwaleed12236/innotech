@@ -1790,7 +1790,7 @@
                             <tr>
                                 <td colspan="100" class="p-2 px-3 bg-light border-top">
                                     <div class="d-flex justify-content-end align-items-center gap-3">
-                                        <span class="grid-total-label mb-0" style="padding-right:0 !important; font-size: 13px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: .5px;">GRID TOTAL:</span>
+                                        <span class="grid-total-label mb-0" style="padding-right:0 !important; font-size: 13px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: .5px;">GRAND TOTAL:</span>
                                         <span class="grid-total-val mb-0" style="font-size: 17px; font-weight: 800; color: #0F172A;">Rs <span id="totalAmount">0.00</span></span>
                                     </div>
                                 </td>
