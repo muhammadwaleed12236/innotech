@@ -26,14 +26,24 @@ class CustomerFieldService
             $this->clearCache();
         }
 
-        return Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
-            // If empty, auto-seed default fields on first run
-            if (CustomerFieldDefinition::where('field_key', 'customer_name')->doesntExist() || CustomerFieldDefinition::count() < 10) {
-                $this->seedDefaultDefinitions();
-            }
+        // Always ensure essential default customer fields exist in database
+        if (CustomerFieldDefinition::where('field_key', 'customer_name')->doesntExist() || CustomerFieldDefinition::count() < 10) {
+            $this->seedDefaultDefinitions();
+            $this->clearCache();
+        }
 
+        $all = Cache::remember(self::CACHE_KEY, self::CACHE_TTL, function () {
             return CustomerFieldDefinition::sorted()->get();
         });
+
+        // Double check in case stale cache had fewer fields
+        if ($all->count() < 10 || $all->where('field_key', 'customer_name')->isEmpty()) {
+            $this->seedDefaultDefinitions();
+            $this->clearCache();
+            $all = CustomerFieldDefinition::sorted()->get();
+        }
+
+        return $all;
     }
 
     /**
