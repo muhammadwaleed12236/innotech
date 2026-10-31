@@ -553,6 +553,16 @@
                     </div>
 
                     {{-- Warehouse Select --}}
+                    @php
+                        $user = auth()->user();
+                        $canSelectWarehouse = $user && (
+                            (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                            (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                            $user->can('warehouse.view')
+                        );
+                        $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
+                    @endphp
+                    @if($canSelectWarehouse)
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 text-nowrap fw-bold"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse:</label>
                         <select class="form-select form-select-sm fw-bold border-primary shadow-sm" name="warehouse_id" id="warehouseSelect" style="min-width: 170px;">
@@ -563,6 +573,9 @@
                             @endforeach
                         </select>
                     </div>
+                    @else
+                        <input type="hidden" name="warehouse_id" id="warehouseSelect" value="{{ $purchase->warehouse_id ?? $userWarehouseId }}">
+                    @endif
 
                     {{-- Previous Balance --}}
                     <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-2 ms-auto">
@@ -591,7 +604,9 @@
                             <tr>
                                 <th style="width: 36px;" class="text-center">#</th>
                                 <th class="col-product">Product Description</th>
-                                <th style="width: 140px; min-width: 130px;">Warehouse</th>
+                                @if($canSelectWarehouse)
+                                    <th style="width: 140px; min-width: 130px;">Warehouse</th>
+                                @endif
                                 <th style="width: 80px;">Unit</th>
                                 <th style="width: 90px;">Qty</th>
                                 <th style="width: 120px;">Price</th>
@@ -676,6 +691,7 @@
                                             @endif
                                         </div>
                                     </td>
+                                    @if($canSelectWarehouse)
                                     <td>
                                         <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
                                             @foreach ($Warehouse as $w)
@@ -685,6 +701,9 @@
                                             @endforeach
                                         </select>
                                     </td>
+                                    @else
+                                        <input type="hidden" name="warehouse_id[]" class="row-warehouse-select" value="{{ $item->warehouse_id ?: ($purchase->warehouse_id ?? $userWarehouseId) }}">
+                                    @endif
                                     <td class="text-center align-middle">
                                         <button type="button" class="btn btn-sm {{ $btnClass }} fw-bold unit-toggle-btn" data-unit="{{ $unitName }}" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)">{{ $unitName }}</button>
                                         <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
@@ -712,7 +731,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="8" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
+                                <td colspan="{{ $canSelectWarehouse ? 8 : 7 }}" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
                                 <td class="text-end fw-bold fs-6 text-dark py-2 pe-2" style="background:#F8FAFC;"><span id="totalAmount">0.00</span></td>
                                 <td style="background:#F8FAFC;"></td>
                             </tr>
@@ -1268,13 +1287,24 @@
             });
 
             function addBlankRow() {
-                const curHeaderWh = $('#warehouseSelect').val() || 1;
-                let whOptionsHtml = '';
-                @if(isset($Warehouse) && count($Warehouse) > 0)
-                    @foreach($Warehouse as $w)
-                        whOptionsHtml += `<option value="{{ $w->id }}" ${curHeaderWh == '{{ $w->id }}' ? 'selected' : ''}>{{ addslashes($w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id)) }}</option>`;
-                    @endforeach
-                @endif
+                const canSelectWh = {{ $canSelectWarehouse ? 'true' : 'false' }};
+                const userDefaultWh = {{ $userWarehouseId ?? 1 }};
+                const curHeaderWh = $('#warehouseSelect').val() || userDefaultWh;
+                let whCellHtml = `<input type="hidden" name="warehouse_id[]" class="row-warehouse-select" value="${userDefaultWh}">`;
+
+                if (canSelectWh) {
+                    let whOptionsHtml = '';
+                    @if(isset($Warehouse) && count($Warehouse) > 0)
+                        @foreach($Warehouse as $w)
+                            whOptionsHtml += `<option value="{{ $w->id }}" ${curHeaderWh == '{{ $w->id }}' ? 'selected' : ''}>{{ addslashes($w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id)) }}</option>`;
+                        @endforeach
+                    @endif
+                    whCellHtml = `<td>
+                        <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
+                            ${whOptionsHtml}
+                        </select>
+                    </td>`;
+                }
 
                 const html = `
                 <tr>
@@ -1300,11 +1330,7 @@
                         <input type="hidden" class="tracking-type-hidden" name="tracking_type[]" value="">
                         <div class="row-tracking-badges d-flex flex-wrap gap-1 px-1 py-0"></div>
                     </td>
-                    <td>
-                        <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
-                            ${whOptionsHtml}
-                        </select>
-                    </td>
+                    ${whCellHtml}
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)">Pcs</button>
                         <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">

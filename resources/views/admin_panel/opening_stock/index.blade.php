@@ -466,6 +466,16 @@
 
                 {{-- Global Controls Row --}}
                 <div class="row g-3 align-items-end mb-4 bg-light p-3 rounded-4 border">
+                    @php
+                        $user = auth()->user();
+                        $canSelectWarehouse = $user && (
+                            (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                            (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                            $user->can('warehouse.view')
+                        );
+                        $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
+                    @endphp
+                    @if($canSelectWarehouse)
                     <div class="col-md-3">
                         <label class="os-label">TARGET WAREHOUSE <span class="text-danger">*</span></label>
                         <select id="globalWarehouseSelect" class="form-select os-input fw-bold" required>
@@ -474,6 +484,9 @@
                             @endforeach
                         </select>
                     </div>
+                    @else
+                        <input type="hidden" id="globalWarehouseSelect" value="{{ $userWarehouseId ?? 1 }}">
+                    @endif
 
                     <div class="col-md-6">
                         <label class="os-label">QUICK ADD PRODUCT TO ENTRY GRID</label>
@@ -499,7 +512,9 @@
                             <tr>
                                 <th class="text-center" style="width: 35px;">#</th>
                                 <th style="width: 28%;">PRODUCT & VARIANT <span class="text-danger">*</span></th>
-                                <th style="width: 175px;">WAREHOUSE <span class="text-danger">*</span></th>
+                                @if($canSelectWarehouse)
+                                    <th style="width: 175px;">WAREHOUSE <span class="text-danger">*</span></th>
+                                @endif
                                 <th style="width: 180px;">TRACKING MODE</th>
                                 <th>ENTRY DETAILS & SPECIFICATIONS</th>
                                 <th class="text-end" style="width: 120px;">TOTAL (PKR)</th>
@@ -847,11 +862,15 @@
                     <input type="hidden" class="row-variant-key-hidden" name="items[${rowId}][variant_key]" value="">
                 </td>
 
+                @if($canSelectWarehouse)
                 <td>
                     <select class="form-select os-input row-warehouse-select fw-bold" name="items[${rowId}][warehouse_id]" onchange="onRowWarehouseChange('${rowId}')" required>
                         ${warehouseOptions}
                     </select>
                 </td>
+                @else
+                    <input type="hidden" class="row-warehouse-select" name="items[${rowId}][warehouse_id]" value="${curGlobalWh || {{ $userWarehouseId ?? 1 }}}">
+                @endif
 
                 <td>
                     <select class="form-select os-input row-mode-select fw-bold" style="min-width: 170px;" name="items[${rowId}][tracking_type]" onchange="onRowModeChange('${rowId}')">

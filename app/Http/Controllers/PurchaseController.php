@@ -762,7 +762,7 @@ class PurchaseController extends Controller
 
             $rowWhIds = ($canSelectWarehouse && is_array($request->warehouse_id))
                 ? $request->warehouse_id
-                : array_fill(0, count($pids), $userDefaultWhId);
+                : array_fill(0, count($validated['product_id'] ?? []), $userDefaultWhId);
 
             // Status Logic
             $status = ($request->action === 'save_only') ? 'draft' : 'approved';
@@ -1446,7 +1446,7 @@ class PurchaseController extends Controller
 
             $rowWhIds = ($canSelectWarehouse && is_array($request->warehouse_id))
                 ? $request->warehouse_id
-                : array_fill(0, count($pids), $userDefaultWhId);
+                : array_fill(0, count($validated['product_id'] ?? []), $userDefaultWhId);
 
             // Map old totals per product for Stock Delta Logic (in base pieces)
             $oldMap = $purchase->items->groupBy('product_id')->map(function ($items) {

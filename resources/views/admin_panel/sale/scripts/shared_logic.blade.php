@@ -1,6 +1,18 @@
 
 
 <script>
+    @php
+        $user = auth()->user();
+        $canSelectWarehouse = $user && (
+            (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+            (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+            $user->can('warehouse.view')
+        );
+        $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
+    @endphp
+    const CAN_SELECT_WAREHOUSE = {{ $canSelectWarehouse ? 'true' : 'false' }};
+    const USER_DEFAULT_WH_ID = {{ $userWarehouseId ?? 1 }};
+
     let lastSelectedPriceMode = 'retail';
     /* =========================================
        SHARED SALES LOGIC (Add/Edit)
@@ -294,18 +306,22 @@
       <input type="hidden" class="size-mode-text">
     </td>
 
+    @if($canSelectWarehouse)
     <!-- WAREHOUSE -->
     <td class="col-warehouse" style="width: 140px; min-width: 130px;">
       <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
         @if(isset($warehouse) && count($warehouse) > 0)
           @foreach($warehouse as $wh)
-            <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $wh->id ? 'selected' : '' }}>
+            <option value="{{ $wh->id }}" {{ ($userWarehouseId ?? 1) == $wh->id ? 'selected' : '' }}>
               {{ $wh->warehouse_name }}
             </option>
           @endforeach
         @endif
       </select>
     </td>
+    @else
+    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $userWarehouseId ?? 1 }}">
+    @endif
 
     <!-- STOCK -->
     <td class="col-stock">

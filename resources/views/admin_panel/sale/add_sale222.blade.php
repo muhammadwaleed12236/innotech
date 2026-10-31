@@ -1524,19 +1524,32 @@
                         </div>
                     </div>
 
+                    @php
+                        $user = auth()->user();
+                        $canSelectWarehouse = $user && (
+                            (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                            (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                            $user->can('warehouse.view')
+                        );
+                        $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
+                    @endphp
+                    @if($canSelectWarehouse)
                     {{-- Warehouse Selector --}}
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 fw-bold text-secondary" for="headerWarehouseSelect"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse:</label>
                         <select name="warehouse_id" id="headerWarehouseSelect" class="form-select form-select-sm fw-bold border-primary shadow-sm" style="min-width: 170px; height: 38px;">
                             @if(isset($warehouse) && count($warehouse) > 0)
                                 @foreach($warehouse as $wh)
-                                    <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $wh->id ? 'selected' : '' }}>
+                                    <option value="{{ $wh->id }}" {{ ($userWarehouseId ?? 1) == $wh->id ? 'selected' : '' }}>
                                         {{ $wh->warehouse_name }}
                                     </option>
                                 @endforeach
                             @endif
                         </select>
                     </div>
+                    @else
+                        <input type="hidden" name="warehouse_id" id="headerWarehouseSelect" value="{{ $userWarehouseId ?? 1 }}">
+                    @endif
 
                     {{-- Date --}}
                     <div class="d-flex align-items-center gap-2">
@@ -1669,7 +1682,9 @@
                             <tr>
                                 <th class="col-index-th">#</th>
                                 <th class="col-product-th col-product">Product</th>
-                                <th class="col-warehouse-th text-center" style="width: 140px; min-width: 130px;">Warehouse</th>
+                                @if($canSelectWarehouse)
+                                    <th class="col-warehouse-th text-center" style="width: 140px; min-width: 130px;">Warehouse</th>
+                                @endif
                                 <th class="c-stock-th">Stock</th>
                                 <th class="col-qty-th">Qty</th>
                                 <th class="c-size-th">Size</th>
@@ -1722,17 +1737,21 @@
                                 </td>
 
                                 <!-- WAREHOUSE -->
+                                @if($canSelectWarehouse)
                                 <td class="col-warehouse" style="width: 140px; min-width: 130px;">
                                     <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
                                         @if(isset($warehouse) && count($warehouse) > 0)
                                             @foreach($warehouse as $wh)
-                                                <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $wh->id ? 'selected' : '' }}>
+                                                <option value="{{ $wh->id }}" {{ ($userWarehouseId ?? 1) == $wh->id ? 'selected' : '' }}>
                                                     {{ $wh->warehouse_name }}
                                                 </option>
                                             @endforeach
                                         @endif
                                     </select>
                                 </td>
+                                @else
+                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $userWarehouseId ?? 1 }}">
+                                @endif
 
                                 <!-- STOCK -->
                                 <td class="col-stock text-center">
