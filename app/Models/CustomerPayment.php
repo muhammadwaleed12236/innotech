@@ -21,4 +21,9 @@ class CustomerPayment extends Model
     {
         return $this->belongsTo(Customer::class);
     }
+
+    public function cheque()
+    {
+        return $this->hasOne(Cheque::class, 'customer_payment_id');
+    }
 }

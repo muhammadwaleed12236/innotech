@@ -225,6 +225,134 @@
             -moz-appearance: textfield; 
             appearance: textfield;
         }
+
+        /* Premium Cheque Details Box inside Table */
+        .cheque-details-row td {
+            background: #f8fafc !important;
+            padding: 10px 14px !important;
+            border-top: none !important;
+        }
+
+        .chq-card-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid var(--rv-primary) !important;
+            border-radius: 12px;
+            padding: 14px 18px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .chq-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chq-card-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chq-card-title .icon-holder {
+            width: 32px;
+            height: 32px;
+            background: #e0e7ff;
+            color: var(--rv-primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+        }
+
+        .chq-badge-status {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+            font-size: 0.73rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .chq-badge-alert {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            font-size: 0.73rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .chq-field-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #475569;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .chq-input-group {
+            display: flex;
+            align-items: stretch;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            transition: all 0.2s ease;
+            overflow: hidden;
+        }
+
+        .chq-input-group:focus-within {
+            border-color: var(--rv-primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+        }
+
+        .chq-input-group .input-icon {
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .chq-input-group input {
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            color: #1e293b;
+            width: 100%;
+            background: transparent;
+        }
+
+        .chq-input-group input::placeholder {
+            color: #94a3b8;
+        }
     </style>
 
     <div class="main-content">
@@ -322,7 +450,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
+                                    <tr class="voucher-row">
                                         <td>
                                             <select name="row_account_head[]" class="rv-input rowAccountHead">
                                                 <option value="">Select Head</option>
@@ -330,6 +458,9 @@
                                                     <option value="{{ $head->id }}">{{ $head->name }}</option>
                                                 @endforeach
                                             </select>
+                                            <input type="hidden" name="row_cheque_no[]" class="row-cheque-no" value="">
+                                            <input type="hidden" name="row_cheque_bank[]" class="row-cheque-bank" value="">
+                                            <input type="hidden" name="row_cheque_date[]" class="row-cheque-date" value="">
                                         </td>
                                         <td>
                                             <select name="row_account_id[]" class="rv-input rowAccountSub">
@@ -345,6 +476,59 @@
                                             <button type="button" class="btn btn-outline-danger btn-sm removeRow" title="Remove">
                                                 <i class="bi bi-trash"></i>
                                             </button>
+                                        </td>
+                                    </tr>
+                                    <tr class="cheque-details-row" style="display: none;">
+                                        <td colspan="4" class="border-top-0">
+                                            <div class="chq-card-box">
+                                                <div class="chq-card-header">
+                                                    <div class="chq-card-title">
+                                                        <span class="icon-holder">
+                                                            <i class="bi bi-credit-card-2-front"></i>
+                                                        </span>
+                                                        <div>
+                                                            <span>Cheque Receiving Details</span>
+                                                            <span class="chq-badge-status ms-2">
+                                                                <i class="bi bi-check2-circle"></i> Auto-saved to Cheque Management
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <span class="chq-badge-alert">
+                                                            <i class="bi bi-bell"></i> 3-Day & Due Date Alerts Active
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="row g-3">
+                                                    <div class="col-md-4">
+                                                        <label class="chq-field-label">
+                                                            <i class="bi bi-hash text-primary"></i> Cheque Number <span class="text-danger">*</span>
+                                                        </label>
+                                                        <div class="chq-input-group">
+                                                            <span class="input-icon"><i class="bi bi-upc-scan"></i></span>
+                                                            <input type="text" class="chq-no-field" placeholder="e.g. 00482910">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="chq-field-label">
+                                                            <i class="bi bi-bank text-primary"></i> Customer Bank Name <span class="text-danger">*</span>
+                                                        </label>
+                                                        <div class="chq-input-group">
+                                                            <span class="input-icon"><i class="bi bi-building"></i></span>
+                                                            <input type="text" class="chq-bank-field" placeholder="e.g. Meezan Bank, HBL, MCB">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="chq-field-label">
+                                                            <i class="bi bi-calendar-event text-primary"></i> Cheque / Due Date (PDC) <span class="text-danger">*</span>
+                                                        </label>
+                                                        <div class="chq-input-group">
+                                                            <span class="input-icon"><i class="bi bi-calendar3"></i></span>
+                                                            <input type="date" class="chq-date-field" value="{{ now()->toDateString() }}">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -501,21 +685,122 @@
 
             // Row Logic (destination accounts)
             $(document).on('change', '.rowAccountHead', function() {
-                let headId = $(this).val();
-                let $subSelect = $(this).closest('tr').find('.rowAccountSub');
+                let $headSelect = $(this);
+                let headId = $headSelect.val();
+                let headText = $headSelect.find('option:selected').text().trim().toLowerCase();
+                let $row = $headSelect.closest('tr.voucher-row');
+                let $chqRow = $row.next('tr.cheque-details-row');
+                let $subSelect = $row.find('.rowAccountSub');
 
                 if (!headId) {
                     $subSelect.html('<option value="">Select Account</option>');
+                    $chqRow.hide();
+                    $row.find('.row-cheque-no').val('');
+                    $row.find('.row-cheque-bank').val('');
+                    $row.find('.row-cheque-date').val('');
                     return;
                 }
+
+                let isCheque = headText.indexOf('cheque') !== -1;
 
                 $.get('{{ url("get-accounts-by-head") }}/' + headId, function(res) {
                     let html = '<option value="">Select Account</option>';
                     res.forEach(acc => {
-                        html += `<option value="${acc.id}">${acc.title}</option>`;
+                        html += `<option value="${acc.id}" data-title="${acc.title.toLowerCase()}">${acc.title}</option>`;
                     });
                     $subSelect.html(html);
+
+                    if (res.length === 1) {
+                        $subSelect.val(res[0].id).trigger('change');
+                    }
+
+                    if (isCheque) {
+                        $chqRow.show();
+                        let receiptDate = $('input[name="receipt_date"]').val() || '{{ now()->toDateString() }}';
+                        if (!$chqRow.find('.chq-date-field').val()) {
+                            $chqRow.find('.chq-date-field').val(receiptDate);
+                        }
+                        $row.find('.row-cheque-no').val($chqRow.find('.chq-no-field').val());
+                        $row.find('.row-cheque-bank').val($chqRow.find('.chq-bank-field').val());
+                        $row.find('.row-cheque-date').val($chqRow.find('.chq-date-field').val());
+                    } else {
+                        let subText = $subSelect.find('option:selected').text().trim().toLowerCase();
+                        if (subText.indexOf('cheque') === -1) {
+                            $chqRow.hide();
+                            $row.find('.row-cheque-no').val('');
+                            $row.find('.row-cheque-bank').val('');
+                            $row.find('.row-cheque-date').val('');
+                        }
+                    }
                 });
+            });
+
+            $(document).on('change', '.rowAccountSub', function() {
+                let $subSelect = $(this);
+                let subText = $subSelect.find('option:selected').text().trim().toLowerCase();
+                let $row = $subSelect.closest('tr.voucher-row');
+                let $chqRow = $row.next('tr.cheque-details-row');
+
+                if (subText.indexOf('cheque') !== -1) {
+                    $chqRow.show();
+                    let receiptDate = $('input[name="receipt_date"]').val() || '{{ now()->toDateString() }}';
+                    if (!$chqRow.find('.chq-date-field').val()) {
+                        $chqRow.find('.chq-date-field').val(receiptDate);
+                    }
+                    $row.find('.row-cheque-no').val($chqRow.find('.chq-no-field').val());
+                    $row.find('.row-cheque-bank').val($chqRow.find('.chq-bank-field').val());
+                    $row.find('.row-cheque-date').val($chqRow.find('.chq-date-field').val());
+                }
+            });
+
+            // Sync cheque inputs to row hidden inputs
+            $(document).on('input change', '.chq-no-field', function() {
+                let $chqRow = $(this).closest('tr.cheque-details-row');
+                let $row = $chqRow.prev('tr.voucher-row');
+                $row.find('.row-cheque-no').val($(this).val());
+            });
+
+            $(document).on('input change', '.chq-bank-field', function() {
+                let $chqRow = $(this).closest('tr.cheque-details-row');
+                let $row = $chqRow.prev('tr.voucher-row');
+                $row.find('.row-cheque-bank').val($(this).val());
+            });
+
+            function updatePdcHint($input) {
+                let val = $input.val();
+                let $col = $input.closest('.col-md-4');
+                $col.find('.pdc-hint').remove();
+
+                if (!val) return;
+
+                let parts = val.split('-');
+                if (parts.length !== 3) return;
+
+                let selected = new Date(parts[0], parts[1] - 1, parts[2]);
+                let today = new Date();
+                today.setHours(0, 0, 0, 0);
+                selected.setHours(0, 0, 0, 0);
+
+                let diffTime = selected.getTime() - today.getTime();
+                let diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 0) {
+                    let badge = diffDays <= 3 
+                        ? '<span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1 mt-1 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;"><i class="bi bi-bell-fill text-warning"></i> PDC (Due in ' + diffDays + ' day' + (diffDays > 1 ? 's' : '') + ' - Advance Alert active)</span>'
+                        : '<span class="badge bg-info-subtle text-primary border border-info px-2 py-1 mt-1 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;"><i class="bi bi-clock-history"></i> PDC (Maturity in ' + diffDays + ' days)</span>';
+                    $col.append('<div class="pdc-hint">' + badge + '</div>');
+                } else if (diffDays === 0) {
+                    $col.append('<div class="pdc-hint"><span class="badge bg-success-subtle text-success border border-success px-2 py-1 mt-1 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;"><i class="bi bi-check-circle-fill"></i> Due Today (Deposit in Bank)</span></div>');
+                } else {
+                    $col.append('<div class="pdc-hint"><span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1 mt-1 d-inline-flex align-items-center gap-1" style="font-size:0.75rem;"><i class="bi bi-exclamation-octagon"></i> Backdated Cheque (' + Math.abs(diffDays) + ' days ago)</span></div>');
+                }
+            }
+
+            $(document).on('input change', '.chq-date-field', function() {
+                let $chqRow = $(this).closest('tr.cheque-details-row');
+                let $row = $chqRow.prev('tr.voucher-row');
+                $row.find('.row-cheque-date').val($(this).val());
+                updatePdcHint($(this));
             });
 
             // Totals
@@ -543,8 +828,9 @@
 
             // Add Row
             $('#addNewRow').on('click', function() {
+                let receiptDate = $('input[name="receipt_date"]').val() || '{{ now()->toDateString() }}';
                 let newRow = `
-                <tr>
+                <tr class="voucher-row">
                     <td>
                         <select name="row_account_head[]" class="rv-input rowAccountHead">
                             <option value="">Select Head</option>
@@ -552,6 +838,9 @@
                                 <option value="{{ $head->id }}">{{ $head->name }}</option>
                             @endforeach
                         </select>
+                        <input type="hidden" name="row_cheque_no[]" class="row-cheque-no" value="">
+                        <input type="hidden" name="row_cheque_bank[]" class="row-cheque-bank" value="">
+                        <input type="hidden" name="row_cheque_date[]" class="row-cheque-date" value="">
                     </td>
                     <td>
                         <select name="row_account_id[]" class="rv-input rowAccountSub">
@@ -565,13 +854,68 @@
                         <button type="button" class="btn btn-outline-danger btn-sm removeRow"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
+                <tr class="cheque-details-row" style="display: none;">
+                    <td colspan="4" class="border-top-0">
+                        <div class="chq-card-box">
+                            <div class="chq-card-header">
+                                <div class="chq-card-title">
+                                    <span class="icon-holder">
+                                        <i class="bi bi-credit-card-2-front"></i>
+                                    </span>
+                                    <div>
+                                        <span>Cheque Receiving Details</span>
+                                        <span class="chq-badge-status ms-2">
+                                            <i class="bi bi-check2-circle"></i> Auto-saved to Cheque Management
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="chq-badge-alert">
+                                        <i class="bi bi-bell"></i> 3-Day & Due Date Alerts Active
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="chq-field-label">
+                                        <i class="bi bi-hash text-primary"></i> Cheque Number <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="chq-input-group">
+                                        <span class="input-icon"><i class="bi bi-upc-scan"></i></span>
+                                        <input type="text" class="chq-no-field" placeholder="e.g. 00482910">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="chq-field-label">
+                                        <i class="bi bi-bank text-primary"></i> Customer Bank Name <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="chq-input-group">
+                                        <span class="input-icon"><i class="bi bi-building"></i></span>
+                                        <input type="text" class="chq-bank-field" placeholder="e.g. Meezan Bank, HBL, MCB">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="chq-field-label">
+                                        <i class="bi bi-calendar-event text-primary"></i> Cheque / Due Date (PDC) <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="chq-input-group">
+                                        <span class="input-icon"><i class="bi bi-calendar3"></i></span>
+                                        <input type="date" class="chq-date-field" value="${receiptDate}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
             `;
                 $('#voucherTable tbody').append(newRow);
             });
 
             $(document).on('click', '.removeRow', function() {
-                if ($('#voucherTable tbody tr').length > 1) {
-                    $(this).closest('tr').remove();
+                if ($('#voucherTable tbody tr.voucher-row').length > 1) {
+                    let $row = $(this).closest('tr.voucher-row');
+                    $row.next('tr.cheque-details-row').remove();
+                    $row.remove();
                     calculateTotal();
                 }
             });
@@ -598,6 +942,31 @@
                         icon: 'warning',
                         title: 'Amount Required',
                         text: 'Please enter a valid Amount greater than 0.'
+                    });
+                    return;
+                }
+
+                let missingCheque = false;
+                $('#voucherTable tbody tr.voucher-row').each(function() {
+                    let headText = $(this).find('.rowAccountHead option:selected').text().trim().toLowerCase();
+                    let accText = $(this).find('.rowAccountSub option:selected').text().trim().toLowerCase();
+                    let isCheque = headText.indexOf('cheque') !== -1 || accText.indexOf('cheque') !== -1;
+                    let chqNo = $(this).find('.row-cheque-no').val().trim();
+                    let chqBank = $(this).find('.row-cheque-bank').val().trim();
+
+                    if (isCheque) {
+                        if (!chqNo || !chqBank) {
+                            missingCheque = true;
+                            return false;
+                        }
+                    }
+                });
+
+                if (missingCheque) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Cheque Details Required',
+                        text: 'Please enter Cheque Number and Customer Bank Name for the Cheque row.'
                     });
                     return;
                 }

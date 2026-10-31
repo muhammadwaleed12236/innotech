@@ -6,6 +6,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ChequeController;
 use App\Http\Controllers\CustomerConfigurationController;
 use App\Http\Controllers\DynamicFieldConfigurationController;
 use App\Http\Controllers\CustomerImportExportController;
@@ -262,6 +263,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/customer/ledger/{id}', [CustomerController::class, 'getCustomerLedger']);
     Route::delete('/customer-payments/{id}', [CustomerController::class, 'destroy_payment'])->name('customer.payments.destroy');
 
+    // Cheque Management Routes
+    Route::get('/cheques', [ChequeController::class, 'index'])->name('cheques.index');
+    Route::post('/cheques', [ChequeController::class, 'store'])->name('cheques.store');
+    Route::post('/cheques/{id}/clear', [ChequeController::class, 'markCleared'])->name('cheques.clear');
+    Route::post('/cheques/{id}/bounce', [ChequeController::class, 'markBounced'])->name('cheques.bounce');
+    Route::delete('/cheques/{id}', [ChequeController::class, 'destroy'])->name('cheques.destroy');
+    Route::get('/cheques/alerts', [ChequeController::class, 'getAlerts'])->name('cheques.alerts');
+
     // Customer Type Routes
     Route::get('/customer-types', [CustomerTypeController::class, 'index'])->middleware('permission:customer_types.view')->name('customer-types.index');
     Route::post('/customer-types/store', [CustomerTypeController::class, 'store'])->middleware('permission:customer_types.create|customer_types.edit')->name('customer-types.store');
@@ -282,13 +291,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/vendor/{vendor}/ledger-json', [VendorController::class, 'getVendorLedgerJson'])->name('vendor.ledger.json');
 
     // Warehouse Routes
-    // ///
     Route::get('/warehouses/get/', [WarehouseController::class, 'getWarehouses'])->name('warehouses.get');
-
-    // ///
-    Route::get('/warehouse', [WarehouseController::class, 'index'])->middleware('permission:warehouse.view');
-    Route::post('/warehouse/store', [WarehouseController::class, 'store'])->middleware('permission:warehouse.create|warehouse.edit');
-    Route::get('/warehouse/delete/{id}', [WarehouseController::class, 'delete'])->middleware('permission:warehouse.delete');
+    Route::get('/warehouse', [WarehouseController::class, 'index'])->name('warehouse.index')->middleware('permission:warehouse.view');
+    Route::post('/warehouse/store', [WarehouseController::class, 'store'])->name('warehouse.store')->middleware('permission:warehouse.create|warehouse.edit');
+    Route::get('/warehouse/delete/{id}', [WarehouseController::class, 'delete'])->name('warehouse.delete')->middleware('permission:warehouse.delete');
+    Route::get('/warehouse/working-report', [WarehouseController::class, 'workingReport'])->name('warehouse.working_report');
+    Route::get('/report/warehouse', [WarehouseController::class, 'workingReport'])->name('report.warehouse');
 
     // Branches
     // Branches
@@ -577,6 +585,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/modules/list', function () {
         return response()->json(\Illuminate\Support\Facades\DB::table('modules')->pluck('name'));
     })->name('modules.list');
+
+    // Location Cascading Routes
+    Route::get('/locations/cascade', [\App\Http\Controllers\LocationController::class, 'cascade'])->name('locations.cascade');
+    Route::get('/locations/hierarchy', [\App\Http\Controllers\LocationController::class, 'hierarchy'])->name('locations.hierarchy');
 
     // Settings & Notifications
     Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->middleware('permission:settings.view|settings.read')->name('settings.index');

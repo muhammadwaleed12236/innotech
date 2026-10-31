@@ -445,7 +445,7 @@ class VoucherController extends Controller
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Receipts Voucher')
             ->pluck('narration', 'id');
-        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank'])->get();
+        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank', 'Cheque', 'cheque'])->get();
 
         // echo "<pre>";
         // print_r($AccountHeads) ;
@@ -548,6 +548,26 @@ class VoucherController extends Controller
                                     'credit' => 0,
                                     'narration' => $request->narration_text[$idx] ?? 'Receipt',
                                 ];
+
+                                // Cheque Integration for Receipt Voucher
+                                $chequeNo = $request->row_cheque_no[$idx] ?? null;
+                                $chequeBank = $request->row_cheque_bank[$idx] ?? null;
+                                $chequeDate = $request->row_cheque_date[$idx] ?? null;
+                                $account = \App\Models\Account::find($accId);
+                                $isCheque = !empty($chequeNo) || ($account && stripos($account->title, 'cheque') !== false);
+
+                                if ($isCheque && !empty($chequeNo)) {
+                                    \App\Models\Cheque::create([
+                                        'cheque_no'    => $chequeNo,
+                                        'bank_name'    => $chequeBank ?: 'Customer Cheque',
+                                        'cheque_date'  => $chequeDate ?: ($request->receipt_date ?: now()->toDateString()),
+                                        'amount'       => $amt,
+                                        'customer_id'  => in_array($vType, ['customer', 'walkin']) ? $request->vendor_id : null,
+                                        'status'       => 'in_hand',
+                                        'note'         => "Receipt Voucher {$rvid}" . ($request->remarks ? " - {$request->remarks}" : ''),
+                                        'created_by'   => auth()->id(),
+                                    ]);
+                                }
                             }
                         }
                     }
@@ -636,7 +656,7 @@ class VoucherController extends Controller
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Payment voucher')
             ->pluck('narration', 'id');
-        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank'])->get();
+        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank', 'Cheque', 'cheque'])->get();
         // echo"<pre>";
         // print_r($AccountHeads);
         // echo"</pre>";
@@ -1190,7 +1210,7 @@ class VoucherController extends Controller
         $narrations = \App\Models\Narration::where('expense_head', 'Expense voucher')
             ->pluck('narration', 'id');
         $expenseCategories = \App\Models\ExpenseCategory::orderBy('name')->get();
-        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank'])->get();
+        $AccountHeads = AccountHead::whereIn('name', ['Cash', 'bank', 'cash', 'Bank', 'Cheque', 'cheque'])->get();
 
         // Last RVID nikalna
         $lastVoucher = \App\Models\ExpenseVoucher::latest('id')->first();
@@ -1614,6 +1634,14 @@ class VoucherController extends Controller
             if ($legacyRec) {
                 $journalService->reverseEntriesForSource($legacyRec);
                 $legacyRec->delete();
+            }
+
+            // Clean up linked in-hand cheques for this voucher
+            if ($legacyRec && !empty($legacyRec->rvid)) {
+                \App\Models\Cheque::where('note', 'like', "%{$legacyRec->rvid}%")->where('status', 'in_hand')->delete();
+            }
+            if ($voucherMaster && !empty($voucherMaster->voucher_no)) {
+                \App\Models\Cheque::where('note', 'like', "%{$voucherMaster->voucher_no}%")->where('status', 'in_hand')->delete();
             }
 
             DB::commit();

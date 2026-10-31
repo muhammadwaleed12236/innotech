@@ -977,6 +977,17 @@
             }
         }
 
+        const chequeAmt = parseFloat($('#sale_cheque_amount').val() || '0') || 0;
+        if (chequeAmt > 0) {
+            if (!$('#sale_cheque_no').val() || !$('#sale_cheque_bank').val() || !$('#sale_cheque_date').val()) {
+                ok = false;
+                if (!firstMessage) {
+                    firstMessage = 'Please enter Cheque Number, Bank Name, and Due Date for the cheque payment.';
+                    firstEl = !$('#sale_cheque_no').val() ? $('#sale_cheque_no') : (!$('#sale_cheque_bank').val() ? $('#sale_cheque_bank') : $('#sale_cheque_date'));
+                }
+            }
+        }
+
         return {
             ok,
             firstMessage,
@@ -1029,6 +1040,17 @@
             }
         });
 
+        const chequeAmt = parseFloat($('#sale_cheque_amount').val() || '0') || 0;
+        if (chequeAmt > 0) {
+            if (!$('#sale_cheque_no').val() || !$('#sale_cheque_bank').val() || !$('#sale_cheque_date').val()) {
+                ok = false;
+                if (!firstMessage) {
+                    firstMessage = 'Please enter Cheque Number, Bank Name, and Due Date for the cheque payment.';
+                    firstEl = !$('#sale_cheque_no').val() ? $('#sale_cheque_no') : (!$('#sale_cheque_bank').val() ? $('#sale_cheque_bank') : $('#sale_cheque_date'));
+                }
+            }
+        }
+
         return {
             ok,
             firstMessage,
@@ -1056,6 +1078,17 @@
                 markInvalid($acc);
             }
         });
+
+        const chequeAmt = parseFloat($('#sale_cheque_amount').val() || '0') || 0;
+        if (chequeAmt > 0) {
+            if (!$('#sale_cheque_no').val() || !$('#sale_cheque_bank').val() || !$('#sale_cheque_date').val()) {
+                ok = false;
+                if (!firstMessage) {
+                    firstMessage = 'Please enter Cheque Number, Bank Name, and Due Date for the cheque payment.';
+                    firstEl = !$('#sale_cheque_no').val() ? $('#sale_cheque_no') : (!$('#sale_cheque_bank').val() ? $('#sale_cheque_bank') : $('#sale_cheque_date'));
+                }
+            }
+        }
 
         return {
             ok,
@@ -1901,10 +1934,38 @@
             });
         });
 
+        
+        // Switch Payment Mode (Cash/Bank vs Cheque vs Both)
+        window.switchPayMode = function(mode) {
+            $('#payModeToggleGroup button').removeClass('active');
+            if (mode === 'accounts') {
+                $('#btnModeAccounts').addClass('active');
+                $('#panel_accounts').slideDown(200);
+                $('#panel_cheque').slideUp(200);
+                $('#sale_cheque_amount').val('');
+                $('#sale_cheque_no').val('');
+                $('#sale_cheque_bank').val('');
+            } else if (mode === 'cheque') {
+                $('#btnModeCheque').addClass('active');
+                $('#panel_accounts').slideUp(200);
+                $('#panel_cheque').slideDown(200);
+                $('#panel_accounts .rv-amount').val('');
+            } else if (mode === 'both') {
+                $('#btnModeBoth').addClass('active');
+                $('#panel_accounts').slideDown(200);
+                $('#panel_cheque').slideDown(200);
+            }
+            if (typeof window.recomputeReceipts === 'function') {
+                window.recomputeReceipts();
+            }
+        };
+
         // Receipts Logic
         $(document).on('input', '.rv-amount', function() {
             if (typeof window.recomputeReceipts === 'function') window.recomputeReceipts();
         });
+
+
 
         $('#btnAddRV').on('click', function() {
             const row = `

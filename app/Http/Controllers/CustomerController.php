@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
 use App\Models\CustomerPayment;
+use App\Models\Cheque;
 use App\Models\JournalEntry;
 use App\Models\SalesOfficer;
 use App\Models\Zone;
@@ -194,6 +195,21 @@ class CustomerController extends Controller
         if (empty($request->customer_id)) {
             $latestId = 'CUST-'.str_pad(Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
             $request->merge(['customer_id' => $latestId]);
+        }
+
+        // Auto-default party_type if empty (e.g. from quick modals)
+        if (empty($request->party_type)) {
+            $request->merge(['party_type' => 'customer']);
+        }
+
+        // Auto-default customer_type if empty
+        if ($request->customer_type === null || $request->customer_type === '') {
+            $request->merge(['customer_type' => 'Main Customer']);
+        }
+
+        // Auto-default opening_balance if empty
+        if ($request->opening_balance === null || $request->opening_balance === '') {
+            $request->merge(['opening_balance' => 0]);
         }
 
         $rules = $this->fieldService->buildValidationRules('create');
@@ -477,7 +493,7 @@ class CustomerController extends Controller
     // View all customer payments
     public function customer_payments()
     {
-        $payments = CustomerPayment::with('customer')->orderByDesc('id')->get();
+        $payments = CustomerPayment::with(['customer', 'cheque'])->orderByDesc('id')->get();
         $customers = Customer::all();
 
         return view('admin_panel.customers.customer_payments', compact('payments', 'customers'));
@@ -491,14 +507,26 @@ class CustomerController extends Controller
             'amount' => 'required|numeric|min:0',
             'adjustment_type' => 'required|in:plus,minus',
             'payment_method' => 'nullable|string',
+            'cheque_no' => 'nullable|string',
+            'bank_name' => 'nullable|string',
+            'cheque_date' => 'nullable|date',
             'payment_date' => 'required|date',
             'note' => 'nullable|string',
         ]);
 
         $userId = Auth::id();
 
+        $isCheque = strtolower($request->payment_method ?? '') === 'cheque';
+        if ($isCheque) {
+            $request->validate([
+                'cheque_no' => 'required|string|max:100',
+                'bank_name' => 'required|string|max:150',
+                'cheque_date' => 'required|date',
+            ]);
+        }
+
         // Save the payment
-        CustomerPayment::create([
+        $payment = CustomerPayment::create([
             'customer_id' => $request->customer_id,
             'admin_or_user_id' => $userId,
             'amount' => $request->amount,
@@ -506,6 +534,20 @@ class CustomerController extends Controller
             'payment_date' => $request->payment_date,
             'note' => $request->note,
         ]);
+
+        if ($isCheque) {
+            Cheque::create([
+                'cheque_no' => $request->cheque_no,
+                'bank_name' => $request->bank_name,
+                'cheque_date' => $request->cheque_date,
+                'amount' => $request->amount,
+                'customer_id' => $request->customer_id,
+                'customer_payment_id' => $payment->id,
+                'status' => 'in_hand',
+                'note' => $request->note,
+                'created_by' => $userId,
+            ]);
+        }
 
         // Get latest ledger record to calculate new balance
         $latestLedger = CustomerLedger::where('customer_id', $request->customer_id)->latest()->first();
@@ -533,7 +575,7 @@ class CustomerController extends Controller
             'previous_balance' => $previousBalance,
             'opening_balance' => 0, // This is not an "opening" entry, so 0 or null
             'closing_balance' => $newBalance,
-            'description' => 'Payment: '.($request->note ?? $request->payment_method),
+            'description' => 'Payment: ' . ($request->payment_method ?? 'Payment') . ($isCheque ? " (Cheque #{$request->cheque_no} - {$request->bank_name})" : '') . ($request->note ? " - {$request->note}" : ''),
         ]);
 
         // Update customer reminder: If they made a payment, set next reminder to +7 days
@@ -627,6 +669,9 @@ class CustomerController extends Controller
             $ledger->closing_balance += $amount;
             $ledger->save();
         }
+
+        // Delete any related cheque
+        Cheque::where('customer_payment_id', $payment->id)->delete();
 
         // Delete the payment entry
         $payment->delete();

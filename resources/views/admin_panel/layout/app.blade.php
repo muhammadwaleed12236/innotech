@@ -851,6 +851,8 @@
                                             <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i> Sales Officers</a></li>
                                         @endcan
                                         @can('receipts.voucher.view')
+                                            <li><a href="{{ route('customer.payments') }}"><i class="fas fa-hand-holding-usd"></i> Customer Payments</a></li>
+                                            <li><a href="{{ route('cheques.index') }}"><i class="fas fa-money-check-alt text-warning"></i> Cheque Management</a></li>
                                             <li><a href="{{ route('all_recepit_vochers') }}"><i class="fas fa-file-invoice-dollar"></i> Receipt Vouchers</a></li>
                                         @endcan
                                     </ul>
@@ -951,6 +953,10 @@
                                                         <li><a href="{{ url('warehouse_stocks') }}"><i class="fas fa-boxes"></i>
                                                                 Warehouse Stock</a></li>
                                                     @endcan
+                                                    @canany(['warehouse.view', 'warehouse.stock.view'])
+                                                        <li><a href="{{ route('warehouse.working_report') }}"><i class="fas fa-chart-line"></i>
+                                                                Warehouse Report</a></li>
+                                                    @endcanany
                                                     @can('stock.transfer.view')
                                                         <li><a href="{{ url('stock_transfers') }}"><i
                                                                     class="fas fa-exchange-alt"></i> Stock Transfer</a></li>
@@ -1004,6 +1010,8 @@
                                         @can('receipts.voucher.view')
                                             <li><a href="{{ route('all_recepit_vochers') }}"><i
                                                         class="fa-solid fa-wallet"></i> Receipts Voucher</a></li>
+                                            <li><a href="{{ route('cheques.index') }}"><i
+                                                        class="fa-solid fa-money-check-dollar text-warning"></i> Cheque Management</a></li>
                                         @endcan
                                         @can('journal.voucher.view')
                                             <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i
@@ -1067,6 +1075,10 @@
                                             <li><a href="{{ route('reports.onhand') }}"><i class="fas fa-warehouse"></i>
                                                     Inventory On-Hand</a></li>
                                         @endcan
+                                        @canany(['warehouse.view', 'warehouse.stock.view', 'inventory.onhand.view'])
+                                            <li><a href="{{ route('warehouse.working_report') }}"><i class="fas fa-boxes-stacked"></i>
+                                                    Warehouse Working Report</a></li>
+                                        @endcanany
                                         
                                         @can('profit.loss.report.view')
                                             <li><a href="{{ route('report.profit_loss') }}"><i class="fa-solid fa-chart-line"></i>

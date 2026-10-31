@@ -1404,7 +1404,21 @@
                     <div class="col-xl-6 col-lg-6 col-md-12">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             {{-- Customer Input Group --}}
-                            <div class="cust-select-container">
+                            @php
+                                    $firstItemWh = $sale->items->first()?->warehouse_id ?? (auth()->user()->warehouse_id ?? 1);
+                                @endphp
+                                <div class="warehouse-select-container me-2">
+                                    <label class="field-label mb-1 fw-bold text-secondary"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse</label>
+                                    <select name="warehouse_id" id="headerWarehouseSelect" class="form-select form-select-sm fw-bold border-primary shadow-sm" style="height: 38px; min-width: 160px;">
+                                        @foreach($warehouse as $wh)
+                                            <option value="{{ $wh->id }}" {{ $firstItemWh == $wh->id ? 'selected' : '' }}>
+                                                {{ $wh->warehouse_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="cust-select-container">
                                 <label class="field-label mb-1">Customer</label>
                                 <div class="input-group customer-input-group">
                                     <div id="customerInputWrapper" style="min-width: 0;">
@@ -1684,47 +1698,107 @@
                 {{-- LEFT: Payment Methods --}}
                 <div class="col-lg-6">
                     <div class="sale-card p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <span class="card-title d-flex align-items-center gap-2" style="font-size: 15px;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                            <span class="card-title d-flex align-items-center gap-2 mb-0" style="font-size: 15px;">
                                 <i class="fas fa-wallet text-primary"></i> Payment Methods
                             </span>
+                            <div class="btn-group btn-group-sm" role="group" id="payModeToggleGroup">
+                                <button type="button" class="btn btn-outline-primary btn-sm active fw-bold px-3 py-1" id="btnModeAccounts" onclick="switchPayMode('accounts')">
+                                    <i class="fas fa-university me-1"></i> Cash / Bank
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm text-dark fw-bold px-3 py-1" id="btnModeCheque" onclick="switchPayMode('cheque')">
+                                    <i class="fas fa-money-check-alt me-1"></i> Cheque
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold px-2 py-1" id="btnModeBoth" onclick="switchPayMode('both')" title="Split Payment: Cash/Bank + Cheque">
+                                    <i class="fas fa-layer-group me-1"></i> Both (Split)
+                                </button>
+                            </div>
                         </div>
 
-                        <div id="rvWrapper" class="row g-2">
-                            @foreach ($accounts as $acc)
-                                @php
-                                    $accTitleLower = strtolower($acc->title);
-                                    $defaultVal = str_contains($accTitleLower, 'cash') && ($sale->cash ?? 0) > 0 ? (float)$sale->cash : '';
-                                @endphp
-                                <div class="col-md-6 col-12">
-                                    <div class="pay-account-card d-flex align-items-center justify-content-between p-2 rounded-3 border transition-all" style="background: #ffffff; border: 1px solid #E2E8F0;">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="acc-icon-badge flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 36px; height: 36px; background: #F1F5F9;">
-                                                @if(str_contains($accTitleLower, 'cash'))
-                                                    <span class="fs-5">💵</span>
-                                                @elseif(str_contains($accTitleLower, 'bank'))
-                                                    <i class="fas fa-university text-primary fs-6"></i>
-                                                @elseif(str_contains($accTitleLower, 'card'))
-                                                    <i class="fas fa-credit-card text-info fs-6"></i>
-                                                @elseif(str_contains($accTitleLower, 'easy') || str_contains($accTitleLower, 'paisa'))
-                                                    <span class="fw-bold text-success fs-5" style="font-family: sans-serif;">e</span>
-                                                @elseif(str_contains($accTitleLower, 'jazz'))
-                                                    <span class="badge bg-danger rounded-circle p-1" style="font-size: 9px;">Jazz</span>
-                                                @else
-                                                    <i class="fas fa-ellipsis-h text-secondary fs-6"></i>
-                                                @endif
+                        {{-- Panel 1: Cash / Bank Accounts --}}
+                        <div id="panel_accounts" class="mb-2">
+                            <div id="rvWrapper" class="row g-2">
+                                @foreach ($accounts as $acc)
+                                    @php
+                                        $accTitleLower = strtolower($acc->title);
+                                        $defaultVal = str_contains($accTitleLower, 'cash') && ($sale->cash ?? 0) > 0 ? (float)$sale->cash : '';
+                                    @endphp
+                                    <div class="col-md-6 col-12">
+                                        <div class="pay-account-card d-flex align-items-center justify-content-between p-2 rounded-3 border transition-all" style="background: #ffffff; border: 1px solid #E2E8F0;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="acc-icon-badge flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 36px; height: 36px; background: #F1F5F9;">
+                                                    @if(str_contains($accTitleLower, 'cash'))
+                                                        <span class="fs-5">💵</span>
+                                                    @elseif(str_contains($accTitleLower, 'bank'))
+                                                        <i class="fas fa-university text-primary fs-6"></i>
+                                                    @elseif(str_contains($accTitleLower, 'card'))
+                                                        <i class="fas fa-credit-card text-info fs-6"></i>
+                                                    @elseif(str_contains($accTitleLower, 'easy') || str_contains($accTitleLower, 'paisa'))
+                                                        <span class="fw-bold text-success fs-5" style="font-family: sans-serif;">e</span>
+                                                    @elseif(str_contains($accTitleLower, 'jazz'))
+                                                        <span class="badge bg-danger rounded-circle p-1" style="font-size: 9px;">Jazz</span>
+                                                    @else
+                                                        <i class="fas fa-ellipsis-h text-secondary fs-6"></i>
+                                                    @endif
+                                                </div>
+                                                <div class="lh-1">
+                                                    <span class="fw-bold fs-6 text-dark d-block">{{ $acc->title }}</span>
+                                                </div>
                                             </div>
-                                            <div class="lh-1">
-                                                <span class="fw-bold fs-6 text-dark d-block">{{ $acc->title }}</span>
+                                            <div class="rv-row m-0 p-0" style="width: 110px;">
+                                                <input type="hidden" class="rv-account" name="receipt_account_id[]" value="{{ $acc->id }}">
+                                                <input type="number" step="0.01" class="form-control text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" value="{{ $defaultVal }}" style="height: 34px; font-size: 13.5px; border-radius: 6px;">
                                             </div>
-                                        </div>
-                                        <div class="rv-row m-0 p-0" style="width: 110px;">
-                                            <input type="hidden" class="rv-account" name="receipt_account_id[]" value="{{ $acc->id }}">
-                                            <input type="number" step="0.01" class="form-control text-end rv-amount fw-bold" name="receipt_amount[]" placeholder="0.00" value="{{ $defaultVal }}" style="height: 34px; font-size: 13.5px; border-radius: 6px;">
                                         </div>
                                     </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Panel 2: Dedicated Cheque Payment Details --}}
+                        <div id="panel_cheque" class="p-3 rounded-3 border transition-all mb-2 shadow-sm" style="display: none; background: #FFFDF5; border: 1.5px solid #F59E0B !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 34px; height: 34px; background: #FEF3C7; color: #D97706;">
+                                        <i class="fas fa-money-check-alt"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-dark d-block" style="font-size: 13.5px;">Cheque Payment Details</span>
+                                        <small class="text-muted" style="font-size: 11px;">Customer se cheque receive karne ke liye yeh fields fill karein</small>
+                                    </div>
                                 </div>
-                            @endforeach
+                                <span class="badge bg-warning text-dark px-2 py-1"><i class="fas fa-hand-holding-usd me-1"></i> Cheque In-Hand</span>
+                            </div>
+
+                            <div class="row g-2 pt-2 border-top">
+                                {{-- Cheque Amount --}}
+                                <div class="col-md-6 col-12">
+                                    <label class="form-label mb-1 fw-bold text-dark" style="font-size: 12px;">Cheque Amount (Rs.) <span class="text-danger">*</span></label>
+                                    <div class="rv-row m-0 p-0">
+                                        <input type="hidden" class="rv-account" name="receipt_account_id[]" value="{{ $chequeAccount->id ?? '' }}">
+                                        <input type="number" step="0.01" class="form-control rv-amount fw-bold text-end" id="sale_cheque_amount" name="receipt_amount[]" placeholder="0.00" value="{{ isset($existingCheque) ? $existingCheque->amount : '' }}" style="height: 36px; font-size: 14px; border: 1.5px solid #F59E0B; background: #ffffff;">
+                                    </div>
+                                </div>
+
+                                {{-- Cheque Number --}}
+                                <div class="col-md-6 col-12">
+                                    <label class="form-label mb-1 fw-bold text-dark" style="font-size: 12px;">Cheque Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="sale_cheque_no" id="sale_cheque_no" placeholder="e.g. 1029384" value="{{ isset($existingCheque) ? $existingCheque->cheque_no : '' }}" style="height: 36px; font-size: 13px;">
+                                </div>
+
+                                {{-- Customer Bank Name --}}
+                                <div class="col-md-6 col-12">
+                                    <label class="form-label mb-1 fw-bold text-dark" style="font-size: 12px;">Customer Bank Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="sale_cheque_bank" id="sale_cheque_bank" placeholder="e.g. Meezan Bank, HBL, MCB" value="{{ isset($existingCheque) ? $existingCheque->bank_name : '' }}" style="height: 36px; font-size: 13px;">
+                                </div>
+
+                                {{-- Cheque / Due Date --}}
+                                <div class="col-md-6 col-12">
+                                    <label class="form-label mb-1 fw-bold text-dark" style="font-size: 12px;">Cheque / Due Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" name="sale_cheque_date" id="sale_cheque_date" value="{{ isset($existingCheque) && $existingCheque->cheque_date ? $existingCheque->cheque_date->format('Y-m-d') : date('Y-m-d') }}" style="height: 36px; font-size: 13px;">
+                                    <small class="text-muted" style="font-size: 10.5px;">Jis din bank mein lagana / cash hona hai</small>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="pt-2 border-top mt-3">
@@ -1987,6 +2061,7 @@
                 <div class="modal-body">
                     <form id="ajaxAddCustomerForm" autocomplete="off">
                         @csrf
+                        <input type="hidden" name="party_type" value="customer">
                         <div class="row g-3">
                             <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Customer Type <span class="text-danger">*</span></label>
@@ -2008,7 +2083,19 @@
                                 <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0">
                             </div>
-                            <div class="col-12">
+                                                        <div class="col-12 col-md-4">
+                                <label class="form-label font-weight-bold fw-bold">Province</label>
+                                <input type="text" class="form-control" name="province" list="provinceList" placeholder="Province">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label font-weight-bold fw-bold">City</label>
+                                <input type="text" class="form-control" name="city" list="cityList" placeholder="City">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label font-weight-bold fw-bold">Area</label>
+                                <input type="text" class="form-control" name="area" list="areaList" placeholder="Area">
+                            </div>
+<div class="col-12">
                                 <label class="form-label font-weight-bold fw-bold">Address</label>
                                 <input type="text" class="form-control" name="address" placeholder="Address">
                             </div>
@@ -2027,6 +2114,7 @@
 
     {{-- Quick Build Product Modal --}}
     @include('admin_panel.partials.quick_build_product_modal')
+@include('admin_panel.partials.location_selector_script')
 @endsection
 
 @section('js')
@@ -2037,6 +2125,13 @@
 
     <script>
         $(document).ready(function() {
+        // Sync Warehouse Selection across all item rows
+        $(document).on('change', '#headerWarehouseSelect', function() {
+            const selectedWh = $(this).val();
+            $('.sales-table tbody tr').each(function() {
+                $(this).find('.warehouse').val(selectedWh);
+            });
+        });
     // Terms Select All / Clear Handlers
     $(document).on('click', '#selectAllTermsBtn', function() {
         $('.term-checkbox').prop('checked', true);
@@ -2072,28 +2167,38 @@
             }
 
             // ============================================================
-            // CUSTOMER SELECT2 AJAX SEARCH (Name or Code)
+            // CUSTOMER SELECT2 (Name or Code)
             // ============================================================
             function getPartyType() {
                 return $('#partyTypeSelect').val() || 'Main Customer';
             }
 
-            $('#customerSelect').select2({
-                placeholder: 'Search by Name, Code, or Mobile...',
-                allowClear: true,
-                width: '100%',
-                dropdownParent: $(document.body),
-                language: {
-                    noResults: function() {
-                        return '<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>';
+            window.initCustomerSelect2 = function() {
+                try {
+                    if ($('#customerSelect').hasClass('select2-hidden-accessible')) {
+                        $('#customerSelect').select2('destroy');
                     }
-                },
-                escapeMarkup: function(markup) {
-                    return markup;
-                }
-            });
+                } catch(e) {}
 
-            $('#customerSelect').on('select2:open', function() {
+                $('#customerSelect').select2({
+                    placeholder: 'Search by Name, Code, or Mobile...',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $(document.body),
+                    language: {
+                        noResults: function() {
+                            return '<div>No customer found. <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary py-0 px-2 mt-1 btn-open-customer-modal" style="font-size:0.75rem;"><i class="fas fa-user-plus"></i> Quick Add Customer</a></div>';
+                        }
+                    },
+                    escapeMarkup: function(markup) {
+                        return markup;
+                    }
+                });
+            };
+
+            initCustomerSelect2();
+
+            $(document).on('select2:open', '#customerSelect', function() {
                 setTimeout(function() {
                     const searchInput = document.querySelector('.select2-container--open .select2-search__field');
                     if (searchInput) {
@@ -2105,10 +2210,12 @@
             // Set initial visibility state of Customer Select / Walk-in input
             $('#partyTypeSelect').trigger('change');
 
-            // Party type change → reset customer
+            // Party type change → only reset customer if switching to Walk-in
             $(document).on('change', '#partyTypeSelect', function() {
-                $('#customerSelect').val(null).trigger('change');
-                clearCustomerInfo();
+                if ($(this).val() === 'Walking Customer') {
+                    $('#customerSelect').val(null).trigger('change');
+                    clearCustomerInfo();
+                }
             });
 
             // Customer selected → load details
@@ -2217,9 +2324,83 @@
             // ══════════════════════════════════════════════════════════════
             // QUICK CUSTOMER MODAL LOGIC & EVENT HANDLERS
             // ══════════════════════════════════════════════════════════════
+            // Function to add customer to select, refresh Select2, and auto-select
+            window.selectCreatedCustomer = function(c) {
+                // 1. Ensure Walk-in mode is turned OFF and Customer mode is ON
+                $('#is_walkin').val('0');
+                $('#partyTypeSelect').val('Main Customer');
+                $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
+                $('#btnTypeWalkin').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
+                $('#walkinNameInput').addClass('d-none');
+                $('#customerSelect').removeClass('d-none');
+                $('#receiptVouchersSection').show();
+                $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
+                $('#totalsWalkinView').addClass('d-none').removeClass('d-flex');
+                $('#totalsCustomerView').removeClass('d-none').addClass('d-flex');
+                if ($('#receiptVouchersSection .card-body').length) {
+                    $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
+                }
+
+                // 2. Format display text and create/update option element
+                let displayText = (c.customer_id ? c.customer_id + ' — ' : '') + c.customer_name + (c.mobile ? ' (' + c.mobile + ')' : '');
+                let $sel = $('#customerSelect');
+                let $existing = $sel.find("option[value='" + c.id + "']");
+                
+                if ($existing.length) {
+                    $existing.text(displayText)
+                        .attr('data-mobile', c.mobile || '')
+                        .attr('data-address', c.address || '')
+                        .attr('data-code', c.customer_id || '')
+                        .attr('data-prev', c.opening_balance || 0)
+                        .attr('data-range', c.balance_range || 0)
+                        .attr('data-sales-officer', c.sales_officer_id || '')
+                        .prop('selected', true);
+                } else {
+                    let opt = document.createElement('option');
+                    opt.value = String(c.id);
+                    opt.text = displayText;
+                    opt.selected = true;
+                    opt.setAttribute('data-mobile', c.mobile || '');
+                    opt.setAttribute('data-address', c.address || '');
+                    opt.setAttribute('data-code', c.customer_id || '');
+                    opt.setAttribute('data-prev', c.opening_balance || 0);
+                    opt.setAttribute('data-range', c.balance_range || 0);
+                    opt.setAttribute('data-sales-officer', c.sales_officer_id || '');
+                    $sel[0].appendChild(opt);
+                }
+
+                // 3. Re-initialize Select2 so the entire option list and internal search index are updated
+                if (typeof initCustomerSelect2 === 'function') {
+                    initCustomerSelect2();
+                }
+
+                // 4. Set the value on Select2 and trigger change to load balances and details
+                $sel.val(String(c.id)).trigger('change');
+                try { $sel.select2('close'); } catch(e) {}
+
+                // 5. Explicitly populate UI cards immediately
+                $('#ci_code').text(c.customer_id || '—');
+                $('#ci_name').text(c.customer_name || '—');
+                $('#ci_mobile').text(c.mobile || '—');
+                $('#ci_address').text(c.address || '—');
+                let prevBal = parseFloat(c.opening_balance || 0);
+                $('#ci_prev_bal').text(prevBal.toFixed(2));
+                $('#previousBalance').val(prevBal.toFixed(2));
+                $('#tel').val(c.mobile || '');
+                $('#address').val(c.address || '');
+                $('#cc_customer_name').text(c.customer_name || displayText);
+
+                if (typeof updateGrandTotals === 'function') {
+                    updateGrandTotals();
+                }
+            };
+
             window.openCustomerModal = function(initialName = '') {
                 $('#ajaxAddCustomerForm')[0].reset();
                 let currentParty = $('#partyTypeSelect').val() || 'Main Customer';
+                if (currentParty === 'Walking Customer') {
+                    currentParty = 'Main Customer';
+                }
                 $('#modalCustomerType').val(currentParty);
                 if (initialName && typeof initialName === 'string') {
                     $('#modalCustomerName').val(initialName.trim());
@@ -2269,6 +2450,12 @@
                 }
             });
 
+            // Prevent native submit on enter and trigger AJAX save
+            $('#ajaxAddCustomerForm').on('submit', function(e) {
+                e.preventDefault();
+                $('#btnSaveAjaxCustomer').trigger('click');
+            });
+
             // AJAX Customer Submit
             $('#btnSaveAjaxCustomer').on('click', function() {
                 let form = $('#ajaxAddCustomerForm');
@@ -2286,43 +2473,35 @@
                     data: form.serialize(),
                     success: function(res) {
                         btn.prop('disabled', false).html('<i class="fas fa-save me-1 mr-1"></i> Save Customer');
-                        if (res.success) {
+                        if (res.success && res.customer) {
                             closeCustomerModal();
                             form[0].reset();
-                            
-                            // Make sure partyTypeSelect matches the customer type
-                            if (res.customer.customer_type) {
-                                $('#partyTypeSelect').val(res.customer.customer_type);
+                            selectCreatedCustomer(res.customer);
+                            if (typeof showAlert === 'function') {
+                                showAlert('success', 'Customer added and selected successfully!');
                             }
-                            
-                            // Auto select new customer in Select2
-                            let displayText = (res.customer.customer_id ? res.customer.customer_id + ' — ' : '') + res.customer.customer_name;
-                            let newOption = new Option(displayText, res.customer.id, true, true);
-                            $('#customerSelect').append(newOption).trigger('change');
-                            
-                            // Trigger select2 API selection to load customer details like Prev Bal
-                            $('#customerSelect').trigger({
-                                type: 'select2:select',
-                                params: {
-                                    data: {
-                                        id: res.customer.id,
-                                        text: displayText
-                                    }
-                                }
-                            });
-                            
-                            showAlert('success', 'Customer added successfully!');
                         } else {
-                            showAlert('error', res.message || 'Failed to save customer.');
+                            if (typeof showAlert === 'function') {
+                                showAlert('error', res.message || 'Failed to save customer.');
+                            }
                         }
                     },
                     error: function(xhr) {
                         btn.prop('disabled', false).html('<i class="fas fa-save me-1 mr-1"></i> Save Customer');
                         let msg = 'Error adding customer. Check inputs.';
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            msg = xhr.responseJSON.message;
+                        if (xhr.responseJSON) {
+                            if (xhr.responseJSON.errors) {
+                                let errList = Object.values(xhr.responseJSON.errors).flat();
+                                msg = errList.join(' ');
+                            } else if (xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
                         }
-                        showAlert('error', msg);
+                        if (typeof showAlert === 'function') {
+                            showAlert('error', msg);
+                        } else {
+                            alert(msg);
+                        }
                     }
                 });
             });
@@ -2921,4 +3100,5 @@
             </div>
         </div>
     </div>
+@include('admin_panel.partials.location_selector_script')
 @endsection

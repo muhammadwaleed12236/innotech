@@ -137,15 +137,26 @@ class SaleController extends Controller
         $allProducts = Product::where('is_active', true)->withSum('warehouseStocks', 'total_pieces')->orderBy('item_name')->get();
 
         // Filter accounts (Cash/Bank) for Payment Voucher
+        $chequeAccount = \App\Models\Account::firstOrCreate(
+            ['title' => 'Cheques in Hand'],
+            [
+                'head_id' => 2,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+                'type' => 'Debit',
+                'status' => 1
+            ]
+        );
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)
+            ->where('title', '!=', 'Cheques in Hand')
             ->orderBy('title')
             ->get();
 
         $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
         return view('admin_panel.sale.add_sale222', compact('termsAndConditions', 
-            'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 
+            'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'chequeAccount', 
             'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'
         ));
     }
@@ -249,6 +260,7 @@ class SaleController extends Controller
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)
+            ->where('title', '!=', 'Cheques in Hand')
             ->orderBy('title')
             ->get();
 
@@ -1029,9 +1041,12 @@ class SaleController extends Controller
         $allProducts = Product::where('is_active', true)->withSum('warehouseStocks', 'total_pieces')->orderBy('item_name')->get();
 
         // Filter accounts (Cash/Bank) for Receipt Voucher
+        $chequeAccount = \App\Models\Account::where('title', 'Cheques in Hand')->first();
+        $existingCheque = \App\Models\Cheque::where('note', 'like', "%#{$sale->invoice_no}%")->first();
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)
+            ->where('title', '!=', 'Cheques in Hand')
             ->orderBy('title')
             ->get();
 
@@ -1040,7 +1055,7 @@ class SaleController extends Controller
 
         // 4. Return the Edit Sale View
         $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
-        return view('admin_panel.sale.edit_sale', compact('termsAndConditions', 'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'));
+        return view('admin_panel.sale.edit_sale', compact('termsAndConditions', 'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'chequeAccount', 'existingCheque', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'));
     }
 
     public function updatesale(Request $request, $id)
@@ -1255,8 +1270,9 @@ class SaleController extends Controller
             // Looking at invoice blade: $item['qty'] is boxes.
             // Let's assume input 'qty' is BOXES.
 
-            $defaultWhId = auth()->user()->warehouse_id ?? 1;
-            $warehouses = $request->warehouse_id ?? [];
+            $headerWhId = is_numeric($request->warehouse_id) ? (int)$request->warehouse_id : (auth()->user()->warehouse_id ?? 1);
+            $warehouses = is_array($request->warehouse_id) ? $request->warehouse_id : [];
+            $defaultWhId = $headerWhId;
             $discounts = $request->item_disc ?? [];
 
             $manualItemsForLedger = [];
@@ -1499,7 +1515,7 @@ class SaleController extends Controller
                 }
 
                 $saleItem->color = $colorVal;
-                $saleItem->warehouse_id = !empty($warehouses[$index]) ? $warehouses[$index] : $defaultWhId;
+                $saleItem->warehouse_id = !empty($warehouses[$index]) ? (int)$warehouses[$index] : $headerWhId;
                 $saleItem->product_name = $productName; // Store name snapshot
 
                 $saleItem->qty = $storedQtyBox; // Store as Box equivalent for consistency
@@ -1875,6 +1891,37 @@ class SaleController extends Controller
                         $request->input('receipt_amount', []),
                         $sale->change_account_id
                     );
+
+                    // --- CHEQUE PAYMENT RECORDING ---
+                    $chequeAcc = \App\Models\Account::where('title', 'Cheques in Hand')->first();
+                    $receiptAccIds = $request->input('receipt_account_id', []);
+                    $receiptAmounts = $request->input('receipt_amount', []);
+                    $paidByCheque = 0;
+
+                    if ($chequeAcc) {
+                        foreach ($receiptAccIds as $idx => $accId) {
+                            if ((int)$accId === (int)$chequeAcc->id) {
+                                $paidByCheque += (float) ($receiptAmounts[$idx] ?? 0);
+                            }
+                        }
+                    }
+
+                    if ($paidByCheque > 0 && $request->filled('sale_cheque_no')) {
+                        \App\Models\Cheque::updateOrCreate(
+                            [
+                                'cheque_no' => $request->input('sale_cheque_no'),
+                                'customer_id' => $sale->customer_id,
+                            ],
+                            [
+                                'bank_name' => $request->input('sale_cheque_bank', 'Cheque'),
+                                'cheque_date' => $request->input('sale_cheque_date', date('Y-m-d')),
+                                'amount' => $paidByCheque,
+                                'status' => 'in_hand',
+                                'note' => "Payment for Sale Invoice #{$sale->invoice_no}",
+                                'created_by' => auth()->id(),
+                            ]
+                        );
+                    }
 
                     // --- AUTO REFUND (ENTRY 3: IF NET PAYABLE IS NEGATIVE) ---
                     if ($isExchange && $trueNetPayable < 0 && $custForVoucher) {

@@ -113,7 +113,10 @@
                                                 let iconClass = 'bg-info';
                                                 let icon = 'fa-info';
 
-                                                if (n.type === 'sale_return') {
+                                                if (n.type === 'cheque_alert') {
+                                                    iconClass = 'bg-warning text-dark';
+                                                    icon = 'fa-money-check-alt';
+                                                } else if (n.type === 'sale_return') {
                                                     iconClass = 'bg-warning';
                                                     icon = 'fa-undo';
                                                 }
