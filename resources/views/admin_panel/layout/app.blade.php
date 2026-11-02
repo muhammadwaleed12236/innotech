@@ -892,7 +892,7 @@
                         <li class="nav-item mega-menu">
                             @canany(['products.view', 'discount.products.view', 'categories.view', 'subcategories.view',
                                 'brands.view', 'units.view', 'warehouse.view', 'warehouse.stock.view', 'stock.transfer.view',
-                                'stock.adjust.view', 'stock.adjust.create'])
+                                'stock.adjust.view', 'stock.adjust.create', 'opening.stock.view', 'opening.stock.create'])
                                 <a href="#" class="nav-link">
                                      <i class="menu_icon fas fa-cogs"></i>
                                      <span class="menu-title">Management</span>
@@ -941,7 +941,7 @@
                                             </div>
                                         @endcanany
                                         <!-- Accounts / Inventory -->
-                                        @canany(['warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create'])
+                                        @canany(['warehouse.view', 'warehouse.stock.view', 'stock.transfer.view', 'stock.adjust.view', 'stock.adjust.create', 'opening.stock.view', 'opening.stock.create'])
                                             <div class="col-group col-md-6">
                                                 <p class="category-heading">Inventory Management</p>
                                                 <ul class="submenu-item">
@@ -964,8 +964,12 @@
                                                     @canany(['stock.adjust.view', 'stock.adjust.create'])
                                                         <li><a href="{{ route('stock_adjustments.index') }}"><i
                                                                     class="fas fa-sliders-h"></i> Stock Adjustment</a></li>
+                                                    @endcanany
+                                                    @canany(['opening.stock.view', 'opening.stock.create', 'stock.adjust.view', 'stock.adjust.create'])
                                                         <li><a href="{{ route('opening_stock.index') }}"><i
                                                                     class="fas fa-boxes-packing"></i> Opening Stock</a></li>
+                                                    @endcanany
+                                                    @canany(['stock.adjust.view', 'stock.adjust.create'])
                                                         <li><a href="{{ route('stock_expiry.index') }}"><i
                                                                     class="fas fa-calendar-times text-warning"></i> Stock Expiry Alerts</a></li>
                                                     @endcanany

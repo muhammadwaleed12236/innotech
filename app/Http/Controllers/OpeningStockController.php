@@ -26,7 +26,7 @@ class OpeningStockController extends Controller
             return true;
         }
 
-        if ($user->can('warehouse.stock.view') || $user->can('products.create') || $user->can('stock.adjust.create')) {
+        if ($user->can('opening.stock.view') || $user->can('opening.stock.create') || $user->can('warehouse.stock.view') || $user->can('products.create') || $user->can('stock.adjust.create')) {
             return true;
         }
 
