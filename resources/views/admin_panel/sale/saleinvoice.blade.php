@@ -7,103 +7,144 @@
     <title>{{ ($isQuotation ?? ($sale->sale_status === "quotation")) ? "Quotation" : (($isEstimate ?? false) ? "Estimate" : "Invoice") }} - {{ $sale->invoice_no }}</title>
 
     <link href="{{ asset('assets/vendors/bootstrap5/css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/vendors/font-awesome/css/all.min.css') }}" rel="stylesheet">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --primary-color: #0f172a;
-            --secondary-color: #334155;
-            --border-color: #e2e8f0;
-            --header-bg: #f8fafc;
-            --text-dark: #0f172a;
-            --text-muted: #64748b;
+            --primary-navy: #0f172a;
+            --slate-800: #1e293b;
+            --slate-700: #334155;
+            --slate-600: #475569;
+            --slate-500: #64748b;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --slate-50: #f8fafc;
+            --brand-accent: #0284c7;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             background-color: #f1f5f9;
             color: #0f172a;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 11.5px;
+            font-size: 11px;
+            line-height: 1.4;
             margin: 0;
             padding: 0;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Screen Layout */
+        /* Top Action Buttons */
+        .print-btn-container {
+            position: fixed;
+            top: 20px;
+            right: 24px;
+            z-index: 1050;
+            display: flex;
+            gap: 8px;
+        }
+
+        .print-btn-container .btn {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 7px 14px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+            transition: all 0.2s ease;
+        }
+
+        .print-btn-container .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
+        }
+
+        /* A4 Invoice Screen Container */
         .invoice-container {
             max-width: 210mm;
-            margin: 15px auto;
-            background: #fff;
-            padding: 28px 32px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             min-height: 297mm;
+            margin: 20px auto 40px auto;
+            background: #ffffff;
+            padding: 32px 38px;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+            border-radius: 6px;
             position: relative;
             color: #0f172a;
-            border-radius: 4px;
         }
 
-        /* Modern Corporate Header */
+        /* Company Brand Header */
         .company-header-wrapper {
             text-align: center;
-            padding-bottom: 14px;
-            margin-bottom: 12px;
-            border-bottom: 2px solid #0f172a;
+            padding-bottom: 12px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid var(--primary-navy);
+        }
+
+        .company-header-wrapper .company-logo {
+            max-height: 52px;
+            object-fit: contain;
+            margin-bottom: 6px;
         }
 
         .company-header-wrapper .company-brand {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 900;
-            color: #0f172a;
-            letter-spacing: -0.5px;
+            color: var(--primary-navy);
+            letter-spacing: 0.5px;
             text-transform: uppercase;
+            line-height: 1.15;
             margin-bottom: 4px;
-            line-height: 1.1;
         }
 
         .company-header-wrapper .company-meta {
-            font-size: 11.5px;
-            color: #334155;
+            font-size: 11px;
+            color: var(--slate-600);
             font-weight: 500;
             margin: 0 auto;
-            max-width: 580px;
-            line-height: 1.5;
+            max-width: 620px;
+            line-height: 1.45;
         }
 
-        .company-header-wrapper .company-meta .meta-pill {
-            display: inline-block;
-            margin: 0 4px;
-        }
-
-        /* Invoice Badge Title */
+        /* Invoice Badge - Dark Block */
         .invoice-title-wrapper {
             text-align: center;
-            margin: 14px 0 16px 0;
+            margin: 12px 0 16px 0;
         }
 
         .invoice-badge-title {
             display: inline-block;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 800;
-            letter-spacing: 2.5px;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            color: #0f172a;
-            padding: 4px 22px;
-            border: 1.5px solid #0f172a;
+            color: #ffffff;
+            padding: 5px 30px;
+            background: var(--primary-navy);
+            border: 1.5px solid var(--primary-navy);
             border-radius: 4px;
-            background: #fff;
+            box-shadow: 0 2px 5px rgba(15, 23, 42, 0.15);
         }
 
-        /* Two-Column Meta Cards (Customer & Shipper) */
+        /* Two-Column Structured Meta Cards - Dark Block Headers */
         .header-meta-grid {
             display: table;
             width: 100%;
             table-layout: fixed;
             border-collapse: separate;
             border-spacing: 12px 0;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .header-meta-card {
@@ -111,267 +152,373 @@
             width: 50%;
             vertical-align: top;
             background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
+            border: 1.5px solid var(--primary-navy);
+            border-radius: 5px;
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
         }
 
         .header-meta-card .card-head {
-            background: #f1f5f9;
-            color: #0f172a;
-            font-size: 10.5px;
+            background: var(--primary-navy);
+            color: #ffffff;
+            font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            padding: 6px 12px;
-            border-bottom: 1px solid #cbd5e1;
+            letter-spacing: 1px;
+            padding: 7px 14px;
+            border-bottom: 1.5px solid var(--primary-navy);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+        }
+
+        .header-meta-card .card-head i {
+            color: #38bdf8;
+            font-size: 12px;
         }
 
         .header-meta-card .card-body-meta {
-            padding: 8px 12px 10px 12px;
+            padding: 9px 14px;
+            background: #ffffff;
         }
 
-        .meta-field-row {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 4px;
+        /* Pixel-perfect Meta Table inside Cards */
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .meta-table td {
+            padding: 3px 0;
+            vertical-align: top;
             font-size: 10.5px;
-            line-height: 1.4;
+            line-height: 1.35;
         }
 
-        .meta-field-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .meta-field-row .meta-field-label {
-            width: 145px;
-            min-width: 145px;
-            color: #475569;
+        .meta-table .lbl {
+            width: 135px;
             font-weight: 700;
+            color: var(--slate-600);
             text-transform: uppercase;
             font-size: 10px;
             letter-spacing: 0.2px;
         }
 
-        .meta-field-row .meta-field-colon {
-            width: 10px;
-            color: #64748b;
+        .meta-table .col {
+            width: 12px;
             font-weight: 700;
+            color: var(--slate-500);
+            text-align: center;
         }
 
-        .meta-field-row .meta-field-value {
-            flex: 1;
-            color: #0f172a;
+        .meta-table .val {
             font-weight: 700;
+            color: var(--primary-navy);
             text-transform: uppercase;
             word-break: break-word;
         }
 
-        .meta-field-row .meta-field-value.highlight-val {
-            color: #0f172a;
+        .meta-table .val.highlight {
             font-weight: 800;
+            color: var(--primary-navy);
         }
 
-        :root {
-            --primary-color: #000;
-            --accent-color: #000;
-            --border-color: #000;
-            --text-color: #000;
-        }
-
-        body {
-            background-color: #f8f9fa;
-            color: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 12px;
-            margin: 0;
-            padding: 0;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-
-        /* Pure black override for all text elements */
-        .text-primary, .text-danger, .text-success, .text-warning, .text-info, .text-secondary, .text-muted, .text-dark {
-            color: #000 !important;
-        }
-
-        /* Screen Layout */
-        .invoice-container {
-            max-width: 210mm;
-            margin: 10px auto;
-            background: #fff;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            min-height: 297mm;
-            position: relative;
-            color: #000;
-        }
-
-        .company-info {
-            text-align: center;
-            margin-bottom: 12px;
-            color: #000;
-        }
-
-        .company-name {
-            font-size: 24px;
-            font-weight: 800;
-            color: #000;
-            margin-bottom: 2px;
-            letter-spacing: 0.5px;
-        }
-
-        .invoice-title {
-            text-align: center;
-            font-size: 18px;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: #000;
-            margin: 12px 0 16px 0;
-            letter-spacing: 1.5px;
-        }
-
-        .info-box {
-            border: 1px solid #cbd5e1;
-            padding: 10px 14px;
-            height: 100%;
-            border-radius: 6px;
-            background-color: #fff;
-            color: #000;
-        }
-
-        .info-box-header {
-            font-weight: 700;
-            border-bottom: 1px solid #cbd5e1;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
-            color: #000;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #000;
-            min-width: 65px;
-            display: inline-block;
-        }
-
+        /* Main Invoice Items Table - Dark Block Header & Footer */
         .invoice-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 10px;
+            font-size: 10.5px;
         }
 
         .invoice-table th {
-            background-color: #fff;
-            color: #000;
-            font-weight: 700;
+            background-color: var(--primary-navy) !important;
+            color: #ffffff !important;
+            font-weight: 800;
             font-size: 10px;
-            padding: 5px 3px;
-            border: 1px solid #000;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 8px 6px;
+            border: 1px solid #1e293b;
             text-align: center;
             vertical-align: middle;
+            line-height: 1.3;
         }
 
         .invoice-table td {
-            border: 1px solid #000;
-            padding: 4px 3px;
+            border: 1px solid var(--slate-300);
+            padding: 6px 6px;
             vertical-align: middle;
-            font-size: 10px;
-            color: #000;
-        }
-
-        .invoice-table tfoot td {
-            border: 1px solid #000;
-            padding: 4px 3px;
-            font-weight: bold;
-            font-size: 10px;
-            color: #000;
+            font-size: 10.5px;
+            color: var(--primary-navy);
+            line-height: 1.3;
         }
 
         .invoice-table tbody tr:nth-of-type(even) {
-            background-color: #fff;
+            background-color: var(--slate-50);
         }
 
+        .invoice-table tfoot tr {
+            background-color: var(--primary-navy) !important;
+            color: #ffffff !important;
+        }
+
+        .invoice-table tfoot td {
+            background-color: var(--primary-navy) !important;
+            color: #ffffff !important;
+            border: 1px solid #1e293b;
+            padding: 7px 6px;
+            font-weight: 800;
+            font-size: 10.5px;
+        }
+
+        /* Number Column Alignment & Font */
         .text-end {
             text-align: right;
+            font-variant-numeric: tabular-nums;
         }
 
         .text-center {
             text-align: center;
         }
 
-        .footer-section {
-            margin-top: 20px;
-            border-top: 2px solid #000;
-            padding-top: 10px;
+        .text-start {
+            text-align: left;
         }
 
-        .terms-box {
+        /* Product Description Details */
+        .item-main-title {
+            font-weight: 700;
+            color: var(--primary-navy);
             font-size: 11px;
-            color: #000;
+            line-height: 1.3;
         }
 
-        .terms-box ul {
-            padding-left: 20px;
-            margin-bottom: 0;
-            color: #000;
+        .item-sub-sn {
+            font-size: 10px;
+            font-weight: 800;
+            color: #0369a1;
+            margin-top: 2px;
         }
 
-        .terms-box li {
+        .item-sub-desc {
+            font-size: 9.5px;
+            color: var(--slate-700);
+            margin-top: 2px;
+            line-height: 1.35;
+        }
+
+        /* Exchange Returns Table - Dark Crimson Block */
+        .returns-wrapper {
+            margin-top: 14px;
+        }
+
+        .returns-header {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #ffffff;
+            background: #881337;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 4px;
+        }
+
+        .returns-wrapper .invoice-table th {
+            background-color: #881337 !important;
+            color: #ffffff !important;
+            border: 1px solid #4c0519;
+        }
+
+        /* Footer & Summary Section */
+        .invoice-bottom-grid {
+            display: flex;
+            gap: 16px;
+            margin-top: 14px;
+            align-items: flex-start;
+        }
+
+        .invoice-bottom-left {
+            flex: 1 1 58%;
+        }
+
+        .invoice-bottom-right {
+            flex: 1 1 42%;
+        }
+
+        /* Amount in Words Callout - Dark Block Border */
+        .words-card {
+            background: #ffffff;
+            border: 1.5px solid var(--primary-navy);
+            border-radius: 5px;
+            padding: 9px 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+        }
+
+        .words-card .words-label {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            color: var(--primary-navy);
+            display: flex;
+            align-items: center;
+            gap: 6px;
             margin-bottom: 2px;
-            color: #000;
+        }
+
+        .words-card .words-label i {
+            color: var(--brand-accent);
+        }
+
+        .words-card .words-value {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--primary-navy);
+            text-transform: capitalize;
+            line-height: 1.35;
+        }
+
+        /* Terms & Conditions Card - Dark Top Accent */
+        .terms-card {
+            background: #ffffff;
+            border: 1.5px solid var(--slate-300);
+            border-top: 3px solid var(--primary-navy);
+            border-radius: 5px;
+            padding: 9px 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+        }
+
+        .terms-card .terms-title {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--primary-navy);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .terms-card .terms-content {
+            font-size: 9.5px;
+            color: var(--slate-700);
+            line-height: 1.4;
+        }
+
+        /* Signature Area */
+        .signature-section {
+            margin-top: 36px;
+        }
+
+        .signature-line-box {
+            width: 200px;
+            border-top: 2px solid var(--primary-navy);
+            text-align: center;
+            padding-top: 6px;
+            font-size: 10.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--primary-navy);
+        }
+
+        .printed-timestamp {
+            font-size: 9.5px;
+            color: var(--slate-500);
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Totals Summary Card - Dark Block Frame */
+        .totals-card {
+            border: 1.5px solid var(--primary-navy);
+            border-radius: 6px;
+            overflow: hidden;
+            background: #ffffff;
+            box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
+        }
+
+        .totals-card .card-head {
+            background: var(--primary-navy);
+            padding: 7px 14px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ffffff;
+            border-bottom: 1.5px solid var(--primary-navy);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .totals-card .card-head i {
+            color: #38bdf8;
+            font-size: 12px;
         }
 
         .totals-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 12px;
-            color: #000;
         }
 
         .totals-table td {
-            padding: 4px 8px;
-            border-bottom: 1px solid #eee;
-            color: #000;
+            padding: 5.5px 14px;
+            font-size: 11px;
+            border-bottom: 1px solid var(--slate-200);
+            color: var(--slate-700);
         }
 
-        .totals-table .total-row td {
-            border-top: 2px solid #000;
-            font-weight: bold;
-            font-size: 14px;
-            color: #000;
+        .totals-table td.lbl {
+            font-weight: 600;
         }
 
-        .signature-area {
-            margin-top: 40px;
-            border-top: 1px solid #000;
-            width: 180px;
-            text-align: center;
-            padding-top: 5px;
-            color: #000;
+        .totals-table td.val {
+            text-align: right;
+            font-weight: 700;
+            color: var(--primary-navy);
+            font-variant-numeric: tabular-nums;
         }
 
-        .print-btn-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 1000;
+        .totals-table tr.total-row td {
+            background: var(--primary-navy);
+            color: #ffffff !important;
+            font-weight: 900;
+            font-size: 13.5px;
+            padding: 9px 14px;
+            border-bottom: none;
+            border-top: 1.5px solid var(--primary-navy);
         }
 
-        /* Thermal Receipt */
+        .totals-table tr.total-row td.val {
+            color: #ffffff !important;
+            font-size: 14.5px;
+        }
+
+        /* Thermal Receipt (Hidden on Screen) */
         .receipt-container {
             display: none;
         }
 
-        @media print {
+        /* Screen-specific Utilities */
+        @media screen {
+            .screen-only {
+                display: block;
+            }
+        }
 
+        /* Default Print: 80mm Thermal Receipt */
+        @media print {
             @page {
                 size: 80mm auto;
                 margin: 0;
@@ -570,55 +717,30 @@
 </head>
 
 <body>
+
 @php
     $showTaxColumns = \App\Models\SaleFieldConfiguration::isVisibleInPrint('print_tax_breakdown', true) && 
         (\App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true) || (float)($sale->total_sales_tax ?? 0) > 0);
 @endphp
 
-
     <!-- Print / Action Buttons -->
     <div class="print-btn-container no-print">
-
-        <button onclick="window.print()" class="btn btn-primary btn-sm shadow fw-bold">
-
-            <svg xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                fill="currentColor"
-                class="bi bi-printer-fill me-2"
-                viewBox="0 0 16 16">
-
-                <path d="M0 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V9zm4-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H4V3z" />
-
-                <path d="M2.5 14.5A1.5 1.5 0 0 1 1 13V9a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v4a1.5 1.5 0 0 1-1.5 1.5h-13z" />
-
-            </svg>
-
-            Print
-
+        <button onclick="window.print()" class="btn btn-primary" title="Print 80mm Thermal Receipt">
+            <i class="fas fa-receipt"></i> Print Receipt
         </button>
 
-        <button onclick="printA4()" class="btn btn-success btn-sm shadow ms-2 fw-bold">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-earmark-text me-2" viewBox="0 0 16 16">
-                <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1h-5zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5z"/>
-                <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0zm0 1v2.5a1 1 0 0 0 1 1H13v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
-            </svg>
-            Print A4
+        <button onclick="printA4()" class="btn btn-success" title="Print Standard A4 Corporate Invoice">
+            <i class="fas fa-file-invoice"></i> Print A4
         </button>
 
-        <a href="javascript:void(0)"
-            onclick="handleGoBack()"
-            class="btn btn-secondary btn-sm shadow ms-2 fw-bold">
-            Back
+        <a href="javascript:void(0)" onclick="handleGoBack()" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back
         </a>
-
     </div>
 
-
     <!-- ========================================== -->
-    <!-- SCREEN VIEW -->
+    <!-- SCREEN & A4 VIEW -->
     <!-- ========================================== -->
-
     <div class="invoice-container screen-only">
 
         <!-- Modern Corporate Header -->
@@ -632,23 +754,26 @@
 
             <div class="company-header-wrapper">
                 @if(!empty($companyLogo) && file_exists(public_path($companyLogo)))
-                    <div style="margin-bottom: 6px;">
-                        <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" style="max-height: 52px; object-fit: contain;">
+                    <div>
+                        <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" class="company-logo">
                     </div>
                 @endif
                 <div class="company-brand">{{ $companyName }}</div>
                 <div class="company-meta">
                     @if(!empty($companyAddress))
-                        <div style="margin-bottom: 3px;">{{ $companyAddress }}</div>
+                        <span>{{ $companyAddress }}</span>
+                    @endif
+                    @if(!empty($companyAddress) && !empty($companyPhone))
+                        <span class="mx-1">•</span>
                     @endif
                     @if(!empty($companyPhone))
-                        <div style="font-weight: 700;"><i class="fas fa-phone-alt" style="font-size: 10px; margin-right: 3px;"></i> {{ $companyPhone }}</div>
+                        <span class="fw-bold"><i class="fas fa-phone-alt me-1" style="font-size: 10px;"></i>{{ $companyPhone }}</span>
                     @endif
                 </div>
             </div>
         @endif
 
-        <!-- Document Type Title Badge -->
+        <!-- Document Title Badge -->
         <div class="invoice-title-wrapper">
             <span class="invoice-badge-title">
                 @if($sale->sale_status === 'quotation' || ($isQuotation ?? false))
@@ -676,238 +801,184 @@
                 $compPhone = \App\Models\Setting::get('company_phone', '0333-6722263');
 
                 $salesOfficerName = $sale->salesOfficer->name ?? ($relCust->salesOfficer->name ?? null);
-
-
             @endphp
 
             <div class="header-meta-grid">
                 <!-- CUSTOMER INFORMATION CARD -->
                 <div class="header-meta-card">
                     <div class="card-head">
-                        <i class="fas fa-user-tie" style="font-size: 11px;"></i> CUSTOMER INFORMATION
+                        <i class="fas fa-user-tie"></i> CUSTOMER INFORMATION
                     </div>
                     <div class="card-body-meta">
-                        <div class="meta-field-row">
-                            <span class="meta-field-label">Customer Name</span>
-                            <span class="meta-field-colon">:</span>
-                            <span class="meta-field-value highlight-val">{{ $sale->walkin_name ?? ($relCust->customer_name ?? 'WALKING CUSTOMER') }}</span>
-                        </div>
+                        <table class="meta-table">
+                            <tr>
+                                <td class="lbl">Customer Name</td>
+                                <td class="col">:</td>
+                                <td class="val highlight">{{ $sale->walkin_name ?? ($relCust->customer_name ?? 'WALKING CUSTOMER') }}</td>
+                            </tr>
 
-                        @if(!empty($relCust->address))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">Address</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $relCust->address }}</span>
-                            </div>
-                        @endif
+                            @if(!empty($relCust->address))
+                            <tr>
+                                <td class="lbl">Address</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $relCust->address }}</td>
+                            </tr>
+                            @endif
 
-                        @if($sale->po_no)
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">Purchase Order No</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $sale->po_no }}</span>
-                            </div>
-                        @endif
+                            @if($sale->po_no)
+                            <tr>
+                                <td class="lbl">Purchase Order No</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $sale->po_no }}</td>
+                            </tr>
+                            @endif
 
-                        @if($sale->po_date)
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">Purchase Order Date</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ \Carbon\Carbon::parse($sale->po_date)->format('d-F-Y') }}</span>
-                            </div>
-                        @endif
+                            @if($sale->po_date)
+                            <tr>
+                                <td class="lbl">Purchase Order Date</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ \Carbon\Carbon::parse($sale->po_date)->format('d-F-Y') }}</td>
+                            </tr>
+                            @endif
 
-                        @if(!empty($custNtn))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">NTN Number</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $custNtn }}</span>
-                            </div>
-                        @endif
+                            @if(!empty($custNtn))
+                            <tr>
+                                <td class="lbl">NTN Number</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $custNtn }}</td>
+                            </tr>
+                            @endif
 
-                        @if(!empty($custStrn))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">STRN Number</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $custStrn }}</span>
-                            </div>
-                        @elseif(!empty($custCnic))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">CNIC Number</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $custCnic }}</span>
-                            </div>
-                        @endif
+                            @if(!empty($custStrn))
+                            <tr>
+                                <td class="lbl">STRN Number</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $custStrn }}</td>
+                            </tr>
+                            @elseif(!empty($custCnic))
+                            <tr>
+                                <td class="lbl">CNIC Number</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $custCnic }}</td>
+                            </tr>
+                            @endif
 
-                        @if(!empty($custMobile))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">Contact Details</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">
+                            @if(!empty($custMobile))
+                            <tr>
+                                <td class="lbl">Contact Details</td>
+                                <td class="col">:</td>
+                                <td class="val">
                                     @if($custContactPerson)
                                         {{ $custContactPerson }} ({{ $custMobile }})
                                     @else
                                         {{ $custMobile }}
                                     @endif
-                                </span>
-                            </div>
-                        @endif
+                                </td>
+                            </tr>
+                            @endif
+                        </table>
                     </div>
                 </div>
 
-                <!-- SHIPPER INFORMATION CARD -->
+                <!-- SHIPPER / INVOICE INFORMATION CARD -->
                 <div class="header-meta-card">
                     <div class="card-head">
-                        <i class="fas fa-building" style="font-size: 11px;"></i> SHIPPER INFORMATION
+                        <i class="fas fa-file-invoice"></i> SHIPPER / INVOICE DETAILS
                     </div>
                     <div class="card-body-meta">
-                        <div class="meta-field-row">
-                            <span class="meta-field-label">{{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quotation Number' : 'Invoice Number' }}</span>
-                            <span class="meta-field-colon">:</span>
-                            <span class="meta-field-value highlight-val">{{ $sale->invoice_no }}</span>
-                        </div>
+                        <table class="meta-table">
+                            <tr>
+                                <td class="lbl">{{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quotation Number' : 'Invoice Number' }}</td>
+                                <td class="col">:</td>
+                                <td class="val highlight">{{ $sale->invoice_no }}</td>
+                            </tr>
 
-                        <div class="meta-field-row">
-                            <span class="meta-field-label">{{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quotation Date' : 'Invoice Date' }}</span>
-                            <span class="meta-field-colon">:</span>
-                            <span class="meta-field-value">{{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}</span>
-                        </div>
+                            <tr>
+                                <td class="lbl">{{ ($sale->sale_status === 'quotation' || ($isQuotation ?? false)) ? 'Quotation Date' : 'Invoice Date' }}</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}</td>
+                            </tr>
 
-                        @if(!empty($compNtn))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">NTN Number</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $compNtn }}</span>
-                            </div>
-                        @endif
+                            @if(!empty($compNtn))
+                            <tr>
+                                <td class="lbl">NTN Number</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $compNtn }}</td>
+                            </tr>
+                            @endif
 
-                        @if(!empty($compStrn))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">STRN Number</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $compStrn }}</span>
-                            </div>
-                        @endif
+                            @if(!empty($compStrn))
+                            <tr>
+                                <td class="lbl">STRN Number</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $compStrn }}</td>
+                            </tr>
+                            @endif
 
+                            @if(!empty($salesOfficerName) || !empty($sale->reference))
+                            <tr>
+                                <td class="lbl">Sales Reference</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $salesOfficerName ?: $sale->reference }}</td>
+                            </tr>
+                            @endif
 
-
-                        @if(!empty($salesOfficerName) || !empty($sale->reference))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">Sales Reference</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $salesOfficerName ?: $sale->reference }}</span>
-                            </div>
-                        @endif
-
-                        @if(!empty($compPhone))
-                            <div class="meta-field-row">
-                                <span class="meta-field-label">Contact Details</span>
-                                <span class="meta-field-colon">:</span>
-                                <span class="meta-field-value">{{ $compPhone }}</span>
-                            </div>
-                        @endif
+                            @if(!empty($compPhone))
+                            <tr>
+                                <td class="lbl">Contact Details</td>
+                                <td class="col">:</td>
+                                <td class="val">{{ $compPhone }}</td>
+                            </tr>
+                            @endif
+                        </table>
                     </div>
                 </div>
             </div>
         @else
-            <div class="row g-2 mb-2">
-                <div class="col-12 text-end">
-                    <div class="info-box">
-                        <div>
-                            <span class="info-label">Date:</span>
-                            {{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}
-                        </div>
-                    </div>
-                </div>
+            <div class="text-end mb-2">
+                <span class="badge bg-light text-dark border p-2 font-monospace">
+                    Date: {{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}
+                </span>
             </div>
         @endif
 
-                <!-- Return Note -->
-
+        <!-- Return / Special Note -->
         @if ($sale->return_note)
-
-            <div class="row mb-2">
-
-                <div class="col-12">
-
-                    <div class="info-box"
-                        style="min-height: auto; padding: 4px 8px; background-color: #f1f5f9; font-style: italic;">
-
-                        <strong>
-                            Note:
-                        </strong>
-
-                        {{ $sale->return_note }}
-
-                    </div>
-
-                </div>
-
+            <div class="alert alert-secondary py-1 px-3 mb-2" style="font-size: 10.5px; border-left: 3px solid var(--primary-navy);">
+                <strong>Note:</strong> {{ $sale->return_note }}
             </div>
-
         @endif
-
 
         <!-- ========================================== -->
         <!-- MAIN INVOICE TABLE -->
         <!-- ========================================== -->
-
         <table class="invoice-table">
-
             <thead>
-
                 <tr>
-
-                    <th class="text-center" style="width: 4%">
-                        S.No
-                    </th>
-
-                    <th class="text-start" style="width: 32%">
-                        Description of Product
-                    </th>
-
-                    <th class="text-center" style="width: 12%">
-                        Batch / Sr. No
-                    </th>
-
-                    <th class="text-center" style="width: 6%">
-                        Quantity
-                    </th>
-
-                    <th class="text-end" style="width: 7%">
-                        Rate
-                    </th>
-
-                    <th class="text-end" style="width: 8%">
-                        Gross Amount
-                    </th>
-
-                    <th class="text-end" style="width: 5%">
-                        Disc %
-                    </th>
-
                     @if($showTaxColumns)
-                    <th class="text-end" style="width: 8%">
-                        Exclusive GST Amount
-                    </th>
-
-                    <th class="text-end" style="width: 6%">
-                        Sales Tax
-                    </th>
-
-                    <th class="text-end" style="width: 6%">
-                        Further Tax {{ ((float)($sale->total_further_tax ?? 0) > 0) ? '@3%' : '(0%)' }}
-                    </th>
+                        <th style="width: 4%;" class="text-center">S.No</th>
+                        <th style="width: 26%;" class="text-start">Description of Product</th>
+                        <th style="width: 10%;" class="text-center">Batch / Sr. No</th>
+                        <th style="width: 6%;" class="text-center">Quantity</th>
+                        <th style="width: 8%;" class="text-end">Rate</th>
+                        <th style="width: 9%;" class="text-end">Gross Amount</th>
+                        <th style="width: 5%;" class="text-end">Disc %</th>
+                        <th style="width: 10%;" class="text-end">Exclusive GST</th>
+                        <th style="width: 7%;" class="text-end">Sales Tax</th>
+                        <th style="width: 7%;" class="text-end">Further Tax {{ ((float)($sale->total_further_tax ?? 0) > 0) ? '@3%' : '(0%)' }}</th>
+                        <th style="width: 8%;" class="text-end">Net Amount</th>
+                    @else
+                        <th style="width: 5%;" class="text-center">S.No</th>
+                        <th style="width: 39%;" class="text-start">Description of Product</th>
+                        <th style="width: 13%;" class="text-center">Batch / Sr. No</th>
+                        <th style="width: 8%;" class="text-center">Quantity</th>
+                        <th style="width: 10%;" class="text-end">Rate</th>
+                        <th style="width: 12%;" class="text-end">Gross Amount</th>
+                        <th style="width: 5%;" class="text-end">Disc %</th>
+                        <th style="width: 8%;" class="text-end">Net Amount</th>
                     @endif
-
-                    <th class="text-end" style="width: 6%">
-                        Net Amount
-                    </th>
-
                 </tr>
-
             </thead>
-
 
             @php
                 $sumTotQty = 0;
@@ -918,11 +989,8 @@
                 $sumNetTotal = 0;
             @endphp
 
-
             <tbody>
-
                 @foreach ($saleItems as $item)
-
                     @php
                         $vName = $item['variant_name'] ?? '';
                         $vSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
@@ -965,15 +1033,11 @@
                         $sumNetTotal += $netAmt;
                     @endphp
 
-
                     <tr>
-
-                        <td class="text-center">
-                            {{ $loop->iteration }}
-                        </td>
+                        <td class="text-center">{{ $loop->iteration }}</td>
 
                         <td class="text-start">
-                            <div style="font-weight: 700; color: #000; font-size: 11px;">{{ $productTitle }}</div>
+                            <div class="item-main-title">{{ $productTitle }}</div>
 
                             @php
                                 $subDescriptions = [];
@@ -1004,16 +1068,16 @@
                             @endphp
 
                             @if(!empty($itemSerialsList) && count($itemSerialsList) > 0)
-                                <div style="font-size: 11px; color: #000; margin-top: 2px; font-weight: 800;">
-                                    SN #: {{ implode(', ', $itemSerialsList) }}
+                                <div class="item-sub-sn">
+                                    <i class="fas fa-barcode me-1"></i>S/N: {{ implode(', ', $itemSerialsList) }}
                                 </div>
                             @endif
 
                             @if(!empty($subDescriptions) && count($subDescriptions) > 0)
-                                <div style="font-size: 10px; color: #1e293b; margin-top: 2px; padding-left: 2px;">
+                                <div class="item-sub-desc">
                                     @foreach($subDescriptions as $sd)
                                         @if(trim($sd))
-                                            <div style="line-height: 1.4;"><span style="color: #000; margin-right: 4px; font-weight: bold;">•</span>{{ trim($sd) }}</div>
+                                            <div><span class="me-1 text-muted">•</span>{{ trim($sd) }}</div>
                                         @endif
                                     @endforeach
                                 </div>
@@ -1022,15 +1086,15 @@
 
                         <td class="text-center">
                             @if(!empty($batchNo))
-                                {{ $batchNo }}
+                                <span class="badge bg-light text-dark border">{{ $batchNo }}</span>
                             @elseif(!empty($itemSerialsList))
-                                S/N
+                                <span class="badge bg-light text-dark border">S/N</span>
                             @else
-                                -
+                                <span class="text-muted">-</span>
                             @endif
                         </td>
 
-                        <td class="text-center">
+                        <td class="text-center fw-bold">
                             {{ $itemQty == (int)$itemQty ? (int)$itemQty : number_format($itemQty, 2) }}
                         </td>
 
@@ -1043,38 +1107,32 @@
                         </td>
 
                         <td class="text-end">
-                            {{ number_format($discPct, 2) }}
+                            {{ $discPct > 0 ? number_format($discPct, 2).'%' : '0.00' }}
                         </td>
 
                         @if($showTaxColumns)
-                        <td class="text-end">
-                            {{ number_format($exclGst, 2) }}
-                        </td>
+                            <td class="text-end">
+                                {{ number_format($exclGst, 2) }}
+                            </td>
 
-                        <td class="text-end">
-                            {{ number_format($salesTax, 2) }}
-                        </td>
+                            <td class="text-end">
+                                {{ number_format($salesTax, 2) }}
+                            </td>
 
-                        <td class="text-end">
-                            {{ number_format($furtherTax, 2) }}
-                        </td>
+                            <td class="text-end">
+                                {{ number_format($furtherTax, 2) }}
+                            </td>
                         @endif
 
                         <td class="text-end fw-bold">
                             {{ number_format($netAmt, 2) }}
                         </td>
-
                     </tr>
-
                 @endforeach
-
             </tbody>
 
-
             <tfoot>
-
-                <tr class="fw-bold" style="border-top: 2px solid #000; border-bottom: 2px solid #000;">
-
+                <tr>
                     <td colspan="3" class="text-end fw-bold">
                         TOTAL:
                     </td>
@@ -1094,27 +1152,24 @@
                     </td>
 
                     @if($showTaxColumns)
-                    <td class="text-end fw-bold">
-                        {{ number_format($sumExclGst, 2) }}
-                    </td>
+                        <td class="text-end fw-bold">
+                            {{ number_format($sumExclGst, 2) }}
+                        </td>
 
-                    <td class="text-end fw-bold">
-                        {{ number_format($sumSalesTax, 2) }}
-                    </td>
+                        <td class="text-end fw-bold">
+                            {{ number_format($sumSalesTax, 2) }}
+                        </td>
 
-                    <td class="text-end fw-bold">
-                        {{ number_format($sumFurtherTax, 2) }}
-                    </td>
+                        <td class="text-end fw-bold">
+                            {{ number_format($sumFurtherTax, 2) }}
+                        </td>
                     @endif
 
                     <td class="text-end fw-bold">
                         {{ number_format($sumNetTotal, 2) }}
                     </td>
-
                 </tr>
-
             </tfoot>
-
         </table>
 
         @php
@@ -1140,256 +1195,99 @@
             }
         @endphp
 
-
         <!-- ========================================== -->
-        <!-- EXCHANGE RETURN -->
+        <!-- EXCHANGE RETURN SECTION -->
         <!-- ========================================== -->
-
         @php
-
-            $exchangeReturn =
-                \App\Models\SaleReturn::with('items.product')
-                    ->where(
-                        'remarks',
-                        'LIKE',
-                        '%Invoice #'.$sale->invoice_no.'%'
-                    )
-                    ->first();
+            $exchangeReturn = \App\Models\SaleReturn::with('items.product')
+                ->where('remarks', 'LIKE', '%Invoice #'.$sale->invoice_no.'%')
+                ->first();
 
             $exchangeReturnedAmount = 0;
-
             if ($exchangeReturn) {
-
-                $exchangeReturnedAmount =
-                    $exchangeReturn->items->sum('line_total');
-
+                $exchangeReturnedAmount = $exchangeReturn->items->sum('line_total');
             }
-
         @endphp
 
-
         @if($exchangeReturn && $exchangeReturn->items->count() > 0)
-
-            <div class="mt-3">
-
-                <h6 class="fw-bold mb-2">
-                    Returned Items (Exchange)
-                </h6>
-
+            <div class="returns-wrapper">
+                <div class="returns-header">
+                    <i class="fas fa-undo-alt"></i> Returned Items (Exchange)
+                </div>
 
                 <table class="invoice-table">
-
-                    <thead class="bg-light">
-
+                    <thead>
                         <tr>
-
-                            <th class="text-start"
-                                style="width: 5%">
-                                S.
-                            </th>
-
-                            <th class="text-start"
-                                style="width: 38%">
-                                Description
-                            </th>
-
-                            <th class="text-center"
-                                style="width: 14%">
-                                Qty
-                            </th>
-
-                            <th class="text-center"
-                                style="width: 10%">
-                                UOM
-                            </th>
-
-                            <th class="text-end"
-                                style="width: 10%">
-                                Price
-                            </th>
-
-                            <th class="text-end"
-                                style="width: 10%">
-                                Disc
-                            </th>
-
-                            <th class="text-end"
-                                style="width: 13%">
-                                Net Amount
-                            </th>
-
+                            <th style="width: 5%;" class="text-start">S.No</th>
+                            <th style="width: 45%;" class="text-start">Description</th>
+                            <th style="width: 12%;" class="text-center">Qty</th>
+                            <th style="width: 10%;" class="text-center">UOM</th>
+                            <th style="width: 12%;" class="text-end">Price</th>
+                            <th style="width: 16%;" class="text-end">Net Amount</th>
                         </tr>
-
                     </thead>
-
-
                     <tbody>
-
                         @foreach ($exchangeReturn->items as $retItem)
-
                             <tr>
+                                <td class="text-start">{{ $loop->iteration }}</td>
 
                                 <td class="text-start">
-                                    {{ $loop->iteration }}
-                                </td>
-
-
-                                <td class="text-start">
-
-                                    <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">
-
-                                        {{ $retItem->product->item_name ?? 'Unknown' }}
-
-                                    </div>
-
+                                    <div class="fw-bold">{{ $retItem->product->item_name ?? 'Unknown' }}</div>
                                     @php
-
                                         $retColorStr = '';
-
                                         if (!empty($retItem->color)) {
-
-                                            $decoded =
-                                                base64_decode(
-                                                    $retItem->color,
-                                                    true
-                                                );
-
-                                            if (
-                                                $decoded !== false
-                                                &&
-                                                is_string($decoded)
-                                                &&
-                                                str_starts_with(
-                                                    trim($decoded),
-                                                    '{'
-                                                )
-                                            ) {
-
-                                                $parsed =
-                                                    json_decode(
-                                                        $decoded,
-                                                        true
-                                                    );
-
-                                                if (
-                                                    json_last_error()
-                                                    ===
-                                                    JSON_ERROR_NONE
-                                                    &&
-                                                    is_array($parsed)
-                                                ) {
-
+                                            $decoded = base64_decode($retItem->color, true);
+                                            if ($decoded !== false && is_string($decoded) && str_starts_with(trim($decoded), '{')) {
+                                                $parsed = json_decode($decoded, true);
+                                                if (json_last_error() === JSON_ERROR_NONE && is_array($parsed)) {
                                                     $parts = [];
-
-                                                    if (
-                                                        !empty($parsed['size'])
-                                                        &&
-                                                        $parsed['size'] !== '-'
-                                                    ) {
-
-                                                        $parts[] =
-                                                            $parsed['size'];
-
-                                                    }
-
-                                                    if (
-                                                        !empty($parsed['color'])
-                                                        &&
-                                                        $parsed['color'] !== '-'
-                                                    ) {
-
-                                                        $parts[] =
-                                                            $parsed['color'];
-
-                                                    }
-
-                                                    $retColorStr =
-                                                        implode(
-                                                            ' | ',
-                                                            $parts
-                                                        );
-
+                                                    if (!empty($parsed['size']) && $parsed['size'] !== '-') $parts[] = $parsed['size'];
+                                                    if (!empty($parsed['color']) && $parsed['color'] !== '-') $parts[] = $parsed['color'];
+                                                    $retColorStr = implode(' | ', $parts);
                                                 }
-
                                             }
-
                                         }
-
                                     @endphp
-
-
                                     @if($retColorStr)
-
-                                        <div style="font-size: 11px; color: #555;">
-
-                                            <span class="badge bg-light text-dark border p-1"
-                                                style="font-size: 9px;">
-
-                                                {{ $retColorStr }}
-
-                                            </span>
-
-                                        </div>
-
+                                        <span class="badge bg-light text-dark border p-1" style="font-size: 9px;">
+                                            {{ $retColorStr }}
+                                        </span>
                                     @endif
-
                                 </td>
 
-
-                                <td class="text-center fw-bold">
-
-                                    {{ (float)$retItem->qty }}
-                                    Pcs
-
-                                </td>
-
-
-                                <td class="text-center fw-bold">
-                                    Pieces
-                                </td>
-
-
-                                <td class="text-end">
-
-                                    {{ number_format($retItem->price, 2) }}
-
-                                </td>
-
-
-                                <td class="text-end text-muted">
-                                    —
-                                </td>
-
-
-                                <td class="text-end fw-bold">
-
-                                    -
-                                    {{ number_format($retItem->line_total, 2) }}
-
-                                </td>
-
+                                <td class="text-center fw-bold">{{ (float)$retItem->qty }} Pcs</td>
+                                <td class="text-center">Pieces</td>
+                                <td class="text-end">{{ number_format($retItem->price, 2) }}</td>
+                                <td class="text-end fw-bold text-danger">- {{ number_format($retItem->line_total, 2) }}</td>
                             </tr>
-
                         @endforeach
-
                     </tbody>
-
                 </table>
-
             </div>
-
         @endif
 
-
         <!-- ========================================== -->
-        <!-- FOOTER / TOTALS -->
+        <!-- BOTTOM SECTION: WORDS, TERMS & TOTALS -->
         <!-- ========================================== -->
+        <div class="invoice-bottom-grid">
 
-        <div class="row mt-2">
+            <!-- Left: Amount in Words, Terms & Signature -->
+            <div class="invoice-bottom-left">
 
-            <div class="col-7">
+                <!-- Amount in Words -->
+                @if(!empty($sale->total_amount_Words))
+                    <div class="words-card">
+                        <div class="words-label">
+                            <i class="fas fa-money-bill-wave"></i> Amount in Words:
+                        </div>
+                        <div class="words-value">
+                            {{ ucwords(strtolower($sale->total_amount_Words)) }} Only
+                        </div>
+                    </div>
+                @endif
 
-                                @php
+                <!-- Terms & Conditions -->
+                @php
                     $saleTermsList = null;
                     if (!empty($sale->selected_terms)) {
                         $selectedTermIds = is_array($sale->selected_terms) ? $sale->selected_terms : json_decode($sale->selected_terms, true);
@@ -1406,15 +1304,14 @@
                 @endphp
 
                 @if($saleTermsList && $saleTermsList->count() > 0)
-                    <div class="terms-box pt-2">
-                        <p class="fw-bold mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Terms & Conditions:
-                        </p>
-
-                        <div style="font-size: 10px; line-height: 1.45;">
+                    <div class="terms-card">
+                        <div class="terms-title">
+                            <i class="fas fa-clipboard-list"></i> Terms & Conditions:
+                        </div>
+                        <div class="terms-content">
                             @foreach($saleTermsList as $st)
                                 <div class="mb-1">
-                                    <strong style="text-transform: uppercase; font-weight: 700;">{{ $st->heading }}:</strong>
+                                    <strong style="text-transform: uppercase;">{{ $st->heading }}:</strong>
                                     <span>{{ $st->paragraph }}</span>
                                 </div>
                             @endforeach
@@ -1422,258 +1319,110 @@
                     </div>
                 @endif
 
-
-                <div class="mt-4 pt-2">
-
-                    <div class="signature-area">
+                <!-- Authorized Signature -->
+                <div class="signature-section">
+                    <div class="signature-line-box">
                         Authorized Signature
                     </div>
-
-                    <div class="small text-muted mt-1"
-                        style="font-size: 10px;">
-
-                        Printed on:
-                        {{ date('d/m/Y h:i A') }}
-
+                    <div class="printed-timestamp">
+                        <i class="far fa-clock"></i> Printed on: {{ date('d-F-Y h:i A') }}
                     </div>
-
                 </div>
 
             </div>
 
+            <!-- Right: Totals Summary Card -->
+            <div class="invoice-bottom-right">
 
-            <div class="col-5">
-
-                <div class="info-box"
-                    style="border: none; padding: 0;">
+                <div class="totals-card">
+                    <div class="card-head">
+                        <i class="fas fa-calculator"></i> Invoice Summary
+                    </div>
 
                     <table class="totals-table">
-
                         @php
+                            $grossTotal = collect($saleItems)->sum('total');
+                            $totalDisc = collect($saleItems)->sum('discount_amount');
+                            $extraDisc = (float)($sale->total_extradiscount ?? 0);
+                            $netBill = $sale->total_net;
+                            $paidAmount = (float)($sale->cash ?? 0);
 
-                            $grossTotal =
-                                collect($saleItems)->sum('total');
+                            $sumExclusiveGst = (float)($sale->total_exclusive_gst ?? collect($saleItems)->sum('exclusive_gst_amount'));
+                            $sumSalesTax = (float)($sale->total_sales_tax ?? collect($saleItems)->sum('sales_tax_amount'));
+                            $sumFurtherTax = (float)($sale->total_further_tax ?? collect($saleItems)->sum('further_tax_amount'));
 
-                            $totalDisc =
-                                collect($saleItems)->sum('discount_amount');
-
-                            $extraDisc =
-                                (float)($sale->total_extradiscount ?? 0);
-
-                            $netBill =
-                                $sale->total_net;
-
-                            $paidAmount =
-                                (float)($sale->cash ?? 0);
-
-                            $finalBal =
-                                $previousBalance
-                                +
-                                $netBill
-                                -
-                                $paidAmount;
-
+                            $finalPayable = $netBill - $exchangeReturnedAmount;
                         @endphp
 
-
                         @if ($totalCartonsCount > 0)
-
                             <tr>
-
-                                <td class="text-muted fw-bold">
-                                    Total Cartons / Bundals
-                                </td>
-
-                                <td class="text-end fw-bold" style="color: var(--primary-color);">
-
+                                <td class="lbl">Total Cartons / Bundals</td>
+                                <td class="val">
                                     @if ($totalLooseCount > 0)
                                         {{ $totalCartonsCount }} Ctn/Bndl + {{ $totalLooseCount }} Pcs
                                     @else
                                         {{ $totalCartonsCount }} Ctn/Bndl
                                     @endif
-
                                 </td>
-
                             </tr>
-
                         @endif
-
 
                         @if ($totalDisc > 0 || $extraDisc > 0)
-
                             <tr>
-
-                                <td class="text-muted">
-                                    Gross Total
-                                </td>
-
-                                <td class="text-end text-muted">
-
-                                    {{
-                                        number_format(
-                                            $grossTotal + $totalDisc,
-                                            2
-                                        )
-                                    }}
-
-                                </td>
-
+                                <td class="lbl">Gross Total</td>
+                                <td class="val">{{ number_format($grossTotal + $totalDisc, 2) }}</td>
                             </tr>
-
-
                             <tr>
-
-                                <td class="text-muted">
-                                    Total Discount
-                                </td>
-
-                                <td class="text-end text-danger">
-
-                                    -
-                                    {{ number_format($totalDisc + $extraDisc, 2) }}
-
-                                </td>
-
+                                <td class="lbl text-danger">Total Discount</td>
+                                <td class="val text-danger">- {{ number_format($totalDisc + $extraDisc, 2) }}</td>
                             </tr>
-
                         @endif
-
-                        @php
-                            $sumExclusiveGst = (float)($sale->total_exclusive_gst ?? collect($saleItems)->sum('exclusive_gst_amount'));
-                            $sumSalesTax = (float)($sale->total_sales_tax ?? collect($saleItems)->sum('sales_tax_amount'));
-                            $sumFurtherTax = (float)($sale->total_further_tax ?? collect($saleItems)->sum('further_tax_amount'));
-                        @endphp
 
                         @if ($sumExclusiveGst > 0)
                             <tr>
-                                <td class="text-muted fw-bold">
-                                    Exclusive GST Subtotal
-                                </td>
-                                <td class="text-end fw-bold">
-                                    {{ number_format($sumExclusiveGst, 2) }}
-                                </td>
+                                <td class="lbl">Exclusive GST Subtotal</td>
+                                <td class="val">{{ number_format($sumExclusiveGst, 2) }}</td>
                             </tr>
                         @endif
 
                         @if ($sumSalesTax > 0)
                             <tr>
-                                <td class="text-success fw-bold">
-                                    Sales Tax (@18%)
-                                </td>
-                                <td class="text-end text-success fw-bold">
-                                    + {{ number_format($sumSalesTax, 2) }}
-                                </td>
+                                <td class="lbl text-success">Sales Tax (@18%)</td>
+                                <td class="val text-success">+ {{ number_format($sumSalesTax, 2) }}</td>
                             </tr>
                         @endif
 
                         @if ($sumFurtherTax > 0)
                             <tr>
-                                <td class="text-primary fw-bold">
-                                    Further Tax (@3%)
-                                </td>
-                                <td class="text-end text-primary fw-bold">
-                                    + {{ number_format($sumFurtherTax, 2) }}
-                                </td>
+                                <td class="lbl text-primary">Further Tax (@3%)</td>
+                                <td class="val text-primary">+ {{ number_format($sumFurtherTax, 2) }}</td>
                             </tr>
                         @endif
-                        
+
                         @if ($sale->freight_charges > 0)
                             <tr>
-                                <td class="text-muted">
-                                    Freight Charges {{ $sale->freight_type === 'add' ? '(+) ' : '(-) ' }}
-                                </td>
-                                <td class="text-end">
-                                    {{ $sale->freight_type === 'add' ? '+' : '-' }}
-                                    {{ number_format($sale->freight_charges, 2) }}
-                                </td>
+                                <td class="lbl">Freight Charges {{ $sale->freight_type === 'add' ? '(+)' : '(-)' }}</td>
+                                <td class="val">{{ $sale->freight_type === 'add' ? '+' : '-' }} {{ number_format($sale->freight_charges, 2) }}</td>
                             </tr>
                         @endif
 
                         @if ($exchangeReturnedAmount > 0)
-
                             <tr>
-
-                                <td class="text-muted">
-                                    Return Value
-                                </td>
-
-                                <td class="text-end text-danger">
-
-                                    -
-                                    {{
-                                        number_format(
-                                            $exchangeReturnedAmount,
-                                            2
-                                        )
-                                    }}
-
-                                </td>
-
+                                <td class="lbl text-danger">Return Value</td>
+                                <td class="val text-danger">- {{ number_format($exchangeReturnedAmount, 2) }}</td>
                             </tr>
-
                         @endif
 
-
-                        @php
-
-                            $finalPayable =
-                                $netBill
-                                -
-                                $exchangeReturnedAmount;
-
-                        @endphp
-
-
-                        <tr>
-
-                            <td class="fw-bold text-dark fs-6"
-                                style="border-top: 2px solid #34495e; padding-top: 8px;">
-
-                                {{
-                                    $finalPayable < 0
-                                        ? 'Refund To Customer'
-                                        : 'Grand Total'
-                                }}
-
+                        <!-- Grand Total Highlight Row -->
+                        <tr class="total-row">
+                            <td class="lbl">
+                                {{ $finalPayable < 0 ? 'REFUND TO CUSTOMER' : 'GRAND TOTAL' }}
                             </td>
-
-
-                            <td class="text-end fw-bold text-dark fs-6"
-                                style="border-top: 2px solid #34495e; padding-top: 8px;">
-
-                                {{
-                                    number_format(
-                                        abs($finalPayable),
-                                        2
-                                    )
-                                }}
-
+                            <td class="val">
+                                Rs. {{ number_format(abs($finalPayable), 2) }}
                             </td>
-
                         </tr>
-
-
-
-
                     </table>
-
-                </div>
-
-
-                <div class="text-end mt-1">
-
-                    <small class="text-muted fst-italic"
-                        style="font-size: 10px;">
-
-                        {{
-                            Str::limit(
-                                $sale->total_amount_Words,
-                                60
-                            )
-                        }}
-
-                    </small>
-
                 </div>
 
             </div>
@@ -1682,170 +1431,63 @@
 
     </div>
 
-
     <!-- ========================================== -->
-    <!-- THERMAL RECEIPT -->
+    <!-- THERMAL RECEIPT (80mm) -->
     <!-- ========================================== -->
-
     <div class="receipt-container">
-
         <!-- Header -->
-
         <div class="company-name">
-
-            {{ \App\Models\Setting::get(
-                'company_name',
-                'Three Stars Medical'
-            ) }}
-
+            {{ \App\Models\Setting::get('company_name', 'Three Stars Medical') }}
         </div>
-
 
         <div class="company-info">
-
-            <div>
-                {{ \App\Models\Setting::get(
-                    'company_address',
-                    'Hyderabad'
-                ) }}
-            </div>
-
-            <div>
-                Ph:
-                {{ \App\Models\Setting::get(
-                    'company_phone',
-                    '0327-9226901'
-                ) }}
-            </div>
-
+            <div>{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
+            <div>Ph: {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
         </div>
 
-
         @if(
-            \App\Models\Setting::get('facebook_link')
-            ||
-            \App\Models\Setting::get('tiktok_link')
-            ||
-            \App\Models\Setting::get('instagram_link')
-            ||
+            \App\Models\Setting::get('facebook_link') ||
+            \App\Models\Setting::get('tiktok_link') ||
+            \App\Models\Setting::get('instagram_link') ||
             \App\Models\Setting::get('website_link')
         )
-
             <div style="text-align: left; font-size: 10px; line-height: 1.4; word-wrap: break-word; overflow-wrap: break-word; margin-top: 4px;">
-
                 @if(\App\Models\Setting::get('facebook_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>Facebook:</strong>
-                        {{ \App\Models\Setting::get('facebook_link') }}
-                    </div>
-
+                    <div style="margin-bottom: 2px;"><strong>Facebook:</strong> {{ \App\Models\Setting::get('facebook_link') }}</div>
                 @endif
-
-
                 @if(\App\Models\Setting::get('tiktok_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>TikTok:</strong>
-                        {{ \App\Models\Setting::get('tiktok_link') }}
-                    </div>
-
+                    <div style="margin-bottom: 2px;"><strong>TikTok:</strong> {{ \App\Models\Setting::get('tiktok_link') }}</div>
                 @endif
-
-
                 @if(\App\Models\Setting::get('instagram_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>Instagram:</strong>
-                        {{ \App\Models\Setting::get('instagram_link') }}
-                    </div>
-
+                    <div style="margin-bottom: 2px;"><strong>Instagram:</strong> {{ \App\Models\Setting::get('instagram_link') }}</div>
                 @endif
-
-
                 @if(\App\Models\Setting::get('website_link'))
-
-                    <div style="margin-bottom: 2px;">
-                        <strong>Website:</strong>
-                        {{ \App\Models\Setting::get('website_link') }}
-                    </div>
-
+                    <div style="margin-bottom: 2px;"><strong>Website:</strong> {{ \App\Models\Setting::get('website_link') }}</div>
                 @endif
-
             </div>
-
         @endif
-
 
         <div class="policy-banner">
             No Return, Only Exchange in 3 days
         </div>
 
-
         <div class="divider"></div>
 
-
         <!-- Meta -->
-
-        @php
-            $isWalkin = empty($sale->customer_id);
-        @endphp
-
-
         <div class="meta-grid">
-
             <div class="meta-row">
-
-                <span class="meta-label">
-                    Invoice #:
-                </span>
-
-                <span class="meta-value">
-                    {{ $sale->invoice_no }}
-                </span>
-
+                <span class="meta-label">Invoice #:</span>
+                <span class="meta-value">{{ $sale->invoice_no }}</span>
             </div>
 
-
             <div class="meta-row">
-
-                <span class="meta-label">
-                    Date:
-                </span>
-
-                <span class="meta-value">
-
-                    {{
-                        $sale->created_at
-                            ? $sale->created_at->format('d/m/Y h:i A')
-                            : date('d/m/Y h:i A')
-                    }}
-
-                </span>
-
+                <span class="meta-label">Date:</span>
+                <span class="meta-value">{{ $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : date('d/m/Y h:i A') }}</span>
             </div>
 
-
             <div class="meta-row">
-
-                <span class="meta-label">
-                    Customer:
-                </span>
-
-                <span class="meta-value">
-
-                    {{
-                        Str::limit(
-                            $sale->walkin_name
-                            ??
-                            ($sale->customer_relation->customer_name
-                                ?? 'Walking Customer'),
-                            22
-                        )
-                    }}
-
-                </span>
-
+                <span class="meta-label">Customer:</span>
+                <span class="meta-value">{{ Str::limit($sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer'), 22) }}</span>
             </div>
 
             @if(!empty($custNtn))
@@ -1862,265 +1504,76 @@
                 </div>
             @endif
 
-
             @if (auth()->check())
-
                 <div class="meta-row">
-
-                    <span class="meta-label">
-                        Salesperson:
-                    </span>
-
-                    <span class="meta-value">
-                        {{ auth()->user()->name }}
-                    </span>
-
+                    <span class="meta-label">Salesperson:</span>
+                    <span class="meta-value">{{ auth()->user()->name }}</span>
                 </div>
-
             @endif
-
 
             @if($sale->reference)
-
                 <div class="meta-row">
-
-                    <span class="meta-label">
-                        Remarks:
-                    </span>
-
-                    <span class="meta-value">
-                        {{ $sale->reference }}
-                    </span>
-
+                    <span class="meta-label">Remarks:</span>
+                    <span class="meta-value">{{ $sale->reference }}</span>
                 </div>
-
             @endif
-
         </div>
-
 
         <div class="divider"></div>
 
-
-        <!-- ========================================== -->
-        <!-- THERMAL ITEMS -->
-        <!-- ========================================== -->
-
+        <!-- Thermal Items -->
         <table class="items-table">
-
             <thead>
-
                 <tr>
-
-                    <th style="width: 6%;">
-                        S.
-                    </th>
-
-                    <th style="width: 53%;">
-                        Description
-                    </th>
-
-                    <th style="width: 10%;"
-                        class="text-center">
-                        Qty
-                    </th>
-
-                    <th style="width: 13%;"
-                        class="text-end">
-                        Rate
-                    </th>
-
-                    <th style="width: 18%;"
-                        class="text-end">
-                        Total
-                    </th>
-
+                    <th style="width: 6%;">S.</th>
+                    <th style="width: 53%;">Description</th>
+                    <th style="width: 10%;" class="text-center">Qty</th>
+                    <th style="width: 13%;" class="text-end">Rate</th>
+                    <th style="width: 18%;" class="text-end">Total</th>
                 </tr>
-
             </thead>
-
-
             <tbody>
-
                 @foreach ($saleItems as $item)
-
                     @php
+                        $sizeMode = $item['size_mode'] ?? 'std';
+                        $totalPieces = (int)$item['total_pieces'];
+                        $variantUnit = strtolower($item['variant_unit'] ?? '');
+                        $weightGrams = (float)($item['weight_per_piece'] ?? 0);
+                        $qtyDisplay = $totalPieces . ' Pcs';
 
-                        $sizeMode =
-                            $item['size_mode'] ?? 'std';
-
-                        $totalPieces =
-                            (int)$item['total_pieces'];
-
-                        $variantUnit =
-                            strtolower(
-                                $item['variant_unit']
-                                ?? ''
-                            );
-
-                        $weightGrams =
-                            (float)(
-                                $item['weight_per_piece']
-                                ?? 0
-                            );
-
-                        $qtyDisplay =
-                            $totalPieces . ' Pcs';
-
-
-                        if (
-                            $variantUnit === 'pcs'
-                            ||
-                            $variantUnit === 'piece'
-                            ||
-                            $variantUnit === 'pieces'
-                        ) {
-
-                            $qtyDisplay =
-                                $totalPieces . ' Pcs';
-
+                        if ($variantUnit === 'pcs' || $variantUnit === 'piece' || $variantUnit === 'pieces') {
+                            $qtyDisplay = $totalPieces . ' Pcs';
                             if ($weightGrams > 0) {
-
-                                $qtyDisplay .=
-                                    ' (' .
-                                    (
-                                        $weightGrams == (int)$weightGrams
-                                            ? (int)$weightGrams
-                                            : $weightGrams
-                                    )
-                                    .
-                                    'g)';
-
+                                $qtyDisplay .= ' (' . ($weightGrams == (int)$weightGrams ? (int)$weightGrams : $weightGrams) . 'g)';
                             }
-
-                        }
-
-                        elseif (
-                            in_array(
-                                $sizeMode,
-                                [
-                                    'by_kg',
-                                    'by_gm',
-                                    'by_feet',
-                                    'by_meter'
-                                ]
-                            )
-                        ) {
-
+                        } elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter'])) {
                             $uomLabel = match($sizeMode) {
-
-                                'by_kg' =>
-                                    'Kg',
-
-                                'by_gm' =>
-                                    'Gm',
-
-                                'by_feet' =>
-                                    'Ft',
-
-                                'by_meter' =>
-                                    'Mtr',
-
-                                default =>
-                                    '',
-
+                                'by_kg' => 'Kg',
+                                'by_gm' => 'Gm',
+                                'by_feet' => 'Ft',
+                                'by_meter' => 'Mtr',
+                                default => '',
                             };
-
-
-                            $qtyVal =
-                                (float)(
-                                    $item['qty_box']
-                                    ??
-                                    $item['qty']
-                                    ??
-                                    $totalPieces
-                                );
-
-
-                            $qtyDisplay =
-                                (
-                                    $qtyVal == (int)$qtyVal
-                                        ? (int)$qtyVal
-                                        : number_format($qtyVal, 3)
-                                )
-                                .
-                                ' '
-                                .
-                                $uomLabel;
-
+                            $qtyVal = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                            $qtyDisplay = ($qtyVal == (int)$qtyVal ? (int)$qtyVal : number_format($qtyVal, 3)) . ' ' . $uomLabel;
+                        } elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']) || $sizeMode == 'by_size') {
+                            $piecesPerBox = (int)($item['pieces_per_box'] ?? 1);
+                            if ($piecesPerBox <= 0) $piecesPerBox = 1;
+                            $boxes = floor($totalPieces / $piecesPerBox);
+                            $loose = $totalPieces % $piecesPerBox;
+                            if ($boxes > 0 && $loose > 0) {
+                                $qtyDisplay = "$boxes.$loose";
+                            } elseif ($boxes > 0) {
+                                $qtyDisplay = $boxes;
+                            } else {
+                                $qtyDisplay = $loose;
+                            }
                         }
-
-                        elseif (
-                            in_array($sizeMode, ['by_cartons', 'by_bandal'])
-                            ||
-                            $sizeMode == 'by_size'
-                        ) {
-
-                            $piecesPerBox =
-                                (int)(
-                                    $item['pieces_per_box']
-                                    ?? 1
-                                );
-
-
-                            if ($piecesPerBox <= 0) {
-                                $piecesPerBox = 1;
-                            }
-
-
-                            $boxes =
-                                floor(
-                                    $totalPieces
-                                    /
-                                    $piecesPerBox
-                                );
-
-
-                            $loose =
-                                $totalPieces
-                                %
-                                $piecesPerBox;
-
-
-                            if (
-                                $boxes > 0
-                                &&
-                                $loose > 0
-                            ) {
-
-                                $qtyDisplay =
-                                    "$boxes.$loose";
-
-                            }
-
-                            elseif ($boxes > 0) {
-
-                                $qtyDisplay =
-                                    $boxes;
-
-                            }
-
-                            else {
-
-                                $qtyDisplay =
-                                    $loose;
-
-                            }
-
-                        }
-
                     @endphp
 
-
                     <tr>
-
-                        <td style="width: 6%;">
-                            {{ $loop->iteration }}
-                        </td>
-
-
+                        <td style="width: 6%;">{{ $loop->iteration }}</td>
                         <td style="width: 53%;">
-
                             @php
                                 $tVName = $item['variant_name'] ?? '';
                                 $tVSize = (!empty($item['size_val']) && $item['size_val'] !== '-') ? $item['size_val'] : '';
@@ -2138,9 +1591,7 @@
                                 $tProductTitle .= $tVExtraStr;
                             @endphp
 
-                            <span class="item-name">
-                                {{ $tProductTitle }}
-                            </span>
+                            <span class="item-name">{{ $tProductTitle }}</span>
 
                             @php
                                 $tBatchNo = $item['batch_no'] ?? null;
@@ -2170,174 +1621,46 @@
                                     S/N: {{ implode(', ', $tSerialsList) }}
                                 </span>
                             @endif
-
-                            {{-- 
-                                IMPORTANT:
-                                Raw color / variant data intentionally
-                                removed from thermal receipt as well.
-                            --}}
-
                         </td>
-
-
-                        <td style="width: 10%;"
-                            class="text-center">
-
-                            {{ $qtyDisplay }}
-
-                        </td>
-
-
-                        <td style="width: 13%;"
-                            class="text-end">
-
-                            {{ number_format($item['price'], 0) }}
-
-                        </td>
-
-
-                        <td style="width: 18%;"
-                            class="text-end">
-
-                            {{ number_format($item['total'], 0) }}
-
-                        </td>
-
+                        <td style="width: 10%;" class="text-center">{{ $qtyDisplay }}</td>
+                        <td style="width: 13%;" class="text-end">{{ number_format($item['price'], 0) }}</td>
+                        <td style="width: 18%;" class="text-end">{{ number_format($item['total'], 0) }}</td>
                     </tr>
-
                 @endforeach
-
             </tbody>
-
         </table>
 
-
-        <!-- Returned Items -->
-
-        @if(
-            $exchangeReturn
-            &&
-            $exchangeReturn->items->count() > 0
-        )
-
-            <div class="divider"
-                style="border-top: 1px dashed #000; margin: 4px 0;">
-            </div>
-
-
-            <div style="font-weight: bold; font-size: 11px; margin-bottom: 2px; color: #000;">
-                Returned Items:
-            </div>
-
-
-            <table class="items-table"
-                style="margin-bottom: 4px;">
-
+        <!-- Returned Items (Thermal) -->
+        @if($exchangeReturn && $exchangeReturn->items->count() > 0)
+            <div class="divider" style="border-top: 1px dashed #000; margin: 4px 0;"></div>
+            <div style="font-weight: bold; font-size: 11px; margin-bottom: 2px; color: #000;">Returned Items:</div>
+            <table class="items-table" style="margin-bottom: 4px;">
                 <tbody>
-
                     @foreach ($exchangeReturn->items as $retItem)
-
                         <tr>
-
-                            <td style="width: 6%;">
-                                {{ $loop->iteration }}
-                            </td>
-
-
+                            <td style="width: 6%;">{{ $loop->iteration }}</td>
                             <td style="width: 53%;">
-
-                                @if(
-                                    $retItem->is_manual
-                                    ||
-                                    empty($retItem->product_id)
-                                )
-
-                                    <span class="item-name">
-
-                                        {{ $retItem->product_name }}
-                                        (Manual)
-
-                                    </span>
-
+                                @if($retItem->is_manual || empty($retItem->product_id))
+                                    <span class="item-name">{{ $retItem->product_name }} (Manual)</span>
                                 @else
-
-                                    <span class="item-name">
-
-                                        {{
-                                            $retItem->product->item_name
-                                            ?? 'Unknown'
-                                        }}
-
-                                    </span>
-
+                                    <span class="item-name">{{ $retItem->product->item_name ?? 'Unknown' }}</span>
                                 @endif
-
                             </td>
-
-
-                            <td style="width: 10%;"
-                                class="text-center">
-
-                                {{ (float)$retItem->qty }}
-
-                            </td>
-
-
-                            <td style="width: 13%;"
-                                class="text-end">
-
-                                {{ number_format($retItem->price, 0) }}
-
-                            </td>
-
-
-                            <td style="width: 18%;"
-                                class="text-end">
-
-                                -
-                                {{
-                                    number_format(
-                                        $retItem->line_total,
-                                        0
-                                    )
-                                }}
-
-                            </td>
-
+                            <td style="width: 10%;" class="text-center">{{ (float)$retItem->qty }}</td>
+                            <td style="width: 13%;" class="text-end">{{ number_format($retItem->price, 0) }}</td>
+                            <td style="width: 18%;" class="text-end">- {{ number_format($retItem->line_total, 0) }}</td>
                         </tr>
-
                     @endforeach
-
                 </tbody>
-
             </table>
-
         @endif
 
-
-        <!-- Totals -->
-
+        <!-- Totals (Thermal) -->
         <div class="totals-section">
-
             <div class="tot-row">
-
-                <span>
-                    Sub Total:
-                </span>
-
-                <span>
-
-                    {{
-                        number_format(
-                            $sale->total_bill_amount,
-                            0
-                        )
-                    }}
-
-                </span>
-
+                <span>Sub Total:</span>
+                <span>{{ number_format($sale->total_bill_amount, 0) }}</span>
             </div>
-
 
             @if ($sale->total_extradiscount > 0)
                 <div class="tot-row">
@@ -2353,128 +1676,74 @@
                 </div>
             @endif
 
-
             @if ($exchangeReturnedAmount > 0)
-
                 <div class="tot-row">
-
-                    <span>
-                        Return Value:
-                    </span>
-
-                    <span>
-
-                        -
-                        {{
-                            number_format(
-                                $exchangeReturnedAmount,
-                                0
-                            )
-                        }}
-
-                    </span>
-
+                    <span>Return Value:</span>
+                    <span>- {{ number_format($exchangeReturnedAmount, 0) }}</span>
                 </div>
-
             @endif
 
-
-            @php
-
-                $finalPayable =
-                    $sale->total_net
-                    -
-                    $exchangeReturnedAmount;
-
-            @endphp
-
-
             <div class="tot-row grand-total">
-
                 @if($finalPayable < 0)
-
-                    <span>
-                        REFUND TO CUSTOMER:
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                abs($finalPayable),
-                                0
-                            )
-                        }}
-
-                    </span>
-
+                    <span>REFUND TO CUSTOMER:</span>
+                    <span>{{ number_format(abs($finalPayable), 0) }}</span>
                 @else
-
-                    <span>
-                        TOTAL PAYABLE:
-                    </span>
-
-                    <span>
-
-                        {{
-                            number_format(
-                                $finalPayable,
-                                0
-                            )
-                        }}
-
-                    </span>
-
+                    <span>TOTAL PAYABLE:</span>
+                    <span>{{ number_format($finalPayable, 0) }}</span>
                 @endif
-
             </div>
-
         </div>
-
-
-
-
 
         <!-- Footer -->
-
         <div class="footer">
-
-            <p>
-                Thank you for shopping with us!
-            </p>
-
+            <p>Thank you for shopping with us!</p>
             <div class="soft-credit">
-
-                Powered by Prowave Technologies
-                <br>
+                Powered by Prowave Technologies<br>
                 📞 +92 317 3836 223
-
             </div>
-
         </div>
-
     </div>
 
-
     <!-- ========================================== -->
-    <!-- JAVASCRIPT -->
+    <!-- JAVASCRIPT & A4 PRINT HANDLER -->
     <!-- ========================================== -->
-
     <script>
-
         function printA4() {
             let style = document.createElement('style');
             style.id = 'a4-print-style';
             style.innerHTML = `
                 @media print {
-                    @page { size: auto; margin: 10mm; }
-                    .screen-only { display: block !important; }
-                    .receipt-container { display: none !important; }
-                    body { width: auto !important; margin: 0 !important; padding: 0 !important; color: #000 !important; }
-                    * { color: #000 !important; -webkit-text-fill-color: #000 !important; }
-                    .text-primary, .text-danger, .text-success, .text-warning, .text-info, .text-secondary, .text-muted, .text-dark, .info-label, .invoice-title, .company-name, .terms-box {
-                        color: #000 !important;
-                        -webkit-text-fill-color: #000 !important;
+                    @page { 
+                        size: A4 portrait; 
+                        margin: 8mm 10mm; 
+                    }
+                    .screen-only { 
+                        display: block !important; 
+                    }
+                    .receipt-container { 
+                        display: none !important; 
+                    }
+                    body { 
+                        width: 100% !important; 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        background: #ffffff !important; 
+                        color: #0f172a !important; 
+                    }
+                    .invoice-container { 
+                        margin: 0 !important; 
+                        padding: 0 !important; 
+                        box-shadow: none !important; 
+                        max-width: 100% !important; 
+                        border-radius: 0 !important; 
+                        border: none !important; 
+                    }
+                    .print-btn-container, .no-print { 
+                        display: none !important; 
+                    }
+                    * { 
+                        -webkit-print-color-adjust: exact !important; 
+                        print-color-adjust: exact !important; 
                     }
                 }
             `;
@@ -2487,79 +1756,32 @@
                 if (s) {
                     s.remove();
                 }
-            }, 500);
+            }, 600);
         }
 
         function handleGoBack() {
+            const urlParams = new URLSearchParams(window.location.search);
 
-            const urlParams =
-                new URLSearchParams(
-                    window.location.search
-                );
-
-
-            if (
-                urlParams.get('from') === 'pos'
-                ||
-                (
-                    document.referrer
-                    &&
-                    document.referrer.indexOf('/pos') !== -1
-                )
-            ) {
-
-                window.location.href =
-                    "{{ route('pos.index') }}";
-
+            if (urlParams.get('from') === 'pos' || (document.referrer && document.referrer.indexOf('/pos') !== -1)) {
+                window.location.href = "{{ route('pos.index') }}";
                 return;
-
             }
 
-
-            if (
-                window.opener
-                &&
-                !window.opener.closed
-            ) {
-
+            if (window.opener && !window.opener.closed) {
                 window.close();
-
                 setTimeout(function() {
-
-                    window.location.href =
-                        "{{ route('sale.index') }}";
-
+                    window.location.href = "{{ route('sale.index') }}";
                 }, 150);
-
                 return;
-
             }
 
-
-            if (
-                window.history.length > 1
-                &&
-                document.referrer
-                &&
-                document.referrer.indexOf(
-                    window.location.host
-                ) !== -1
-                &&
-                !document.referrer.includes('/sales/store')
-            ) {
-
+            if (window.history.length > 1 && document.referrer && document.referrer.indexOf(window.location.host) !== -1 && !document.referrer.includes('/sales/store')) {
                 window.history.back();
-
                 return;
-
             }
 
-
-            window.location.href =
-                "{{ route('sale.index') }}";
-
+            window.location.href = "{{ route('sale.index') }}";
         }
-
     </script>
 
 </body>
