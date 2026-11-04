@@ -3011,7 +3011,7 @@
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modalAddInvoiceSeriesLabel">
                         <i class="fas fa-barcode text-success me-1"></i> Add Invoice Series
                     </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <form id="formAddInvoiceSeries">
                     @csrf
@@ -3034,7 +3034,7 @@
                         </div>
                     </div>
                     <div class="modal-footer bg-light border-top p-2 px-3">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-success btn-sm fw-bold px-3" id="btnSaveSeries">
                             <i class="fas fa-save me-1"></i> Save &amp; Select
                         </button>
@@ -3052,7 +3052,7 @@
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectBatchLabel">
                         <i class="fas fa-layer-group text-primary me-1"></i> Select Batch for Product
                     </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body p-3">
                     <input type="hidden" id="activeBatchRowIndex" value="">
@@ -3076,7 +3076,7 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top p-2 px-3">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -3090,7 +3090,7 @@
                     <h6 class="modal-title fw-bold text-dark mb-0" id="modalSelectSerialLabel">
                         <i class="fas fa-barcode text-success me-1"></i> Select Serial / IMEI Numbers
                     </h6>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body p-3">
                     <input type="hidden" id="activeSerialRowIndex" value="">
@@ -3147,7 +3147,7 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top p-2 px-3">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success btn-sm fw-bold px-3" id="btnApplySelectedSerials">
                         <i class="fas fa-check me-1"></i> Apply Selected IMEIs
                     </button>

@@ -2455,5 +2455,12 @@
                 checkAndOpenProductTracking($row, pid);
             }
         });
+        // Universal modal dismiss handler (ensures close & cancel buttons always work in Bootstrap 4 / 5)
+        $(document).on('click', '[data-dismiss="modal"], [data-bs-dismiss="modal"], .modal .close, .modal .btn-close', function(e) {
+            const $modal = $(this).closest('.modal');
+            if ($modal.length) {
+                $modal.modal('hide');
+            }
+        });
     }); // Close $(document).ready
 </script>
