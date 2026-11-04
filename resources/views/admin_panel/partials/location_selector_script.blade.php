@@ -26,6 +26,33 @@
     @endforeach
 </datalist>
 
+{{-- QUICK ADD PROVINCE MODAL --}}
+<div class="modal fade" id="quickAddProvinceModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header text-white py-2.5 px-3" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
+                <h6 class="modal-title fw-bold mb-0 text-white" style="font-size: 0.95rem;">
+                    <i class="fas fa-map me-1.5"></i> Add New Province
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="mb-2">
+                    <label class="form-label small fw-bold text-dark mb-1">Province Name <span class="text-danger">*</span></label>
+                    <input type="text" id="quick_province_name" class="form-control" placeholder="Enter Province Name (e.g. Sindh, Punjab...)" style="height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1;">
+                    <small class="text-muted" style="font-size: 0.72rem;">Dynamic province will instantly appear across all forms and reports.</small>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2 px-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" data-dismiss="modal" style="border-radius: 6px;">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary fw-bold px-3" id="btnSaveQuickProvince" style="border-radius: 6px;">
+                    <i class="fas fa-check me-1"></i> Save Province
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- QUICK ADD CITY MODAL (100% Dropdown for Province) --}}
 <div class="modal fade" id="quickAddCityModal" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1065;">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
@@ -393,6 +420,83 @@
                 area: '#field_area, select[name="area"]'
             });
         }
+
+        // ==========================================
+        // QUICK ADD PROVINCE MODAL
+        // ==========================================
+        $(document).on('click', '.btn-quick-add-province, #btnQuickAddProvince', function(e) {
+            e.preventDefault();
+            $('#quick_province_name').val('');
+            showQuickModal('quickAddProvinceModal');
+            setTimeout(function() { $('#quick_province_name').focus(); }, 300);
+        });
+
+        $('#btnSaveQuickProvince').click(function() {
+            const provinceName = $('#quick_province_name').val().trim();
+
+            if (!provinceName) {
+                alert('Please enter Province name');
+                return;
+            }
+
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+            $.ajax({
+                url: "{{ route('locations.province.store') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    name: provinceName
+                },
+                success: function(res) {
+                    btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Save Province');
+                    hideQuickModal('quickAddProvinceModal');
+
+                    const newName = res.item ? res.item.name : provinceName;
+
+                    // Update hierarchy cache
+                    if (res.hierarchy) {
+                        window.locationHierarchy = res.hierarchy;
+                    } else if (!window.locationHierarchy[newName]) {
+                        window.locationHierarchy[newName] = {};
+                    }
+
+                    // Append & select in all Province dropdowns
+                    $('select[name="province"], #field_province, #vprovince, #cust_search_province, #vend_filter_province, #province_desk, #quick_city_province, #quick_area_province').each(function() {
+                        const sel = $(this);
+                        let exists = false;
+                        sel.find('option').each(function() {
+                            if (($(this).val() || '').toLowerCase() === newName.toLowerCase()) {
+                                exists = true;
+                                sel.val($(this).val());
+                            }
+                        });
+                        if (!exists) {
+                            sel.append(new Option(newName, newName, true, true));
+                            sel.val(newName);
+                        }
+                        if (sel.hasClass('select2-hidden-accessible')) {
+                            sel.trigger('change.select2');
+                        } else {
+                            sel.trigger('change');
+                        }
+                    });
+
+                    // Update datalist
+                    if ($('#provinceList').length) {
+                        $('#provinceList').append(new Option(newName));
+                    }
+
+                    showQuickNotice('Province "' + newName + '" added successfully!');
+                },
+                error: function(xhr) {
+                    btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Save Province');
+                    const err = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : 'Error saving province';
+                    alert(err);
+                }
+            });
+        });
 
         // ==========================================
         // QUICK ADD CITY MODAL

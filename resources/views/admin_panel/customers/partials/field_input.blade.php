@@ -117,6 +117,84 @@
                 {{ $field->is_readonly ? 'readonly style=background:#f8fafc;' : '' }}>
         </div>
 
+    @elseif($key === 'province')
+        @php
+            $locSvc = app(\App\Services\LocationService::class);
+            $provincesList = $locSvc->getProvinces();
+        @endphp
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
+                <i class="fas fa-map"></i>
+            </span>
+            <select name="province" id="field_province" 
+                class="form-control form-select @error('province') is-invalid @enderror" 
+                style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
+                {{ $field->is_required ? 'required' : '' }}>
+                <option value="">-- Select Province --</option>
+                @foreach($provincesList as $p)
+                    <option value="{{ $p }}" {{ strcasecmp((string)$val, (string)$p) === 0 ? 'selected' : '' }}>{{ $p }}</option>
+                @endforeach
+                @if(!empty($val) && !in_array(strtolower($val), array_map('strtolower', $provincesList)))
+                    <option value="{{ $val }}" selected>{{ $val }}</option>
+                @endif
+            </select>
+            <button type="button" class="btn btn-outline-primary btn-quick-add-province px-2.5" title="Add New Province" style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+    @elseif($key === 'city')
+        @php
+            $locSvc = app(\App\Services\LocationService::class);
+            $citiesList = $locSvc->getCities();
+        @endphp
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
+                <i class="fas fa-city"></i>
+            </span>
+            <select name="city" id="field_city" 
+                class="form-control form-select @error('city') is-invalid @enderror" 
+                style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
+                {{ $field->is_required ? 'required' : '' }}>
+                <option value="">-- Select City --</option>
+                @foreach($citiesList as $c)
+                    <option value="{{ $c }}" {{ (string)$val === (string)$c ? 'selected' : '' }}>{{ $c }}</option>
+                @endforeach
+                @if(!empty($val) && !in_array($val, $citiesList))
+                    <option value="{{ $val }}" selected>{{ $val }}</option>
+                @endif
+            </select>
+            <button type="button" class="btn btn-outline-primary btn-quick-add-city px-2.5" title="Add New City" style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+    @elseif($key === 'area')
+        @php
+            $locSvc = app(\App\Services\LocationService::class);
+            $areasList = $locSvc->getAreas();
+        @endphp
+        <div class="input-group">
+            <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
+                <i class="fas fa-map-pin"></i>
+            </span>
+            <select name="area" id="field_area" 
+                class="form-control form-select @error('area') is-invalid @enderror" 
+                style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
+                {{ $field->is_required ? 'required' : '' }}>
+                <option value="">-- Select Area --</option>
+                @foreach($areasList as $a)
+                    <option value="{{ $a }}" {{ (string)$val === (string)$a ? 'selected' : '' }}>{{ $a }}</option>
+                @endforeach
+                @if(!empty($val) && !in_array($val, $areasList))
+                    <option value="{{ $val }}" selected>{{ $val }}</option>
+                @endif
+            </select>
+            <button type="button" class="btn btn-outline-primary btn-quick-add-area px-2.5" title="Add New Area" style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
     @elseif($type === 'dropdown')
         <div class="input-group">
             <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
@@ -144,6 +222,12 @@
                 @elseif($field->system_column === 'sales_officer_id' && isset($dropdownLookups['sales_officers']))
                     @foreach($dropdownLookups['sales_officers'] as $optVal => $optLabel)
                         <option value="{{ $optVal }}" {{ (string)$val === (string)$optVal ? 'selected' : '' }}>
+                            {{ $optLabel }}
+                        </option>
+                    @endforeach
+                @elseif($field->system_column === 'province' && isset($dropdownLookups['provinces']))
+                    @foreach($dropdownLookups['provinces'] as $optVal => $optLabel)
+                        <option value="{{ $optVal }}" {{ strcasecmp((string)$val, (string)$optVal) === 0 ? 'selected' : '' }}>
                             {{ $optLabel }}
                         </option>
                     @endforeach
@@ -201,81 +285,6 @@
                     {{ $field->placeholder ?: 'Check to enable' }}
                 </label>
             </div>
-        </div>
-
-    @elseif($key === 'province')
-        @php
-            $locSvc = app(\App\Services\LocationService::class);
-            $provincesList = $locSvc->getProvinces();
-        @endphp
-        <div class="input-group">
-            <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
-                <i class="fas fa-map"></i>
-            </span>
-            <select name="province" id="field_province" 
-                class="form-control form-select @error('province') is-invalid @enderror" 
-                style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}>
-                <option value="">-- Select Province --</option>
-                @foreach($provincesList as $p)
-                    <option value="{{ $p }}" {{ (string)$val === (string)$p ? 'selected' : '' }}>{{ $p }}</option>
-                @endforeach
-                @if(!empty($val) && !in_array($val, $provincesList))
-                    <option value="{{ $val }}" selected>{{ $val }}</option>
-                @endif
-            </select>
-        </div>
-
-    @elseif($key === 'city')
-        @php
-            $locSvc = app(\App\Services\LocationService::class);
-            $citiesList = $locSvc->getCities();
-        @endphp
-        <div class="input-group">
-            <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
-                <i class="fas fa-city"></i>
-            </span>
-            <select name="city" id="field_city" 
-                class="form-control form-select @error('city') is-invalid @enderror" 
-                style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}>
-                <option value="">-- Select City --</option>
-                @foreach($citiesList as $c)
-                    <option value="{{ $c }}" {{ (string)$val === (string)$c ? 'selected' : '' }}>{{ $c }}</option>
-                @endforeach
-                @if(!empty($val) && !in_array($val, $citiesList))
-                    <option value="{{ $val }}" selected>{{ $val }}</option>
-                @endif
-            </select>
-            <button type="button" class="btn btn-outline-primary btn-quick-add-city px-2.5" title="Add New City" style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
-                <i class="fas fa-plus"></i>
-            </button>
-        </div>
-
-    @elseif($key === 'area')
-        @php
-            $locSvc = app(\App\Services\LocationService::class);
-            $areasList = $locSvc->getAreas();
-        @endphp
-        <div class="input-group">
-            <span class="input-group-text bg-light text-muted" style="border-color: #cbd5e1; border-right: none; border-radius: 8px 0 0 8px; font-size: 0.88rem; width: 40px; justify-content: center; height: 38px;">
-                <i class="fas fa-map-pin"></i>
-            </span>
-            <select name="area" id="field_area" 
-                class="form-control form-select @error('area') is-invalid @enderror" 
-                style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}>
-                <option value="">-- Select Area --</option>
-                @foreach($areasList as $a)
-                    <option value="{{ $a }}" {{ (string)$val === (string)$a ? 'selected' : '' }}>{{ $a }}</option>
-                @endforeach
-                @if(!empty($val) && !in_array($val, $areasList))
-                    <option value="{{ $val }}" selected>{{ $val }}</option>
-                @endif
-            </select>
-            <button type="button" class="btn btn-outline-primary btn-quick-add-area px-2.5" title="Add New Area" style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
-                <i class="fas fa-plus"></i>
-            </button>
         </div>
 
     @else

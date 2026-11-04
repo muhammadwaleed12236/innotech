@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerCustomFieldValue;
 use App\Models\CustomerFieldDefinition;
 use App\Models\CustomerType;
+use App\Models\Province;
 use App\Models\SalesOfficer;
 use App\Models\Zone;
 use Illuminate\Support\Facades\Cache;
@@ -317,6 +318,7 @@ class CustomerFieldService
             'customer_types' => CustomerType::orderBy('name')->pluck('name', 'name')->toArray(),
             'zones'          => Zone::orderBy('zone')->pluck('zone', 'id')->toArray(),
             'sales_officers' => SalesOfficer::orderBy('name')->pluck('name', 'id')->toArray(),
+            'provinces'      => Province::active()->orderBy('name')->pluck('name', 'name')->toArray(),
         ];
     }
 
@@ -485,7 +487,7 @@ class CustomerFieldService
                 'section'           => 'Contact & Location',
                 'placeholder'       => 'Select Province',
                 'help_text'         => 'Administrative province / state (Optional)',
-                'options'           => ['Sindh', 'Punjab', 'Khyber Pakhtunkhwa', 'Balochistan', 'Islamabad Capital Territory', 'Azad Jammu & Kashmir', 'Gilgit-Baltistan'],
+                'options'           => null,
                 'is_required'       => false,
                 'is_unique'         => false,
                 'is_enabled'        => true,

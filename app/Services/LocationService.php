@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Vendor;
 use App\Models\City;
 use App\Models\Area;
+use App\Models\Province;
 use Illuminate\Support\Facades\DB;
 
 class LocationService
@@ -136,87 +137,115 @@ class LocationService
     ];
 
     /**
-     * Get Complete Hierarchy (Defaults merged with Database stored values)
+     * Get Complete Hierarchy (Dynamic from Database stored active provinces)
      */
     public function getHierarchy(): array
     {
-        $hierarchy = self::$defaultHierarchy;
+        $hierarchy = [];
 
-        // Fetch from cities table
+        // 1. Initialize strictly from created active provinces in database
+        $createdProvinces = $this->getProvinces();
+        foreach ($createdProvinces as $pName) {
+            $hierarchy[$pName] = [];
+        }
+
+        // Helper function for matching province name case-insensitively against created provinces
+        $findMatchingProvince = function ($p) use ($hierarchy) {
+            $trimmed = trim($p ?? '');
+            if (empty($trimmed)) return null;
+            foreach (array_keys($hierarchy) as $provKey) {
+                if (strcasecmp($provKey, $trimmed) === 0) {
+                    return $provKey;
+                }
+            }
+            return null;
+        };
+
+        // 2. Fetch from cities table (only attach to matching created provinces)
         try {
             $dbCities = City::all();
             foreach ($dbCities as $c) {
-                $p = trim($c->province ?? '') ?: 'Other';
+                $p = $findMatchingProvince($c->province ?? '');
                 $cName = trim($c->name ?? '');
-                if (empty($cName)) continue;
-                if (!isset($hierarchy[$p])) $hierarchy[$p] = [];
-                if (!isset($hierarchy[$p][$cName])) $hierarchy[$p][$cName] = [];
-            }
-        } catch (\Throwable $e) {}
-
-        // Fetch from areas table
-        try {
-            $dbAreas = Area::all();
-            foreach ($dbAreas as $a) {
-                $p = trim($a->province ?? '') ?: 'Other';
-                $cName = trim($a->city_name ?? '');
-                $aName = trim($a->name ?? '');
-                if (empty($cName) || empty($aName)) continue;
-                if (!isset($hierarchy[$p])) $hierarchy[$p] = [];
-                if (!isset($hierarchy[$p][$cName])) $hierarchy[$p][$cName] = [];
-                if (!in_array($aName, $hierarchy[$p][$cName])) {
-                    $hierarchy[$p][$cName][] = $aName;
+                if (empty($cName) || empty($p)) continue;
+                if (!isset($hierarchy[$p][$cName])) {
+                    $hierarchy[$p][$cName] = [];
                 }
             }
         } catch (\Throwable $e) {}
 
-        // Fetch distinct customer locations from DB
-        $custLocs = DB::table('customers')
-            ->select('province', 'city', 'area')
-            ->whereNotNull('city')
-            ->where('city', '<>', '')
-            ->distinct()
-            ->get();
+        // 3. Fetch from areas table
+        try {
+            $dbAreas = Area::all();
+            foreach ($dbAreas as $a) {
+                $p = $findMatchingProvince($a->province ?? '');
+                $cName = trim($a->city_name ?? '');
+                $aName = trim($a->name ?? '');
+                if (empty($cName) || empty($aName)) continue;
 
-        // Fetch distinct vendor locations from DB
-        $vendLocs = DB::table('vendors')
-            ->select('province', 'city', 'area')
-            ->whereNotNull('city')
-            ->where('city', '<>', '')
-            ->distinct()
-            ->get();
-
-        $allLocs = $custLocs->concat($vendLocs);
-
-        foreach ($allLocs as $loc) {
-            $p = trim($loc->province ?? '');
-            $c = trim($loc->city ?? '');
-            $a = trim($loc->area ?? '');
-
-            if (empty($c)) continue;
-            if (empty($p)) $p = 'Other';
-
-            if (!isset($hierarchy[$p])) {
-                $hierarchy[$p] = [];
+                if ($p && isset($hierarchy[$p][$cName])) {
+                    if (!in_array($aName, $hierarchy[$p][$cName])) {
+                        $hierarchy[$p][$cName][] = $aName;
+                    }
+                } else {
+                    foreach ($hierarchy as $provKey => $cities) {
+                        if (isset($cities[$cName])) {
+                            if (!in_array($aName, $hierarchy[$provKey][$cName])) {
+                                $hierarchy[$provKey][$cName][] = $aName;
+                            }
+                        }
+                    }
+                }
             }
-            if (!isset($hierarchy[$p][$c])) {
-                $hierarchy[$p][$c] = [];
+        } catch (\Throwable $e) {}
+
+        // 4. Fetch distinct customer & vendor locations from DB (only for matching created provinces)
+        try {
+            $custLocs = DB::table('customers')
+                ->select('province', 'city', 'area')
+                ->whereNotNull('city')
+                ->where('city', '<>', '')
+                ->distinct()
+                ->get();
+
+            $vendLocs = DB::table('vendors')
+                ->select('province', 'city', 'area')
+                ->whereNotNull('city')
+                ->where('city', '<>', '')
+                ->distinct()
+                ->get();
+
+            $allLocs = $custLocs->concat($vendLocs);
+
+            foreach ($allLocs as $loc) {
+                $p = $findMatchingProvince($loc->province ?? '');
+                $c = trim($loc->city ?? '');
+                $a = trim($loc->area ?? '');
+
+                if (empty($c) || empty($p)) continue;
+
+                if (!isset($hierarchy[$p][$c])) {
+                    $hierarchy[$p][$c] = [];
+                }
+                if (!empty($a) && !in_array($a, $hierarchy[$p][$c])) {
+                    $hierarchy[$p][$c][] = $a;
+                }
             }
-            if (!empty($a) && !in_array($a, $hierarchy[$p][$c])) {
-                $hierarchy[$p][$c][] = $a;
-            }
-        }
+        } catch (\Throwable $e) {}
 
         return $hierarchy;
     }
 
     /**
-     * Get List of all Provinces
+     * Get List of all Provinces (Only created in database, dynamic)
      */
     public function getProvinces(): array
     {
-        $hierarchy = $this->getHierarchy();
-        return array_keys($hierarchy);
+        try {
+            return Province::active()->orderBy('name')->pluck('name')->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     /**

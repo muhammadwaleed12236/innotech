@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\City;
+use App\Models\Province;
 use App\Models\Zone;
 use App\Services\LocationService;
 use Illuminate\Http\Request;
@@ -75,6 +76,39 @@ class LocationController extends Controller
                 'id' => $zone->id,
                 'name' => $zone->zone,
             ],
+        ]);
+    }
+
+    /**
+     * Quick Store Province via AJAX
+     */
+    public function storeProvince(Request $request)
+    {
+        $name = trim($request->input('name') ?? $request->input('province') ?? '');
+        if (empty($name)) {
+            return response()->json(['success' => false, 'message' => 'Province name is required.'], 422);
+        }
+
+        $province = Province::firstOrCreate(
+            ['name' => $name],
+            ['status' => 'active']
+        );
+
+        if ($province->status !== 'active') {
+            $province->status = 'active';
+            $province->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Province created successfully!',
+            'item' => [
+                'id' => $province->id,
+                'name' => $province->name,
+                'status' => $province->status,
+            ],
+            'hierarchy' => $this->locationService->getHierarchy(),
+            'provinces' => $this->locationService->getProvinces(),
         ]);
     }
 
