@@ -128,9 +128,10 @@ class SaleController extends Controller
         $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
         $warehouse = Warehouse::all();
         
+        \App\Models\InvoiceSeries::ensureQuotationSeries();
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
-        $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        $activePrefix = (request('type') === 'quotation') ? 'QUOT' : ($defaultSeries ? $defaultSeries->prefix : 'INV');
         $nextInvoiceNumber = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
         $recentProducts = Product::latest()->take(12)->get();
@@ -1034,9 +1035,10 @@ class SaleController extends Controller
         $customer = Customer::with('salesOfficer')->get();
         $warehouse = Warehouse::all();
         $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+        \App\Models\InvoiceSeries::ensureQuotationSeries();
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
-        $activePrefix = $defaultSeries ? $defaultSeries->prefix : 'INV';
+        $activePrefix = ($sale->sale_status === 'quotation' || request('type') === 'quotation') ? 'QUOT' : ($defaultSeries ? $defaultSeries->prefix : 'INV');
         $recentProducts = Product::latest()->take(12)->get();
         $allProducts = Product::where('is_active', true)->withSum('warehouseStocks', 'total_pieces')->orderBy('item_name')->get();
 
@@ -1161,7 +1163,7 @@ class SaleController extends Controller
         //     throw \Illuminate\Validation\ValidationException::withMessages(['product_id' => 'Duplicate products are not allowed in a single sale. Please merge quantities.']);
         // }
 
-        $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : ($request->action === 'quotation' ? 'quotation' : 'booked');
+        $status = in_array($request->action, ['post', 'sale', 'posted']) ? 'posted' : ($request->action === 'quotation' || ($sale->exists && $sale->sale_status === 'quotation' && empty($request->action)) ? 'quotation' : 'booked');
 
         // Concurrency Safe Transaction
         try {
@@ -1201,6 +1203,11 @@ class SaleController extends Controller
             if ($isNew) {
                 // Check if user provided manual invoice number or selected series
                 $invInput = $request->input('Invoice_no') ?: $request->input('invoice_no');
+                if ($request->action === 'quotation' || $status === 'quotation') {
+                    if (empty($invInput) || \Illuminate\Support\Str::startsWith(strtoupper(trim($invInput)), 'INV-')) {
+                        $invInput = \App\Models\InvoiceSeries::generateNextNo('QUOT');
+                    }
+                }
                 if (!empty($invInput)) {
                     $manualInvoice = trim($invInput);
 
@@ -1215,7 +1222,7 @@ class SaleController extends Controller
                     $sale->invoice_no = $manualInvoice;
                 } else {
                     // Auto-generate unique invoice number
-                    $sale->invoice_no = Sale::generateInvoiceNo();
+                    $sale->invoice_no = ($status === 'quotation') ? \App\Models\InvoiceSeries::generateNextNo('QUOT') : Sale::generateInvoiceNo();
                 }
             }
 
@@ -2736,6 +2743,20 @@ class SaleController extends Controller
 
         DB::beginTransaction();
         try {
+            $oldInvoiceNo = $sale->invoice_no;
+
+            // When converting from quotation, assign standard Sale Invoice Series (e.g. INV-0001)
+            // and preserve original quotation number in reference
+            if ($originalStatus === 'quotation') {
+                $newSaleInvoiceNo = \App\Models\Sale::generateInvoiceNo();
+                $sale->invoice_no = $newSaleInvoiceNo;
+                $quotationRef = "Quotation #{$oldInvoiceNo}";
+                $sale->reference = !empty($sale->reference) ? ($sale->reference . " | {$quotationRef}") : $quotationRef;
+
+                // Increment counter for the newly assigned sale series
+                \App\Models\InvoiceSeries::incrementCounterForInvoice($newSaleInvoiceNo);
+            }
+
             // Update status to posted (which is the system-wide confirmed status)
             $sale->sale_status = 'posted';
             $sale->save();
@@ -2767,7 +2788,11 @@ class SaleController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', $typeLabel . ' confirmed and converted to sale successfully.');
+            $successMsg = ($originalStatus === 'quotation')
+                ? "Quotation #{$oldInvoiceNo} has been successfully converted to Sale #{$sale->invoice_no}."
+                : "Booking #{$sale->invoice_no} confirmed and converted to sale successfully.";
+
+            return redirect()->back()->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error($typeLabel . ' Confirmation Error: '.$e->getMessage());
@@ -2778,6 +2803,31 @@ class SaleController extends Controller
     /**
      * Fetch all invoice series and generated number
      */
+    public function destroy($id)
+    {
+        $sale = Sale::findOrFail($id);
+
+        if (!in_array($sale->sale_status, ['quotation', 'draft', 'booked'])) {
+            return redirect()->back()->with('error', 'Only quotations, drafts, or bookings can be cancelled or deleted.');
+        }
+
+        $invNo = $sale->invoice_no ?: ('#' . $sale->id);
+        $typeLabel = $sale->sale_status === 'quotation' ? 'Quotation' : ucfirst($sale->sale_status);
+
+        DB::beginTransaction();
+        try {
+            $sale->items()->delete();
+            $sale->delete();
+
+            DB::commit();
+            return redirect()->back()->with('success', "{$typeLabel} {$invNo} has been deleted successfully.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("Failed to delete {$typeLabel} {$invNo}: " . $e->getMessage());
+            return redirect()->back()->with('error', "Failed to delete: " . $e->getMessage());
+        }
+    }
+
     public function fetchInvoiceSeries(Request $request)
     {
         $seriesList = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();

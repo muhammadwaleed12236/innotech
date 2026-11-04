@@ -212,6 +212,11 @@ class CustomerController extends Controller
             $request->merge(['opening_balance' => 0]);
         }
 
+        // Auto-default balance_range (credit limit) if empty
+        if ($request->balance_range === null || $request->balance_range === '') {
+            $request->merge(['balance_range' => 0]);
+        }
+
         $rules = $this->fieldService->buildValidationRules('create');
         $data = $request->validate($rules);
 
@@ -228,10 +233,22 @@ class CustomerController extends Controller
 
         if ($request->ajax() || $request->wantsJson()) {
             $customer = $customer->fresh() ?? $customer;
+            $customerData = $customer->toArray();
+            $customerData['previous_balance'] = (float)$customer->previous_balance;
+            $customerData['balance_range'] = (float)($customer->balance_range ?? 0);
+            $customValues = $customer->getAllCustomValues();
+            $customerData['custom_fields'] = $customValues;
+            $customerData['ntn_number'] = $customValues['ntn_number'] ?? $customer->ntn_number ?? '';
+            $customerData['strn_number'] = $customValues['strn_number'] ?? $customer->strn_number ?? '';
+            $customerData['cnic'] = $customValues['cnic'] ?? $customer->cnic ?? '';
+            $customerData['filer_type'] = $customValues['filer_type'] ?? $customer->filer_type ?? '';
+            $customerData['remarks'] = $customer->status ?? '';
+
             return response()->json([
                 'success' => true,
                 'message' => 'Customer created successfully.',
-                'customer' => $customer
+                'customer' => $customerData,
+                'data' => $customerData
             ]);
         }
 

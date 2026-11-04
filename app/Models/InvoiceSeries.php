@@ -13,6 +13,23 @@ class InvoiceSeries extends Model
 
     protected $guarded = [];
 
+    const DEFAULT_QUOTATION_PREFIX = 'QUOT';
+
+    /**
+     * Register or ensure default QUOT series exists in database
+     */
+    public static function ensureQuotationSeries()
+    {
+        return self::firstOrCreate(
+            ['prefix' => self::DEFAULT_QUOTATION_PREFIX],
+            [
+                'next_number' => 1,
+                'padding' => 4,
+                'is_default' => 0
+            ]
+        );
+    }
+
     /**
      * Generate the next formatted invoice number for a given prefix.
      */
@@ -21,7 +38,11 @@ class InvoiceSeries extends Model
         $series = null;
 
         if ($prefix) {
-            $series = self::where('prefix', strtoupper(trim($prefix)))->first();
+            $prefUpper = strtoupper(trim($prefix));
+            $series = self::where('prefix', $prefUpper)->first();
+            if (!$series && $prefUpper === self::DEFAULT_QUOTATION_PREFIX) {
+                $series = self::ensureQuotationSeries();
+            }
         }
 
         if (!$series) {

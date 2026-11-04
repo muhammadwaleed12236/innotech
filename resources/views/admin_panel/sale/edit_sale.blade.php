@@ -1470,6 +1470,14 @@
                                     </button>
                                 </div>
                                 <div id="customerTaxBadgeContainer" class="mt-1 d-none"></div>
+                                <div id="customerQuickInfoContainer" class="mt-1 d-flex flex-wrap gap-1 align-items-center d-none" style="font-size: 11px;">
+                                    <span class="badge bg-light text-secondary border me-1" id="cqi_address_badge" title="Customer Address">
+                                        <i class="fas fa-map-marker-alt text-danger me-1"></i><span id="cqi_address_text">—</span>
+                                    </span>
+                                    <span class="badge bg-light text-primary border" id="cqi_credit_badge" title="Credit Limit">
+                                        <i class="fas fa-shield-alt text-primary me-1"></i>Limit: <span id="cqi_credit_text">Unlimited</span>
+                                    </span>
+                                </div>
                             </div>
 
                             {{-- Sale Type --}}
@@ -2115,6 +2123,10 @@
                                 <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
                                 <input type="number" step="0.01" class="form-control" name="opening_balance" value="0">
                             </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label font-weight-bold fw-bold">Credit Limit</label>
+                                <input type="number" step="0.01" class="form-control" name="balance_range" placeholder="0 = Unlimited" value="0">
+                            </div>
                                                         <div class="col-12 col-md-4">
                                 <label class="form-label font-weight-bold fw-bold">Province</label>
                                 <select class="form-select form-control" name="province">
@@ -2171,7 +2183,6 @@
 
     {{-- Quick Build Product Modal --}}
     @include('admin_panel.partials.quick_build_product_modal')
-@include('admin_panel.partials.location_selector_script')
 @endsection
 
 @section('js')
@@ -2276,7 +2287,7 @@
             });
 
             // Customer selected → load details
-            $(document).on('change select2:select', '#customerSelect', function() {
+            $(document).on('change', '#customerSelect', function() {
                 const id = $(this).val();
                 if (!id) {
                     clearCustomerInfo();
@@ -2286,39 +2297,79 @@
 
                 const $opt = $(this).find('option:selected');
                 if ($opt.length && $opt.attr('data-mobile') !== undefined) {
-                    $('#address').val($opt.attr('data-address') || '');
-                    $('#tel').val($opt.attr('data-mobile') || '');
+                    const addr = $opt.attr('data-address') || '';
+                    const mob = $opt.attr('data-mobile') || '';
                     const prev = parseFloat($opt.attr('data-prev') || 0);
                     const range = parseFloat($opt.attr('data-range') || 0);
+                    const code = $opt.attr('data-code') || '';
+                    const name = $opt.text();
+
+                    $('#address').val(addr);
+                    $('#tel').val(mob);
                     $('#previousBalance').val(prev.toFixed(2));
                     $('#rangeBalance').val(range.toFixed(2));
 
-                    $('#ci_code').text($opt.attr('data-code') || '—');
-                    $('#ci_name').text($opt.text());
-                    $('#ci_mobile').text($opt.attr('data-mobile') || '—');
-                    $('#ci_address').text($opt.attr('data-address') || '—');
+                    $('#ci_code').text(code || '—');
+                    $('#ci_name').text(name);
+                    $('#ci_mobile').text(mob || '—');
+                    $('#ci_address').text(addr || '—');
                     $('#ci_prev_bal').text(prev.toFixed(2));
                     $('#ci_range_bal').text(range.toFixed(2));
+                    $('#cc_customer_name').text(name);
+
+                    if (typeof window.updateCustomerDisplayCards === 'function') {
+                        window.updateCustomerDisplayCards({
+                            code: code,
+                            name: name,
+                            mobile: mob,
+                            address: addr,
+                            prev_balance: prev,
+                            credit_limit: range
+                        });
+                    }
+                    if (typeof window.populateCustomerModalDetails === 'function') {
+                        window.populateCustomerModalDetails();
+                    }
                 }
 
                 $.get("{{ url('sale/customers') }}/" + id + "?t=" + new Date().getTime(), function(d) {
-                    $('#address').val(d.address || '');
-                    $('#tel').val(d.mobile || '');
+                    const addr = d.address || '';
+                    const mob = d.mobile || '';
                     const prev = parseFloat(d.previous_balance || 0);
                     const range = parseFloat(d.balance_range || 0);
+                    const code = d.customer_id || '—';
+                    const name = d.customer_name || '—';
+
+                    $('#address').val(addr);
+                    $('#tel').val(mob);
                     $('#previousBalance').val(prev.toFixed(2));
                     $('#rangeBalance').val(range.toFixed(2));
 
-                    $('#ci_code').text(d.customer_id || '—');
-                    $('#ci_name').text(d.customer_name || '—');
-                    $('#ci_mobile').text(d.mobile || '—');
-                    $('#ci_address').text(d.address || '—');
+                    $('#ci_code').text(code);
+                    $('#ci_name').text(name);
+                    $('#ci_mobile').text(mob || '—');
+                    $('#ci_address').text(addr || '—');
                     $('#ci_prev_bal').text(prev.toFixed(2));
                     $('#ci_range_bal').text(range.toFixed(2));
+                    $('#cc_customer_name').text(name);
 
                     let officerId = d.sales_officer_id || $('#customerSelect').find(':selected').data('sales-officer');
                     if (officerId) {
                         $('#salesOfficerSelect').val(officerId);
+                    }
+
+                    if (typeof window.updateCustomerDisplayCards === 'function') {
+                        window.updateCustomerDisplayCards({
+                            code: code,
+                            name: name,
+                            mobile: mob,
+                            address: addr,
+                            prev_balance: prev,
+                            credit_limit: range
+                        });
+                    }
+                    if (typeof window.populateCustomerModalDetails === 'function') {
+                        window.populateCustomerModalDetails(d);
                     }
 
                     if (typeof window.applyCustomerTaxStatus === 'function') {
@@ -2340,8 +2391,13 @@
                 $('#previousBalance, #rangeBalance').val('0');
                 $('#ci_code, #ci_name, #ci_mobile, #ci_address').text('—');
                 $('#ci_prev_bal, #ci_range_bal').text('0.00');
-                $('#customerInfoCard').addClass('d-none');
                 $('#salesOfficerSelect').val('');
+                if (typeof window.updateCustomerDisplayCards === 'function') {
+                    window.updateCustomerDisplayCards(null);
+                }
+                if (typeof window.populateCustomerModalDetails === 'function') {
+                    window.populateCustomerModalDetails(null);
+                }
                 if (typeof window.applyCustomerTaxStatus === 'function') {
                     window.applyCustomerTaxStatus(null, true);
                 }
@@ -2352,18 +2408,6 @@
                 clearCustomerInfo();
                 if (typeof updateGrandTotals === 'function') updateGrandTotals();
             });
-
-            // Initialize customer tax status for existing loaded customer
-            const initialCustId = $('#customerSelect').val();
-            if (initialCustId && $('#is_walkin').val() !== '1') {
-                $.get("{{ url('sale/customers') }}/" + initialCustId + "?t=" + new Date().getTime(), function(d) {
-                    if (typeof window.applyCustomerTaxStatus === 'function') {
-                        window.applyCustomerTaxStatus(d, false);
-                    }
-                });
-            } else if (typeof window.applyCustomerTaxStatus === 'function') {
-                window.applyCustomerTaxStatus(null, false);
-            }
 
             $('#btnPrint').on('click', function() {
                 ensureSaved().then(id => window.open('{{ url('sales') }}/' + id + '/invoice', '_blank'));
@@ -2379,25 +2423,19 @@
             });
 
             // ══════════════════════════════════════════════════════════════
-            // QUICK CUSTOMER MODAL LOGIC & EVENT HANDLERS
+            // QUICK CUSTOMER MODAL LOGIC & EVENT HANDLERS (INSTANT 0ms LOAD)
             // ══════════════════════════════════════════════════════════════
-            // Function to add customer to select, refresh Select2, and auto-select
             window.selectCreatedCustomer = function(c) {
                 if (!c || !c.id) return;
 
                 // 1. Ensure Walk-in mode is turned OFF and Customer mode is ON
                 $('#is_walkin').val('0');
-                if (c.customer_type) {
-                    $('#partyTypeSelect').val(c.customer_type);
-                } else {
-                    $('#partyTypeSelect').val('Main Customer');
-                }
+                let cType = c.customer_type || 'Main Customer';
+                $('#partyTypeSelect').val(cType);
                 $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
                 $('#btnTypeWalkin').removeClass('btn-primary active text-white').addClass('btn-outline-primary');
                 $('#walkinNameInput').addClass('d-none');
                 $('#customerSelect').removeClass('d-none');
-                $('#customerSelect').next('.select2-container').removeClass('d-none').show();
-                $('#customerInputWrapper .select2-container').removeClass('d-none').show();
                 $('#receiptVouchersSection').show();
                 $('#totalsSection').removeClass('col-lg-12').addClass('col-lg-5');
                 $('#totalsWalkinView').addClass('d-none').removeClass('d-flex');
@@ -2406,89 +2444,99 @@
                     $('#rvWrapper').appendTo('#receiptVouchersSection .card-body');
                 }
 
-                // 2. Format display text and create/update option element
-                let displayText = (c.customer_id ? c.customer_id + ' — ' : '') + (c.customer_name || 'Customer #' + c.id) + (c.mobile ? ' (' + c.mobile + ')' : '');
-                let $sel = $('#customerSelect');
-                let $existing = $sel.find("option[value='" + c.id + "']");
-                
-                if ($existing.length) {
-                    $existing.text(displayText)
-                        .attr('data-mobile', c.mobile || '')
-                        .attr('data-address', c.address || '')
-                        .attr('data-code', c.customer_id || '')
-                        .attr('data-prev', c.opening_balance || 0)
-                        .attr('data-range', c.balance_range || 0)
-                        .attr('data-sales-officer', c.sales_officer_id || '');
-                } else {
-                    let newOption = new Option(displayText, c.id, true, true);
-                    $(newOption).attr({
-                        'data-mobile': c.mobile || '',
-                        'data-address': c.address || '',
-                        'data-code': c.customer_id || '',
-                        'data-prev': c.opening_balance || 0,
-                        'data-range': c.balance_range || 0,
-                        'data-sales-officer': c.sales_officer_id || ''
-                    });
-                    // Insert at top right after placeholder so it's instantly visible in dropdown
-                    if ($sel.find('option[value=""]').length) {
-                        $sel.find('option[value=""]').after(newOption);
-                    } else {
-                        $sel.prepend(newOption);
-                    }
+                // 2. Format customer attributes
+                let cid = String(c.id);
+                let code = c.customer_id || ('CUST-' + String(cid).padStart(4, '0'));
+                let name = c.customer_name || ('Customer #' + cid);
+                let mobile = c.mobile || '';
+                let address = c.address || '';
+                let prevBal = (c.previous_balance !== undefined && c.previous_balance !== null) 
+                    ? parseFloat(c.previous_balance) 
+                    : parseFloat(c.opening_balance || 0);
+                let creditLimit = parseFloat(c.balance_range || 0);
+                let salesOfficer = c.sales_officer_id || '';
+                let displayText = (code ? code + ' — ' : '') + name + (mobile ? ' (' + mobile + ')' : '');
+
+                // 3. Immediately set hidden fields & UI text
+                $('#address').val(address);
+                $('#tel').val(mobile);
+                $('#previousBalance').val(prevBal.toFixed(2));
+                $('#rangeBalance').val(creditLimit.toFixed(2));
+                $('#ci_code').text(code || '—');
+                $('#ci_name').text(name);
+                $('#ci_mobile').text(mobile || '—');
+                $('#ci_address').text(address || '—');
+                $('#ci_prev_bal').text(prevBal.toFixed(2));
+                $('#ci_range_bal').text(creditLimit.toFixed(2));
+                $('#cc_customer_name').text(name || displayText);
+
+                if (salesOfficer) {
+                    $('#salesOfficerSelect').val(salesOfficer);
                 }
 
-                // Explicitly mark new option selected in DOM select
-                $sel.find('option').prop('selected', false);
-                $sel.find("option[value='" + c.id + "']").prop('selected', true);
+                // 4. Update the Select2 dropdown cleanly and standardly
+                let $sel = $('#customerSelect');
+                let existingOpt = $sel.find("option[value='" + cid + "']");
 
-                // 3. Re-initialize Select2 so the entire option list and internal search index are updated
-                if (typeof initCustomerSelect2 === 'function') {
+                if (existingOpt.length) {
+                    existingOpt.text(displayText)
+                               .attr('data-mobile', mobile)
+                               .attr('data-address', address)
+                               .attr('data-code', code)
+                               .attr('data-prev', prevBal)
+                               .attr('data-range', creditLimit)
+                               .attr('data-sales-officer', salesOfficer);
+                } else {
+                    let newOpt = new Option(displayText, cid, true, true);
+                    $(newOpt).attr('data-mobile', mobile)
+                             .attr('data-address', address)
+                             .attr('data-code', code)
+                             .attr('data-prev', prevBal)
+                             .attr('data-range', creditLimit)
+                             .attr('data-sales-officer', salesOfficer);
+                    $sel.append(newOpt);
+                }
+
+                // Ensure Select2 is initialized if it was not
+                if (!$sel.hasClass('select2-hidden-accessible') && typeof initCustomerSelect2 === 'function') {
                     initCustomerSelect2();
                 }
 
-                // 4. Set the value and trigger change and select2:select
-                $sel.val(String(c.id)).trigger('change.select2').trigger('change');
-                $sel.trigger({
-                    type: 'select2:select',
-                    params: {
-                        data: {
-                            id: c.id,
-                            text: displayText
-                        }
-                    }
-                });
+                // Ensure customer select and its Select2 container are visible
+                $sel.removeClass('d-none');
+                $sel.next('.select2-container').removeClass('d-none').show();
+                $('#customerInputWrapper .select2-container').removeClass('d-none').show();
+
+                // Trigger change to update Select2 UI and invoke all change listeners
+                $sel.val(cid).trigger('change');
 
                 try { $sel.select2('close'); } catch(e) {}
                 $('.select2-search__field').val('');
-
-                // 5. Force update rendered display text in Select2
-                let $containerText = $('#select2-customerSelect-container');
-                if ($containerText.length) {
-                    $containerText.text(displayText).attr('title', displayText);
-                }
-
-                // 6. Explicitly populate UI cards immediately
-                $('#ci_code').text(c.customer_id || '—');
-                $('#ci_name').text(c.customer_name || displayText);
-                $('#ci_mobile').text(c.mobile || '—');
-                $('#ci_address').text(c.address || '—');
-                let prevBal = parseFloat(c.opening_balance || 0);
-                $('#ci_prev_bal').text(prevBal.toFixed(2));
-                $('#previousBalance').val(prevBal.toFixed(2));
-                $('#tel').val(c.mobile || '');
-                $('#address').val(c.address || '');
-                $('#cc_customer_name').text(c.customer_name || displayText);
-
-                if (c.sales_officer_id) {
-                    $('#salesOfficerSelect').val(c.sales_officer_id);
-                }
-
+                // 5. Update Tax badges (STRN / NTN / FT)
                 if (typeof window.applyCustomerTaxStatus === 'function') {
                     window.applyCustomerTaxStatus(c, true);
                 }
 
+                // 6. Update single-line Header Balances & Grand Totals instantly
                 if (typeof updateGrandTotals === 'function') {
                     updateGrandTotals();
+                }
+
+                // 7. Update Quick Info Badges on screen (Address, Credit Limit)
+                if (typeof window.updateCustomerDisplayCards === 'function') {
+                    window.updateCustomerDisplayCards({
+                        code: code,
+                        name: name,
+                        mobile: mobile,
+                        address: address,
+                        prev_balance: prevBal,
+                        credit_limit: creditLimit
+                    });
+                }
+
+                // 8. Update Customer Details Modal
+                if (typeof window.populateCustomerModalDetails === 'function') {
+                    window.populateCustomerModalDetails(c);
                 }
             };
 
@@ -2616,6 +2664,19 @@
             // DYNAMIC INVOICE SERIES & PREFIX GENERATOR LOGIC (INSTANT 0ms)
             // ══════════════════════════════════════════════════════════════
             let currentInvoicePrefix = "{{ $activePrefix ?? 'INV' }}";
+
+            window.fetchNextInvoiceNo = fetchNextInvoiceNo;
+            window.switchInvoicePrefix = function(prefix) {
+                if (!prefix) return;
+                currentInvoicePrefix = prefix;
+                $('#activePrefixLabel').text(prefix);
+                $('#dropdownInvoiceSeriesList a[data-prefix]').removeClass('text-success active bg-light').find('i.fa-check').remove();
+                let $target = $(`#dropdownInvoiceSeriesList a[data-prefix="${prefix}"]`);
+                if ($target.length) {
+                    $target.addClass('text-success active bg-light').prepend('<i class="fas fa-check text-success me-1"></i>');
+                }
+                fetchNextInvoiceNo(prefix);
+            };
 
             function fetchNextInvoiceNo(prefix) {
                 $('#iconRefreshInvoice').addClass('fa-spin');
@@ -3170,6 +3231,12 @@
                     <div class="row g-3">
                         <div class="col-6">
                             <div class="p-2 rounded bg-light border">
+                                <label class="text-muted fw-bold d-block" style="font-size: 11px;">CUSTOMER CODE</label>
+                                <span class="fw-bold text-dark fs-6" id="ci_modal_code">—</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded bg-light border">
                                 <label class="text-muted fw-bold d-block" style="font-size: 11px;">FULL NAME</label>
                                 <span class="fw-bold text-dark fs-6" id="ci_modal_name">—</span>
                             </div>
@@ -3178,6 +3245,12 @@
                             <div class="p-2 rounded bg-light border">
                                 <label class="text-muted fw-bold d-block" style="font-size: 11px;">MOBILE</label>
                                 <span class="fw-bold text-dark fs-6" id="ci_modal_mobile">—</span>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-2 rounded border" style="background: #EFF6FF; border-color: #BFDBFE !important;">
+                                <label class="text-primary fw-bold d-block" style="font-size: 11px;">CREDIT LIMIT</label>
+                                <span class="fw-bold text-primary fs-6" id="ci_modal_credit_limit">Unlimited</span>
                             </div>
                         </div>
                         <div class="col-12">

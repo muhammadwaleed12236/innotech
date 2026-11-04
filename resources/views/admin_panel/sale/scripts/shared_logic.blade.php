@@ -1877,6 +1877,23 @@
                 return;
             }
             $('#action').val('quotation');
+            let curInv = ($('#inputInvoiceNo').val() || '').toUpperCase();
+            if (!curInv.startsWith('QUOT-')) {
+                $.ajax({
+                    url: "{{ route('invoice_series.generate_no') }}",
+                    type: "GET",
+                    data: { prefix: 'QUOT' },
+                    async: false,
+                    success: function(res) {
+                        if (res.invoice_no) {
+                            $('#inputInvoiceNo').val(res.invoice_no);
+                            if (typeof window.switchInvoicePrefix === 'function') {
+                                window.switchInvoicePrefix('QUOT');
+                            }
+                        }
+                    }
+                });
+            }
             ensureSaved().then(function() {
                 Swal.fire({
                     title: 'Quotation Saved',
@@ -2033,17 +2050,29 @@
         });
 
         // Toggle Customer Info Modal
-        function populateCustomerModalDetails() {
+        function populateCustomerModalDetails(customObj) {
+            let code = $('#ci_code').text().trim();
             let name = $('#ci_name').text().trim();
             let mobile = $('#ci_mobile').text().trim();
             let address = $('#ci_address').text().trim();
+            let range = parseFloat($('#rangeBalance').val()) || 0;
             
             // Fallback to selected option in customerSelect if ci_ fields are blank
             const $selectedOpt = $('#customerSelect option:selected');
             if ($selectedOpt.length && $selectedOpt.val()) {
+                if (!code || code === '—') code = $selectedOpt.attr('data-code') || '';
                 if (!name || name === '—') name = $selectedOpt.text().trim();
                 if (!mobile || mobile === '—') mobile = $selectedOpt.attr('data-mobile') || '';
                 if (!address || address === '—') address = $selectedOpt.attr('data-address') || '';
+                if (!range) range = parseFloat($selectedOpt.attr('data-range') || 0);
+            }
+
+            if (customObj) {
+                if (customObj.customer_id) code = customObj.customer_id;
+                if (customObj.customer_name) name = customObj.customer_name;
+                if (customObj.mobile) mobile = customObj.mobile;
+                if (customObj.address) address = customObj.address;
+                if (customObj.balance_range !== undefined) range = parseFloat(customObj.balance_range || 0);
             }
 
             const prevVal = $('#cc_prev_bal_val').text().trim();
@@ -2051,12 +2080,40 @@
             const closingVal = $('#cc_closing_bal_val').text().trim();
             const closingSuf = $('#cc_closing_bal_suffix').text().trim();
 
+            $('#ci_modal_code').text(code || '—');
             $('#ci_modal_name').text(name || '—');
             $('#ci_modal_mobile').text(mobile || '—');
             $('#ci_modal_address').text(address || '—');
+            $('#ci_modal_credit_limit').text(range > 0 ? ('Rs ' + range.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})) : 'Unlimited');
             $('#ci_modal_prev').html((prevVal || 'Rs 0') + (prevSuf ? ' <small>' + prevSuf + '</small>' : ''));
             $('#ci_modal_closing').html((closingVal || 'Rs 0') + (closingSuf ? ' <small>' + closingSuf + '</small>' : ''));
         }
+        window.populateCustomerModalDetails = populateCustomerModalDetails;
+
+        window.updateCustomerDisplayCards = function(data) {
+            if (!data) {
+                $('#customerQuickInfoContainer').addClass('d-none');
+                return;
+            }
+            const addr = data.address ? data.address.trim() : '';
+            const range = parseFloat(data.credit_limit !== undefined ? data.credit_limit : (data.balance_range !== undefined ? data.balance_range : ($('#rangeBalance').val() || 0)));
+
+            if (addr) {
+                $('#cqi_address_text').text(addr).attr('title', addr);
+                $('#cqi_address_badge').removeClass('d-none');
+            } else {
+                $('#cqi_address_badge').addClass('d-none');
+            }
+
+            if (range > 0) {
+                $('#cqi_credit_text').text('Rs ' + range.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2}));
+            } else {
+                $('#cqi_credit_text').text('Unlimited');
+            }
+            $('#cqi_credit_badge').removeClass('d-none');
+
+            $('#customerQuickInfoContainer').removeClass('d-none');
+        };
 
         $(document).on('click', '#btnToggleCustomerInfo', function(e) {
             populateCustomerModalDetails();
