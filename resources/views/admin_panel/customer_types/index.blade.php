@@ -277,23 +277,15 @@
                             <td class="text-start name fw-semibold text-dark">{{ $type->name }}</td>
                             <td class="text-start description text-muted">{{ $type->description ?: 'N/A' }}</td>
                             <td class="text-start">
-                                @if($type->is_static)
-                                    <span class="badge bg-danger text-white"><i class="fas fa-lock me-1"></i> Static System</span>
-                                @else
-                                    <span class="badge bg-success text-white"><i class="fas fa-cog me-1"></i> Dynamic</span>
-                                @endif
+                                <span class="badge bg-success text-white"><i class="fas fa-check-circle me-1"></i> Active</span>
                             </td>
                             <td class="text-end pe-4">
-                                @if($type->is_static)
-                                    <span class="text-muted small"><i class="fas fa-shield-alt text-warning me-1"></i> System Protected</span>
-                                @else
-                                    @can('customer_types.edit')
-                                        <button class="btn btn-primary btn-sm edit-btn" data-id="{{ $type->id }}">Edit</button>
-                                    @endcan
-                                    @can('customer_types.delete')
-                                        <button class="btn btn-danger btn-sm delete-btn" data-url="{{ route('customer-types.destroy', $type->id) }}" data-msg="Are you sure you want to delete this customer type?" data-method="get" onclick="logoutAndDeleteFunction(this)">Delete</button>
-                                    @endcan
-                                @endif
+                                @can('customer_types.edit')
+                                    <button class="btn btn-primary btn-sm edit-btn" data-id="{{ $type->id }}">Edit</button>
+                                @endcan
+                                @can('customer_types.delete')
+                                    <button class="btn btn-danger btn-sm delete-btn" data-url="{{ route('customer-types.destroy', $type->id) }}" data-msg="Are you sure you want to delete this customer type?" data-method="get" onclick="logoutAndDeleteFunction(this)">Delete</button>
+                                @endcan
                             </td>
                         </tr>
                     @endforeach
@@ -307,25 +299,17 @@
                 <div class="customertype-mcard">
                     <div class="customertype-mcard-hdr">
                         <span class="customertype-id-badge">#{{ $type->id }}</span>
-                        @if($type->is_static)
-                            <span class="badge bg-danger text-white"><i class="fas fa-lock me-1"></i> Static</span>
-                        @else
-                            <span class="badge bg-success text-white"><i class="fas fa-cog me-1"></i> Dynamic</span>
-                        @endif
+                        <span class="badge bg-success text-white"><i class="fas fa-check-circle me-1"></i> Active</span>
                     </div>
                     <div class="customertype-mcard-title mb-1 name">{{ $type->name }}</div>
                     <div class="customertype-mcard-desc description">{{ $type->description ?: 'N/A' }}</div>
                     <div class="customertype-mcard-actions">
-                        @if($type->is_static)
-                            <span class="text-muted small"><i class="fas fa-shield-alt text-warning me-1"></i> Protected</span>
-                        @else
-                            @can('customer_types.edit')
-                                <button class="btn btn-primary btn-sm edit-btn" data-id="{{ $type->id }}">Edit</button>
-                            @endcan
-                            @can('customer_types.delete')
-                                <button class="btn btn-danger btn-sm delete-btn" data-url="{{ route('customer-types.destroy', $type->id) }}" data-msg="Are you sure you want to delete this customer type?" data-method="get" onclick="logoutAndDeleteFunction(this)">Delete</button>
-                            @endcan
-                        @endif
+                        @can('customer_types.edit')
+                            <button class="btn btn-primary btn-sm edit-btn" data-id="{{ $type->id }}">Edit</button>
+                        @endcan
+                        @can('customer_types.delete')
+                            <button class="btn btn-danger btn-sm delete-btn" data-url="{{ route('customer-types.destroy', $type->id) }}" data-msg="Are you sure you want to delete this customer type?" data-method="get" onclick="logoutAndDeleteFunction(this)">Delete</button>
+                        @endcan
                     </div>
                 </div>
             @endforeach

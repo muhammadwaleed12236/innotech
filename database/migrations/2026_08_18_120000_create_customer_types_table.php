@@ -25,14 +25,14 @@ return new class extends Migration
             [
                 'name' => 'Main Customer',
                 'description' => 'Default customer type',
-                'is_static' => 1,
+                'is_static' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'name' => 'Walking Customer',
-                'description' => 'Static customer type for instant upfront payment',
-                'is_static' => 1,
+                'description' => 'Customer type for instant upfront payment',
+                'is_static' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]

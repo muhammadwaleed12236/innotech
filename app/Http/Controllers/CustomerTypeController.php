@@ -11,6 +11,20 @@ class CustomerTypeController extends Controller
 {
     public function index()
     {
+        // Auto-create default types if none exist, but as normal editable/deletable types
+        if (CustomerType::count() === 0) {
+            CustomerType::create([
+                'name' => 'Main Customer',
+                'description' => 'Default customer type',
+                'is_static' => 0,
+            ]);
+            CustomerType::create([
+                'name' => 'Walking Customer',
+                'description' => 'Customer type for instant upfront payment',
+                'is_static' => 0,
+            ]);
+        }
+
         $types = CustomerType::all();
         return view('admin_panel.customer_types.index', compact('types'));
     }
@@ -44,15 +58,16 @@ class CustomerTypeController extends Controller
                 ], 404);
             }
 
-            if ($type->is_static) {
-                return response()->json([
-                    'error' => 'Cannot update static customer types.'
-                ], 422);
-            }
-
+            $oldName = $type->name;
             $type->name = $request->name;
             $type->description = $request->description;
+            $type->is_static = false;
             $type->save();
+
+            // Sync updated name to existing customers
+            if ($oldName && $oldName !== $request->name) {
+                Customer::where('customer_type', $oldName)->update(['customer_type' => $request->name]);
+            }
 
             $message = 'Customer Type Updated Successfully';
         }
@@ -81,15 +96,8 @@ class CustomerTypeController extends Controller
             return response()->json(['error' => 'Customer Type not found'], 404);
         }
 
-        if ($type->is_static) {
-            return response()->json(['error' => 'Cannot delete static customer types.'], 422);
-        }
-
-        // Check if customers are associated with this type
-        $hasCustomers = Customer::where('customer_type', $type->name)->exists();
-        if ($hasCustomers) {
-            return response()->json(['error' => 'Cannot delete this type because there are customers associated with it.'], 422);
-        }
+        // Unlink associated customers so deletion succeeds cleanly
+        Customer::where('customer_type', $type->name)->update(['customer_type' => null]);
 
         $type->delete();
 
