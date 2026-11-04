@@ -248,6 +248,10 @@
                                                                             class="menu_icon ti-alert"></i><span>zone</span></a>
                                                                 </li>
                                                                 <li class="nav-item"><a class="nav-link"
+                                                                        href="{{ route('province.index') }}"><i
+                                                                            class="menu_icon ti-alert"></i><span>province</span></a>
+                                                                </li>
+                                                                <li class="nav-item"><a class="nav-link"
                                                                         href="{{ url('sales-officers') }}"><i
                                                                             class="menu_icon ti-alert"></i><span>Sales
                                                                             Officer</span></a></li>

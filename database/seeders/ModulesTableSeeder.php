@@ -67,6 +67,7 @@ class ModulesTableSeeder extends Seeder
             'permissions',
             'branches',
             'zones',
+            'provinces',
             'sales.officers',
             'narrations',
             'package.types',

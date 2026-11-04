@@ -37,6 +37,7 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WarehouseStockController;
 use App\Http\Controllers\ZoneController;
+use App\Http\Controllers\ProvinceController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -327,6 +328,14 @@ Route::middleware('auth')->group(function () {
     Route::post('zones/store', [ZoneController::class, 'store'])->middleware('permission:zones.create|zones.edit')->name('zone.store');
     Route::get('zones/edit/{id}', [ZoneController::class, 'edit'])->middleware('permission:zones.edit')->name('zone.edit');
     Route::get('zones/delete/{id}', [ZoneController::class, 'destroy'])->middleware('permission:zones.delete')->name('zone.delete');
+
+    // Province
+    Route::get('province', [ProvinceController::class, 'index'])->middleware('permission:provinces.view')->name('province.index');
+    Route::get('provinces', [ProvinceController::class, 'index'])->middleware('permission:provinces.view')->name('provinces.index');
+    Route::post('provinces/store', [ProvinceController::class, 'store'])->middleware('permission:provinces.create|provinces.edit')->name('province.store');
+    Route::get('provinces/edit/{id}', [ProvinceController::class, 'edit'])->middleware('permission:provinces.edit')->name('province.edit');
+    Route::delete('provinces/{id}', [ProvinceController::class, 'destroy'])->middleware('permission:provinces.delete')->name('province.destroy');
+    Route::get('provinces/delete/{id}', [ProvinceController::class, 'destroy'])->middleware('permission:provinces.delete')->name('province.delete');
 
     // Sales Officer
     Route::get('sales-officers', [SalesOfficerController::class, 'index'])->middleware('permission:sales.officers.view')->name('sales.officer.index');

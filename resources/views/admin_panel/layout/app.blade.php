@@ -820,7 +820,7 @@
                         </li>
                         <!-- Sale Menu -->
                         @canany(['sales.view', 'sales.create', 'customers.view', 'customer_types.view', 'sales.officers.view',
-                            'receipts.voucher.view', 'zones.view'])
+                            'receipts.voucher.view', 'zones.view', 'provinces.view'])
                             <li class="nav-item">
                                 <a href="#" class="nav-link">
                                     <i class="menu_icon fas fa-receipt"></i>
@@ -846,6 +846,9 @@
                                         @endcan
                                         @can('zones.view')
                                             <li><a href="{{ url('zone') }}"><i class="fas fa-map-marker-alt"></i> Zones</a></li>
+                                        @endcan
+                                        @can('provinces.view')
+                                            <li><a href="{{ route('province.index') }}"><i class="fas fa-map"></i> Provinces</a></li>
                                         @endcan
                                         @can('sales.officers.view')
                                             <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i> Sales Officers</a></li>
