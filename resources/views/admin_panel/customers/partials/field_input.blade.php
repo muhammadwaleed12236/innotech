@@ -17,7 +17,9 @@
         case 'customer_id':
         case 'ntn_number':
         case 'strn_number':
-            $iconClass = 'fas fa-hashtag';
+        case 'license_no':
+        case 'drug_license_no':
+            $iconClass = 'fas fa-id-badge';
             break;
         case 'party_type':
             $iconClass = 'fas fa-users-cog';
@@ -82,6 +84,9 @@
             else $iconClass = 'fas fa-font';
             break;
     }
+
+    $isLicense = in_array($key, ['license_no', 'drug_license_no', 'license', 'drug_license']) || stripos((string)$key, 'license') !== false;
+    $isRequired = (bool)($field->is_required && !$isLicense);
 @endphp
 
 <div class="{{ $colClass }}">
@@ -89,7 +94,7 @@
     <div class="d-flex align-items-center justify-content-between mb-1" style="min-height: 20px;">
         <label class="form-label fw-bold text-dark mb-0 text-truncate" for="field_{{ $key }}" style="font-size: 0.82rem; letter-spacing: -0.01em;">
             {{ $field->label }}
-            @if($field->is_required)
+            @if($isRequired)
                 <span class="text-danger ms-1 fw-bold">*</span>
             @else
                 <span class="text-muted fw-normal" style="font-size: 0.72rem;">(Optional)</span>
@@ -113,7 +118,7 @@
                 class="form-control @error($key) is-invalid @enderror"
                 placeholder="{{ $field->placeholder ?: 'Enter street address, shop/plot number...' }}"
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}
+                {{ $isRequired ? 'required' : '' }}
                 {{ $field->is_readonly ? 'readonly style=background:#f8fafc;' : '' }}>
         </div>
 
@@ -129,7 +134,7 @@
             <select name="province" id="field_province" 
                 class="form-control form-select @error('province') is-invalid @enderror" 
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}>
+                {{ $isRequired ? 'required' : '' }}>
                 <option value="">-- Select Province --</option>
                 @foreach($provincesList as $p)
                     <option value="{{ $p }}" {{ strcasecmp((string)$val, (string)$p) === 0 ? 'selected' : '' }}>{{ ucwords($p) }}</option>
@@ -155,7 +160,7 @@
             <select name="city" id="field_city" 
                 class="form-control form-select @error('city') is-invalid @enderror" 
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}>
+                {{ $isRequired ? 'required' : '' }}>
                 <option value="">-- Select City --</option>
                 @foreach($citiesList as $c)
                     <option value="{{ $c }}" {{ (string)$val === (string)$c ? 'selected' : '' }}>{{ $c }}</option>
@@ -181,7 +186,7 @@
             <select name="area" id="field_area" 
                 class="form-control form-select @error('area') is-invalid @enderror" 
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}>
+                {{ $isRequired ? 'required' : '' }}>
                 <option value="">-- Select Area --</option>
                 @foreach($areasList as $a)
                     <option value="{{ $a }}" {{ (string)$val === (string)$a ? 'selected' : '' }}>{{ $a }}</option>
@@ -203,7 +208,7 @@
             <select name="{{ $key }}" id="field_{{ $key }}" 
                 class="form-control form-select @error($key) is-invalid @enderror" 
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }} 
+                {{ $isRequired ? 'required' : '' }} 
                 {{ $field->is_readonly ? 'disabled' : '' }}>
                 <option value="">-- Select {{ $field->label }} --</option>
                 
@@ -253,7 +258,7 @@
                 class="form-control @error($key) is-invalid @enderror" 
                 placeholder="{{ $field->placeholder ?: 'Add any specific terms, instructions, or internal remarks...' }}"
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.88rem; padding: 8px 12px;"
-                {{ $field->is_required ? 'required' : '' }}
+                {{ $isRequired ? 'required' : '' }}
                 {{ $field->is_readonly ? 'readonly style=background-color:#f8fafc;' : '' }}>{{ $val }}</textarea>
         </div>
 
@@ -267,7 +272,7 @@
                 class="form-control @error($key) is-invalid @enderror"
                 placeholder="{{ $field->placeholder ?: '0.00' }}"
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.88rem; padding: 6px 12px; height: 38px;"
-                {{ $field->is_required ? 'required' : '' }}
+                {{ $isRequired ? 'required' : '' }}
                 {{ $field->is_readonly ? 'readonly style=background-color:#f8fafc;' : '' }}>
         </div>
 
@@ -298,7 +303,7 @@
                 class="form-control @error($key) is-invalid @enderror"
                 placeholder="{{ $field->placeholder ?: '' }}"
                 style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; font-size: 0.88rem; padding: 6px 12px; height: 38px; {{ $field->is_readonly ? 'background:#f8fafc; cursor:not-allowed;' : 'background:#fff;' }} {{ $key === 'customer_name_ur' ? 'direction:rtl; text-align:right; font-family:\'Noto Nastaliq Urdu\', serif;' : '' }}"
-                {{ $field->is_required ? 'required' : '' }}
+                {{ $isRequired ? 'required' : '' }}
                 {{ $field->is_readonly ? 'readonly' : '' }}>
         </div>
     @endif

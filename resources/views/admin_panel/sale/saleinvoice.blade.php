@@ -864,7 +864,7 @@
             @endphp
 
             <div class="company-header-wrapper">
-                @if(!empty($companyLogo) && file_exists(public_path($companyLogo)))
+                @if(!empty($companyLogo) && (file_exists(public_path($companyLogo)) || file_exists(base_path($companyLogo))))
                     <div>
                         <img src="{{ asset($companyLogo) }}" alt="{{ $companyName }}" class="company-logo">
                     </div>
@@ -1550,7 +1550,7 @@
         @php
             $receiptLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
         @endphp
-        @if(!empty($receiptLogo) && file_exists(public_path($receiptLogo)))
+        @if(!empty($receiptLogo) && (file_exists(public_path($receiptLogo)) || file_exists(base_path($receiptLogo))))
             <div style="text-align: center; margin-bottom: 6px;">
                 <img src="{{ asset($receiptLogo) }}" alt="Logo" style="max-height: 65px; max-width: 85%; object-fit: contain;">
             </div>

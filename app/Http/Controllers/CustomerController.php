@@ -218,6 +218,9 @@ class CustomerController extends Controller
         }
 
         $rules = $this->fieldService->buildValidationRules('create');
+        // Ensure License No and Drug License No are strictly optional
+        $rules['license_no'] = ['nullable', 'string', 'max:100'];
+        $rules['drug_license_no'] = ['nullable', 'string', 'max:100'];
         $data = $request->validate($rules);
 
         // Create Customer model instance
@@ -240,6 +243,8 @@ class CustomerController extends Controller
             $customerData['custom_fields'] = $customValues;
             $customerData['ntn_number'] = $customValues['ntn_number'] ?? $customer->ntn_number ?? '';
             $customerData['strn_number'] = $customValues['strn_number'] ?? $customer->strn_number ?? '';
+            $customerData['license_no'] = $customValues['license_no'] ?? $customer->license_no ?? '';
+            $customerData['drug_license_no'] = $customValues['drug_license_no'] ?? $customer->drug_license_no ?? '';
             $customerData['cnic'] = $customValues['cnic'] ?? $customer->cnic ?? '';
             $customerData['filer_type'] = $customValues['filer_type'] ?? $customer->filer_type ?? '';
             $customerData['remarks'] = $customer->status ?? '';
@@ -270,6 +275,9 @@ class CustomerController extends Controller
         $customer = Customer::with('customFieldValues')->findOrFail($id);
 
         $rules = $this->fieldService->buildValidationRules('edit', $id);
+        // Ensure License No and Drug License No are strictly optional
+        $rules['license_no'] = ['nullable', 'string', 'max:100'];
+        $rules['drug_license_no'] = ['nullable', 'string', 'max:100'];
         $data = $request->validate($rules);
 
         $this->fieldService->saveCustomerFields($customer, $request->all(), true);

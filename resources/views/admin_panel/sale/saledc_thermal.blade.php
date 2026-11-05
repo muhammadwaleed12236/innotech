@@ -206,7 +206,7 @@
             $dcThermalLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
         @endphp
         <!-- Header -->
-        @if(!empty($dcThermalLogo) && file_exists(public_path($dcThermalLogo)))
+        @if(!empty($dcThermalLogo) && (file_exists(public_path($dcThermalLogo)) || file_exists(base_path($dcThermalLogo))))
             <div style="text-align: center; margin-bottom: 6px;">
                 <img src="{{ asset($dcThermalLogo) }}" alt="Logo" style="max-height: 65px; max-width: 85%; object-fit: contain;">
             </div>

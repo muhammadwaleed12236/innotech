@@ -227,7 +227,7 @@
         @endphp
         <!-- Company Header -->
         <div class="company-info">
-            @if(!empty($dcLogo) && file_exists(public_path($dcLogo)))
+            @if(!empty($dcLogo) && (file_exists(public_path($dcLogo)) || file_exists(base_path($dcLogo))))
                 <div style="text-align: center; margin-bottom: 8px;">
                     <img src="{{ asset($dcLogo) }}" alt="Logo" style="max-height: 85px; max-width: 260px; object-fit: contain;">
                 </div>

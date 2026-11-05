@@ -14,7 +14,15 @@
     RewriteRule ^composer\.(json|lock)$ - [F,L]
     RewriteRule ^package\.(json|lock)$ - [F,L]
     RewriteRule ^artisan$ - [F,L]
-    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests)(/|$) - [F,L]
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|tests)(/|$) - [F,L]
+    RewriteRule ^storage/(framework|logs)(/|$) - [F,L]
+
+    # Route static uploads & storage requests to public folder if needed
+    RewriteCond %{DOCUMENT_ROOT}/public/uploads/$1 -f
+    RewriteRule ^uploads/(.*)$ public/uploads/$1 [L]
+
+    RewriteCond %{DOCUMENT_ROOT}/public/storage/$1 -f
+    RewriteRule ^storage/(.*)$ public/storage/$1 [L]
 
     # Force /vendor and /sale routes to be handled by Laravel's index.php instead of the physical directories
     RewriteRule ^(vendor|sale)($|/.*) index.php [L,QSA]

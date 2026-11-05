@@ -80,6 +80,12 @@ class CustomerFieldService
             }
 
             return $field->canView($user);
+        })->map(function (CustomerFieldDefinition $field) {
+            // Customer license numbers are strictly optional
+            if (in_array($field->field_key, ['license_no', 'drug_license_no', 'license', 'drug_license']) || stripos($field->field_key, 'license') !== false) {
+                $field->is_required = false;
+            }
+            return $field;
         })->values();
     }
 
@@ -113,9 +119,10 @@ class CustomerFieldService
         foreach ($fields as $field) {
             $key = $field->field_key;
             $fieldRules = [];
+            $isLicense = in_array($key, ['license_no', 'drug_license_no', 'license', 'drug_license']) || stripos($key, 'license') !== false;
 
-            // Required or Nullable
-            if ($field->is_required) {
+            // Required or Nullable (License / Drug License is strictly optional)
+            if ($field->is_required && !$isLicense) {
                 $fieldRules[] = 'required';
             } else {
                 $fieldRules[] = 'nullable';
@@ -166,11 +173,18 @@ class CustomerFieldService
                     break;
                 default:
                     $fieldRules[] = 'string';
+                    if ($isLicense) {
+                        $fieldRules[] = 'max:100';
+                    }
                     break;
             }
 
             $rules[$key] = $fieldRules;
         }
+
+        // Always ensure license_no and drug_license_no are nullable strings with max:100
+        $rules['license_no'] = ['nullable', 'string', 'max:100'];
+        $rules['drug_license_no'] = ['nullable', 'string', 'max:100'];
 
         return $rules;
     }
@@ -711,6 +725,46 @@ class CustomerFieldService
                 'visible_in_search' => false,
                 'visible_in_export' => true,
                 'sort_order'        => 140,
+            ],
+            [
+                'field_key'         => 'license_no',
+                'label'             => 'License No / Drug License No',
+                'field_type'        => 'text',
+                'is_system'         => false,
+                'section'           => 'Tax & Legal Details',
+                'placeholder'       => 'Enter License or Drug License Number',
+                'help_text'         => 'Trade or drug sale license number (Optional)',
+                'is_required'       => false,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => true,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => true,
+                'visible_in_export' => true,
+                'sort_order'        => 145,
+            ],
+            [
+                'field_key'         => 'drug_license_no',
+                'label'             => 'Drug License No',
+                'field_type'        => 'text',
+                'is_system'         => false,
+                'section'           => 'Tax & Legal Details',
+                'placeholder'       => 'Enter Drug License Number',
+                'help_text'         => 'Drug sale license number (Optional)',
+                'is_required'       => false,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => false,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => true,
+                'visible_in_export' => true,
+                'sort_order'        => 146,
             ],
             [
                 'field_key'         => 'contact_person',

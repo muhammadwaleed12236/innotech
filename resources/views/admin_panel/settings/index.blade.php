@@ -153,7 +153,7 @@
 
                                                                 @php
                                                                     $currentLogo = \App\Models\Setting::get('company_logo');
-                                                                    $hasLogo = !empty($currentLogo) && file_exists(public_path($currentLogo));
+                                                                    $hasLogo = !empty($currentLogo) && (file_exists(public_path($currentLogo)) || file_exists(base_path($currentLogo)));
                                                                 @endphp
 
                                                                 <div class="d-flex align-items-center" style="gap: 12px;">

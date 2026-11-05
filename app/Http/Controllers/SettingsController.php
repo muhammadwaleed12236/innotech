@@ -53,13 +53,25 @@ class SettingsController extends Controller
         // 2. Handle Company Logo Upload & Removal
         if ($request->hasFile('company_logo')) {
             $file = $request->file('company_logo');
-            $uploadDir = public_path('uploads/settings');
-            if (!file_exists($uploadDir)) {
-                @mkdir($uploadDir, 0775, true);
-            }
             $fileName = 'logo_' . time() . '.' . $file->getClientOriginalExtension();
-            $file->move($uploadDir, $fileName);
+
+            $publicUploadDir = public_path('uploads/settings');
+            $rootUploadDir = base_path('uploads/settings');
+
+            if (!file_exists($publicUploadDir)) {
+                @mkdir($publicUploadDir, 0775, true);
+            }
+            if (!file_exists($rootUploadDir)) {
+                @mkdir($rootUploadDir, 0775, true);
+            }
+
+            $file->move($publicUploadDir, $fileName);
             $logoPath = 'uploads/settings/' . $fileName;
+
+            // Ensure available in root uploads for direct web access on live servers
+            if (file_exists($publicUploadDir . '/' . $fileName) && $publicUploadDir !== $rootUploadDir) {
+                @copy($publicUploadDir . '/' . $fileName, $rootUploadDir . '/' . $fileName);
+            }
 
             Setting::set('company_logo', $logoPath, 'company', 'Company Logo', 'string');
         } elseif ($request->boolean('remove_company_logo')) {
@@ -67,11 +79,12 @@ class SettingsController extends Controller
         }
 
         $currentLogo = Setting::get('company_logo');
+        $hasLogo = !empty($currentLogo) && (file_exists(public_path($currentLogo)) || file_exists(base_path($currentLogo)));
 
         return response()->json([
             'success' => true,
             'message' => 'Settings updated successfully',
-            'logo_url' => (!empty($currentLogo) && file_exists(public_path($currentLogo))) ? asset($currentLogo) : null,
+            'logo_url' => $hasLogo ? asset($currentLogo) : null,
         ]);
     }
 
