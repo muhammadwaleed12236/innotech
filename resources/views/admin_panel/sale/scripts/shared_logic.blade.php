@@ -96,12 +96,15 @@
 
         const ftPercent = (!isFtEnabled) ? 0 : ((window.currentCustomerHasStrn && strnExempt) ? 0 : defaultFt);
 
-        if (forceRowUpdate) {
+        const shouldForceRows = forceRowUpdate && (!window.isEditMode || window.userExplicitlyChangedCustomer === true);
+        if (shouldForceRows) {
             // Update Further Tax percent on all item rows
             $('#salesTableBody tr').each(function() {
                 const $r = $(this);
                 $r.find('.further-tax-percent').val(ftPercent);
-                if (typeof recalculateRow === 'function') {
+                if (typeof computeRow === 'function') {
+                    computeRow($r);
+                } else if (typeof recalculateRow === 'function') {
                     recalculateRow($r);
                 }
             });
@@ -739,6 +742,32 @@
         if ($('#tExclusiveGst').length) $('#tExclusiveGst').text(tExclusiveGst.toFixed(2));
         if ($('#tSalesTax').length) $('#tSalesTax').text(tSalesTax.toFixed(2));
         if ($('#tFurtherTax').length) $('#tFurtherTax').text(tFurtherTax.toFixed(2));
+
+        // Dynamic Tax Rate Labels in Summary
+        if ($('#labelStRate').length) {
+            let stRates = [];
+            $('#salesTableBody tr').each(function() {
+                stRates.push(toNum($(this).find('.sales-tax-percent').val()));
+            });
+            const uniqueSt = [...new Set(stRates)];
+            if (uniqueSt.length === 1) {
+                $('#labelStRate').text(uniqueSt[0] + '%');
+            } else if (uniqueSt.length > 1) {
+                $('#labelStRate').text('Mixed');
+            }
+        }
+        if ($('#labelFtRate').length) {
+            let ftRates = [];
+            $('#salesTableBody tr').each(function() {
+                ftRates.push(toNum($(this).find('.further-tax-percent').val()));
+            });
+            const uniqueFt = [...new Set(ftRates)];
+            if (uniqueFt.length === 1) {
+                $('#labelFtRate').text(uniqueFt[0] + '%');
+            } else if (uniqueFt.length > 1) {
+                $('#labelFtRate').text('Mixed');
+            }
+        }
         $('#tSub').text(currentInvoiceTotal.toFixed(2));
         $('#tOrderDisc').text(orderDisc.toFixed(2));
         $('#tPrev').text(prev.toFixed(2));

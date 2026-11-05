@@ -2187,6 +2187,8 @@
 
 @section('js')
     <script>
+    window.isEditMode = true;
+    window.userExplicitlyChangedCustomer = false;
     window.saleScreenConfig = @json($saleConfig);
 </script>
 @include('admin_panel.sale.scripts.shared_logic')
@@ -2286,6 +2288,16 @@
                 }
             });
 
+            // Track when user manually selects customer
+            $(document).on('select2:select', '#customerSelect', function() {
+                window.userExplicitlyChangedCustomer = true;
+            });
+            $('#customerSelect').on('select2:clear', function() {
+                window.userExplicitlyChangedCustomer = true;
+                clearCustomerInfo();
+                if (typeof updateGrandTotals === 'function') updateGrandTotals();
+            });
+
             // Customer selected → load details
             $(document).on('change', '#customerSelect', function() {
                 const id = $(this).val();
@@ -2373,7 +2385,7 @@
                     }
 
                     if (typeof window.applyCustomerTaxStatus === 'function') {
-                        window.applyCustomerTaxStatus(d, true);
+                        window.applyCustomerTaxStatus(d, window.userExplicitlyChangedCustomer === true);
                     } else if (typeof updateGrandTotals === 'function') {
                         updateGrandTotals();
                     }
@@ -2399,7 +2411,7 @@
                     window.populateCustomerModalDetails(null);
                 }
                 if (typeof window.applyCustomerTaxStatus === 'function') {
-                    window.applyCustomerTaxStatus(null, true);
+                    window.applyCustomerTaxStatus(null, window.userExplicitlyChangedCustomer === true);
                 }
             }
 
@@ -2513,6 +2525,7 @@
                 try { $sel.select2('close'); } catch(e) {}
                 $('.select2-search__field').val('');
                 // 5. Update Tax badges (STRN / NTN / FT)
+                window.userExplicitlyChangedCustomer = true;
                 if (typeof window.applyCustomerTaxStatus === 'function') {
                     window.applyCustomerTaxStatus(c, true);
                 }
@@ -2890,6 +2903,12 @@
                 'height' => $prod->height ?? '-',
                 'width' => $prod->width ?? '-',
                 'sale_discount_percent' => (float) ($prod->sale_discount_percent ?? 0),
+                'sales_tax_percent' => isset($it->sales_tax_percent) && $it->sales_tax_percent !== '' ? (float) $it->sales_tax_percent : (float) ($saleConfig['default_st_rate'] ?? 18),
+                'sales_tax_amount' => isset($it->sales_tax_amount) && $it->sales_tax_amount !== '' ? (float) $it->sales_tax_amount : 0,
+                'further_tax_percent' => isset($it->further_tax_percent) && $it->further_tax_percent !== '' ? (float) $it->further_tax_percent : (float) ($saleConfig['default_ft_rate'] ?? 3),
+                'further_tax_amount' => isset($it->further_tax_amount) && $it->further_tax_amount !== '' ? (float) $it->further_tax_amount : 0,
+                'exclusive_gst_amount' => isset($it->exclusive_gst_amount) && $it->exclusive_gst_amount !== '' ? (float) $it->exclusive_gst_amount : 0,
+                'gross_amount' => isset($it->gross_amount) && $it->gross_amount !== '' ? (float) $it->gross_amount : 0,
             ];
         })->values()->all();
     @endphp
@@ -2992,6 +3011,25 @@
                     $row.find('.discount-type-hidden').val('percent');
                 }
                 $row.find('.discount-amount').val(it.discount_amount);
+
+                if (it.sales_tax_percent !== undefined && it.sales_tax_percent !== null) {
+                    $row.find('.sales-tax-percent').val(it.sales_tax_percent);
+                }
+                if (it.sales_tax_amount !== undefined && it.sales_tax_amount !== null) {
+                    $row.find('.sales-tax-amount').val(it.sales_tax_amount);
+                }
+                if (it.further_tax_percent !== undefined && it.further_tax_percent !== null) {
+                    $row.find('.further-tax-percent').val(it.further_tax_percent);
+                }
+                if (it.further_tax_amount !== undefined && it.further_tax_amount !== null) {
+                    $row.find('.further-tax-amount').val(it.further_tax_amount);
+                }
+                if (it.exclusive_gst_amount !== undefined && it.exclusive_gst_amount !== null) {
+                    $row.find('.exclusive-gst-amount').val(it.exclusive_gst_amount);
+                }
+                if (it.gross_amount !== undefined && it.gross_amount !== null) {
+                    $row.find('.gross-amount').val(it.gross_amount);
+                }
 
                 if (typeof computeRow === 'function') computeRow($row);
             }
