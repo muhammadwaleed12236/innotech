@@ -2053,7 +2053,9 @@ class ReportingController extends Controller
     {
         $products = \App\Models\Product::orderBy('item_name')->get();
         $vendors = \App\Models\Vendor::orderBy('name')->get();
-        return view('admin_panel.reporting.purchase_report', compact('products', 'vendors'));
+        $minDate = \App\Models\Purchase::min('purchase_date');
+        $defaultStartDate = $minDate ? date('Y-m-d', strtotime($minDate)) : date('Y-01-01');
+        return view('admin_panel.reporting.purchase_report', compact('products', 'vendors', 'defaultStartDate'));
     }
 
     public function fetchPurchaseReport(Request $request)
@@ -2065,17 +2067,17 @@ class ReportingController extends Controller
 
         $query = DB::table('purchases')
             ->join('purchase_items', 'purchases.id', '=', 'purchase_items.purchase_id')
-            ->join('products', 'purchase_items.product_id', '=', 'products.id')
-            ->join('vendors', 'purchases.vendor_id', '=', 'vendors.id') // join vendor table
+            ->leftJoin('products', 'purchase_items.product_id', '=', 'products.id')
+            ->leftJoin('vendors', 'purchases.vendor_id', '=', 'vendors.id')
             ->leftJoin('units', 'products.unit_id', '=', 'units.id')
             ->select(
                 'purchases.purchase_date',
                 'purchases.invoice_no',
-                'vendors.name as vendor_name', // vendor name
+                DB::raw('COALESCE(vendors.name, "Unknown Vendor") as vendor_name'),
                 'products.item_code',
                 'products.item_name',
                 'purchase_items.qty',
-                DB::raw('COALESCE(units.name, purchase_items.unit, "-") as unit'), // Fix null unit
+                DB::raw('COALESCE(units.name, purchase_items.unit, "-") as unit'),
                 'purchase_items.price',
                 'purchase_items.item_discount',
                 'purchase_items.line_total',
@@ -2088,7 +2090,12 @@ class ReportingController extends Controller
             );
 
         if ($startDate && $endDate) {
-            $query->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
+            $query->whereDate('purchases.purchase_date', '>=', $startDate)
+                  ->whereDate('purchases.purchase_date', '<=', $endDate);
+        } elseif ($startDate) {
+            $query->whereDate('purchases.purchase_date', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->whereDate('purchases.purchase_date', '<=', $endDate);
         }
         if ($productId && $productId !== 'all') {
             $query->where('purchase_items.product_id', $productId);
@@ -2138,10 +2145,12 @@ class ReportingController extends Controller
             );
 
         if ($startDate && $endDate) {
-            $manualQuery->whereBetween('sales.created_at', [
-                \Carbon\Carbon::parse($startDate)->startOfDay()->format('Y-m-d H:i:s'),
-                \Carbon\Carbon::parse($endDate)->endOfDay()->format('Y-m-d H:i:s')
-            ]);
+            $manualQuery->whereDate('sales.created_at', '>=', $startDate)
+                        ->whereDate('sales.created_at', '<=', $endDate);
+        } elseif ($startDate) {
+            $manualQuery->whereDate('sales.created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $manualQuery->whereDate('sales.created_at', '<=', $endDate);
         }
         if ($vendorId && $vendorId !== 'all') {
             $manualQuery->where('sale_items.vendor_id', $vendorId);
@@ -2181,7 +2190,9 @@ class ReportingController extends Controller
     {
         $customers = \App\Models\Customer::orderBy('customer_name')->get();
         $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
-        return view('admin_panel.reporting.sale_report', compact('customers', 'salesOfficers'));
+        $minDate = \App\Models\Sale::min('created_at');
+        $defaultStartDate = $minDate ? date('Y-m-d', strtotime($minDate)) : date('Y-01-01');
+        return view('admin_panel.reporting.sale_report', compact('customers', 'salesOfficers', 'defaultStartDate'));
     }
 
     public function fetchsaleReport(Request $request)
@@ -2196,14 +2207,12 @@ class ReportingController extends Controller
             $query = \App\Models\Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product', 'returns']);
 
             if ($start && $end) {
-                $query->whereBetween('created_at', [
-                    \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'),
-                    \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s')
-                ]);
+                $query->whereDate('created_at', '>=', $start)
+                      ->whereDate('created_at', '<=', $end);
             } elseif ($start) {
-                $query->where('created_at', '>=', \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'));
+                $query->whereDate('created_at', '>=', $start);
             } elseif ($end) {
-                $query->where('created_at', '<=', \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s'));
+                $query->whereDate('created_at', '<=', $end);
             }
 
             if ($customerId && $customerId !== 'all') {
@@ -2417,10 +2426,14 @@ class ReportingController extends Controller
             $expenseQueryV2 = DB::table('voucher_masters')->where('voucher_type', 'expense');
 
             if ($start && $end) {
-                $startDt = \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s');
-                $endDt   = \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s');
-                $expenseQueryV1->whereBetween('entry_date', [$startDt, $endDt]);
-                $expenseQueryV2->whereBetween('date', [$startDt, $endDt]);
+                $expenseQueryV1->whereDate('entry_date', '>=', $start)->whereDate('entry_date', '<=', $end);
+                $expenseQueryV2->whereDate('date', '>=', $start)->whereDate('date', '<=', $end);
+            } elseif ($start) {
+                $expenseQueryV1->whereDate('entry_date', '>=', $start);
+                $expenseQueryV2->whereDate('date', '>=', $start);
+            } elseif ($end) {
+                $expenseQueryV1->whereDate('entry_date', '<=', $end);
+                $expenseQueryV2->whereDate('date', '<=', $end);
             }
 
             $totalExpenses = (float) $expenseQueryV1->sum('total_amount') + (float) $expenseQueryV2->sum('total_amount');

@@ -155,13 +155,19 @@
                 {{-- Start Date --}}
                 <div class="sale-filter-group">
                     <label for="start_date_desk" class="sale-filter-label">Start:</label>
-                    <input type="date" name="start_date" id="start_date_desk" value="{{ date('Y-m-01') }}" class="form-control form-control-sm fw-bold startDateInput" style="height: 34px; width: 135px; font-size: .78rem; border-radius: 6px;">
+                    <input type="date" name="start_date" id="start_date_desk" value="{{ $defaultStartDate ?? date('Y-01-01') }}" class="form-control form-control-sm fw-bold startDateInput" style="height: 34px; width: 135px; font-size: .78rem; border-radius: 6px;">
                 </div>
 
                 {{-- End Date --}}
                 <div class="sale-filter-group">
                     <label for="end_date_desk" class="sale-filter-label">End:</label>
                     <input type="date" name="end_date" id="end_date_desk" value="{{ date('Y-m-d') }}" class="form-control form-control-sm fw-bold endDateInput" style="height: 34px; width: 135px; font-size: .78rem; border-radius: 6px;">
+                </div>
+
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0 fw-semibold btnQuickDateSale" data-range="all" style="font-size: .70rem; height: 34px;" title="All Records">All Time</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0 fw-semibold btnQuickDateSale" data-range="year" style="font-size: .70rem; height: 34px;" title="This Year">Year</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0 fw-semibold btnQuickDateSale" data-range="month" style="font-size: .70rem; height: 34px;" title="This Month">Month</button>
                 </div>
 
                                 {{-- Province Filter --}}
@@ -243,7 +249,7 @@
                     </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Start Date</label>
-                        <input type="date" name="start_date" id="start_date_mob" value="{{ date('Y-m-01') }}" class="form-control form-control-sm startDateInput" style="font-size: 11px;">
+                        <input type="date" name="start_date" id="start_date_mob" value="{{ $defaultStartDate ?? date('Y-01-01') }}" class="form-control form-control-sm startDateInput" style="font-size: 11px;">
                     </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">End Date</label>
@@ -620,6 +626,27 @@
                 }
             });
         }
+
+        $(document).on('click', '.btnQuickDateSale', function() {
+            let range = $(this).data('range');
+            let today = '{{ date("Y-m-d") }}';
+            let startOfYear = '{{ $defaultStartDate ?? date("Y-01-01") }}';
+            let startOfMonth = '{{ date("Y-m-01") }}';
+            
+            if (range === 'all') {
+                $('.startDateInput').val('');
+                $('.endDateInput').val('');
+            } else if (range === 'year') {
+                $('.startDateInput').val(startOfYear);
+                $('.endDateInput').val(today);
+            } else if (range === 'month') {
+                $('.startDateInput').val(startOfMonth);
+                $('.endDateInput').val(today);
+            }
+            $('.btnQuickDateSale').removeClass('active btn-secondary text-white').addClass('btn-outline-secondary');
+            $(this).addClass('active btn-secondary text-white').removeClass('btn-outline-secondary');
+            loadSaleReport();
+        });
 
         // Trigger on Filter Click
         $(document).on('click', '.btnSearchTrigger', function() {

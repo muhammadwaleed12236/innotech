@@ -130,11 +130,16 @@
                     <div class="d-flex align-items-center me-auto flex-wrap" style="gap: 12px !important;">
                         <div class="d-flex align-items-center gap-1">
                             <label class="sale-filter-label mb-0 ms-1 me-1">Start:</label>
-                            <input type="date" id="start_date_desk" class="form-control form-control-sm fw-bold startDateInput" value="{{ date('Y-m-01') }}" style="height: 32px; width: 130px; font-size: .78rem; border-radius: 6px;">
+                            <input type="date" id="start_date_desk" class="form-control form-control-sm fw-bold startDateInput" value="{{ $defaultStartDate ?? date('Y-01-01') }}" style="height: 32px; width: 130px; font-size: .78rem; border-radius: 6px;">
                         </div>
                         <div class="d-flex align-items-center gap-1">
                             <label class="sale-filter-label mb-0 ms-1 me-1">End:</label>
                             <input type="date" id="end_date_desk" class="form-control form-control-sm fw-bold endDateInput" value="{{ date('Y-m-d') }}" style="height: 32px; width: 130px; font-size: .78rem; border-radius: 6px;">
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0 fw-semibold btnQuickDate" data-range="all" style="font-size: .70rem; height: 32px;" title="All Records">All Time</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0 fw-semibold btnQuickDate" data-range="year" style="font-size: .70rem; height: 32px;" title="This Year">Year</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2 py-0 fw-semibold btnQuickDate" data-range="month" style="font-size: .70rem; height: 32px;" title="This Month">Month</button>
                         </div>
 
                         <div class="d-flex align-items-center gap-1">
@@ -193,7 +198,7 @@
                     {{-- Start & End Date --}}
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">Start Date</label>
-                        <input type="date" id="start_date_mob" class="form-control form-control-sm startDateInput" value="{{ date('Y-m-01') }}" style="font-size: 11px;">
+                        <input type="date" id="start_date_mob" class="form-control form-control-sm startDateInput" value="{{ $defaultStartDate ?? date('Y-01-01') }}" style="font-size: 11px;">
                     </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">End Date</label>
@@ -542,12 +547,33 @@
             document.body.removeChild(a);
         }
 
+        $(document).on('click', '.btnQuickDate', function() {
+            let range = $(this).data('range');
+            let today = '{{ date("Y-m-d") }}';
+            let startOfYear = '{{ $defaultStartDate ?? date("Y-01-01") }}';
+            let startOfMonth = '{{ date("Y-m-01") }}';
+            
+            if (range === 'all') {
+                $('.startDateInput').val('');
+                $('.endDateInput').val('');
+            } else if (range === 'year') {
+                $('.startDateInput').val(startOfYear);
+                $('.endDateInput').val(today);
+            } else if (range === 'month') {
+                $('.startDateInput').val(startOfMonth);
+                $('.endDateInput').val(today);
+            }
+            $('.btnQuickDate').removeClass('active btn-secondary text-white').addClass('btn-outline-secondary');
+            $(this).addClass('active btn-secondary text-white').removeClass('btn-outline-secondary');
+            loadReport();
+        });
+
         $(".btnSearchTrigger").click(function() {
             loadReport();
         });
 
         $(".btnResetTrigger").click(function() {
-            let startOfMonth = '{{ date("Y-m-01") }}';
+            let startOfMonth = '{{ $defaultStartDate ?? date("Y-01-01") }}';
             let today = '{{ date("Y-m-d") }}';
             $(".startDateInput").val(startOfMonth);
             $(".endDateInput").val(today);
