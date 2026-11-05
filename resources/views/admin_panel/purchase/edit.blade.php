@@ -612,6 +612,9 @@
                                 <th style="width: 120px;">Price</th>
                                 <th style="width: 90px;">Disc %</th>
                                 <th style="width: 100px;">Disc Amt</th>
+                                @if($purchaseGstEnabled ?? true)
+                                    <th style="width: 95px;" class="col-purchase-gst text-center">GST %</th>
+                                @endif
                                 <th style="width: 120px;">Subtotal</th>
                                 <th style="width: 36px;" class="text-center"><i class="fas fa-times text-danger"></i></th>
                             </tr>
@@ -720,6 +723,17 @@
                                     <td>
                                         <input type="number" class="form-control text-end input-readonly item-disc-amt" value="{{ number_format($item->item_discount, 2, '.', '') }}" readonly tabindex="-1">
                                     </td>
+                                    @if($purchaseGstEnabled ?? true)
+                                    <td class="col-purchase-gst">
+                                        <input type="number" step="0.01" min="0" max="100" name="gst_percent[]" class="form-control text-end item-gst-percent fw-semibold" value="{{ (float)($item->gst_percent ?? ($defaultGstPercent ?? 18)) }}" placeholder="18">
+                                        <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="{{ number_format($item->gst_amount ?? 0, 2, '.', '') }}">
+                                        <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="{{ number_format($item->exclusive_gst_amount ?? 0, 2, '.', '') }}">
+                                    </td>
+                                    @else
+                                    <input type="hidden" name="gst_percent[]" class="item-gst-percent" value="{{ (float)($item->gst_percent ?? 0) }}">
+                                    <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="{{ number_format($item->gst_amount ?? 0, 2, '.', '') }}">
+                                    <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="{{ number_format($item->exclusive_gst_amount ?? 0, 2, '.', '') }}">
+                                    @endif
                                     <td>
                                         <input type="number" class="form-control text-end input-readonly row-total fw-bold" value="{{ number_format($item->line_total, 2, '.', '') }}" readonly tabindex="-1">
                                     </td>
@@ -731,7 +745,7 @@
                         </tbody>
                         <tfoot>
                             <tr>
-                                <td colspan="{{ $canSelectWarehouse ? 8 : 7 }}" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
+                                <td colspan="{{ $canSelectWarehouse ? (($purchaseGstEnabled ?? true) ? 9 : 8) : (($purchaseGstEnabled ?? true) ? 8 : 7) }}" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
                                 <td class="text-end fw-bold fs-6 text-dark py-2 pe-2" style="background:#F8FAFC;"><span id="totalAmount">0.00</span></td>
                                 <td style="background:#F8FAFC;"></td>
                             </tr>
@@ -818,6 +832,19 @@
                             <span class="s-label">Item Discounts</span>
                             <span class="s-val text-success" id="tLineDisc">0.00</span>
                         </div>
+
+                        @if($purchaseGstEnabled ?? true)
+                        <div class="s-row" id="rowSummaryExclGst">
+                            <span class="s-label fw-bold text-dark">Exclusive GST Amount</span>
+                            <span class="s-val fw-bold text-dark" id="tExclusiveGst">{{ number_format($purchase->total_exclusive_gst ?? 0, 2) }}</span>
+                            <input type="hidden" name="total_exclusive_gst" id="exclusiveGstInput" value="{{ $purchase->total_exclusive_gst ?? 0 }}">
+                        </div>
+                        <div class="s-row" id="rowSummaryGstAmt">
+                            <span class="s-label text-success fw-bold">GST Amount</span>
+                            <span class="s-val text-success fw-bold" id="tGstAmount">{{ number_format($purchase->total_gst ?? 0, 2) }}</span>
+                            <input type="hidden" name="total_gst" id="totalGstInput" value="{{ $purchase->total_gst ?? 0 }}">
+                        </div>
+                        @endif
 
                         <div class="s-row">
                             <span class="s-label">Bill Discount</span>
@@ -1347,6 +1374,17 @@
                     <td>
                         <input type="number" class="form-control text-end input-readonly item-disc-amt" value="0.00" readonly tabindex="-1">
                     </td>
+                    @if($purchaseGstEnabled ?? true)
+                    <td class="col-purchase-gst">
+                        <input type="number" step="0.01" min="0" max="100" name="gst_percent[]" class="form-control text-end item-gst-percent fw-semibold" value="{{ (float)($defaultGstPercent ?? 18) }}" placeholder="18">
+                        <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="0.00">
+                        <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="0.00">
+                    </td>
+                    @else
+                    <input type="hidden" name="gst_percent[]" class="item-gst-percent" value="0">
+                    <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="0.00">
+                    <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="0.00">
+                    @endif
                     <td>
                         <input type="number" class="form-control text-end input-readonly row-total fw-bold" value="0.00" readonly tabindex="-1">
                     </td>
@@ -1587,7 +1625,7 @@
             });
 
             // Grid Inputs -> Recalculate
-            $('#purchaseTableBody').on('input', '.main-qty-input, .price, .item-disc-percent', function() {
+            $('#purchaseTableBody').on('input', '.main-qty-input, .price, .item-disc-percent, .item-gst-percent', function() {
                 recalcRow($(this).closest('tr'));
                 recalcAll();
             });
@@ -1610,7 +1648,19 @@
                         // Price -> Disc %
                         $row.find('.item-disc-percent').focus().select();
                     } else if ($input.hasClass('item-disc-percent')) {
-                        // Disc % -> Next Row's Product or Create New Row
+                        if ($row.find('.item-gst-percent').length) {
+                            $row.find('.item-gst-percent').focus().select();
+                        } else {
+                            const $nextRow = $row.next('tr');
+                            if ($nextRow.length) {
+                                $nextRow.find('.product-select2').select2('open');
+                            } else {
+                                const $newRow = addBlankRow();
+                                setTimeout(() => { $newRow.find('.product-select2').select2('open'); }, 50);
+                            }
+                        }
+                    } else if ($input.hasClass('item-gst-percent')) {
+                        // GST % -> Next Row's Product or Create New Row
                         const $nextRow = $row.next('tr');
                         if ($nextRow.length) {
                             $nextRow.find('.product-select2').select2('open');
@@ -1670,29 +1720,44 @@
                 }
 
                 const discAmt = gross * (discPct / 100);
-                const lineTotal = Math.max(0, gross - discAmt);
+                const exclGst = Math.max(0, gross - discAmt);
+                const gstPct = parseFloat($row.find('.item-gst-percent').val()) || 0;
+                const gstAmt = exclGst * (gstPct / 100);
+                const lineTotal = exclGst + gstAmt;
 
                 $row.find('.item-disc-amt').val(discAmt.toFixed(2));
+                $row.find('.item-excl-gst-amt').val(exclGst.toFixed(2));
+                $row.find('.item-gst-amt').val(gstAmt.toFixed(2));
                 $row.find('.row-total').val(lineTotal.toFixed(2));
             }
 
             function recalcAll() {
                 let subtotal = 0;
                 let totalInlineDiscount = 0;
+                let totalExclusiveGst = 0;
+                let totalGstAmount = 0;
 
                 $('#purchaseTableBody tr').each(function() {
                     const total = parseFloat($(this).find('.row-total').val()) || 0;
                     const rowDiscAmt = parseFloat($(this).find('.item-disc-amt').val()) || 0;
+                    const rowExclGst = parseFloat($(this).find('.item-excl-gst-amt').val()) || 0;
+                    const rowGstAmt = parseFloat($(this).find('.item-gst-amt').val()) || 0;
 
                     subtotal += total;
                     totalInlineDiscount += rowDiscAmt;
+                    totalExclusiveGst += rowExclGst;
+                    totalGstAmount += rowGstAmt;
                 });
 
-                const grossSubtotal = subtotal + totalInlineDiscount;
+                const grossSubtotal = totalExclusiveGst + totalInlineDiscount;
 
-                $('#tSub').text(subtotal.toFixed(2));
+                $('#tSub').text(grossSubtotal.toFixed(2));
                 $('#subtotalInput').val(subtotal.toFixed(2));
                 $('#tLineDisc').text(totalInlineDiscount.toFixed(2));
+                $('#tExclusiveGst').text(totalExclusiveGst.toFixed(2));
+                $('#exclusiveGstInput').val(totalExclusiveGst.toFixed(2));
+                $('#tGstAmount').text(totalGstAmount.toFixed(2));
+                $('#totalGstInput').val(totalGstAmount.toFixed(2));
 
                 let additionalDiscount = parseFloat($('#discountInput').val()) || 0;
                 let billDiscVal = parseFloat($('#billDiscount').val());

@@ -267,6 +267,10 @@
                             <i class="fas fa-undo"></i> Returns
                         </a>
 
+                        <button type="button" id="btnOpenPurchaseSettings" class="btn btn-secondary px-3 shadow-sm fw-semibold d-inline-flex align-items-center gap-1 justify-content-center text-white" data-toggle="modal" data-target="#purchaseGstSettingModal" data-bs-toggle="modal" data-bs-target="#purchaseGstSettingModal" style="border-radius: 8px; height: 38px; cursor: pointer;" title="Purchase GST Settings">
+                            <i class="fas fa-cog mr-1 me-1 text-white"></i> Settings
+                        </button>
+
                         @can('purchases.create')
                             <a class="btn btn-success px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
                                 href="{{ route('purchase.quick_create') }}" style="border-radius: 8px;">
@@ -462,12 +466,171 @@
             </div>
         </div>
     </div>
+
+    <!-- Purchase GST & Quick Settings Modal -->
+    <style>
+        .gst-toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+            margin-bottom: 0;
+            vertical-align: middle;
+            cursor: pointer;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        .gst-toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+        .gst-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: 0.25s ease;
+            border-radius: 24px;
+            box-sizing: border-box;
+        }
+        .gst-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            top: 3px;
+            background-color: #ffffff;
+            transition: 0.25s ease;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            box-sizing: border-box;
+        }
+        .gst-toggle-switch input:checked + .gst-slider {
+            background-color: #2563eb;
+        }
+        .gst-toggle-switch input:checked + .gst-slider:before {
+            left: calc(100% - 21px);
+            transform: none;
+        }
+    </style>
+
+    <div class="modal fade" id="purchaseGstSettingModal" tabindex="-1" role="dialog" aria-labelledby="purchaseGstSettingModalLabel" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog" role="document" style="max-width: 460px; margin-top: 60px;">
+            <div class="modal-content shadow-lg border-0" style="border-radius: 12px; overflow: hidden; background: #fff;">
+                <div class="modal-header border-bottom bg-light px-4 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="modal-title fw-bold text-dark mb-0 d-flex align-items-center gap-2" id="purchaseGstSettingModalLabel" style="font-size: 16px;">
+                        <i class="fas fa-cog text-primary mr-2 me-2"></i> Purchase GST Settings
+                    </h5>
+                    <button type="button" class="close text-dark" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="font-size: 26px; line-height: 1; opacity: 0.7; background: transparent; border: none; outline: none; cursor: pointer; padding: 0;">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="purchaseGstSettingForm">
+                    @csrf
+                    <div class="modal-body p-4 text-start">
+                        <div class="p-3 rounded border bg-light mb-3 d-flex justify-content-between align-items-center gap-3">
+                            <div>
+                                <label class="fw-bold text-dark mb-0 d-flex align-items-center" for="modalPurchaseGstEnabled" style="font-size: 13.5px; cursor: pointer;">
+                                    <i class="fas fa-percent text-primary mr-1 me-1"></i> Enable Purchase GST (%)
+                                </label>
+                                <small class="text-muted d-block mt-1" style="font-size: 11.5px; line-height: 1.35;">
+                                    Active hone par Purchase Create aur Edit screen par GST% inline column calculate hoga.
+                                </small>
+                            </div>
+                            <label class="gst-toggle-switch flex-shrink-0">
+                                <input type="checkbox" id="modalPurchaseGstEnabled" name="purchase_gst_enabled" value="1" {{ ($purchaseGstEnabled ?? true) ? "checked" : "" }}>
+                                <span class="gst-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-group mb-2">
+                            <label class="fw-bold text-secondary mb-1 d-flex align-items-center" style="font-size: 13px;">
+                                <i class="fas fa-calculator text-primary mr-1 me-1"></i> Default Purchase GST Rate (%)
+                            </label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" max="100" class="form-control text-end fw-bold" id="modalPurchaseGstPercent" name="purchase_gst_percent" value="{{ (float)($purchaseGstPercent ?? 18) }}" placeholder="18.00" style="font-size: 15px; height: 42px;">
+                                <div class="input-group-append">
+                                    <span class="input-group-text bg-light fw-bold text-muted px-3" style="font-size: 14px;">%</span>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1" style="font-size: 11.5px;">Standard default rate e.g. 18% (100 + 18% = 118).</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer px-4 py-3 bg-light border-top d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-outline-secondary px-3" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold" id="btnSavePurchaseSettings">
+                            <i class="fas fa-check mr-1 me-1"></i> Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('js')
 
     <script>
         $(document).ready(function() {
+
+            // Open Purchase Settings Modal on click (Universal BS4 + BS5 compatibility)
+            $(document).on("click", "#btnOpenPurchaseSettings", function(e) {
+                e.preventDefault();
+                $("#purchaseGstSettingModal").modal("show");
+            });
+
+            // Close handler
+            $(document).on("click", "#purchaseGstSettingModal [data-dismiss=\"modal\"], #purchaseGstSettingModal [data-bs-dismiss=\"modal\"], #purchaseGstSettingModal .close", function() {
+                $("#purchaseGstSettingModal").modal("hide");
+            });
+
+            // Purchase GST Quick Settings Save Handler
+            $("#purchaseGstSettingForm").on("submit", function(e) {
+                e.preventDefault();
+                const $btn = $("#btnSavePurchaseSettings");
+                const origHtml = $btn.html();
+                $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+                $.ajax({
+                    url: "{{ route('purchase.settings.update') }}",
+                    type: "POST",
+                    data: $(this).serialize(),
+                    headers: { "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content") },
+                    success: function(res) {
+                        $btn.prop("disabled", false).html(origHtml);
+                        if (res.success) {
+                            $("#purchaseGstSettingModal").modal("hide");
+                            if (typeof Swal !== "undefined") {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Settings Saved!",
+                                    text: res.message || "Purchase GST settings updated.",
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                alert(res.message || "Settings saved!");
+                            }
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop("disabled", false).html(origHtml);
+                        let msg = "Failed to update settings.";
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        if (typeof Swal !== "undefined") {
+                            Swal.fire("Error", msg, "error");
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                });
+            });
+
             // Function to initialize DataTable
             function initDataTable() {
                 if ($.fn.DataTable.isDataTable('.datanew')) {

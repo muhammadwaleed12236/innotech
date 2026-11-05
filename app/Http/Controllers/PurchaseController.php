@@ -151,7 +151,10 @@ class PurchaseController extends Controller
         // Load all vendors for filter dropdown
         $vendors = Vendor::orderBy('name')->get();
 
-        return view('admin_panel.purchase.index', compact('Purchase', 'vendors'));
+        $purchaseGstEnabled = (bool) \App\Models\Setting::get('purchase_gst_enabled', '1');
+        $purchaseGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
+
+        return view('admin_panel.purchase.index', compact('Purchase', 'vendors', 'purchaseGstEnabled', 'purchaseGstPercent'));
     }
 
     public function addBill($gatepassId)
@@ -185,7 +188,10 @@ class PurchaseController extends Controller
             : 'PUR-001';
 
         // Return new V2 view
-        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts'));
+        $purchaseGstEnabled = (bool) \App\Models\Setting::get('purchase_gst_enabled', '1');
+        $defaultGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
+
+        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent'));
     }
     public function quickCreate()
     {
@@ -729,6 +735,8 @@ class PurchaseController extends Controller
                 'unit.*' => 'nullable|required_with:product_id.*|string',
                 'item_discount' => 'nullable|array',
                 'item_discount.*' => 'nullable|numeric|min:0',
+                'gst_percent' => 'nullable|array',
+                'gst_percent.*' => 'nullable|numeric|min:0|max:100',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             if ($request->ajax()) {
@@ -792,6 +800,9 @@ class PurchaseController extends Controller
             $cartonPrices = $validated['price_per_carton'] ?? [];
             $units = $validated['unit'] ?? [];
             $itemDiscs = $validated['item_discount'] ?? [];
+            $gstPercents = $request->gst_percent ?? [];
+            $totalExclusiveGst = 0;
+            $totalGst = 0;
 
             // Snapshot fields
             $sizeModes = $request->size_mode ?? [];
@@ -844,7 +855,10 @@ class PurchaseController extends Controller
 
                 // Calculate absolute discount from percentage
                 $discAmount = $grossTotal * ($discPercent / 100);
-                $lineTotal = $grossTotal - $discAmount;
+                $exclusiveGstAmount = max(0, $grossTotal - $discAmount);
+                $gstPercent = isset($gstPercents[$i]) && is_numeric($gstPercents[$i]) ? (float)$gstPercents[$i] : 0;
+                $gstAmount = round($exclusiveGstAmount * ($gstPercent / 100), 2);
+                $lineTotal = round($exclusiveGstAmount + $gstAmount, 2);
 
                 // Snapshots
                 $bQty = (float) ($boxesQtys[$i] ?? 0);
@@ -884,6 +898,9 @@ class PurchaseController extends Controller
                     'unit' => $unit,
                     'price' => $price,
                     'item_discount' => $discAmount, // Store calculated amount
+                    'gst_percent' => $gstPercent,
+                    'gst_amount' => $gstAmount,
+                    'exclusive_gst_amount' => $exclusiveGstAmount,
                     'qty' => $qty,
                     'line_total' => $lineTotal, // Fixed logic
                     'color' => $request->color[$i] ?? null, // Save variant details
@@ -899,6 +916,8 @@ class PurchaseController extends Controller
                 ]);
 
                 $subtotal += $lineTotal;
+                $totalExclusiveGst += $exclusiveGstAmount;
+                $totalGst += $gstAmount;
             }
 
             // totals
@@ -908,6 +927,8 @@ class PurchaseController extends Controller
 
             $purchase->update([
                 'subtotal' => $subtotal,
+                'total_exclusive_gst' => $totalExclusiveGst,
+                'total_gst' => $totalGst,
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,
@@ -1393,7 +1414,10 @@ class PurchaseController extends Controller
             ->orderBy('item_name')
             ->get();
 
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts'));
+        $purchaseGstEnabled = (bool) \App\Models\Setting::get('purchase_gst_enabled', '1');
+        $defaultGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
+
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent'));
     }
 
     public function update(Request $request, $id)
@@ -1481,6 +1505,9 @@ class PurchaseController extends Controller
             $prices = $validated['price'] ?? [];
             $units = $validated['unit'] ?? [];
             $itemDiscs = $validated['item_discount'] ?? [];
+            $gstPercents = $request->gst_percent ?? [];
+            $totalExclusiveGst = 0;
+            $totalGst = 0;
 
             // Snapshot fields (Raw Request)
             $sizeModes = $request->size_mode ?? [];
@@ -1545,7 +1572,10 @@ class PurchaseController extends Controller
 
                 // Calculate absolute discount from percentage
                 $discAmount = $grossTotal * ($discPercent / 100);
-                $lineTotal = $grossTotal - $discAmount;
+                $exclusiveGstAmount = max(0, $grossTotal - $discAmount);
+                $gstPercent = isset($gstPercents[$i]) && is_numeric($gstPercents[$i]) ? (float)$gstPercents[$i] : 0;
+                $gstAmount = round($exclusiveGstAmount * ($gstPercent / 100), 2);
+                $lineTotal = round($exclusiveGstAmount + $gstAmount, 2);
 
                 if ($isPiece) {
                     $baseQty = $qty;
@@ -1595,6 +1625,9 @@ class PurchaseController extends Controller
                     'unit' => $unit,
                     'price' => $price,
                     'item_discount' => $discAmount,
+                    'gst_percent' => $gstPercent,
+                    'gst_amount' => $gstAmount,
+                    'exclusive_gst_amount' => $exclusiveGstAmount,
                     'qty' => $qty,
                     'line_total' => $lineTotal,
                     'color' => $colors[$i] ?? null,
@@ -1610,6 +1643,8 @@ class PurchaseController extends Controller
                 ]);
 
                 $subtotal += $lineTotal;
+                $totalExclusiveGst += $exclusiveGstAmount;
+                $totalGst += $gstAmount;
                 $newMap[$pid] = ($newMap[$pid] ?? 0) + $baseQty;
             }
 
@@ -1648,6 +1683,8 @@ class PurchaseController extends Controller
                 'purchase_order_no' => $validated['purchase_order_no'] ?? $purchase->purchase_order_no,
                 'note' => $validated['note'] ?? $purchase->note,
                 'subtotal' => $subtotal,
+                'total_exclusive_gst' => $totalExclusiveGst,
+                'total_gst' => $totalGst,
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,
@@ -2494,5 +2531,28 @@ class PurchaseController extends Controller
     {
         $return = \App\Models\PurchaseReturn::with(['vendor', 'warehouse', 'items.product'])->findOrFail($id);
         return view('admin_panel.purchase.purchase_return.show', compact('return'));
+    }
+
+    public function updatePurchaseSettings(Request $request)
+    {
+        $request->validate([
+            'purchase_gst_enabled' => 'nullable',
+            'purchase_gst_percent' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        $enabled = $request->has('purchase_gst_enabled') && ($request->purchase_gst_enabled == '1' || $request->purchase_gst_enabled == 'on' || $request->purchase_gst_enabled === true || $request->purchase_gst_enabled === 'true') ? '1' : '0';
+        $percent = $request->filled('purchase_gst_percent') ? (float)$request->purchase_gst_percent : 18.00;
+
+        \App\Models\Setting::set('purchase_gst_enabled', $enabled, 'purchases', 'Enable Purchase GST (%)', 'boolean');
+        \App\Models\Setting::set('purchase_gst_percent', number_format($percent, 2, '.', ''), 'purchases', 'Default Purchase GST Rate (%)', 'decimal');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Purchase GST settings updated successfully.',
+            'data' => [
+                'purchase_gst_enabled' => $enabled === '1',
+                'purchase_gst_percent' => $percent,
+            ]
+        ]);
     }
 }

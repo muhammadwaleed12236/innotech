@@ -753,6 +753,16 @@
                             <td class="text-dark">Subtotal</td>
                             <td class="text-end font-monospace">Rs. {{ number_format($purchase->subtotal, 2) }}</td>
                         </tr>
+                        @if (($purchase->total_gst ?? 0) > 0)
+                        <tr>
+                            <td class="text-muted fw-bold">Excl. GST Subtotal</td>
+                            <td class="text-end font-monospace">Rs. {{ number_format($purchase->total_exclusive_gst ?: ($purchase->subtotal - $purchase->total_gst), 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-success fw-bold">GST Amount</td>
+                            <td class="text-end text-success fw-bold font-monospace">+Rs. {{ number_format($purchase->total_gst, 2) }}</td>
+                        </tr>
+                        @endif
                         @if ($purchase->additional_discount > 0)
                             <tr>
                                 <td>Additional Discount</td>
