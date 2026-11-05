@@ -309,12 +309,21 @@
                                         <span class="slider-sm"></span>
                                     </label>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
                                     <span class="fw-semibold text-white" style="font-size: 13px;">
                                         Print Tax Breakdown
                                     </span>
                                     <label class="switch-sm">
                                         <input type="checkbox" name="print_tax_enabled" value="1" {{ ($fields->firstWhere('field_key', 'print_tax_breakdown')->is_enabled ?? true) ? 'checked' : '' }}>
+                                        <span class="slider-sm"></span>
+                                    </label>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary">
+                                    <span class="fw-semibold text-white" style="font-size: 13px;" title="Show Customer Previous & Total Balance on Invoice Summary">
+                                        <i class="fas fa-wallet text-warning me-1"></i> Customer Balance on Invoice
+                                    </span>
+                                    <label class="switch-sm">
+                                        <input type="checkbox" name="customer_balance_enabled" value="1" {{ ($fields->firstWhere('field_key', 'summary_customer_balance')->is_enabled ?? true) ? 'checked' : '' }}>
                                         <span class="slider-sm"></span>
                                     </label>
                                 </div>

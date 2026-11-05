@@ -1355,6 +1355,9 @@
     @if(!($vis['summary_freight'] ?? true))
         .row-summary-freight { display: none !important; }
     @endif
+    @if(!($vis['summary_customer_balance'] ?? true))
+        .row-summary-customer-balance { display: none !important; }
+    @endif
     @if(!($vis['field_credit_days'] ?? true))
         .wrapper-credit-days { display: none !important; }
     @endif

@@ -121,6 +121,7 @@ class SaleConfigurationController extends Controller
             'exclusive_gst_enabled' => 'nullable|boolean',
             'badges_enabled' => 'nullable|boolean',
             'print_tax_enabled' => 'nullable|boolean',
+            'customer_balance_enabled' => 'nullable|boolean',
         ]);
 
         $stField = SaleFieldConfiguration::where('field_key', 'sales_tax')->first();
@@ -164,6 +165,14 @@ class SaleConfigurationController extends Controller
         if ($printTaxField) {
             $printTaxField->update([
                 'is_enabled' => $request->boolean('print_tax_enabled'),
+            ]);
+        }
+
+        $custBalField = SaleFieldConfiguration::where('field_key', 'summary_customer_balance')->first();
+        if ($custBalField) {
+            $custBalField->update([
+                'is_enabled' => $request->boolean('customer_balance_enabled'),
+                'visible_in_print' => $request->boolean('customer_balance_enabled'),
             ]);
         }
 

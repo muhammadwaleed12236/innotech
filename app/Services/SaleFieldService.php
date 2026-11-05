@@ -466,6 +466,22 @@ class SaleFieldService
                 'created_at' => $now,
                 'updated_at' => $now,
             ],
+            [
+                'field_key' => 'summary_customer_balance',
+                'label' => 'Customer Previous & Total Balance',
+                'section' => 'Order Summary & Totals',
+                'field_type' => 'summary',
+                'description' => 'Show customer previous balance and total closing balance in the invoice summary.',
+                'default_value' => '1',
+                'is_enabled' => true,
+                'visible_in_create' => true,
+                'visible_in_edit' => true,
+                'visible_in_print' => true,
+                'is_system' => true,
+                'sort_order' => 280,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
 
             // Header & Checkout Options
             [

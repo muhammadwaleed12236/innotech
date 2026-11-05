@@ -538,9 +538,13 @@
             </div>
         </div>
 
+        @php
+            $showReceiptCustomerBalance = \App\Models\SaleFieldConfiguration::isVisibleInPrint('summary_customer_balance', true) && 
+                \App\Models\SaleFieldConfiguration::isEnabled('summary_customer_balance', true);
+        @endphp
         <!-- Ledger -->
         <div class="balance-section">
-            @if(!$isWalkin)
+            @if(!$isWalkin && $showReceiptCustomerBalance)
             <div class="tot-row">
                 <span>Prev Balance:</span>
                 <span>{{ number_format(abs($previousBalance), 0) }} {{ $previousBalance >= 0 ? 'Dr' : 'Cr' }}</span>
@@ -557,7 +561,7 @@
             </div>
             @endif
 
-            @if(!$isWalkin)
+            @if(!$isWalkin && $showReceiptCustomerBalance)
             @php
                 $finalBalance = $previousBalance + $sale->total_net - $sale->cash;
             @endphp

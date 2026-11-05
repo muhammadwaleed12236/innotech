@@ -800,6 +800,8 @@
 @php
     $showTaxColumns = \App\Models\SaleFieldConfiguration::isVisibleInPrint('print_tax_breakdown', true) && 
         (\App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true) || (float)($sale->total_sales_tax ?? 0) > 0);
+    $showCustomerBalance = \App\Models\SaleFieldConfiguration::isVisibleInPrint('summary_customer_balance', true) &&
+        \App\Models\SaleFieldConfiguration::isEnabled('summary_customer_balance', true);
 @endphp
 
     <!-- Print / Action Buttons -->
@@ -1542,6 +1544,33 @@
                                 Rs. {{ number_format(abs($finalPayable), 2) }}
                             </td>
                         </tr>
+
+                        @if ($showCustomerBalance && !empty($sale->customer_id))
+                            @php
+                                $prevBal = (float)($previousBalance ?? 0);
+                                $totalClosingBal = (float)($currentBalance ?? ($prevBal + $finalPayable - $paidAmount));
+                            @endphp
+                            @if ($paidAmount > 0)
+                                <tr>
+                                    <td class="lbl text-success">Paid / Received</td>
+                                    <td class="val text-success font-monospace">- Rs. {{ number_format($paidAmount, 2) }}</td>
+                                </tr>
+                            @endif
+                            <tr style="border-top: 1px solid #cbd5e1;">
+                                <td class="lbl text-muted">Previous Balance</td>
+                                <td class="val text-dark font-monospace">
+                                    Rs. {{ number_format(abs($prevBal), 2) }} {{ $prevBal >= 0 ? 'Dr' : 'Cr' }}
+                                </td>
+                            </tr>
+                            <tr style="background: #f8fafc; border-top: 1.5px solid var(--primary-navy);">
+                                <td class="lbl fw-bold" style="font-size: 12px; color: var(--primary-navy);">
+                                    Total Balance
+                                </td>
+                                <td class="val fw-bold font-monospace" style="font-size: 13.5px; color: {{ $totalClosingBal >= 0 ? '#b91c1c' : '#15803d' }};">
+                                    Rs. {{ number_format(abs($totalClosingBal), 2) }} {{ $totalClosingBal >= 0 ? 'Dr' : 'Cr' }}
+                                </td>
+                            </tr>
+                        @endif
                     </table>
                 </div>
 
@@ -1824,6 +1853,28 @@
                     <span>{{ number_format($finalPayable, 0) }}</span>
                 @endif
             </div>
+
+            @if ($showCustomerBalance && !empty($sale->customer_id))
+                @php
+                    $prevBalThermal = (float)($previousBalance ?? 0);
+                    $totalClosingThermal = (float)($currentBalance ?? ($prevBalThermal + $finalPayable - $paidAmount));
+                @endphp
+                <div class="divider" style="margin: 4px 0;"></div>
+                @if ($paidAmount > 0)
+                    <div class="tot-row">
+                        <span>Paid / Received:</span>
+                        <span>- {{ number_format($paidAmount, 0) }}</span>
+                    </div>
+                @endif
+                <div class="tot-row">
+                    <span>Previous Balance:</span>
+                    <span>{{ number_format(abs($prevBalThermal), 0) }} {{ $prevBalThermal >= 0 ? 'Dr' : 'Cr' }}</span>
+                </div>
+                <div class="tot-row grand-total" style="font-size: 11.5px; border-top: 1px dashed #000; padding-top: 2px; margin-top: 2px;">
+                    <span>TOTAL BALANCE:</span>
+                    <span>{{ number_format(abs($totalClosingThermal), 0) }} {{ $totalClosingThermal >= 0 ? 'Dr' : 'Cr' }}</span>
+                </div>
+            @endif
         </div>
 
         <!-- Footer -->
