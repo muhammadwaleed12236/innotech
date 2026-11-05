@@ -53,8 +53,12 @@ class SettingsController extends Controller
         // 2. Handle Company Logo Upload & Removal
         if ($request->hasFile('company_logo')) {
             $file = $request->file('company_logo');
+            $uploadDir = public_path('uploads/settings');
+            if (!file_exists($uploadDir)) {
+                @mkdir($uploadDir, 0775, true);
+            }
             $fileName = 'logo_' . time() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/settings'), $fileName);
+            $file->move($uploadDir, $fileName);
             $logoPath = 'uploads/settings/' . $fileName;
 
             Setting::set('company_logo', $logoPath, 'company', 'Company Logo', 'string');

@@ -690,6 +690,45 @@ Route::get('/notifications/fetch', [\App\Http\Controllers\SystemNotificationCont
     ->middleware('auth')
     ->name('notifications.fetch');
 
+// Utility route to create storage link and verify upload directories on live server
+Route::get('/link-storage', function () {
+    $results = [];
+    $errors = [];
+
+    // 1. Run artisan storage:link
+    try {
+        \Illuminate\Support\Facades\Artisan::call('storage:link');
+        $results['storage_link'] = trim(\Illuminate\Support\Facades\Artisan::output()) ?: 'storage:link command executed';
+    } catch (\Exception $e) {
+        $errors['storage_link'] = $e->getMessage();
+    }
+
+    // 2. Ensure public/uploads directories exist with write permissions
+    $directories = [
+        'uploads' => public_path('uploads'),
+        'uploads/settings' => public_path('uploads/settings'),
+        'uploads/products' => public_path('uploads/products'),
+        'uploads/categories' => public_path('uploads/categories'),
+        'storage_app_public' => storage_path('app/public'),
+    ];
+
+    foreach ($directories as $name => $path) {
+        if (!file_exists($path)) {
+            $created = @mkdir($path, 0775, true);
+            $results[$name] = $created ? "Directory created: {$path}" : "Failed to create: {$path}";
+        } else {
+            $results[$name] = "Directory already exists: {$path}";
+        }
+    }
+
+    return response()->json([
+        'status' => empty($errors) ? 'success' : 'partial',
+        'message' => 'Live server storage & uploads setup completed successfully.',
+        'results' => $results,
+        'errors' => $errors,
+    ]);
+})->name('storage.link.setup');
+
 require __DIR__.'/auth.php';
 
 require __DIR__.'/hr.php';

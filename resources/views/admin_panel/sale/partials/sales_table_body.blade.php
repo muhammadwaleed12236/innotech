@@ -150,18 +150,8 @@
 
                             @can('sales.view')
                                 <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2 btn-view-sale-modal" href="javascript:void(0)" data-id="{{ $sale->id }}">
-                                        <i class="fas fa-eye text-info fa-fw"></i> Quick Details
-                                    </a>
-                                </li>
-                                <li>
                                     <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
-                                        <i class="fas fa-file-invoice text-info fa-fw"></i> Print Quotation (Simple)
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}?print=letterhead" target="_blank">
-                                        <i class="fas fa-file-alt text-primary fa-fw"></i> Print Quotation (Letterhead)
+                                        <i class="fas fa-file-invoice text-info fa-fw"></i> Print Quotation
                                     </a>
                                 </li>
                             @endcan
@@ -178,14 +168,16 @@
                         @can('sales.edit')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.edit', $sale->id) }}">
-                                    <i class="fas fa-edit text-primary fa-fw"></i> Edit (Simple)
+                                    <i class="fas fa-edit text-primary fa-fw"></i> {{ ($sale->source ?? 'invoice') === 'pos' ? 'Edit (Simple)' : 'Edit' }}
                                 </a>
                             </li>
+                            @if (($sale->source ?? 'invoice') === 'pos')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('pos.index') }}?edit_id={{ $sale->id }}">
                                     <i class="fas fa-cash-register text-success fa-fw"></i> Edit (POS Sale)
                                 </a>
                             </li>
+                            @endif
                         @endcan
 
                         @if (in_array($sale->sale_status, ['draft', 'booked']))
@@ -204,21 +196,25 @@
                         <li><hr class="dropdown-divider"></li>
 
                         @can('sales.view')
+                            @if (($sale->source ?? 'invoice') === 'pos')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2 btn-view-sale-modal" href="javascript:void(0)" data-id="{{ $sale->id }}">
                                     <i class="fas fa-eye text-info fa-fw"></i> Quick Details
                                 </a>
                             </li>
+                            @endif
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}" target="_blank">
-                                    <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice (Simple)
+                                    <i class="fas fa-file-invoice text-info fa-fw"></i> View Invoice
                                 </a>
                             </li>
+                            @if (($sale->source ?? 'invoice') === 'pos')
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', $sale->id) }}?print=letterhead" target="_blank">
                                     <i class="fas fa-file-alt text-primary fa-fw"></i> Print (Letterhead)
                                 </a>
                             </li>
+                            @endif
                             <li>
                                 <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="{{ route('sales.invoice', ['id' => $sale->id, 'type' => 'estimate']) }}" target="_blank">
                                     <i class="fas fa-calculator text-secondary fa-fw"></i> View Estimate

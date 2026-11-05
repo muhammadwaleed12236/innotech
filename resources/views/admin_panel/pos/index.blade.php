@@ -632,6 +632,7 @@
                     @csrf
                     <!-- Store action mirror -->
                     <input type="hidden" name="action" value="post">
+                    <input type="hidden" name="source" value="pos">
                     
                     <div class="pos-cart-header">
                         <div class="d-flex align-items-center gap-2">

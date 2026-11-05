@@ -13,7 +13,8 @@ class Sale extends Model
         'total_extradiscount', 'total_net', 'cash', 'card', 'change', 'change_account_id',
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
         'freight_charges', 'freight_type', 'selected_terms',
-        'total_gross', 'total_exclusive_gst', 'total_sales_tax', 'total_further_tax', 'total_bonus_qty'
+        'total_gross', 'total_exclusive_gst', 'total_sales_tax', 'total_further_tax', 'total_bonus_qty',
+        'source'
     ];
 
     public function salesOfficer()
@@ -39,6 +40,11 @@ class Sale extends Model
     public function getIsWalkinAttribute()
     {
         return empty($this->customer_id) || !empty($this->walkin_name);
+    }
+
+    public function getIsPosAttribute(): bool
+    {
+        return ($this->source === 'pos');
     }
 
     public static function generateInvoiceNo($prefix = null)

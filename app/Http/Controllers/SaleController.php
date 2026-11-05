@@ -1185,6 +1185,7 @@ class SaleController extends Controller
             $sale->selected_terms = $request->has('selected_terms') ? $request->input('selected_terms') : null;
             $sale->total_amount_Words = $request->total_amount_Words; // Consider auto-generating this too?
             $sale->sale_status = $status;
+            $sale->source = $request->input('source', $sale->source ?? 'invoice');
 
             // Credit Days & Due Date (Optional)
             if ($request->filled('credit_days') && $request->credit_days > 0) {
