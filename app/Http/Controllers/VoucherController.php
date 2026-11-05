@@ -493,10 +493,13 @@ class VoucherController extends Controller
                 }
             }
 
+            $receiptDate = !empty($request->receipt_date) ? \Carbon\Carbon::parse($request->receipt_date)->format('Y-m-d') : date('Y-m-d');
+            $entryDate = !empty($request->entry_date) ? \Carbon\Carbon::parse($request->entry_date)->format('Y-m-d') : $receiptDate;
+
             $voucherData = [
                 'rvid' => $rvid,
-                'receipt_date' => $request->receipt_date,
-                'entry_date' => $request->entry_date,
+                'receipt_date' => $receiptDate,
+                'entry_date' => $entryDate,
                 'type' => $request->vendor_type,
                 'party_id' => $request->vendor_id,
                 'tel' => $request->tel,
@@ -587,7 +590,7 @@ class VoucherController extends Controller
                     if (! empty($v2Lines)) {
                         $v2Master = app(\App\Services\VoucherService::class)->createVoucher([
                             'voucher_type' => 'receipt',
-                            'date' => $request->receipt_date,
+                            'date' => $receiptDate,
                             'status' => 'posted',
                             'party_type' => $partyType,
                             'party_id' => $request->vendor_id,
@@ -699,10 +702,13 @@ class VoucherController extends Controller
             // Header = Source (Account) -> row_account_id (Single)
             // Table = Destination (Party) -> vendor_type[], vendor_id[] (Multiple)
 
+            $receiptDate = !empty($request->receipt_date) ? \Carbon\Carbon::parse($request->receipt_date)->format('Y-m-d') : date('Y-m-d');
+            $entryDate = !empty($request->entry_date) ? \Carbon\Carbon::parse($request->entry_date)->format('Y-m-d') : $receiptDate;
+
             $voucherData = [
                 'pvid' => $pvid,
-                'receipt_date' => $request->receipt_date,
-                'entry_date' => $request->entry_date,
+                'receipt_date' => $receiptDate,
+                'entry_date' => $entryDate,
 
                 // Store Header Source as single values
                 'row_account_head' => $request->header_account_head,
@@ -792,7 +798,7 @@ class VoucherController extends Controller
                 if (! empty($v2Lines)) {
                     app(\App\Services\VoucherService::class)->createVoucher([
                         'voucher_type' => 'payment',
-                        'date' => $request->receipt_date,
+                        'date' => $receiptDate,
                         'status' => 'posted',
                         'party_type' => $partyType,
                         'party_id' => $firstRow ? $firstRow['id'] : null,
@@ -1227,161 +1233,141 @@ class VoucherController extends Controller
         DB::beginTransaction();
         try {
             $evid = ExpenseVoucher::generateInvoiceNo();
-            $narrationIds = [];
+            $entryDate = !empty($request->entry_date) 
+                ? \Carbon\Carbon::parse($request->entry_date)->format('Y-m-d') 
+                : date('Y-m-d');
 
-            if ($request->narration_id && is_array($request->narration_id)) {
-                foreach ($request->narration_id as $index => $narrId) {
-                    $manualText = $request->narration_text[$index] ?? null;
-                    $manualType = $request->narration_type_text[$index] ?? 'Manual';
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
 
-                    if (empty($narrId) && ! empty($manualText)) {
-                        // Auto expense_head set based on voucher type
-                        $expenseHead = 'Expense voucher';
-                        if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
-                            $expenseHead = 'Expense voucher';
-                        }
+            $rawCategories = $request->row_account_id ?? [];
+            $rawAmounts = $request->amount ?? [];
+            $rawNarrations = $request->narration_text ?? [];
 
-                        $new = \App\Models\Narration::create([
-                            'expense_head' => $expenseHead,
+            $validCategories = [];
+            $validAmounts = [];
+            $validNarrationIds = [];
+
+            foreach ($rawCategories as $index => $catId) {
+                $rowAmount = isset($rawAmounts[$index]) ? (float) $rawAmounts[$index] : 0;
+                if (!empty($catId) && $rowAmount > 0) {
+                    $validCategories[] = (string) $catId;
+                    $validAmounts[] = $rowAmount;
+
+                    $manualText = $rawNarrations[$index] ?? null;
+                    if (!empty($manualText)) {
+                        $newNarr = \App\Models\Narration::create([
+                            'expense_head' => 'Expense voucher',
                             'narration' => $manualText,
                         ]);
-
-                        $narrationIds[] = (string) $new->id; // store as string → ["7"]
+                        $validNarrationIds[] = (string) $newNarr->id;
                     } else {
-                        $narrationIds[] = (string) $narrId; // force string format
+                        $validNarrationIds[] = "";
                     }
                 }
             }
+
+            if (empty($validCategories)) {
+                throw new \Exception('Please enter at least one valid expense category with an amount greater than 0.');
+            }
+
+            $totalAmount = array_sum($validAmounts);
+
             $voucherData = [
                 'evid' => $evid,
-                'entry_date' => $request->entry_date,
+                'entry_date' => $entryDate,
                 'type' => $request->vendor_type,
                 'party_id' => $request->vendor_id,
                 'tel' => $request->tel,
                 'remarks' => $request->remarks,
                 'reference_no' => $request->ref_no_header,
-                'narration_id' => json_encode($narrationIds),
-                'row_account_head' => json_encode($request->row_account_head ?? array_fill(0, count($request->row_account_id ?? []), "0")),
-                'row_account_id' => json_encode($request->row_account_id),
-                'amount' => json_encode($request->amount),
-                'total_amount' => $request->total_amount,
+                'narration_id' => json_encode($validNarrationIds),
+                'row_account_head' => json_encode(array_fill(0, count($validCategories), "0")),
+                'row_account_id' => json_encode($validCategories),
+                'amount' => json_encode($validAmounts),
+                'total_amount' => $totalAmount,
             ];
 
             $expense = ExpenseVoucher::create($voucherData);
 
-            $amount = (float) $request->total_amount;
-
-            $journalService = app(\App\Services\JournalEntryService::class);
-            $balanceService = app(\App\Services\BalanceService::class);
-
-            /**
-             * STEP 1: Expense Accounts (row side) → PLUS (Debit)
-             */
-            // Find or create "Expense" Account Head
+            // STEP 1: DEBIT SIDE (Expense Categories)
             $expenseHead = AccountHead::firstOrCreate(
                 ['name' => 'Expense'],
                 ['opening_balance' => 0]
             );
 
-            // Find or create "General Expense" Account
-            $generalExpenseAccount = Account::firstOrCreate(
-                ['account_code' => 'GEN-EXP'],
-                [
-                    'head_id' => $expenseHead->id,
-                    'title' => 'General Expense',
-                    'opening_balance' => 0,
-                    'current_balance' => 0,
-                    'type' => 'Debit',
-                    'status' => 1
-                ]
-            );
+            foreach ($validCategories as $index => $accId) {
+                $rowAmount = $validAmounts[$index];
+                $cat = DB::table('expense_categories')->find($accId);
+                $catName = $cat ? $cat->name : 'General Expense';
 
-            if ($request->row_account_id && $request->amount) {
-                foreach ($request->row_account_id as $index => $accId) {
-                    $rowAmount = isset($request->amount[$index]) ? (float) $request->amount[$index] : 0;
+                $categoryAccount = Account::firstOrCreate(
+                    ['title' => $catName, 'head_id' => $expenseHead->id],
+                    [
+                        'account_code' => $cat && !empty($cat->code) ? $cat->code : 'EXP-' . str_pad($accId, 3, '0', STR_PAD_LEFT),
+                        'head_id' => $expenseHead->id,
+                        'title' => $catName,
+                        'opening_balance' => 0,
+                        'current_balance' => 0,
+                        'type' => 'Debit',
+                        'status' => 1
+                    ]
+                );
 
-                    if ($rowAmount > 0) {
-                        $categoryName = DB::table('expense_categories')->where('id', $accId)->value('name') ?? 'General Expense';
-                        
-                        $journalService->recordEntry(
-                            $expense,
-                            $generalExpenseAccount->id,
-                            $rowAmount, // Debit Expense
-                            0, // Credit
-                            "Expense Voucher #$evid ($categoryName)",
-                            $request->entry_date ?? date('Y-m-d')
-                        );
-                    }
-                }
+                $journalService->recordEntry(
+                    $expense,
+                    $categoryAccount->id,
+                    $rowAmount, // Debit Expense
+                    0, // Credit
+                    "Expense Voucher #$evid ($catName)",
+                    $entryDate
+                );
             }
 
-            /**
-             * STEP 2: Party side → MINUS
-             */
+            // STEP 2: CREDIT SIDE (Single Entry for Cash/Bank/Party)
             if ($request->vendor_type === 'vendor') {
-                $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance = $ledger->closing_balance - $amount; // MINUS
-                    $ledger->save();
-                } else {
-                    VendorLedger::create([
-                        'vendor_id' => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'opening_balance' => 0,
-                        'previous_balance' => 0,
-                        'closing_balance' => -$amount,
-                    ]);
-                }
-
-                // Credit Vendor Liability Side
+                $vendor = \App\Models\Vendor::find($request->vendor_id);
                 $journalService->recordEntry(
                     $expense,
                     $balanceService->getAccountsPayableId(),
                     0, // Debit
-                    $amount, // Credit vendor liability
+                    $totalAmount, // Credit
                     "Expense Voucher #$evid",
-                    $request->entry_date ?? date('Y-m-d'),
-                    \App\Models\Vendor::find($request->vendor_id)
+                    $entryDate,
+                    $vendor
                 );
             } elseif ($request->vendor_type === 'customer') {
-                $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance = $ledger->closing_balance - $amount; // MINUS
-                    $ledger->save();
-                } else {
-                    CustomerLedger::create([
-                        'customer_id' => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'previous_balance' => 0,
-                        'opening_balance' => 0,
-                        'closing_balance' => -$amount,
-                    ]);
-                }
-
-                // Credit Customer Receivable Side
+                $customer = \App\Models\Customer::find($request->vendor_id);
                 $journalService->recordEntry(
                     $expense,
                     $balanceService->getAccountsReceivableId(),
                     0, // Debit
-                    $amount, // Credit Accounts Receivable
+                    $totalAmount, // Credit
                     "Expense Voucher #$evid",
-                    $request->entry_date ?? date('Y-m-d'),
-                    \App\Models\Customer::find($request->vendor_id)
+                    $entryDate,
+                    $customer
                 );
+
+                $latestLedger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
+                $prevBal = $latestLedger ? $latestLedger->closing_balance : ($customer->opening_balance ?? 0);
+                CustomerLedger::create([
+                    'customer_id' => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $prevBal,
+                    'opening_balance' => 0,
+                    'closing_balance' => $prevBal - $totalAmount,
+                    'description' => "Expense Voucher #$evid",
+                ]);
             } else {
-                // yahan vendor_type numeric (1,2,3) hai → matlab Account ID
                 $account = Account::find($request->vendor_id);
                 if ($account) {
-                    // Credit Cash/Bank Side
                     $journalService->recordEntry(
                         $expense,
                         $account->id,
                         0, // Debit
-                        $amount, // Credit Cash/Bank
+                        $totalAmount, // Credit
                         "Expense Voucher #$evid",
-                        $request->entry_date ?? date('Y-m-d')
+                        $entryDate
                     );
                 }
             }
@@ -1399,6 +1385,223 @@ class VoucherController extends Controller
             }
 
             return redirect()->route('all_expense_vochers')->with('success', 'Expense Voucher saved successfully!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function editExpenseVoucher($id)
+    {
+        $voucher = ExpenseVoucher::findOrFail($id);
+        $expenseCategories = DB::table('expense_categories')->get();
+        $narrations = \App\Models\Narration::all();
+        $AccountHeads = AccountHead::all();
+
+        // Decode stored fields
+        $accountIds = json_decode($voucher->row_account_id, true) ?? [];
+        $amounts = json_decode($voucher->amount, true) ?? [];
+        $narrationIds = json_decode($voucher->narration_id, true) ?? [];
+
+        $rows = [];
+        foreach ($accountIds as $index => $accId) {
+            $narrId = $narrationIds[$index] ?? null;
+            $narrText = '';
+            if ($narrId) {
+                $narrText = DB::table('narrations')->where('id', $narrId)->value('narration') ?? '';
+            }
+            $rows[] = [
+                'category_id' => $accId,
+                'amount' => $amounts[$index] ?? 0,
+                'narration_id' => $narrId,
+                'narration_text' => $narrText,
+            ];
+        }
+
+        return view('admin_panel.vochers.expense_vochers.edit_expense_voucher', compact('voucher', 'expenseCategories', 'narrations', 'AccountHeads', 'rows'));
+    }
+
+    public function updateExpenseVoucher(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            $expense = ExpenseVoucher::findOrFail($id);
+            $evid = $expense->evid;
+
+            $journalService = app(\App\Services\JournalEntryService::class);
+            $balanceService = app(\App\Services\BalanceService::class);
+
+            // 1. REVERSE PREVIOUS JOURNAL ENTRIES (restores account balances)
+            $journalService->reverseEntriesForSource($expense);
+
+            // Revert customer ledger if affected
+            if ($expense->type === 'customer' && $expense->party_id) {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('customer_ledgers', 'description')) {
+                    CustomerLedger::where('customer_id', $expense->party_id)
+                        ->where('description', 'like', "%{$evid}%")
+                        ->delete();
+                }
+            }
+
+            // 2. PARSE AND SANITIZE NEW DATA
+            $entryDate = !empty($request->entry_date) 
+                ? \Carbon\Carbon::parse($request->entry_date)->format('Y-m-d') 
+                : date('Y-m-d');
+
+            $rawCategories = $request->row_account_id ?? [];
+            $rawAmounts = $request->amount ?? [];
+            $rawNarrations = $request->narration_text ?? [];
+
+            $validCategories = [];
+            $validAmounts = [];
+            $validNarrationIds = [];
+
+            foreach ($rawCategories as $index => $catId) {
+                $rowAmount = isset($rawAmounts[$index]) ? (float) $rawAmounts[$index] : 0;
+                if (!empty($catId) && $rowAmount > 0) {
+                    $validCategories[] = (string) $catId;
+                    $validAmounts[] = $rowAmount;
+
+                    $manualText = $rawNarrations[$index] ?? null;
+                    if (!empty($manualText)) {
+                        $newNarr = \App\Models\Narration::create([
+                            'expense_head' => 'Expense voucher',
+                            'narration' => $manualText,
+                        ]);
+                        $validNarrationIds[] = (string) $newNarr->id;
+                    } else {
+                        $validNarrationIds[] = "";
+                    }
+                }
+            }
+
+            if (empty($validCategories)) {
+                throw new \Exception('Please enter at least one valid expense category with an amount greater than 0.');
+            }
+
+            $totalAmount = array_sum($validAmounts);
+
+            // 3. UPDATE VOUCHER DATA
+            $voucherData = [
+                'entry_date' => $entryDate,
+                'type' => $request->vendor_type,
+                'party_id' => $request->vendor_id,
+                'tel' => $request->tel,
+                'remarks' => $request->remarks,
+                'reference_no' => $request->ref_no_header,
+                'narration_id' => json_encode($validNarrationIds),
+                'row_account_head' => json_encode(array_fill(0, count($validCategories), "0")),
+                'row_account_id' => json_encode($validCategories),
+                'amount' => json_encode($validAmounts),
+                'total_amount' => $totalAmount,
+            ];
+
+            $expense->update($voucherData);
+
+            // 4. POST BALANCED DOUBLE ENTRY
+            $expenseHead = AccountHead::firstOrCreate(
+                ['name' => 'Expense'],
+                ['opening_balance' => 0]
+            );
+
+            // DEBIT SIDE: Each Expense Category
+            foreach ($validCategories as $index => $accId) {
+                $rowAmount = $validAmounts[$index];
+                $cat = DB::table('expense_categories')->find($accId);
+                $catName = $cat ? $cat->name : 'General Expense';
+
+                $categoryAccount = Account::firstOrCreate(
+                    ['title' => $catName, 'head_id' => $expenseHead->id],
+                    [
+                        'account_code' => $cat && !empty($cat->code) ? $cat->code : 'EXP-' . str_pad($accId, 3, '0', STR_PAD_LEFT),
+                        'head_id' => $expenseHead->id,
+                        'title' => $catName,
+                        'opening_balance' => 0,
+                        'current_balance' => 0,
+                        'type' => 'Debit',
+                        'status' => 1
+                    ]
+                );
+
+                $journalService->recordEntry(
+                    $expense,
+                    $categoryAccount->id,
+                    $rowAmount, // Debit
+                    0, // Credit
+                    "Expense Voucher #$evid ($catName)",
+                    $entryDate
+                );
+            }
+
+            // CREDIT SIDE: Single Total Entry
+            if ($request->vendor_type === 'vendor') {
+                $vendor = \App\Models\Vendor::find($request->vendor_id);
+                $journalService->recordEntry(
+                    $expense,
+                    $balanceService->getAccountsPayableId(),
+                    0, // Debit
+                    $totalAmount, // Credit
+                    "Expense Voucher #$evid",
+                    $entryDate,
+                    $vendor
+                );
+            } elseif ($request->vendor_type === 'customer') {
+                $customer = \App\Models\Customer::find($request->vendor_id);
+                $journalService->recordEntry(
+                    $expense,
+                    $balanceService->getAccountsReceivableId(),
+                    0, // Debit
+                    $totalAmount, // Credit
+                    "Expense Voucher #$evid",
+                    $entryDate,
+                    $customer
+                );
+
+                $latestLedger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
+                $prevBal = $latestLedger ? $latestLedger->closing_balance : ($customer->opening_balance ?? 0);
+                CustomerLedger::create([
+                    'customer_id' => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $prevBal,
+                    'opening_balance' => 0,
+                    'closing_balance' => $prevBal - $totalAmount,
+                    'description' => "Expense Voucher #$evid",
+                ]);
+            } else {
+                $account = Account::find($request->vendor_id);
+                if ($account) {
+                    $journalService->recordEntry(
+                        $expense,
+                        $account->id,
+                        0, // Debit
+                        $totalAmount, // Credit
+                        "Expense Voucher #$evid",
+                        $entryDate
+                    );
+                }
+            }
+
+            DB::commit();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Expense Voucher updated successfully!',
+                    'voucher_id' => $expense->id,
+                    'print_url' => route('expenseprint', $expense->id),
+                    'all_vouchers_url' => route('all_expense_vochers'),
+                ]);
+            }
+
+            return redirect()->route('all_expense_vochers')->with('success', 'Expense Voucher updated successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -1470,8 +1673,10 @@ class VoucherController extends Controller
 
         // 🧾 Prepare detailed rows
         $rows = [];
-        foreach ($narrations as $index => $narrId) {
-            $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
+        $loopItems = !empty($accounts) ? $accounts : (!empty($amounts) ? $amounts : $narrations);
+        foreach ($loopItems as $index => $accId) {
+            $narrId = $narrations[$index] ?? null;
+            $narration = $narrId ? DB::table('narrations')->where('id', $narrId)->value('narration') : null;
             $ref = $references[$index] ?? null;
 
             // Check if it is a new custom category or a legacy account

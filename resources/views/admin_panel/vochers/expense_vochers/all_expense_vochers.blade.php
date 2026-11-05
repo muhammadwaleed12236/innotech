@@ -70,6 +70,9 @@
                                                         class="btn btn-sm btn-outline-primary" title="Print">
                                                         <i class="bi bi-printer"></i>
                                                     </a>
+                                                    <a href="{{ route('expense_vouchers.edit', $item->id) }}" class="btn btn-sm btn-outline-info" title="Edit">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </a>
                                                     @can('expense.voucher.delete')
                                                     <form action="{{ route('expense_vouchers.destroy', $item->id) }}" method="POST" class="d-inline delete-form">
                                                         @csrf

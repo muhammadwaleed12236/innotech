@@ -451,7 +451,7 @@
                                             <td class="row-number">1</td>
                                             <td>
                                                 <div class="d-flex align-items-center gap-1">
-                                                    <select name="row_account_id[]" class="cell-input rowAccountCategory" required>
+                                                    <select name="row_account_id[]" class="cell-input rowAccountCategory">
                                                         <option value="" disabled selected>-- Select Category --</option>
                                                         @foreach ($expenseCategories as $cat)
                                                             <option value="{{ $cat->id }}">{{ $cat->name }}</option>
@@ -467,7 +467,7 @@
                                                 <input type="hidden" name="narration_id[]" value="">
                                             </td>
                                             <td>
-                                                <input type="number" name="amount[]" step="0.01" class="cell-input text-end fw-bold amount font-monospace" placeholder="0.00" required>
+                                                <input type="number" name="amount[]" step="0.01" class="cell-input text-end fw-bold amount font-monospace" placeholder="0.00">
                                             </td>
                                             <td class="text-center">
                                                 <button type="button" class="btn-mini-del removeRow" title="Delete Row">
@@ -672,13 +672,16 @@
 
             // Add Row
             $('#addNewRow').on('click', function() {
-                let optionsHtml = $('.rowAccountCategory').first().html();
+                let optionsHtml = '<option value="" disabled selected>-- Select Category --</option>';
+                @foreach ($expenseCategories as $cat)
+                    optionsHtml += '<option value="{{ $cat->id }}">{{ addslashes($cat->name) }}</option>';
+                @endforeach
                 let $newRow = $(`
                 <tr>
                     <td class="row-number">1</td>
                     <td>
                         <div class="d-flex align-items-center gap-1">
-                            <select name="row_account_id[]" class="cell-input rowAccountCategory" required>
+                            <select name="row_account_id[]" class="cell-input rowAccountCategory">
                                 ${optionsHtml}
                             </select>
                             <a href="javascript:void(0)" data-toggle="modal" data-target="#newExpenseCategoryModal" class="btn-mini-add" title="Quick Add Category">
@@ -691,7 +694,7 @@
                         <input type="hidden" name="narration_id[]" value="">
                     </td>
                     <td>
-                        <input type="number" name="amount[]" step="0.01" class="cell-input text-end fw-bold amount font-monospace" placeholder="0.00" required>
+                        <input type="number" name="amount[]" step="0.01" class="cell-input text-end fw-bold amount font-monospace" placeholder="0.00">
                     </td>
                     <td class="text-center">
                         <button type="button" class="btn-mini-del removeRow" title="Delete Row"><i class="bi bi-trash"></i></button>
@@ -703,6 +706,7 @@
                 $catSelect.val('');
                 initCategorySelect2($catSelect);
                 updateRowIndices();
+                calculateTotal();
             });
 
             // Remove Row
@@ -710,6 +714,7 @@
                 if ($('#voucherTable tbody tr').length > 1) {
                     $(this).closest('tr').remove();
                     updateRowIndices();
+                calculateTotal();
                     calculateTotal();
                 }
             });
@@ -719,6 +724,52 @@
                 if (e.which === 13) {
                     e.preventDefault();
                     $('#addNewRow').click();
+                }
+            });
+
+            // Validate Expense Form Submission
+            $('#expenseForm').on('submit', function(e) {
+                let partyId = $('#partyId').val();
+                if (!partyId) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Missing Account',
+                        text: 'Please select a Payment Head and Account / Paid From.'
+                    });
+                    return false;
+                }
+
+                let validRows = 0;
+                let incompleteRows = 0;
+                $('#voucherTable tbody tr').each(function() {
+                    let cat = $(this).find('.rowAccountCategory').val();
+                    let amt = parseFloat($(this).find('.amount').val()) || 0;
+                    if (cat && amt > 0) {
+                        validRows++;
+                    } else if (cat || amt > 0) {
+                        incompleteRows++;
+                    }
+                });
+
+                if (incompleteRows > 0) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Incomplete Row',
+                        text: 'Please ensure every entered row has both an Expense Category and an Amount greater than 0.'
+                    });
+                    return false;
+                }
+
+                if (validRows === 0) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Expense Rows',
+                        text: 'Please add at least one valid expense row with a Category and Amount.'
+                    });
+                    return false;
                 }
             });
 
