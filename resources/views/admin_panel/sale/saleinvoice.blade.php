@@ -857,9 +857,9 @@
         <!-- Modern Corporate Header -->
         @if(!($isEstimate ?? false))
             @php
-                $companyName = \App\Models\Setting::get('company_name', 'Innot Tech');
-                $companyAddress = \App\Models\Setting::get('company_address', 'Hyderabad, Pakistan');
-                $companyPhone = \App\Models\Setting::get('company_phone', '0327-9226901');
+                $companyName = \App\Models\Setting::get('company_name', config('app.name', 'Innot Tech'));
+                $companyAddress = \App\Models\Setting::get('company_address');
+                $companyPhone = \App\Models\Setting::get('company_phone');
                 $companyLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
             @endphp
 
@@ -900,16 +900,25 @@
         <!-- Customer & Shipper Information Header (Structured 2-Column Cards) -->
         @if(!($isEstimate ?? false))
             @php
+                $ntnDef = \App\Models\CustomerFieldDefinition::where('field_key', 'ntn_number')->first();
+                $isNtnEnabled = $ntnDef ? ($ntnDef->is_enabled && $ntnDef->visible_in_view && $ntnDef->canView()) : false;
+
+                $strnDef = \App\Models\CustomerFieldDefinition::where('field_key', 'strn_number')->first();
+                $isStrnEnabled = $strnDef ? ($strnDef->is_enabled && $strnDef->visible_in_view && $strnDef->canView()) : false;
+
+                $cnicDef = \App\Models\CustomerFieldDefinition::where('field_key', 'cnic')->first();
+                $isCnicEnabled = $cnicDef ? ($cnicDef->is_enabled && $cnicDef->visible_in_view && $cnicDef->canView()) : true;
+
                 $relCust = $sale->customer_relation;
-                $custNtn = $relCust ? ($relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null) : null;
-                $custStrn = $relCust ? ($relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null) : null;
-                $custCnic = $relCust ? ($relCust->getCustomValue('cnic') ?? $relCust->cnic ?? null) : null;
+                $custNtn = ($isNtnEnabled && $relCust) ? ($relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null) : null;
+                $custStrn = ($isStrnEnabled && $relCust) ? ($relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null) : null;
+                $custCnic = ($isCnicEnabled && $relCust) ? ($relCust->getCustomValue('cnic') ?? $relCust->cnic ?? null) : null;
                 $custMobile = $sale->walkin_mobile ?? ($relCust->mobile ?? $relCust->phone ?? null);
                 $custContactPerson = $relCust ? ($relCust->contact_person ?? $relCust->getCustomValue('contact_person') ?? null) : null;
 
-                $compNtn = \App\Models\Setting::get('company_ntn', 'H126850-4');
-                $compStrn = \App\Models\Setting::get('company_strn', '32-77-8763-950-94');
-                $compPhone = \App\Models\Setting::get('company_phone', '0333-6722263');
+                $compNtn = \App\Models\Setting::get('company_ntn', null);
+                $compStrn = \App\Models\Setting::get('company_strn', null);
+                $compPhone = \App\Models\Setting::get('company_phone', null);
 
                 $salesOfficerName = $sale->salesOfficer->name ?? ($relCust->salesOfficer->name ?? null);
             @endphp
@@ -952,7 +961,7 @@
                             </tr>
                             @endif
 
-                            @if(!empty($custNtn))
+                            @if(!empty($custNtn) && $isNtnEnabled)
                             <tr>
                                 <td class="lbl">NTN Number</td>
                                 <td class="col">:</td>
@@ -960,13 +969,13 @@
                             </tr>
                             @endif
 
-                            @if(!empty($custStrn))
+                            @if(!empty($custStrn) && $isStrnEnabled)
                             <tr>
                                 <td class="lbl">STRN Number</td>
                                 <td class="col">:</td>
                                 <td class="val">{{ $custStrn }}</td>
                             </tr>
-                            @elseif(!empty($custCnic))
+                            @elseif(!empty($custCnic) && $isCnicEnabled)
                             <tr>
                                 <td class="lbl">CNIC Number</td>
                                 <td class="col">:</td>
@@ -1010,7 +1019,7 @@
                                 <td class="val">{{ $sale->created_at ? $sale->created_at->format('d-F-Y') : date('d-F-Y') }}</td>
                             </tr>
 
-                            @if(!empty($compNtn))
+                            @if(!empty($compNtn) && $isNtnEnabled)
                             <tr>
                                 <td class="lbl">NTN Number</td>
                                 <td class="col">:</td>
@@ -1018,7 +1027,7 @@
                             </tr>
                             @endif
 
-                            @if(!empty($compStrn))
+                            @if(!empty($compStrn) && $isStrnEnabled)
                             <tr>
                                 <td class="lbl">STRN Number</td>
                                 <td class="col">:</td>
@@ -1556,12 +1565,16 @@
             </div>
         @endif
         <div class="company-name">
-            {{ \App\Models\Setting::get('company_name', 'Three Stars Medical') }}
+            {{ \App\Models\Setting::get('company_name', config('app.name', 'Innot Tech')) }}
         </div>
 
         <div class="company-info">
-            <div>{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
-            <div>Ph: {{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</div>
+            @if(\App\Models\Setting::get('company_address'))
+                <div>{{ \App\Models\Setting::get('company_address') }}</div>
+            @endif
+            @if(\App\Models\Setting::get('company_phone'))
+                <div>Ph: {{ \App\Models\Setting::get('company_phone') }}</div>
+            @endif
         </div>
 
         @if(
@@ -1609,14 +1622,14 @@
                 <span class="meta-value">{{ Str::limit($sale->walkin_name ?? ($sale->customer_relation->customer_name ?? 'Walking Customer'), 22) }}</span>
             </div>
 
-            @if(!empty($custNtn))
+            @if(!empty($custNtn) && $isNtnEnabled)
                 <div class="meta-row">
                     <span class="meta-label">NTN:</span>
                     <span class="meta-value">{{ $custNtn }}</span>
                 </div>
             @endif
 
-            @if(!empty($custStrn))
+            @if(!empty($custStrn) && $isStrnEnabled)
                 <div class="meta-row">
                     <span class="meta-label">STRN:</span>
                     <span class="meta-value">{{ $custStrn }}</span>

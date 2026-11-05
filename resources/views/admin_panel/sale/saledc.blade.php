@@ -232,9 +232,13 @@
                     <img src="{{ asset($dcLogo) }}" alt="Logo" style="max-height: 85px; max-width: 260px; object-fit: contain;">
                 </div>
             @endif
-            <div class="company-name">{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</div>
-            <div style="font-size: 12px;">{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
-            <p style="margin-bottom:0;">{{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</p>
+            <div class="company-name">{{ \App\Models\Setting::get('company_name', config('app.name', 'Innot Tech')) }}</div>
+            @if(\App\Models\Setting::get('company_address'))
+                <div style="font-size: 12px;">{{ \App\Models\Setting::get('company_address') }}</div>
+            @endif
+            @if(\App\Models\Setting::get('company_phone'))
+                <p style="margin-bottom:0;">{{ \App\Models\Setting::get('company_phone') }}</p>
+            @endif
         </div>
 
         <div class="invoice-title">Delivery Challan</div>
