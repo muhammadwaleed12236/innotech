@@ -19,8 +19,11 @@ class SalesOfficerController extends Controller
             'name' => 'required|string|max:255',
             'name_urdu' => 'nullable|string|max:255',
             'mobile' => 'required|string|max:50',
+            'commission_rate' => 'nullable|numeric|min:0|max:100',
             'edit_id' => 'nullable|integer|exists:sales_officers,id',
         ]);
+
+        $commRate = isset($validated['commission_rate']) ? (float)$validated['commission_rate'] : 0.00;
 
         if (!empty($request->edit_id)) {
             $officer = SalesOfficer::findOrFail($request->edit_id);
@@ -28,6 +31,7 @@ class SalesOfficerController extends Controller
                 'name' => $validated['name'],
                 'name_urdu' => $validated['name_urdu'] ?? null,
                 'mobile' => $validated['mobile'],
+                'commission_rate' => $commRate,
             ]);
             $message = 'Sales Officer updated successfully.';
         } else {
@@ -35,6 +39,7 @@ class SalesOfficerController extends Controller
                 'name' => $validated['name'],
                 'name_urdu' => $validated['name_urdu'] ?? null,
                 'mobile' => $validated['mobile'],
+                'commission_rate' => $commRate,
             ]);
             $message = 'Sales Officer created successfully.';
         }
@@ -61,15 +66,13 @@ class SalesOfficerController extends Controller
         $officer = SalesOfficer::findOrFail($id);
         $officer->delete();
 
-        $message = 'Sales Officer deleted successfully.';
-
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => 'Sales Officer deleted successfully.',
             ]);
         }
 
-        return redirect()->route('sales.officer.index')->with('success', $message);
+        return redirect()->route('sales.officer.index')->with('success', 'Sales Officer deleted successfully.');
     }
 }

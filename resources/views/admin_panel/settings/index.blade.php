@@ -55,7 +55,7 @@
                         @php
                             $canEditSettings = auth()->user()->hasAnyPermission(['settings.edit', 'settings.update']);
                         @endphp
-                        <form id="settingsForm" class="mt-4">
+                        <form id="settingsForm" class="mt-4" enctype="multipart/form-data">
                             @csrf
                             <div class="tab-content" id="settingsTabContent">
                                 <!-- Company Tab -->
@@ -136,6 +136,50 @@
                                                             </div>
                                                         </div>
                                                     @endif
+
+                                                    <!-- Company Logo (Invoice & Header) (12 cols) -->
+                                                    <div class="col-md-12 mb-2 mt-2">
+                                                        <div class="p-3 border rounded shadow-sm" style="background: #f8fafc;">
+                                                            <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 15px;">
+                                                                <div>
+                                                                    <label class="font-weight-bold mb-1 text-dark d-flex align-items-center" style="font-size: 13px;">
+                                                                        <i class="fas fa-image text-primary mr-2"></i> Company Logo (Displayed on Sale Invoices & Receipts)
+                                                                    </label>
+                                                                    <div class="text-muted" style="font-size: 11.5px; line-height: 1.4;">
+                                                                        Yeh logo aapki tamam <strong>Sales Invoices, Quotations, DC aur Receipts</strong> ke header par dynamically print hoga.<br>
+                                                                        <span class="text-secondary">Allowed formats: PNG, JPG, JPEG, SVG, WEBP (Transparent background recommended).</span>
+                                                                    </div>
+                                                                </div>
+
+                                                                @php
+                                                                    $currentLogo = \App\Models\Setting::get('company_logo');
+                                                                    $hasLogo = !empty($currentLogo) && file_exists(public_path($currentLogo));
+                                                                @endphp
+
+                                                                <div class="d-flex align-items-center" style="gap: 12px;">
+                                                                    <div class="border rounded bg-white p-2 d-flex align-items-center justify-content-center shadow-sm" style="min-width: 140px; min-height: 52px; max-width: 200px;">
+                                                                        <img id="logoPreviewImg" src="{{ $hasLogo ? asset($currentLogo) : '' }}" alt="Company Logo" style="max-height: 48px; max-width: 100%; object-fit: contain; {{ $hasLogo ? '' : 'display: none;' }}">
+                                                                        <span id="noLogoBadge" class="badge badge-light text-muted border py-1 px-2" style="{{ $hasLogo ? 'display: none;' : '' }}">
+                                                                            <i class="fas fa-image mr-1"></i> No Logo Set
+                                                                        </span>
+                                                                    </div>
+
+                                                                    @if($canEditSettings)
+                                                                        <div class="d-flex flex-column" style="gap: 6px;">
+                                                                            <label class="btn btn-sm btn-primary mb-0 cursor-pointer font-weight-bold shadow-sm" style="font-size: 12px;">
+                                                                                <i class="fas fa-upload mr-1"></i> Upload Logo
+                                                                                <input type="file" name="company_logo" id="companyLogoInput" accept="image/*" class="d-none" onchange="previewCompanyLogo(this)">
+                                                                            </label>
+                                                                            <button type="button" class="btn btn-sm btn-outline-danger font-weight-bold" id="removeLogoBtn" style="{{ $hasLogo ? '' : 'display: none;' }}; font-size: 11.5px;" onclick="removeCompanyLogo()">
+                                                                                <i class="fas fa-trash-alt mr-1"></i> Remove Logo
+                                                                            </button>
+                                                                            <input type="hidden" name="remove_company_logo" id="removeCompanyLogoInput" value="0">
+                                                                        </div>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -194,7 +238,7 @@
 
                                         <!-- Fallback for any other custom company settings -->
                                         @php
-                                            $handledKeys = ['company_name', 'company_address', 'company_phone', 'currency_symbol', 'company_ntn', 'company_strn', 'website_link', 'facebook_link', 'instagram_link', 'tiktok_link'];
+                                            $handledKeys = ['company_name', 'company_address', 'company_phone', 'currency_symbol', 'company_ntn', 'company_strn', 'website_link', 'facebook_link', 'instagram_link', 'tiktok_link', 'company_logo'];
                                             $unhandled = array_filter($settings['company'], function($item) use ($handledKeys) {
                                                 return !in_array($item['key'], $handledKeys);
                                             });
@@ -532,14 +576,55 @@
                         }
                     });
                 });
+                window.previewCompanyLogo = function(input) {
+                    if (input.files && input.files[0]) {
+                        let reader = new FileReader();
+                        reader.onload = function(e) {
+                            $('#logoPreviewImg').attr('src', e.target.result).show();
+                            $('#noLogoBadge').hide();
+                            $('#removeLogoBtn').show();
+                            $('#removeCompanyLogoInput').val(0);
+                        };
+                        reader.readAsDataURL(input.files[0]);
+                    }
+                };
+
+                window.removeCompanyLogo = function() {
+                    $('#logoPreviewImg').attr('src', '').hide();
+                    $('#noLogoBadge').show();
+                    $('#removeLogoBtn').hide();
+                    $('#companyLogoInput').val('');
+                    $('#removeCompanyLogoInput').val(1);
+                };
+
                 $('#settingsForm').on('submit', function(e) {
                     e.preventDefault();
+
+                    let formData = new FormData(this);
+                    let submitBtn = $(this).find('button[type="submit"]');
+                    let origBtnHtml = submitBtn.html();
+                    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
 
                     $.ajax({
                         url: '{{ route('settings.update') }}',
                         method: 'POST',
-                        data: $(this).serialize(),
+                        data: formData,
+                        processData: false,
+                        contentType: false,
                         success: function(response) {
+                            submitBtn.prop('disabled', false).html(origBtnHtml);
+                            if (response.logo_url) {
+                                $('#logoPreviewImg').attr('src', response.logo_url).show();
+                                $('#noLogoBadge').hide();
+                                $('#removeLogoBtn').show();
+                                $('#removeCompanyLogoInput').val(0);
+                            } else if (response.logo_url === null) {
+                                $('#logoPreviewImg').attr('src', '').hide();
+                                $('#noLogoBadge').show();
+                                $('#removeLogoBtn').hide();
+                                $('#companyLogoInput').val('');
+                                $('#removeCompanyLogoInput').val(0);
+                            }
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Success!',
@@ -548,10 +633,12 @@
                             });
                         },
                         error: function(xhr) {
+                            submitBtn.prop('disabled', false).html(origBtnHtml);
+                            let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Failed to update settings';
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error!',
-                                text: 'Failed to update settings',
+                                text: msg,
                             });
                         }
                     });

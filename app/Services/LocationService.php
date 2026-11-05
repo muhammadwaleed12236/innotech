@@ -242,7 +242,7 @@ class LocationService
     public function getProvinces(): array
     {
         try {
-            return Province::active()->orderBy('name')->pluck('name')->toArray();
+            return Province::active()->orderBy('name')->pluck('name')->map(fn($n) => trim($n))->unique()->values()->toArray();
         } catch (\Throwable $e) {
             return [];
         }

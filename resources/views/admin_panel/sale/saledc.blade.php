@@ -222,8 +222,16 @@
     </div>
 
     <div class="invoice-container">
+        @php
+            $dcLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
+        @endphp
         <!-- Company Header -->
         <div class="company-info">
+            @if(!empty($dcLogo) && file_exists(public_path($dcLogo)))
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <img src="{{ asset($dcLogo) }}" alt="Logo" style="max-height: 85px; max-width: 260px; object-fit: contain;">
+                </div>
+            @endif
             <div class="company-name">{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</div>
             <div style="font-size: 12px;">{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>
             <p style="margin-bottom:0;">{{ \App\Models\Setting::get('company_phone', '0327-9226901') }}</p>

@@ -59,12 +59,19 @@
         position: sticky;
         top: 0;
         z-index: 10;
-        background-color: #1e293b !important;
+        background-color: #0f172a !important;
         color: #ffffff !important;
         font-size: .75rem;
         font-weight: 700;
         padding: 9px 10px;
         border-bottom: 2px solid #334155;
+        white-space: nowrap;
+    }
+    .report-table tfoot td {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 800;
+        border-top: 2px solid #0f172a;
         white-space: nowrap;
     }
     .officer-card {
@@ -95,7 +102,7 @@
                     </div>
                     <div>
                         <h5 class="fw-bold text-dark mb-0">Sales Officer Wise Sale Report</h5>
-                        <small class="text-muted">Track sales performance, orders, discounts & recovery by sales officer</small>
+                        <small class="text-muted">Track sales performance, returns deduction, commission & recovery by sales officer</small>
                     </div>
                 </div>
 
@@ -103,6 +110,9 @@
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" id="btnFilter" class="btn btn-primary btn-sm fw-bold px-3">
                         <i class="fas fa-filter me-1"></i> Filter
+                    </button>
+                    <button type="button" id="btnAllTime" class="btn btn-outline-info btn-sm fw-bold px-2" title="Clear dates to view all time sales">
+                        <i class="fas fa-history me-1"></i> All Time
                     </button>
                     <button type="button" id="btnReset" class="btn btn-outline-secondary btn-sm fw-bold px-2">
                         <i class="fas fa-redo-alt"></i> Reset
@@ -123,7 +133,7 @@
                     <select id="so_province" name="province" class="form-select form-select-sm">
                         <option value="">All Provinces</option>
                         @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
-                            <option value="{{ $p }}">{{ $p }}</option>
+                            <option value="{{ $p }}">{{ ucwords($p) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -132,7 +142,7 @@
                     <select id="so_city" name="city" class="form-select form-select-sm">
                         <option value="">All Cities</option>
                         @foreach(app(\App\Services\LocationService::class)->getCities() as $c)
-                            <option value="{{ $c }}">{{ $c }}</option>
+                            <option value="{{ $c }}">{{ ucwords($c) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -141,10 +151,11 @@
                     <select id="so_area" name="area" class="form-select form-select-sm">
                         <option value="">All Areas</option>
                         @foreach(app(\App\Services\LocationService::class)->getAreas() as $a)
-                            <option value="{{ $a }}">{{ $a }}</option>
+                            <option value="{{ $a }}">{{ ucwords($a) }}</option>
                         @endforeach
                     </select>
                 </div>
+
                 {{-- Date Range --}}
                 <div class="col-md-3 col-sm-6">
                     <label class="so-filter-label">Start Date:</label>
@@ -161,7 +172,7 @@
                     <select id="sales_officer_id" name="sales_officer_id" class="form-select form-select-sm select2-officer">
                         <option value="all">-- All Sales Officers --</option>
                         @foreach($salesOfficers as $officer)
-                            <option value="{{ $officer->id }}">{{ $officer->name }} {{ $officer->mobile ? '(' . $officer->mobile . ')' : '' }}</option>
+                            <option value="{{ $officer->id }}">{{ $officer->name }} {{ $officer->mobile ? '(' . $officer->mobile . ')' : '' }} {{ $officer->commission_rate ? '[' . number_format($officer->commission_rate, 1) . '% Comm]' : '' }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -195,12 +206,16 @@
             <div class="stat-val text-danger" id="statDiscounts">Rs 0</div>
         </div>
         <div class="stat-pill">
+            <div class="stat-label text-secondary">Sales Returns</div>
+            <div class="stat-val text-danger" id="statReturns">Rs 0</div>
+        </div>
+        <div class="stat-pill">
             <div class="stat-label text-secondary">Net Realized Sale</div>
             <div class="stat-val text-success" id="statNet">Rs 0</div>
         </div>
-        <div class="stat-pill">
-            <div class="stat-label text-secondary">Sales Returns</div>
-            <div class="stat-val text-danger" id="statReturns">Rs 0</div>
+        <div class="stat-pill" style="border-color: #8b5cf6;">
+            <div class="stat-label text-purple" style="color: #7c3aed;">Total Commission</div>
+            <div class="stat-val" style="color: #7c3aed;" id="statCommission">Rs 0</div>
         </div>
     </div>
 
@@ -231,13 +246,15 @@
                             <th class="text-center">Total Qty</th>
                             <th class="text-end">Gross Sale</th>
                             <th class="text-end">Discounts</th>
-                            <th class="text-end">Net Sale</th>
                             <th class="text-end">Returns</th>
+                            <th class="text-end">Net Sale</th>
+                            <th class="text-center">Commission %</th>
+                            <th class="text-end">Commission (Rs)</th>
                             <th class="text-center">Contribution</th>
                         </tr>
                     </thead>
                     <tbody id="summaryBody">
-                        <tr><td colspan="9" class="text-center py-4 text-muted">Loading officer summary...</td></tr>
+                        <tr><td colspan="11" class="text-center py-4 text-muted">Loading officer summary...</td></tr>
                     </tbody>
                     <tfoot class="bg-light fw-bold" id="summaryFoot"></tfoot>
                 </table>
@@ -260,12 +277,13 @@
                             <th class="text-center">Qty</th>
                             <th class="text-end">Gross</th>
                             <th class="text-end">Disc</th>
+                            <th class="text-end">Returns</th>
                             <th class="text-end">Net Total</th>
                             <th class="text-center">Status</th>
                         </tr>
                     </thead>
                     <tbody id="detailedBody">
-                        <tr><td colspan="12" class="text-center py-4 text-muted">Click Filter to load data...</td></tr>
+                        <tr><td colspan="13" class="text-center py-4 text-muted">Click Filter to load data...</td></tr>
                     </tbody>
                     <tfoot class="bg-light fw-bold" id="detailedFoot"></tfoot>
                 </table>
@@ -282,8 +300,8 @@
         if ($('.select2-customer').length > 0) $('.select2-customer').select2({ width: '100%' });
 
         function loadReport() {
-            $('#summaryBody').html('<tr><td colspan="9" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Calculating officer metrics...</td></tr>');
-            $('#detailedBody').html('<tr><td colspan="12" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Fetching sales log...</td></tr>');
+            $('#summaryBody').html('<tr><td colspan="11" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Calculating officer metrics & deductions...</td></tr>');
+            $('#detailedBody').html('<tr><td colspan="13" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Fetching sales log...</td></tr>');
 
             $.ajax({
                 url: '{{ route('report.sales_officer_sale.fetch') }}',
@@ -294,22 +312,23 @@
                     const summary = res.summary || [];
                     const totals = res.totals || {};
 
-                    // 1. Update Metrics
+                    // 1. Update Top Metrics Bar
                     $('#statInvoices').text(totals.total_sales || 0);
                     $('#statGross').text('Rs ' + Number(totals.total_gross || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                     $('#statDiscounts').text('Rs ' + Number(totals.total_discount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-                    $('#statNet').text('Rs ' + Number(totals.total_net || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                     $('#statReturns').text('Rs ' + Number(totals.total_returns || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                    $('#statNet').text('Rs ' + Number(totals.total_net || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                    $('#statCommission').text('Rs ' + Number(totals.total_commission || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
-                    // 2. Render Officer Summary
+                    // 2. Render Officer Summary Table
                     let sumHtml = '';
-                    let totalGrossSum = totals.total_gross || 0;
+                    let totalNetSum = totals.total_net || 0;
 
                     if (summary.length === 0) {
-                        sumHtml = '<tr><td colspan="9" class="text-center py-4 text-muted">No sales found for the selected criteria.</td></tr>';
+                        sumHtml = '<tr><td colspan="11" class="text-center py-4 text-muted">No sales found for the selected criteria.</td></tr>';
                     } else {
                         summary.forEach((item, idx) => {
-                            let sharePct = totalGrossSum > 0 ? ((item.total_gross / totalGrossSum) * 100).toFixed(1) : 0;
+                            let sharePct = totalNetSum > 0 ? ((item.total_net / totalNetSum) * 100).toFixed(1) : 0;
                             sumHtml += `
                                 <tr>
                                     <td class="text-center fw-bold text-muted">${idx + 1}</td>
@@ -320,8 +339,12 @@
                                     <td class="text-center font-monospace">${item.total_qty}</td>
                                     <td class="text-end font-monospace">Rs ${Number(item.total_gross).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td class="text-end font-monospace text-danger">Rs ${Number(item.total_discount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                                    <td class="text-end font-monospace fw-bold text-success">Rs ${Number(item.total_net).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td class="text-end font-monospace text-danger">Rs ${Number(item.total_returns).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace fw-bold text-success">Rs ${Number(item.total_net).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark border font-monospace">${Number(item.commission_rate || 0).toFixed(1)}%</span>
+                                    </td>
+                                    <td class="text-end font-monospace fw-bold" style="color: #7c3aed;">Rs ${Number(item.commission_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td class="text-center">
                                         <div class="d-flex align-items-center justify-content-center gap-1">
                                             <span class="badge bg-primary text-white" style="font-size:10px;">${sharePct}%</span>
@@ -333,12 +356,44 @@
                     }
                     $('#summaryBody').html(sumHtml);
 
+                    // Summary Footer Row
+                    if (summary.length > 0) {
+                        $('#summaryFoot').html(`
+                            <tr>
+                                <td colspan="2" class="text-end fw-bold">TOTAL:</td>
+                                <td class="text-center font-monospace">${totals.total_sales || 0}</td>
+                                <td class="text-center font-monospace">${totals.total_qty || 0}</td>
+                                <td class="text-end font-monospace">Rs ${Number(totals.total_gross || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-end font-monospace text-danger">Rs ${Number(totals.total_discount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-end font-monospace text-danger">Rs ${Number(totals.total_returns || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-end font-monospace fw-bold text-success">Rs ${Number(totals.total_net || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-center font-monospace">—</td>
+                                <td class="text-end font-monospace fw-bold" style="color: #7c3aed;">Rs ${Number(totals.total_commission || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-center font-monospace">100%</td>
+                            </tr>
+                        `);
+                    } else {
+                        $('#summaryFoot').html('');
+                    }
+
                     // 3. Render Detailed Table
                     let detHtml = '';
+                    let detTotalQty = 0;
+                    let detTotalGross = 0;
+                    let detTotalDisc = 0;
+                    let detTotalReturns = 0;
+                    let detTotalNet = 0;
+
                     if (sales.length === 0) {
-                        detHtml = '<tr><td colspan="12" class="text-center py-4 text-muted">No transactions recorded.</td></tr>';
+                        detHtml = '<tr><td colspan="13" class="text-center py-4 text-muted">No transactions recorded.</td></tr>';
                     } else {
                         sales.forEach((s, idx) => {
+                            detTotalQty += Number(s.total_qty || 0);
+                            detTotalGross += Number(s.gross_amount || 0);
+                            detTotalDisc += Number(s.discount || 0);
+                            detTotalReturns += Number(s.returns || 0);
+                            detTotalNet += Number(s.net_amount || 0);
+
                             let poText = s.po_no ? `<span class="badge bg-light text-dark border">${s.po_no}</span>` : '—';
                             if (s.po_date) poText += `<br><small class="text-muted" style="font-size:9.5px;">${s.po_date}</small>`;
 
@@ -366,6 +421,7 @@
                                     <td class="text-center font-monospace">${s.total_qty}</td>
                                     <td class="text-end font-monospace">Rs ${Number(s.gross_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td class="text-end font-monospace text-danger">Rs ${Number(s.discount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                    <td class="text-end font-monospace text-danger">Rs ${Number(s.returns).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td class="text-end font-monospace fw-bold text-success">Rs ${Number(s.net_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                     <td class="text-center">${statusBadge}</td>
                                 </tr>
@@ -373,10 +429,27 @@
                         });
                     }
                     $('#detailedBody').html(detHtml);
+
+                    // Detailed Footer Row
+                    if (sales.length > 0) {
+                        $('#detailedFoot').html(`
+                            <tr>
+                                <td colspan="7" class="text-end fw-bold">TOTAL:</td>
+                                <td class="text-center font-monospace">${detTotalQty}</td>
+                                <td class="text-end font-monospace">Rs ${Number(detTotalGross).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-end font-monospace text-danger">Rs ${Number(detTotalDisc).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-end font-monospace text-danger">Rs ${Number(detTotalReturns).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-end font-monospace fw-bold text-success">Rs ${Number(detTotalNet).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                                <td class="text-center font-monospace">—</td>
+                            </tr>
+                        `);
+                    } else {
+                        $('#detailedFoot').html('');
+                    }
                 },
                 error: function() {
-                    $('#summaryBody').html('<tr><td colspan="9" class="text-center py-4 text-danger">Failed to fetch report data.</td></tr>');
-                    $('#detailedBody').html('<tr><td colspan="12" class="text-center py-4 text-danger">Failed to fetch report data.</td></tr>');
+                    $('#summaryBody').html('<tr><td colspan="11" class="text-center py-4 text-danger">Failed to fetch report data.</td></tr>');
+                    $('#detailedBody').html('<tr><td colspan="13" class="text-center py-4 text-danger">Failed to fetch report data.</td></tr>');
                 }
             });
         }
@@ -386,6 +459,13 @@
 
         $('#btnFilter').on('click', function(e) {
             e.preventDefault();
+            loadReport();
+        });
+
+        $('#btnAllTime').on('click', function(e) {
+            e.preventDefault();
+            $('#start_date').val('');
+            $('#end_date').val('');
             loadReport();
         });
 

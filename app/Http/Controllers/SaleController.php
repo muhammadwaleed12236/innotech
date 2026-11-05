@@ -2681,7 +2681,7 @@ class SaleController extends Controller
 
     private function rollbackPostedSale(Sale $sale)
     {
-        // 1. Restore Stock
+        // 1. Restore Stock (Warehouse stock, batch quantities, and product serials)
         $this->handleStockImpact($sale, 'in');
 
         // Delete stock movements for this sale (both 'sale' out and 'sale_in' restore records)
@@ -2694,11 +2694,24 @@ class SaleController extends Controller
             })
             ->delete();
 
-        // 2. Reverse and delete Vouchers & Journal Entries
+        // 2. Reverse and delete Journal Entries & Vouchers
         $journalService = app(\App\Services\JournalEntryService::class);
 
-        // Find all VoucherMaster records related to this sale (JV and RV)
-        $vouchers = \App\Models\VoucherMaster::where('remarks', 'like', "%#{$sale->invoice_no}%")->get();
+        // Reverse any direct journal entries linked to this Sale model
+        $directEntries = \App\Models\JournalEntry::where('source_type', get_class($sale))
+            ->where('source_id', $sale->id)
+            ->get();
+        foreach ($directEntries as $dEntry) {
+            $journalService->updateAccountBalance($dEntry->account_id, $dEntry->credit, $dEntry->debit);
+            $dEntry->delete();
+        }
+
+        // Find all VoucherMaster records related to this sale (Sale JV and Auto-Receipt RV)
+        $vouchers = \App\Models\VoucherMaster::where(function ($q) use ($sale) {
+            $q->where('remarks', 'like', "%#{$sale->invoice_no}%")
+              ->orWhere('remarks', 'like', "%{$sale->invoice_no}%");
+        })->get();
+
         foreach ($vouchers as $voucher) {
             // Reverse account balances and delete journal entries
             $journalService->reverseEntriesForSource($voucher);
@@ -2710,24 +2723,147 @@ class SaleController extends Controller
             $voucher->delete();
         }
 
-        // 3. Rollback Legacy Customer Ledger & Customer Master Balance
-        $ledgerEntries = \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)
-            ->where('description', 'like', "%#{$sale->invoice_no}%")
+        // 3. Remove associated CustomerPayments (e.g., POS Exchange refunds)
+        \App\Models\CustomerPayment::where('note', 'like', "%{$sale->invoice_no}%")->delete();
+
+        // 4. Remove legacy ReceiptsVoucher / PaymentVoucher linked to this invoice
+        \App\Models\ReceiptsVoucher::where('remarks', 'like', "%#{$sale->invoice_no}%")
+            ->orWhere('remarks', 'like', "%{$sale->invoice_no}%")
+            ->delete();
+
+        \App\Models\PaymentVoucher::where('remarks', 'like', "%#{$sale->invoice_no}%")
+            ->orWhere('remarks', 'like', "%{$sale->invoice_no}%")
+            ->delete();
+
+        // 5. Customer Ledger Cleanup & Running Balance Recalculation
+        if ($sale->customer_id) {
+            \App\Models\CustomerLedger::where('customer_id', $sale->customer_id)
+                ->where(function ($q) use ($sale) {
+                    $q->where('description', 'like', "%#{$sale->invoice_no}%")
+                      ->orWhere('description', 'like', "%{$sale->invoice_no}%");
+                })
+                ->delete();
+
+            $this->recalculateCustomerLedger($sale->customer_id);
+        }
+    }
+
+    /**
+     * Recalculate running balance for all ledger entries of a customer chronologically.
+     */
+    public function recalculateCustomerLedger($customerId)
+    {
+        $customer = \App\Models\Customer::find($customerId);
+        if (!$customer) {
+            return;
+        }
+
+        $ledgerEntries = \App\Models\CustomerLedger::where('customer_id', $customerId)
+            ->orderBy('id', 'asc')
             ->get();
 
-        $totalNetImpact = 0;
-        foreach ($ledgerEntries as $entry) {
-            $totalNetImpact += ($entry->closing_balance - $entry->previous_balance);
-            $entry->delete();
+        if ($ledgerEntries->isEmpty()) {
+            $customer->previous_balance = (float) ($customer->opening_balance ?? 0);
+            $customer->save();
+            return;
         }
 
-        if ($totalNetImpact != 0) {
-            $cust = \App\Models\Customer::find($sale->customer_id);
-            if ($cust) {
-                $cust->previous_balance -= $totalNetImpact;
-                $cust->save();
-            }
+        // Base balance before transactions
+        $firstEntry = $ledgerEntries->first();
+        if ($firstEntry && (str_contains(strtolower($firstEntry->description ?? ''), 'opening balance') || $firstEntry->opening_balance > 0)) {
+            $currentBalance = 0;
+        } else {
+            $currentBalance = (float) ($customer->opening_balance ?? 0);
         }
+
+        foreach ($ledgerEntries as $entry) {
+            if (str_contains(strtolower($entry->description ?? ''), 'opening balance')) {
+                $obAmount = (float) ($entry->opening_balance > 0 ? $entry->opening_balance : ($customer->opening_balance ?? 0));
+                $entry->previous_balance = 0;
+                $entry->opening_balance = $obAmount;
+                $entry->closing_balance = $obAmount;
+                $currentBalance = $obAmount;
+                $entry->save();
+                continue;
+            }
+
+            $netChange = (float) $entry->closing_balance - (float) $entry->previous_balance;
+            $entry->previous_balance = $currentBalance;
+            $currentBalance += $netChange;
+            $entry->closing_balance = $currentBalance;
+            $entry->save();
+        }
+
+        $customer->previous_balance = $currentBalance;
+        $customer->save();
+    }
+
+    /**
+     * Pre-check invoice deletion: checks permissions, linked returns, and linked payment vouchers.
+     */
+    public function checkDelete($id)
+    {
+        if (!auth()->user()->can('sales.delete')) {
+            return response()->json([
+                'can_delete' => false,
+                'message' => 'You do not have permission to delete sales invoices (permission:sales.delete).'
+            ], 403);
+        }
+
+        $sale = Sale::with(['customer_relation'])->findOrFail($id);
+
+        // Check for linked returns
+        $returns = \App\Models\SaleReturn::where('sale_id', $sale->id)->get();
+        if ($returns->count() > 0) {
+            $returnList = $returns->pluck('return_invoice')->filter()->implode(', ') ?: ('#' . $returns->pluck('id')->implode(', #'));
+            return response()->json([
+                'can_delete' => false,
+                'has_returns' => true,
+                'message' => "Cannot delete invoice <strong>{$sale->invoice_no}</strong> because it has linked Sale Return(s): <strong>{$returnList}</strong>. Please delete or cancel the sale return(s) first."
+            ]);
+        }
+
+        // Check for separate / manual payment vouchers (excluding the auto-receipt generated upon posting)
+        $manualVouchers = \App\Models\VoucherMaster::where('remarks', 'like', "%#{$sale->invoice_no}%")
+            ->where('remarks', 'not like', 'Auto-Receipt%')
+            ->where('remarks', 'not like', 'Sale Invoice%')
+            ->get();
+
+        $legacyReceipts = \App\Models\ReceiptsVoucher::where('reference_no', 'like', "%{$sale->invoice_no}%")
+            ->orWhere('remarks', 'like', "%{$sale->invoice_no}%")
+            ->get();
+
+        $legacyPayments = \App\Models\PaymentVoucher::where('reference_no', 'like', "%{$sale->invoice_no}%")
+            ->orWhere('remarks', 'like', "%{$sale->invoice_no}%")
+            ->get();
+
+        $paymentWarnings = [];
+        if ($manualVouchers->count() > 0) {
+            $vNos = $manualVouchers->pluck('voucher_no')->implode(', ');
+            $paymentWarnings[] = "Linked Accounts Voucher(s): <strong>{$vNos}</strong>";
+        }
+        if ($legacyReceipts->count() > 0) {
+            $rNos = $legacyReceipts->pluck('rvid')->filter()->implode(', ') ?: ('#' . $legacyReceipts->pluck('id')->implode(', #'));
+            $paymentWarnings[] = "Linked Receipt Voucher(s): <strong>{$rNos}</strong>";
+        }
+        if ($legacyPayments->count() > 0) {
+            $pNos = $legacyPayments->pluck('pvid')->filter()->implode(', ') ?: ('#' . $legacyPayments->pluck('id')->implode(', #'));
+            $paymentWarnings[] = "Linked Payment Voucher(s): <strong>{$pNos}</strong>";
+        }
+
+        $hasLinkedPayments = count($paymentWarnings) > 0;
+        $paymentWarningText = $hasLinkedPayments 
+            ? implode('<br>', $paymentWarnings) . '<br><small class="text-danger">Aap is invoice ko delete karenge to unlinked payment record na bache is baat ka dhyan rakhein.</small>'
+            : '';
+
+        return response()->json([
+            'can_delete' => true,
+            'has_returns' => false,
+            'has_linked_payments' => $hasLinkedPayments,
+            'payment_warning' => $paymentWarningText,
+            'sale_status' => $sale->sale_status,
+            'invoice_no' => $sale->invoice_no ?: ('#' . $sale->id),
+        ]);
     }
 
     public function confirmBooking($id)
@@ -2801,30 +2937,93 @@ class SaleController extends Controller
     }
 
     /**
-     * Fetch all invoice series and generated number
+     * Safely delete sale invoice with complete stock, customer ledger, and journal entry reversal.
      */
-    public function destroy($id)
+    public function destroy($id, Request $request)
     {
-        $sale = Sale::findOrFail($id);
-
-        if (!in_array($sale->sale_status, ['quotation', 'draft', 'booked'])) {
-            return redirect()->back()->with('error', 'Only quotations, drafts, or bookings can be cancelled or deleted.');
+        if (!auth()->user()->can('sales.delete')) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized! You do not have permission to delete sales invoices (permission:sales.delete).'
+                ], 403);
+            }
+            return redirect()->back()->with('error', 'Unauthorized! You do not have permission to delete sales invoices.');
         }
 
+        $sale = Sale::with(['items', 'customer_relation'])->findOrFail($id);
         $invNo = $sale->invoice_no ?: ('#' . $sale->id);
-        $typeLabel = $sale->sale_status === 'quotation' ? 'Quotation' : ucfirst($sale->sale_status);
+        $typeLabel = $sale->sale_status === 'quotation' ? 'Quotation' : 'Sale Invoice';
+
+        // Check for linked Sale Returns
+        $hasReturns = \App\Models\SaleReturn::where('sale_id', $sale->id)->exists();
+        if ($hasReturns) {
+            $msg = "Cannot delete invoice {$invNo} because it has linked Sale Return(s). Please remove or reverse the sale returns first.";
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        // Check for manual linked payment vouchers (unless confirmed/force requested)
+        $manualVouchersExist = \App\Models\VoucherMaster::where('remarks', 'like', "%#{$sale->invoice_no}%")
+            ->where('remarks', 'not like', 'Auto-Receipt%')
+            ->where('remarks', 'not like', 'Sale Invoice%')
+            ->exists();
+
+        $legacyReceiptsExist = \App\Models\ReceiptsVoucher::where('reference_no', 'like', "%{$sale->invoice_no}%")
+            ->orWhere('remarks', 'like', "%{$sale->invoice_no}%")
+            ->exists();
+
+        if (($manualVouchersExist || $legacyReceiptsExist) && !$request->has('force_delete')) {
+            $msg = "Cannot delete invoice {$invNo}: Separate payment voucher(s) are linked to this invoice. Please unlink or delete the payment voucher first to prevent orphaned records.";
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg, 'has_linked_payments' => true], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
 
         DB::beginTransaction();
         try {
+            // If posted or returned, safely rollback stock, accounting entries, and customer ledger
+            if (in_array($sale->sale_status, ['posted', 'returned'])) {
+                $this->rollbackPostedSale($sale);
+            }
+
+            // Delete sale items
             $sale->items()->delete();
+
+            // Delete sale record
             $sale->delete();
 
             DB::commit();
-            return redirect()->back()->with('success', "{$typeLabel} {$invNo} has been deleted successfully.");
+
+            $successMsg = "{$typeLabel} {$invNo} has been deleted successfully. Stock, customer ledger, and journal entries have been safely reversed.";
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $successMsg
+                ]);
+            }
+
+            return redirect()->route('sale.index')->with('success', $successMsg);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error("Failed to delete {$typeLabel} {$invNo}: " . $e->getMessage());
-            return redirect()->back()->with('error', "Failed to delete: " . $e->getMessage());
+            \Log::error("Failed to delete {$typeLabel} {$invNo}: " . $e->getMessage(), [
+                'sale_id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            $errMsg = "Failed to delete {$typeLabel} {$invNo}: " . $e->getMessage();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $errMsg
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', $errMsg);
         }
     }
 

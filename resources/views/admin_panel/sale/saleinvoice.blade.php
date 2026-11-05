@@ -140,9 +140,12 @@
         }
 
         .company-header-wrapper .company-logo {
-            max-height: 52px;
+            max-height: 85px;
+            max-width: 260px;
+            width: auto;
+            height: auto;
             object-fit: contain;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .company-header-wrapper .company-brand {
@@ -857,7 +860,7 @@
                 $companyName = \App\Models\Setting::get('company_name', 'Innot Tech');
                 $companyAddress = \App\Models\Setting::get('company_address', 'Hyderabad, Pakistan');
                 $companyPhone = \App\Models\Setting::get('company_phone', '0327-9226901');
-                $companyLogo = \App\Models\Setting::get('web_site_logo') ?? \App\Models\Setting::get('company_logo');
+                $companyLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
             @endphp
 
             <div class="company-header-wrapper">
@@ -1544,6 +1547,14 @@
     <!-- ========================================== -->
     <div class="receipt-container">
         <!-- Header -->
+        @php
+            $receiptLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
+        @endphp
+        @if(!empty($receiptLogo) && file_exists(public_path($receiptLogo)))
+            <div style="text-align: center; margin-bottom: 6px;">
+                <img src="{{ asset($receiptLogo) }}" alt="Logo" style="max-height: 65px; max-width: 85%; object-fit: contain;">
+            </div>
+        @endif
         <div class="company-name">
             {{ \App\Models\Setting::get('company_name', 'Three Stars Medical') }}
         </div>

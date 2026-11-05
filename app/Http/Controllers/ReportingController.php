@@ -4080,7 +4080,7 @@ class ReportingController extends Controller
         $salesOfficerId = $request->sales_officer_id;
         $customerId = $request->customer_id;
 
-        $query = \App\Models\Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product', 'returns'])
+        $query = \App\Models\Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items.product', 'returns.items'])
             ->whereNotIn('sale_status', ['cancelled']);
 
         $pSO = $request->province;
@@ -4096,29 +4096,28 @@ class ReportingController extends Controller
             $query->whereHas('customer_relation', fn($q) => $q->where('area', $aSO));
         }
 
-        if ($start && $end) {
-            $query->whereBetween('created_at', [
-                \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'),
-                \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s')
-            ]);
-        } elseif ($start) {
-            $query->where('created_at', '>=', \Carbon\Carbon::parse($start)->startOfDay()->format('Y-m-d H:i:s'));
-        } elseif ($end) {
-            $query->where('created_at', '<=', \Carbon\Carbon::parse($end)->endOfDay()->format('Y-m-d H:i:s'));
+        if (!empty($start)) {
+            $query->whereDate('created_at', '>=', $start);
+        }
+        if (!empty($end)) {
+            $query->whereDate('created_at', '<=', $end);
         }
 
-        if ($customerId && $customerId !== 'all') {
+        if (!empty($customerId) && $customerId !== 'all') {
             $query->where('customer_id', $customerId);
         }
 
-        if ($salesOfficerId && $salesOfficerId !== 'all') {
+        if (!empty($salesOfficerId) && $salesOfficerId !== 'all') {
             $query->where(function($q) use ($salesOfficerId) {
                 $q->where('sales_officer_id', $salesOfficerId)
                   ->orWhere(function($sub) use ($salesOfficerId) {
-                      $sub->whereNull('sales_officer_id')
-                          ->whereHas('customer_relation', function($custQ) use ($salesOfficerId) {
-                              $custQ->where('sales_officer_id', $salesOfficerId);
-                          });
+                      $sub->where(function($nullQ) {
+                          $nullQ->whereNull('sales_officer_id')
+                                ->orWhere('sales_officer_id', 0)
+                                ->orWhere('sales_officer_id', '');
+                      })->whereHas('customer_relation', function($custQ) use ($salesOfficerId) {
+                          $custQ->where('sales_officer_id', $salesOfficerId);
+                      });
                   });
             });
         }
@@ -4130,58 +4129,88 @@ class ReportingController extends Controller
         $transformed = [];
 
         foreach ($sales as $sale) {
-            $officerObj = $sale->salesOfficer ?: ($sale->customer_relation ? $sale->customer_relation->salesOfficer : null);
-            $officerId = $officerObj ? $officerObj->id : 0;
-            $officerName = $officerObj ? $officerObj->name : 'Unassigned / Direct';
+            $officerObj = null;
+            if (!empty($sale->sales_officer_id) && $sale->salesOfficer) {
+                $officerObj = $sale->salesOfficer;
+            } elseif ($sale->customer_relation && $sale->customer_relation->salesOfficer) {
+                $officerObj = $sale->customer_relation->salesOfficer;
+            }
 
-            $gross = (float) $sale->total_bill_amount;
+            $officerId = $officerObj ? (int)$officerObj->id : 0;
+            $officerName = $officerObj ? $officerObj->name : 'Direct / Unassigned';
+            $commissionRate = $officerObj ? (float)($officerObj->commission_rate ?? 0) : 0.00;
+
+            $gross = (float)($sale->total_gross > 0 ? $sale->total_gross : $sale->total_bill_amount);
             $inlineDisc = 0;
             $totalQty = 0;
             $itemsList = [];
 
             foreach ($sale->items as $it) {
                 $inlineDisc += (float) ($it->discount_amount ?? 0);
-                $totalQty += (float) ($it->qty ?? $it->total_pieces ?? 0);
+                $itQty = (float) ($it->qty_box ?? $it->qty ?? $it->total_pieces ?? 0);
+                $totalQty += $itQty;
                 $pName = $it->product ? $it->product->item_name : ($it->is_manual ? $it->product_name : 'Item');
-                $itemsList[] = $pName . ' (' . (float)$it->qty . ')';
+                $itemsList[] = $pName . ' (' . $itQty . ')';
             }
+
+            $addDisc = (float) ($sale->total_extradiscount ?? 0);
+            $totalDiscount = $inlineDisc + $addDisc;
 
             if ($gross <= 0) {
-                $gross = (float) $sale->total_net + $inlineDisc + (float) $sale->total_extradiscount;
+                $gross = (float) $sale->total_net + $totalDiscount;
             }
 
-            $addDisc = (float) $sale->total_extradiscount;
-            $net = (float) $sale->total_net;
-            $retAmount = $sale->returns ? (float) $sale->returns->sum('net_amount') : 0;
+            $billNet = (float) ($sale->total_net ?? ($gross - $totalDiscount));
+
+            // Return calculation
+            $retAmount = 0;
+            if ($sale->returns && $sale->returns->count() > 0) {
+                $retAmount = (float) $sale->returns->sum('net_amount');
+            }
+            if ($retAmount <= 0) {
+                $linkedReturn = \App\Models\SaleReturn::where('remarks', 'LIKE', '%Invoice #'.$sale->invoice_no.'%')->first();
+                if ($linkedReturn) {
+                    $retAmount = (float) ($linkedReturn->net_amount ?? $linkedReturn->items->sum('line_total'));
+                }
+            }
+
+            // Net Realized Sale = Bill Net - Return Amount
+            $netRealized = max(0, $billNet - $retAmount);
+
+            // Commission amount on realized net sale
+            $commAmount = ($netRealized * $commissionRate) / 100;
 
             if (!isset($officerSummary[$officerId])) {
                 $officerSummary[$officerId] = [
                     'officer_id' => $officerId,
                     'officer_name' => $officerName,
+                    'commission_rate' => $commissionRate,
                     'total_invoices' => 0,
                     'total_qty' => 0,
                     'total_gross' => 0,
                     'total_discount' => 0,
-                    'total_net' => 0,
                     'total_returns' => 0,
+                    'total_net' => 0,
+                    'commission_amount' => 0,
                 ];
             }
 
             $officerSummary[$officerId]['total_invoices'] += 1;
             $officerSummary[$officerId]['total_qty'] += $totalQty;
             $officerSummary[$officerId]['total_gross'] += $gross;
-            $officerSummary[$officerId]['total_discount'] += ($inlineDisc + $addDisc);
-            $officerSummary[$officerId]['total_net'] += $net;
+            $officerSummary[$officerId]['total_discount'] += $totalDiscount;
             $officerSummary[$officerId]['total_returns'] += $retAmount;
+            $officerSummary[$officerId]['total_net'] += $netRealized;
+            $officerSummary[$officerId]['commission_amount'] += $commAmount;
 
             $transformed[] = [
                 'id' => $sale->id,
                 'invoice_no' => $sale->invoice_no,
                 'created_at_formatted' => $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : '',
                 'customer_name' => $sale->customer_relation ? $sale->customer_relation->customer_name : ($sale->walkin_name ?: 'Walk-in'),
-                    'customer_province' => $sale->customer_relation->province ?? '',
-                    'customer_city' => $sale->customer_relation->city ?? '',
-                    'customer_area' => $sale->customer_relation->area ?? '',
+                'customer_province' => $sale->customer_relation->province ?? '',
+                'customer_city' => $sale->customer_relation->city ?? '',
+                'customer_area' => $sale->customer_relation->area ?? '',
                 'customer_code' => $sale->customer_relation->customer_id ?? '',
                 'sales_officer_id' => $officerId,
                 'sales_officer_name' => $officerName,
@@ -4192,9 +4221,9 @@ class ReportingController extends Controller
                 'products' => implode(', ', $itemsList),
                 'total_qty' => $totalQty,
                 'gross_amount' => $gross,
-                'discount' => ($inlineDisc + $addDisc),
-                'net_amount' => $net,
+                'discount' => $totalDiscount,
                 'returns' => $retAmount,
+                'net_amount' => $netRealized,
             ];
         }
 
@@ -4203,10 +4232,12 @@ class ReportingController extends Controller
             'summary' => array_values($officerSummary),
             'totals' => [
                 'total_sales' => count($transformed),
+                'total_qty' => array_sum(array_column($officerSummary, 'total_qty')),
                 'total_gross' => array_sum(array_column($officerSummary, 'total_gross')),
                 'total_discount' => array_sum(array_column($officerSummary, 'total_discount')),
-                'total_net' => array_sum(array_column($officerSummary, 'total_net')),
                 'total_returns' => array_sum(array_column($officerSummary, 'total_returns')),
+                'total_net' => array_sum(array_column($officerSummary, 'total_net')),
+                'total_commission' => array_sum(array_column($officerSummary, 'commission_amount')),
             ]
         ]);
     }

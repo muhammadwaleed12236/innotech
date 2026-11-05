@@ -33,20 +33,17 @@ class Setting extends Model
     /**
      * Set a setting value
      */
-    public static function set(string $key, $value): bool
+    public static function set(string $key, $value, $group = 'company', $label = null, $type = 'string'): bool
     {
-        $setting = self::where('key', $key)->first();
-        
-        if (!$setting) {
-            return false;
-        }
-
+        $setting = self::firstOrNew(['key' => $key]);
         $setting->value = $value;
+        if (!$setting->exists) {
+            $setting->group = $group;
+            $setting->label = $label ?: ucwords(str_replace('_', ' ', $key));
+            $setting->type = $type;
+        }
         $setting->save();
 
-        Cache::forget('setting_' . $key);
-
-        // Clear cache
         Cache::forget('setting_' . $key);
 
         return true;

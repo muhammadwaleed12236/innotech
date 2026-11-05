@@ -202,7 +202,15 @@
     </div>
 
     <div class="receipt-container">
+        @php
+            $dcThermalLogo = \App\Models\Setting::get('company_logo') ?? \App\Models\Setting::get('web_site_logo');
+        @endphp
         <!-- Header -->
+        @if(!empty($dcThermalLogo) && file_exists(public_path($dcThermalLogo)))
+            <div style="text-align: center; margin-bottom: 6px;">
+                <img src="{{ asset($dcThermalLogo) }}" alt="Logo" style="max-height: 65px; max-width: 85%; object-fit: contain;">
+            </div>
+        @endif
         <div class="company-name">{{ \App\Models\Setting::get('company_name', 'prowave technogies') }}</div>
         <div class="company-info">
             <div>{{ \App\Models\Setting::get('company_address', 'Hyderabad') }}</div>

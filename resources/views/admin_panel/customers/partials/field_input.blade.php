@@ -132,10 +132,10 @@
                 {{ $field->is_required ? 'required' : '' }}>
                 <option value="">-- Select Province --</option>
                 @foreach($provincesList as $p)
-                    <option value="{{ $p }}" {{ strcasecmp((string)$val, (string)$p) === 0 ? 'selected' : '' }}>{{ $p }}</option>
+                    <option value="{{ $p }}" {{ strcasecmp((string)$val, (string)$p) === 0 ? 'selected' : '' }}>{{ ucwords($p) }}</option>
                 @endforeach
                 @if(!empty($val) && !in_array(strtolower($val), array_map('strtolower', $provincesList)))
-                    <option value="{{ $val }}" selected>{{ $val }}</option>
+                    <option value="{{ $val }}" selected>{{ ucwords($val) }}</option>
                 @endif
             </select>
             <button type="button" class="btn btn-outline-primary btn-quick-add-province px-2.5" title="Add New Province" style="border-color: #cbd5e1; border-left: none; border-radius: 0 8px 8px 0; height: 38px; display: inline-flex; align-items: center; justify-content: center;">
@@ -228,7 +228,7 @@
                 @elseif($field->system_column === 'province' && isset($dropdownLookups['provinces']))
                     @foreach($dropdownLookups['provinces'] as $optVal => $optLabel)
                         <option value="{{ $optVal }}" {{ strcasecmp((string)$val, (string)$optVal) === 0 ? 'selected' : '' }}>
-                            {{ $optLabel }}
+                            {{ ucwords($optLabel) }}
                         </option>
                     @endforeach
                 @else

@@ -37,17 +37,37 @@ class SettingsController extends Controller
             ], 403);
         }
 
-        $validated = $request->validate([
-            'settings' => 'required|array',
+        $request->validate([
+            'settings' => 'nullable|array',
+            'company_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:3072',
+            'remove_company_logo' => 'nullable|boolean',
         ]);
 
-        foreach ($validated['settings'] as $key => $value) {
-            Setting::set($key, $value);
+        // 1. Process regular key-value settings
+        if ($request->has('settings') && is_array($request->settings)) {
+            foreach ($request->settings as $key => $value) {
+                Setting::set($key, $value);
+            }
         }
+
+        // 2. Handle Company Logo Upload & Removal
+        if ($request->hasFile('company_logo')) {
+            $file = $request->file('company_logo');
+            $fileName = 'logo_' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move(public_path('uploads/settings'), $fileName);
+            $logoPath = 'uploads/settings/' . $fileName;
+
+            Setting::set('company_logo', $logoPath, 'company', 'Company Logo', 'string');
+        } elseif ($request->boolean('remove_company_logo')) {
+            Setting::set('company_logo', null, 'company', 'Company Logo', 'string');
+        }
+
+        $currentLogo = Setting::get('company_logo');
 
         return response()->json([
             'success' => true,
             'message' => 'Settings updated successfully',
+            'logo_url' => (!empty($currentLogo) && file_exists(public_path($currentLogo))) ? asset($currentLogo) : null,
         ]);
     }
 

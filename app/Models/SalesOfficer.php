@@ -7,9 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class SalesOfficer extends Model
 {
-     use HasFactory;
+    use HasFactory;
 
     protected $fillable = [
-        'name', 'name_urdu', 'mobile',
+        'name',
+        'name_urdu',
+        'mobile',
+        'commission_rate',
+    ];
+
+    protected $casts = [
+        'commission_rate' => 'float',
     ];
 }

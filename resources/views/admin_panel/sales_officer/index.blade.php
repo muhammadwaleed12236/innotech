@@ -25,6 +25,7 @@
                                                 <th>Name</th>
                                                 <th>Name (Urdu)</th>
                                                 <th>Mobile</th>
+                                                <th style="width: 140px;">Commission (%)</th>
                                                 <th style="width: 150px;">Action</th>
                                             </tr>
                                         </thead>
@@ -35,6 +36,9 @@
                                                     <td class="font-weight-bold">{{ $officer->name }}</td>
                                                     <td dir="rtl">{{ $officer->name_urdu ?? '-' }}</td>
                                                     <td>{{ $officer->mobile }}</td>
+                                                    <td>
+                                                        <span class="badge bg-light text-dark border font-monospace">{{ number_format($officer->commission_rate ?? 0, 1) }}%</span>
+                                                    </td>
                                                     <td>
                                                         @include('admin_panel.partials.action_buttons', [
                                                             'editRoute' => 'javascript:void(0)',
@@ -51,7 +55,7 @@
                                                 </tr>
                                             @empty
                                                 <tr>
-                                                    <td colspan="5" class="text-center text-muted py-4">No Sales Officers found. Click "Create Sales Officer" to add one.</td>
+                                                    <td colspan="6" class="text-center text-muted py-4">No Sales Officers found. Click "Create Sales Officer" to add one.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>
@@ -91,6 +95,14 @@
                             <label class="form-label font-weight-bold">Mobile <span class="text-danger">*</span></label>
                             <input type="text" name="mobile" class="form-control" placeholder="03001234567" required />
                         </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label font-weight-bold">Default Commission Rate (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" max="100" name="commission_rate" class="form-control" placeholder="0.00" value="0.00" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Default commission percentage applied on realized net sales in reports.</small>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Close</button>
@@ -128,6 +140,14 @@
                         <div class="form-group mb-3">
                             <label class="form-label font-weight-bold">Mobile <span class="text-danger">*</span></label>
                             <input type="text" name="mobile" id="edit_mobile" class="form-control" placeholder="03001234567" required />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label font-weight-bold">Default Commission Rate (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" max="100" name="commission_rate" id="edit_commission_rate" class="form-control" placeholder="0.00" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">Default commission percentage applied on realized net sales in reports.</small>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -185,13 +205,11 @@
                         errorHtml = list.join('<br>');
                     } else if (xhr.responseJSON.message) {
                         errorHtml = xhr.responseJSON.message;
-                    } else if (xhr.responseJSON.error) {
-                        errorHtml = xhr.responseJSON.error;
                     }
                 }
                 Swal.fire({
                     icon: 'error',
-                    title: 'Error',
+                    title: 'Error!',
                     html: errorHtml
                 });
             }
@@ -253,6 +271,7 @@
                         $('#edit_name').val(data.name);
                         $('#edit_name_urdu').val(data.name_urdu || '');
                         $('#edit_mobile').val(data.mobile);
+                        $('#edit_commission_rate').val(data.commission_rate ?? '0.00');
                         $('#editModal').modal('show');
                     },
                     error: function(xhr) {
