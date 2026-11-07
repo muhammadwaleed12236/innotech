@@ -297,10 +297,22 @@
                                                         {{ $formattedVal }}
                                                     </a>
 
+                                                @elseif($key === 'party_type')
+                                                    @if(($customer->party_type ?? '') === 'both' || !empty($customer->linked_vendor_id))
+                                                        <span class="badge bg-primary text-white px-2 py-1" style="font-size: 11px;">
+                                                            <i class="fas fa-sync-alt me-1"></i>Both (Cust &amp; Vend)
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border px-2 py-1" style="font-size: 11px;">Customer</span>
+                                                    @endif
+
                                                 @elseif($key === 'customer_name')
                                                     <a href="javascript:void(0)" class="btn-view-customer fw-bold text-dark text-decoration-none" data-id="{{ $customer->id }}">
                                                         {{ $formattedVal }}
                                                     </a>
+                                                    @if(($customer->party_type ?? '') === 'both' || !empty($customer->linked_vendor_id))
+                                                        <span class="badge bg-primary-subtle text-primary border border-primary ms-1 px-1.5 py-0" style="font-size: 10px;" title="Party active as Customer &amp; Vendor">Both</span>
+                                                    @endif
                                                     @if($customer->customer_name_ur)
                                                         <small class="text-muted d-block" dir="rtl" style="font-family: 'Noto Nastaliq Urdu', serif;">
                                                             {{ $customer->customer_name_ur }}

@@ -123,6 +123,21 @@ class CustomerController extends Controller
             });
         }
 
+        // Party Category (Role) Filter
+        if ($request->filled('party_type') && $request->party_type !== 'all') {
+            if ($request->party_type === 'both') {
+                $query->where(function ($q) {
+                    $q->where('party_type', 'both')
+                      ->orWhereNotNull('linked_vendor_id');
+                });
+            } else {
+                $query->where(function ($q) {
+                    $q->where('party_type', 'customer')
+                      ->orWhereNull('party_type');
+                });
+            }
+        }
+
         // Dynamic Field Filters
         foreach ($searchFields as $sf) {
             $k = $sf->field_key;

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Vendor;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use App\Models\JournalEntry;
 use App\Models\VendorLedger;
 use App\Models\VendorPayment;
@@ -13,50 +16,188 @@ use App\Models\Purchase;
 
 class VendorController extends Controller
 {
-    // Show all vendors
-    public function index() {
-        $vendors = Vendor::all();
-        return view('admin_panel.vendors.index', compact('vendors'));
+    /**
+     * Show all vendors with search and location filters.
+     */
+    public function index(Request $request)
+    {
+        $query = Vendor::query();
+
+        // Keyword Search
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('phone', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%")
+                  ->orWhere('cnic', 'LIKE', "%{$search}%")
+                  ->orWhere('ntn_number', 'LIKE', "%{$search}%")
+                  ->orWhere('strn_number', 'LIKE', "%{$search}%")
+                  ->orWhere('address', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Location Filters
+        if ($request->filled('province') && $request->province !== 'all') {
+            $query->where('province', $request->province);
+        }
+
+        if ($request->filled('city') && $request->city !== 'all') {
+            $query->where('city', $request->city);
+        }
+
+        if ($request->filled('area') && $request->area !== 'all') {
+            $query->where('area', $request->area);
+        }
+
+        // Party Type Filter
+        if ($request->filled('party_type') && $request->party_type !== 'all') {
+            if ($request->party_type === 'both') {
+                $query->where(function ($q) {
+                    $q->where('party_type', 'both')
+                      ->orWhereNotNull('linked_customer_id');
+                });
+            } else {
+                $query->where('party_type', 'vendor');
+            }
+        }
+
+        $vendors = $query->orderByDesc('id')->get();
+
+        // Calculate KPI Metrics for ERP Dashboard Cards
+        $stats = [
+            'total_vendors' => Vendor::count(),
+            'total_opening_balance' => (float) Vendor::sum('opening_balance'),
+            'both_parties' => Vendor::where('party_type', 'both')->orWhereNotNull('linked_customer_id')->count(),
+            'total_cities' => Vendor::whereNotNull('city')->where('city', '<>', '')->distinct('city')->count('city'),
+        ];
+
+        return view('admin_panel.vendors.index', compact('vendors', 'stats'));
     }
 
-    // Store or update vendor information
+    /**
+     * Store or update vendor information.
+     */
     public function store(Request $request)
     {
-        $partyType = $request->party_type ?? 'vendor';
+        // Consolidate phone / mobile if needed
         if (empty($request->phone) && !empty($request->mobile)) {
             $request->merge(['phone' => $request->mobile]);
         }
 
-        if ($request->id) {
-            // Update existing vendor
-            $vendor = Vendor::findOrFail($request->id);
-            $vendor->update($request->all());
-
-            $newOpening = (float) ($request->opening_balance ?? 0);
-            $this->syncOpeningBalance($vendor, $newOpening);
-
-            // Sync with Customer if party_type is both
-            $this->syncLinkedCustomer($vendor, $partyType);
-        } else {
-            // Create a new vendor and ledger entry
-            $vendor = Vendor::create($request->all());
-
-            $newOpening = (float) ($request->opening_balance ?? 0);
-            $this->syncOpeningBalance($vendor, $newOpening);
-
-            // Sync with Customer if party_type is both
-            $this->syncLinkedCustomer($vendor, $partyType);
+        // Clean opening_balance input: if empty or missing, default to 0.00
+        if (!$request->has('opening_balance') || $request->opening_balance === '' || $request->opening_balance === null) {
+            $request->merge(['opening_balance' => 0.00]);
         }
 
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'vendor' => $vendor ?? Vendor::find($request->id),
-                'message' => 'Saved Successfully'
+        // Comprehensive validation with clear user-friendly messages
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'party_type' => 'nullable|string|in:vendor,both',
+            'opening_balance' => 'nullable|numeric',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'cnic' => 'nullable|string|max:50',
+            'ntn_number' => 'nullable|string|max:50',
+            'strn_number' => 'nullable|string|max:50',
+            'province' => 'nullable|string|max:100',
+            'city' => 'nullable|string|max:100',
+            'area' => 'nullable|string|max:100',
+            'address' => 'nullable|string|max:500',
+        ], [
+            'name.required' => 'Vendor Name is required.',
+            'opening_balance.numeric' => 'Opening balance must be a valid number.',
+            'email.email' => 'Please provide a valid email address.',
+        ]);
+
+        if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            return back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            return DB::transaction(function () use ($request) {
+                $partyType = $request->party_type ?? 'vendor';
+                $newOpening = (float) ($request->opening_balance ?? 0.00);
+
+                $vendorData = [
+                    'name' => trim($request->name),
+                    'party_type' => $partyType,
+                    'email' => $request->email ? trim($request->email) : null,
+                    'phone' => $request->phone ? trim($request->phone) : null,
+                    'cnic' => $request->cnic ? trim($request->cnic) : null,
+                    'ntn_number' => $request->ntn_number ? trim($request->ntn_number) : null,
+                    'strn_number' => $request->strn_number ? trim($request->strn_number) : null,
+                    'province' => $request->province ?: null,
+                    'city' => $request->city ?: null,
+                    'area' => $request->area ?: null,
+                    'address' => $request->address ?: null,
+                    'opening_balance' => $newOpening,
+                ];
+
+                if ($request->id) {
+                    $vendor = Vendor::findOrFail($request->id);
+                    $vendor->update($vendorData);
+                } else {
+                    $vendor = Vendor::create($vendorData);
+                }
+
+                // Sync opening balance in ledgers and journal entries
+                $this->syncOpeningBalance($vendor, $newOpening);
+
+                // Synchronize with Customer table if party_type is 'both'
+                $this->syncLinkedCustomer($vendor, $partyType);
+
+                $message = $request->id ? 'Vendor updated successfully.' : 'Vendor created successfully.';
+
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'vendor' => $vendor,
+                        'message' => $message
+                    ]);
+                }
+
+                return back()->with('success', $message);
+            });
+        } catch (\Throwable $e) {
+            Log::error("Vendor Store Error: " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all()
             ]);
-        }
 
-        return back()->with('success', 'Saved Successfully');
+            $errMsg = $e->getMessage();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error: ' . $errMsg,
+                    'errors' => [
+                        'general' => [$errMsg]
+                    ]
+                ], 422);
+            }
+
+            return back()->withErrors(['error' => $errMsg])->withInput();
+        }
+    }
+
+    /**
+     * Show vendor for editing via AJAX.
+     */
+    public function edit($id)
+    {
+        $vendor = Vendor::findOrFail($id);
+        return response()->json([
+            'success' => true,
+            'vendor' => $vendor
+        ]);
     }
 
     /**
@@ -66,15 +207,20 @@ class VendorController extends Controller
     {
         if ($partyType === 'both') {
             $customer = null;
+            // 1. Look up by explicit linked_customer_id
             if ($vendor->linked_customer_id) {
                 $customer = \App\Models\Customer::find($vendor->linked_customer_id);
             }
+            // 2. Or lookup by customer linked to this vendor ID
             if (!$customer) {
-                $customer = \App\Models\Customer::where('customer_name', $vendor->name)
-                    ->orWhere(function($q) use ($vendor) {
-                        if (!empty($vendor->phone)) $q->where('mobile', $vendor->phone);
-                    })->first();
+                $customer = \App\Models\Customer::where('linked_vendor_id', $vendor->id)->first();
             }
+            // 3. Or lookup by exact customer_name
+            if (!$customer) {
+                $customer = \App\Models\Customer::where('customer_name', $vendor->name)->first();
+            }
+
+            $opening = !empty($vendor->opening_balance) ? (float) $vendor->opening_balance : 0.00;
 
             if ($customer) {
                 $customer->update([
@@ -88,6 +234,7 @@ class VendorController extends Controller
                     'area' => $vendor->area ?: $customer->area,
                     'party_type' => 'both',
                     'linked_vendor_id' => $vendor->id,
+                    'status' => 'active',
                 ]);
             } else {
                 $maxId = (int) \App\Models\Customer::max('id') + 1;
@@ -106,7 +253,30 @@ class VendorController extends Controller
                     'party_type' => 'both',
                     'linked_vendor_id' => $vendor->id,
                     'status' => 'active',
+                    'opening_balance' => $opening,
+                    'previous_balance' => $opening,
+                    'balance_range' => 0.00,
                 ]);
+            }
+
+            // Sync dynamic custom fields (NTN and STRN)
+            if (!empty($vendor->ntn_number)) {
+                $ntnDef = \App\Models\CustomerFieldDefinition::where('field_key', 'ntn_number')->first();
+                if ($ntnDef) {
+                    \App\Models\CustomerCustomFieldValue::updateOrCreate(
+                        ['customer_id' => $customer->id, 'field_definition_id' => $ntnDef->id],
+                        ['field_key' => 'ntn_number', 'value' => $vendor->ntn_number]
+                    );
+                }
+            }
+            if (!empty($vendor->strn_number)) {
+                $strnDef = \App\Models\CustomerFieldDefinition::where('field_key', 'strn_number')->first();
+                if ($strnDef) {
+                    \App\Models\CustomerCustomFieldValue::updateOrCreate(
+                        ['customer_id' => $customer->id, 'field_definition_id' => $strnDef->id],
+                        ['field_key' => 'strn_number', 'value' => $vendor->strn_number]
+                    );
+                }
             }
 
             if ($vendor->linked_customer_id !== $customer->id || $vendor->party_type !== 'both') {
@@ -200,10 +370,7 @@ class VendorController extends Controller
 
             // 2. Sync VendorLedger
             $obLedger = VendorLedger::where('vendor_id', $vendor->id)
-                ->where(function ($q) {
-                    $q->where('previous_balance', 0)->where('opening_balance', '>', 0)
-                      ->orWhere('description', 'Opening Balance');
-                })
+                ->where('previous_balance', 0)
                 ->first();
 
             if ($newOpening > 0) {
@@ -219,7 +386,6 @@ class VendorController extends Controller
                         'previous_balance' => 0,
                         'opening_balance' => $newOpening,
                         'closing_balance' => $newOpening,
-                        'description' => 'Opening Balance',
                         'created_at' => $vendor->created_at ?? now(),
                     ]);
                 }
@@ -229,35 +395,38 @@ class VendorController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            \Log::error("Vendor syncOpeningBalance Error: " . $e->getMessage());
+            Log::error("Vendor syncOpeningBalance Error: " . $e->getMessage());
         }
     }
 
-    // Soft delete vendor and related ledger entry
-    public function delete($id) {
-    // Find the vendor by id, along with the related ledger entry using the 'ledger' relationship
-    $vendor = Vendor::with('ledger')->findOrFail($id);
+    /**
+     * Soft delete vendor and related ledger entry.
+     */
+    public function delete($id)
+    {
+        $vendor = Vendor::with('ledger')->findOrFail($id);
+        $vendor->delete();
 
-    // The vendor's ledger will be automatically deleted due to cascading delete
-    $vendor->delete(); // Soft delete vendor
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Vendor deleted successfully.'
+            ]);
+        }
 
-    return back()->with('success', 'Deleted Successfully');
-}
+        return back()->with('success', 'Vendor deleted successfully.');
+    }
 
-
-    // Show vendor ledger
+    /**
+     * Show vendor ledger summary.
+     */
     public function vendors_ledger()
     {
         if (Auth::check()) {
-            // Get all ledgers
             $VendorLedgers = VendorLedger::with('vendor')->get();
-            
-            // Recalculate balances from Journal Entries
             $balanceService = app(\App\Services\BalanceService::class);
             
             foreach ($VendorLedgers as $ledger) {
-                // Calculate actual closing balance from journal entries
-                // Note: BalanceService::getVendorBalance returns positive for Credit (Payable)
                 $ledger->formatted_closing_balance = $balanceService->getVendorBalance($ledger->vendor_id);
             }
             
@@ -267,7 +436,9 @@ class VendorController extends Controller
         }
     }
 
-    // Show all vendor payments
+    /**
+     * Show all vendor payments.
+     */
     public function vendor_payments()
     {
         $userId = Auth::id();
@@ -280,7 +451,9 @@ class VendorController extends Controller
         return view('admin_panel.vendors.vendor_payments', compact('payments', 'vendors'));
     }
 
-    // Store vendor payment and update ledger
+    /**
+     * Store vendor payment and update ledger.
+     */
     public function store_vendor_payment(Request $request)
     {
         $request->validate([
@@ -292,7 +465,6 @@ class VendorController extends Controller
             'adjustment_type' => 'required|in:plus,minus',
         ]);
 
-        // Save the vendor payment
         VendorPayment::create([
             'vendor_id' => $request->vendor_id,
             'admin_or_user_id' => Auth::id(),
@@ -302,7 +474,6 @@ class VendorController extends Controller
             'note' => $request->note,
         ]);
 
-        // Update vendor ledger
         $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->first();
         if ($ledger) {
             $ledger->closing_balance += ($request->adjustment_type === 'minus' ? -1 : 1) * $request->amount;
@@ -312,7 +483,9 @@ class VendorController extends Controller
         return redirect()->back()->with('success', 'Vendor payment recorded.');
     }
 
-    // Show all vendor bilties
+    /**
+     * Show all vendor bilties.
+     */
     public function vendor_bilties()
     {
         $bilties = VendorBilty::with(['vendor', 'purchase'])->orderByDesc('id')->get();
@@ -321,7 +494,9 @@ class VendorController extends Controller
         return view('admin_panel.vendors.vendor_bilties', compact('bilties', 'vendors', 'purchases'));
     }
 
-    // Store vendor bilty information
+    /**
+     * Store vendor bilty information.
+     */
     public function store_vendor_bilty(Request $request)
     {
         $request->validate([
@@ -339,7 +514,9 @@ class VendorController extends Controller
         return back()->with('success', 'Vendor bilty saved successfully.');
     }
 
-    // Get vendor balance by vendor id
+    /**
+     * Get vendor balance by vendor id.
+     */
     public function getVendorBalance($id)
     {
         $ledger = VendorLedger::where('vendor_id', $id)->first();
@@ -349,13 +526,11 @@ class VendorController extends Controller
     }
 
     /**
-     * Show vendor ledger (journal-based)
+     * Show vendor ledger (journal-based).
      */
     public function ledger($vendorId)
     {
         $vendor = Vendor::findOrFail($vendorId);
-        
-        // Get date range from request or default to current month
         $startDate = request('start_date', now()->startOfMonth()->format('Y-m-d'));
         $endDate = request('end_date', now()->endOfMonth()->format('Y-m-d'));
         
@@ -364,21 +539,19 @@ class VendorController extends Controller
         
         return view('admin_panel.vendors.ledger', $ledgerData);
     }
+
     /**
-     * Get vendor ledger as JSON (AJAX)
+     * Get vendor ledger as JSON (AJAX).
      */
     public function getVendorLedgerJson($vendorId)
     {
         $vendor = Vendor::findOrFail($vendorId);
         $balanceService = app(\App\Services\BalanceService::class);
         
-        // Default range: last 30 days
         $startDate = request('start_date', now()->subDays(30)->format('Y-m-d'));
         $endDate = request('end_date', now()->format('Y-m-d'));
         
         $ledgerData = $balanceService->getVendorLedger($vendorId, $startDate, $endDate);
-        
-        // Add current balance to response
         $ledgerData['current_balance'] = $balanceService->getVendorBalance($vendorId);
         
         return response()->json($ledgerData);

@@ -82,6 +82,32 @@
             color: #1d4ed8;
         }
 
+        /* Modern Crisp Menu Dropdown Arrows (FontAwesome 6) */
+        .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu-arrow {
+            display: inline-flex !important;
+            align-items: center !important;
+            margin-left: 6px !important;
+            vertical-align: middle !important;
+            transition: transform 0.25s ease !important;
+        }
+
+        .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item > .nav-link .menu-arrow:before {
+            font-family: "Font Awesome 6 Free" !important;
+            font-weight: 900 !important;
+            content: "\f078" !important;
+            font-size: 9px !important;
+            display: inline-block !important;
+            line-height: 1 !important;
+            color: #94a3b8 !important;
+            transition: all 0.2s ease !important;
+        }
+
+        .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:hover > .nav-link .menu-arrow:before,
+        .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.show-submenu > .nav-link .menu-arrow:before {
+            transform: rotate(180deg) !important;
+            color: #2563eb !important;
+        }
+
         /* Desktop Mega Menu Positioning */
         @media (min-width: 992px) {
             .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.mega-menu {
@@ -128,6 +154,46 @@
             .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:nth-last-child(-n+3):not(.mega-menu) .submenu {
                 left: auto !important;
                 right: 0 !important;
+            }
+
+            /* Scrollable Submenus (e.g. Reports) so they never overflow below the screen */
+            .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item:not(.mega-menu) .submenu {
+                max-height: calc(100vh - 125px) !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                min-width: 250px;
+                scrollbar-width: thin;
+                scrollbar-color: #cbd5e1 #f8fafc;
+            }
+
+            .mega-menu .submenu {
+                max-height: calc(100vh - 110px) !important;
+                overflow-y: auto !important;
+                scrollbar-width: thin;
+                scrollbar-color: #cbd5e1 #f8fafc;
+            }
+
+            /* Custom Slim Scrollbars for Submenus */
+            .nav-item .submenu::-webkit-scrollbar,
+            .mega-menu .submenu::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .nav-item .submenu::-webkit-scrollbar-track,
+            .mega-menu .submenu::-webkit-scrollbar-track {
+                background: #f8fafc;
+                border-radius: 4px;
+            }
+
+            .nav-item .submenu::-webkit-scrollbar-thumb,
+            .mega-menu .submenu::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+            }
+
+            .nav-item .submenu::-webkit-scrollbar-thumb:hover,
+            .mega-menu .submenu::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
             }
         }
 
@@ -298,8 +364,8 @@
     <link rel="stylesheet" href="{{ asset('assets/css/owl.carousel.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/owl.theme.default.min.css') }}">
     {{-- <link rel="stylesheet" href="{{ asset('assets/css/font-awesome.min.css') }}"> --}}
-    {{-- <link rel="stylesheet" href="{{ asset('assets/css/themify-icons.css') }}"> --}}
-    {{-- <link rel="stylesheet" href="{{ asset('assets/css/ionicons.min.css') }}"> --}}
+    <link rel="stylesheet" href="{{ asset('assets/css/themify-icons.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/ionicons.min.css') }}">
     {{-- <link rel="stylesheet" href="{{ asset('assets/css/et-line.css') }}"> --}}
     {{-- <link rel="stylesheet" href="{{ asset('assets/css/feather.css') }}"> --}}
     <link rel="stylesheet" href="{{ asset('assets/css/flag-icon.min.css') }}">

@@ -1373,18 +1373,18 @@ class ReportingController extends Controller
         }
     }
 
-    public function profit_loss_report()
+    public function profit_loss_report(Request $request)
     {
         $products = Product::orderBy('item_name')->get();
         $categories = Category::orderBy('name')->get();
         $custQuery = DB::table('customers')->orderBy('customer_name');
-        if ($request->province && $request->province !== 'all') {
+        if ($request->filled('province') && $request->province !== 'all') {
             $custQuery->where('province', $request->province);
         }
-        if ($request->city && $request->city !== 'all') {
+        if ($request->filled('city') && $request->city !== 'all') {
             $custQuery->where('city', $request->city);
         }
-        if ($request->area && $request->area !== 'all') {
+        if ($request->filled('area') && $request->area !== 'all') {
             $custQuery->where('area', $request->area);
         }
         $customers = $custQuery->get();
