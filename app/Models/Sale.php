@@ -14,6 +14,8 @@ class Sale extends Model
         'total_items', 'discount_type', 'sale_status', 'invoice_no', 'is_booking',
         'freight_charges', 'freight_type', 'selected_terms',
         'total_gross', 'total_exclusive_gst', 'total_sales_tax', 'total_further_tax', 'total_bonus_qty',
+        'total_trade_activity', 'total_mrp_tax', 'total_adv_tax',
+        'total_reg_discount', 'total_sp_discount',
         'source'
     ];
 

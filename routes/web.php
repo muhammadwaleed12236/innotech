@@ -597,6 +597,12 @@ Route::middleware('auth')->group(function () {
 
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:inventory.onhand.view')->name('reports.onhand');
 
+    // Discount Tracking & Profit Reconciliation Report
+    Route::get('report/discount-reconciliation', [\App\Http\Controllers\DiscountReconciliationController::class, 'index'])->name('report.discount_reconciliation');
+    Route::get('report/discount-reconciliation/fetch', [\App\Http\Controllers\DiscountReconciliationController::class, 'fetchData'])->name('report.discount_reconciliation.fetch');
+    Route::post('report/discount-reconciliation/update-split', [\App\Http\Controllers\DiscountReconciliationController::class, 'updateSplit'])->name('report.discount_reconciliation.update_split');
+    Route::get('report/discount-reconciliation/export', [\App\Http\Controllers\DiscountReconciliationController::class, 'exportCsv'])->name('report.discount_reconciliation.export');
+
     // Return modules list for permission dropdowns (AJAX)
     Route::get('/modules/list', function () {
         return response()->json(\Illuminate\Support\Facades\DB::table('modules')->pluck('name'));

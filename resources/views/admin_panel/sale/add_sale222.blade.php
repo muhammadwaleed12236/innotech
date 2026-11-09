@@ -686,72 +686,35 @@
         }
         .sales-table {
             width: 100% !important;
+            min-width: 1450px !important;
             border-collapse: collapse !important;
             margin-bottom: 0;
-            table-layout: auto !important;
+            table-layout: fixed !important;
             background: #ffffff;
         }
 
-        /* Fluid Auto-Adaptive Column Widths (Matches Image 2 & Auto-expands on column removal) */
-        .col-index-th, .sales-table .row-index-cell, .sales-table .row-index {
-            width: 3% !important;
-            min-width: 34px !important;
-            text-align: center !important;
-        }
-        .col-product-th, .sales-table .col-product {
-            width: 24% !important;
-            min-width: 210px !important;
-            text-align: left !important;
-        }
-        .c-stock-th, .sales-table .col-stock {
-            width: 6% !important;
-            min-width: 60px !important;
-            text-align: center !important;
-        }
-        .col-qty-th, .sales-table .col-qty-wrapper {
-            width: 8% !important;
-            min-width: 75px !important;
-        }
-        .c-size-th, .sales-table .col-size {
-            width: 6% !important;
-            min-width: 60px !important;
-            text-align: center !important;
-        }
-        .c-pcs-th, .sales-table .col-pieces {
-            width: 6% !important;
-            min-width: 60px !important;
-        }
-        .col-pcs-ctn-th, .sales-table .col-pcs-ctn {
-            width: 6% !important;
-            min-width: 65px !important;
-            text-align: center !important;
-        }
-        .col-price-th, .sales-table .col-price-p {
-            width: 10% !important;
-            min-width: 95px !important;
-        }
-        .c-disc-th, .sales-table .col-disc {
-            width: 9% !important;
-            min-width: 90px !important;
-        }
-        .c-st-th, .sales-table .col-st {
-            width: 7% !important;
-            min-width: 68px !important;
-        }
-        .c-ft-th, .sales-table .col-ft {
-            width: 7% !important;
-            min-width: 68px !important;
-        }
-        .col-amount-th, .sales-table .col-amount {
-            width: 10% !important;
-            min-width: 95px !important;
-            text-align: right !important;
-        }
-        .col-action-th, .sales-table .col-action {
-            width: 4% !important;
-            min-width: 38px !important;
-            text-align: center !important;
-        }
+        /* Fixed Exact Equalized Column Widths */
+        .col-index-th, .sales-table .col-index { width: 28px !important; max-width: 28px !important; text-align: center !important; }
+        .col-product-th, .sales-table .col-product { min-width: 220px !important; text-align: left !important; }
+        .col-warehouse-th, .sales-table .col-warehouse { width: 95px !important; }
+        .col-batch-th, .sales-table .col-batch { width: 78px !important; text-align: center !important; }
+        .col-price-th, .sales-table .col-price-p { width: 72px !important; }
+        .c-stock-th, .sales-table .col-stock { width: 52px !important; text-align: center !important; }
+        .col-qty-ctn-th, .sales-table .col-qty-ctn { width: 54px !important; }
+        .col-qty-pcs-th, .sales-table .col-qty-pcs { width: 54px !important; }
+        .col-total-qty-th, .sales-table .col-total-qty { width: 50px !important; min-width: 48px !important; max-width: 52px !important; text-align: center !important; }
+        .col-gross-th, .sales-table .col-gross-p { width: 70px !important; }
+        .col-trade-activity-th, .sales-table .col-trade-activity { width: 66px !important; }
+        .col-reg-disc-pct-th, .sales-table .col-reg-disc-pct { width: 46px !important; }
+        .col-reg-disc-amt-th, .sales-table .col-reg-disc-amt { width: 66px !important; }
+        .col-sp-disc-pct-th, .sales-table .col-sp-disc-pct { width: 46px !important; }
+        .col-sp-disc-amt-th, .sales-table .col-sp-disc-amt { width: 66px !important; }
+        .c-st-th, .sales-table .col-st { width: 68px !important; }
+        .col-mrp-th, .sales-table .col-mrp { width: 66px !important; }
+        .c-ft-th, .sales-table .col-ft { width: 68px !important; }
+        .col-adv-tax-th, .sales-table .col-adv-tax { width: 66px !important; }
+        .col-amount-th, .sales-table .col-amount { width: 82px !important; text-align: right !important; }
+        .col-action-th, .sales-table .col-action { width: 26px !important; max-width: 26px !important; text-align: center !important; }
         .sales-table .input-group {
             flex-wrap: nowrap !important;
         }
@@ -766,6 +729,12 @@
             border-bottom-left-radius: 0 !important;
             border-left: 1px solid #CBD5E1 !important;
             background-color: #F8FAFC;
+        }
+        .sales-table tbody input.form-control,
+        .sales-table tbody input:not(.total-pieces):not(.stock) {
+            text-align: left !important;
+            padding-left: 5px !important;
+            padding-right: 3px !important;
         }
         .sales-table thead th {
             background: #F1F5F9 !important;
@@ -808,12 +777,12 @@
         /* Table inputs — clean Excel grid cells that highlight with sharp blue outline on focus */
         .sales-table tbody .form-control,
         .sales-table tbody .form-select {
-            height: 34px !important;
+            height: 28px !important;
             border: 1px solid #CBD5E1 !important;
             border-radius: 4px !important;
-            padding: 3px 6px !important;
-            font-size: 13px !important;
-            font-weight: 500 !important;
+            padding: 2px 3px !important;
+            font-size: 11.5px !important;
+            font-weight: 600 !important;
             background: #ffffff !important;
             box-shadow: none !important;
             color: #0F172A !important;
@@ -1448,7 +1417,188 @@
         .wrapper-sale-type { display: none !important; }
     @endif
 
-</style>
+
+        /* ======================== EXCEL GRID VIEW (SPACIOUS & MODERN) ======================== */
+        .pos-table-wrap {
+            overflow-x: auto;
+            border: 1px solid #CBD5E1;
+            background: #ffffff;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            margin-bottom: 0;
+        }
+        .sales-table {
+            min-width: 1600px !important;
+            width: 100% !important;
+            border-collapse: collapse !important;
+            border-spacing: 0 !important;
+            margin-bottom: 0 !important;
+            font-size: 12.5px !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
+        .sales-table thead th {
+            background: #F1F5F9 !important;
+            color: #334155 !important;
+            border: 1px solid #CBD5E1 !important;
+            padding: 8px 4px !important;
+            font-weight: 700 !important;
+            font-size: 11px !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+            white-space: normal !important;
+            line-height: 1.25 !important;
+            text-transform: uppercase;
+            letter-spacing: .2px;
+        }
+        .sales-table thead th.col-product {
+            text-align: left !important;
+            padding-left: 10px !important;
+        }
+        .sales-table tbody td {
+            padding: 0 !important;
+            border: 1px solid #CBD5E1 !important;
+            vertical-align: middle !important;
+            background: #ffffff;
+            height: 34px !important;
+            position: relative;
+        }
+        .sales-table tbody tr:hover td {
+            background-color: #F8FAFC !important;
+        }
+        .sales-table tbody tr.sale-item-row:hover td {
+            background-color: #F0F7FF !important;
+        }
+        .sales-table .form-control, 
+        .sales-table .form-select {
+            height: 34px !important;
+            min-height: 34px !important;
+            padding: 2px 6px !important;
+            font-size: 12.5px !important;
+            font-weight: 500 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            line-height: 1.3 !important;
+            color: #0F172A !important;
+            width: 100% !important;
+        }
+        .sales-table .form-control:hover,
+        .sales-table .form-select:hover {
+            background: #F1F5F9 !important;
+        }
+        .sales-table .form-control:focus,
+        .sales-table .form-select:focus {
+            background: #ffffff !important;
+            box-shadow: inset 0 0 0 2px #2563EB !important;
+            outline: none !important;
+            position: relative;
+            z-index: 2;
+        }
+        .sales-table .input-readonly {
+            background: #F8FAFC !important;
+            color: #475569 !important;
+            font-weight: 600 !important;
+            cursor: default !important;
+        }
+        .sales-table .carton-qty {
+            background: #FFFDF0 !important;
+            font-weight: 700 !important;
+            color: #854D0E !important;
+        }
+        .sales-table .carton-qty:focus {
+            background: #ffffff !important;
+            color: #0F172A !important;
+        }
+        .sales-table .loose-pcs-input {
+            background: #F0FDF4 !important;
+            font-weight: 700 !important;
+            color: #166534 !important;
+        }
+        .sales-table .loose-pcs-input:focus {
+            background: #ffffff !important;
+            color: #0F172A !important;
+        }
+        .sales-table tbody .select2-container {
+            width: 100% !important;
+            margin: 0 !important;
+        }
+        .sales-table tbody .select2-container .select2-selection--single {
+            height: 34px !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .sales-table tbody .select2-container:hover .select2-selection--single {
+            background: #F1F5F9 !important;
+        }
+        .sales-table tbody .select2-container--focus .select2-selection--single,
+        .sales-table tbody .select2-container--open .select2-selection--single {
+            background: #ffffff !important;
+            box-shadow: inset 0 0 0 2px #2563EB !important;
+        }
+        .sales-table tbody .select2-container .select2-selection__rendered {
+            line-height: 34px !important;
+            padding-left: 8px !important;
+            padding-right: 20px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #0F172A !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .sales-table tbody .select2-container .select2-selection__arrow {
+            height: 34px !important;
+            right: 4px !important;
+        }
+        .sales-table tfoot {
+            background: #F8FAFC !important;
+            font-weight: 700 !important;
+        }
+        .sales-table tfoot td {
+            background: #F8FAFC !important;
+            border-top: 2px solid #64748B !important;
+            padding: 6px 4px !important;
+            height: 38px !important;
+            font-size: 12px !important;
+        }
+
+    
+        .sales-table select.select2-hidden-accessible {
+            display: none !important;
+            position: absolute !important;
+            clip: rect(0,0,0,0) !important;
+            height: 0 !important;
+            width: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        /* Completely remove browser spinner arrows (stepper buttons) from all number inputs */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button,
+        .sales-table input[type="number"]::-webkit-outer-spin-button,
+        .sales-table input[type="number"]::-webkit-inner-spin-button,
+        .sales-table input::-webkit-outer-spin-button,
+        .sales-table input::-webkit-inner-spin-button,
+        .form-control[type="number"]::-webkit-outer-spin-button,
+        .form-control[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none !important;
+            margin: 0 !important;
+            display: none !important;
+        }
+        input[type="number"],
+        .sales-table input[type="number"],
+        .form-control[type="number"] {
+            -moz-appearance: textfield !important;
+            appearance: textfield !important;
+        }
+
+    </style>
 
     <div class="container-fluid px-3 px-lg-4 pt-3 pb-4 sale-page">
 
@@ -1689,184 +1839,281 @@
 
                 <div class="pos-table-wrap">
                     <table class="table sales-table mb-0">
-                        <thead>
+                                                                        <thead>
                             <tr>
-                                <th class="col-index-th">#</th>
-                                <th class="col-product-th col-product">Product</th>
+                                <th class="col-index-th text-center" style="width: 28px;">#</th>
+                                <th class="col-product-th text-center" style="min-width: 220px;">Item Title</th>
                                 @if($canSelectWarehouse)
-                                    <th class="col-warehouse-th text-center" style="width: 140px; min-width: 130px;">Warehouse</th>
+                                    <th class="col-warehouse-th text-center" style="width: 95px;">Warehouse</th>
                                 @endif
-                                <th class="c-stock-th">Stock</th>
-                                <th class="col-qty-th">Qty</th>
-                                <th class="c-size-th">Size</th>
-                                <th class="c-pcs-th">Pcs</th>
-                                <th class="col-pcs-ctn-th">Pcs/Ctn</th>
-                                <th class="col-price-th">Price</th>
-                                <th class="c-disc-th">Discount</th>
-                                <th class="c-st-th">ST %</th>
-                                <th class="c-ft-th">FT %</th>
-                                <th class="col-amount-th">Amount</th>
-                                <th class="col-action-th">Action</th>
+                                <th class="col-batch-th text-center" style="width: 78px;">Batch No</th>
+                                <th class="col-price-th text-center" style="width: 72px;">Trade Price<br>/ Retail</th>
+                                <th class="c-stock-th text-center" style="width: 52px;">Stock<br>Bal.</th>
+                                <th class="col-qty-ctn-th text-center" style="width: 54px;">Qty in<br>CTNs</th>
+                                <th class="col-qty-pcs-th text-center" style="width: 54px;">Qty in<br>Pieces / Box</th>
+                                <th class="col-total-qty-th text-center" style="width: 50px; min-width: 48px; max-width: 52px; padding: 4px 1px !important;">Tot<br>Qty</th>
+                                <th class="col-gross-th text-center" style="width: 70px;">Gross</th>
+                                <th class="col-trade-activity-th text-center" style="width: 66px;" title="Bonus Amount Added">Trade<br>Activity</th>
+                                <th class="col-reg-disc-pct-th text-center" style="width: 46px;" title="Regular Discount %">Reg.<br>Disc. %</th>
+                                <th class="col-reg-disc-amt-th text-center" style="width: 66px;" title="Regular Discount Amount">Regular<br>Disc. Amt</th>
+                                <th class="col-sp-disc-pct-th text-center" style="width: 46px;" title="Special Discount %">Sp.<br>Disc. %</th>
+                                <th class="col-sp-disc-amt-th text-center" style="width: 66px;" title="Special Discount Amount">Special<br>Disc. Amt</th>
+                                <th class="c-st-th text-center" style="width: 68px;" title="Sales Tax % on Trade">Sales<br>Tax %</th>
+                                <th class="col-mrp-th text-center" style="width: 66px;" title="MRP Tax (Retail Price 3rd Sched)">MRP<br>Amount</th>
+                                <th class="c-ft-th text-center" style="width: 68px;" title="URC Tax (Further Tax for Unregistered)">URC Tax<br>Amount</th>
+                                <th class="col-adv-tax-th text-center" style="width: 66px;" title="Advance Tax (236G/H)">Adv.<br>Tax Amt</th>
+                                <th class="col-amount-th text-center" style="width: 82px;">Net<br>Amount</th>
+                                <th class="col-action-th text-center" style="width: 26px;"><i class="fas fa-times text-danger"></i></th>
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
-                            <tr>
-                                <td class="row-index-cell row-index">1</td>
+                            <tr class="sale-item-row" data-index="0">
+                                <!-- # -->
+                                <td class="col-index text-center fw-bold row-index-cell" style="font-size: 11px;">1</td>
 
-                                <!-- PRODUCT -->
+                                <!-- ITEM TITLE -->
                                 <td class="col-product">
-                                    <select class="form-select product" style="width:100%">
-                                        <option value=""></option>
-                                        @if(isset($allProducts) && count($allProducts) > 0)
-                                            @foreach($allProducts as $p)
-                                                <option value="{{ $p->id }}" 
-                                                    data-sku="{{ $p->item_code }}" 
-                                                    data-stock="{{ $p->warehouse_stocks_sum_total_pieces ?? 0 }}"
-                                                    data-retail_price="{{ $p->sale_price_per_piece ?? 0 }}"
-                                                    data-trade_price="{{ $p->purchase_price_per_piece ?? 0 }}"
-                                                    data-wholesale_price="{{ $p->wholesale_price ?? 0 }}"
-                                                    data-weight_per_piece="{{ $p->weight_per_piece ?? 0 }}"
-                                                    data-pieces_per_box="{{ $p->pieces_per_box ?? 1 }}"
-                                                    data-size_mode="{{ $p->size_mode }}"
-                                                    data-sale_discount_percent="{{ $p->sale_discount_percent ?? 0 }}"
-                                                    data-name="{{ $p->item_name }}">
-                                                    {{ $p->item_name }} (SKU: {{ $p->item_code }})
-                                                </option>
-                                            @endforeach
-                                        @endif
-                                    </select>
+                                    <select class="form-select product-select2 product" style="width: 100%;"></select>
                                     <input type="hidden" class="product-id-hidden" name="product_id[]">
                                     <input type="hidden" class="variant-data-hidden" name="color[]">
-                                     <input type="hidden" class="batch-id-hidden" name="batch_id[]">
-                                     <input type="hidden" class="batch-no-hidden" name="batch_no[]">
-                                     <input type="hidden" class="serials-hidden" name="serials[]">
-                                     <div class="row-tracking-badges mt-1 d-flex flex-wrap gap-1"></div>
-                                    <input type="hidden" class="item-code-display">
-                                    <input type="hidden" class="size-h">
-                                    <input type="hidden" class="size-w">
-                                    <input type="hidden" class="size-mode-text">
+                                    <input type="hidden" class="batch-id-hidden" name="batch_id[]">
+                                    <input type="hidden" class="batch-no-hidden" name="batch_no[]">
+                                    <input type="hidden" class="serials-hidden" name="serials[]">
+                                    <input type="hidden" class="item-code-display" name="item_code[]">
+                                    <input type="hidden" class="size-display" name="size_display[]">
+                                    <input type="hidden" class="size-h" name="size_h[]">
+                                    <input type="hidden" class="size-w" name="size_w[]">
+                                    <input type="hidden" class="size-mode-text" name="size_mode_text[]">
+                                    <input type="hidden" class="variant-stock-value">
+                                    <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
+                                    <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
+                                    <div class="row-tracking-badges mt-1"></div>
                                 </td>
 
-                                <!-- WAREHOUSE -->
                                 @if($canSelectWarehouse)
-                                <td class="col-warehouse" style="width: 140px; min-width: 130px;">
-                                    <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
-                                        @if(isset($warehouse) && count($warehouse) > 0)
-                                            @foreach($warehouse as $wh)
-                                                <option value="{{ $wh->id }}" {{ ($userWarehouseId ?? 1) == $wh->id ? 'selected' : '' }}>
-                                                    {{ $wh->warehouse_name }}
-                                                </option>
-                                            @endforeach
-                                        @endif
+                                <!-- WAREHOUSE -->
+                                <td class="col-warehouse">
+                                    <select class="form-select form-select-sm warehouse" name="warehouse_id[]">
+                                        @foreach(($warehouse ?? $warehouses ?? []) as $wh)
+                                            <option value="{{ $wh->id }}" {{ (auth()->user()->warehouse_id ?? 1) == $wh->id ? 'selected' : '' }}>
+                                                {{ $wh->name ?? $wh->warehouse_name }}
+                                            </option>
+                                        @endforeach
                                     </select>
                                 </td>
                                 @else
-                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $userWarehouseId ?? 1 }}">
+                                    <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ auth()->user()->warehouse_id ?? 1 }}">
                                 @endif
 
-                                <!-- STOCK -->
-                                <td class="col-stock text-center">
-                                    <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
-                                    <input type="hidden" class="variant-stock-value">
-                                </td>
-
-                                <!-- QTY -->
-                                <td class="col-qty-wrapper">
+                                <!-- BATCH NO -->
+                                <td class="col-batch text-center">
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
-                                        <button type="button" class="btn btn-outline-primary qty-unit-toggle px-1 py-0 d-none fw-bold" data-unit-mode="main" title="Toggle Unit">Kg</button>
+                                        <input type="text" class="form-control selected-batch-no text-center fw-semibold text-primary" readonly placeholder="–" style="cursor: pointer; background: #f0f7ff;" title="Click to select or change batch">
+                                        <button type="button" class="btn btn-outline-primary btn-select-batch px-1 py-0" tabindex="-1" title="Choose Batch">
+                                            <i class="fas fa-layer-group" style="font-size: 10px;"></i>
+                                        </button>
                                     </div>
-                                    <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
+                                    <input type="hidden" class="batch-id-hidden" name="batch_id[]">
+                                    <input type="hidden" class="batch-no-hidden" name="batch_no[]">
                                 </td>
 
-                                <!-- BONUS (Commented out) -->
-                                {{-- <td class="col-bonus"> --}}
-                                    <input type="hidden" class="bonus-qty" name="bonus_qty[]" value="0">
-                                {{-- </td> --}}
-
-                                <!-- SIZE -->
-                                <td class="col-size">
-                                    <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
-                                    <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
-                                </td>
-
-                                <!-- PCS -->
-                                <td class="col-pieces">
-                                    <input type="text" class="form-control total-pieces text-end input-readonly fw-semibold" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
-                                    <input type="hidden" class="sales-qty" name="qty[]" value="0">
-                                </td>
-
-                                <!-- PCS/CTN (always visible; shows value when unit is Carton, "–" otherwise) -->
-                                <td class="col-pcs-ctn text-center">
-                                    <input type="text" class="form-control pcs-per-ctn text-center input-readonly fw-semibold" readonly tabindex="-1" placeholder="–">
-                                </td>
-
-                                <!-- PRICE -->
+                                <!-- TRADE PRICE / RETAIL -->
                                 <td class="col-price-p">
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0">
-                                        <button type="button" class="btn btn-outline-primary price-mode-row-toggle px-2 py-0 fw-bold" data-mode="retail" title="Retail Mode">R</button>
-                                    </div>
+                                    <input type="number" step="0.01" class="form-control visible-price text-start fw-semibold" name="visible_price[]" placeholder="0.00">
                                     <input type="hidden" class="price-per-piece" name="price_per_piece[]">
                                     <input type="hidden" class="retail-price">
                                     <input type="hidden" class="wholesale-price">
                                     <input type="hidden" class="weight-per-piece">
                                 </td>
 
-                                <!-- DISCOUNT -->
-                                <td class="col-disc">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control discount-value text-end" name="item_disc[]" placeholder="0">
-                                        <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
-                                        <button type="button" class="btn btn-outline-secondary discount-toggle px-2 py-0 fw-bold" data-type="percent" tabindex="-1">%</button>
-                                    </div>
+                                <!-- STOCK BAL -->
+                                <td class="col-stock">
+                                    <input type="text" class="form-control stock text-center input-readonly" readonly placeholder="0" tabindex="-1">
+                                </td>
+
+                                <!-- QTY IN CTNS -->
+                                <td class="col-qty-ctn">
+                                    <input type="number" step="0.01" class="form-control carton-qty text-start fw-semibold" name="carton_qty[]" placeholder="0">
+                                </td>
+
+                                <!-- QTY IN PIECES / BOX -->
+                                <td class="col-qty-pcs">
+                                    <input type="number" step="0.01" class="form-control loose-pcs-input text-start fw-semibold" name="loose_pieces[]" placeholder="0">
+                                    <input type="hidden" class="sales-qty" name="qty[]" value="0">
+                                </td>
+
+                                <!-- TOTAL QTY -->
+                                <td class="col-total-qty text-center" style="width: 50px; min-width: 48px; max-width: 54px;">
+                                    <input type="text" class="form-control total-pieces text-center input-readonly fw-bold font-monospace" name="total_pieces[]" readonly placeholder="0" tabindex="-1" style="padding: 2px 1px !important; font-size: 11.5px !important;">
+                                </td>
+
+                                <!-- GROSS -->
+                                <td class="col-gross-p">
+                                    <input type="text" class="form-control visible-gross text-start input-readonly fw-semibold" readonly tabindex="-1" value="0.00">
+                                    <input type="hidden" class="gross-amount" name="gross_amount[]" value="0">
+                                </td>
+
+                                <!-- TRADE ACTIVITY (BONUS AMOUNT) -->
+                                <td class="col-trade-activity">
+                                    <input type="number" step="0.01" class="form-control trade-activity text-start fw-semibold text-warning-emphasis" name="trade_activity[]" value="0.00" placeholder="0.00" title="Bonus Scheme Amount">
+                                </td>
+
+                                <!-- REG. DISC. % -->
+                                <td class="col-reg-disc-pct">
+                                    <input type="number" step="0.01" class="form-control reg-disc-percent text-start" name="reg_disc_percent[]" value="0.00" placeholder="0.00">
+                                </td>
+
+                                <!-- REGULAR DISC. AMT -->
+                                <td class="col-reg-disc-amt">
+                                    <input type="number" step="0.01" class="form-control reg-disc-amount text-start" name="reg_disc_amount[]" value="0.00" placeholder="0.00">
+                                </td>
+
+                                <!-- SP. DISC. % -->
+                                <td class="col-sp-disc-pct">
+                                    <input type="number" step="0.01" class="form-control sp-disc-percent text-start" name="sp_disc_percent[]" value="0.00" placeholder="0.00">
+                                    <input type="hidden" class="discount-value" name="item_disc[]" value="0">
+                                    <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
+                                </td>
+
+                                <!-- SPECIAL DISC. AMT -->
+                                <td class="col-sp-disc-amt">
+                                    <input type="number" step="0.01" class="form-control sp-disc-amount text-start" name="sp_disc_amount[]" value="0.00" placeholder="0.00">
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
-                                <!-- ST % (Sales Tax @18%) -->
+                                <!-- SALES TAX % -->
                                 <td class="col-st">
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="{{ (float)($saleConfig['default_st_rate'] ?? 18) }}" placeholder="18">
-                                        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+                                        <input type="number" step="0.01" class="form-control sales-tax-value text-start text-success fw-semibold" value="0.00" placeholder="0" title="Sales Tax (% or PKR)">
+                                        <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="percent">
+                                        <button type="button" class="btn btn-outline-success st-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 9.5px; padding: 0 3px !important; min-width: 16px;">%</button>
                                     </div>
+                                    <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
                                     <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
+                                    <input type="hidden" class="visible-st" value="0">
                                 </td>
 
-                                <!-- FT % (Further Tax @3%) -->
+                                <!-- MRP AMOUNT -->
+                                <td class="col-mrp">
+                                    <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)">
+                                    <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
+                                </td>
+
+                                <!-- URC TAX AMOUNT -->
                                 <td class="col-ft">
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="{{ (float)($saleConfig['default_ft_rate'] ?? 3) }}" placeholder="3">
-                                        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+                                        <input type="number" step="0.01" class="form-control urc-tax-value text-start text-primary fw-semibold" name="further_tax_percent[]" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}" placeholder="0" title="URC Tax (% or Amount)">
+                                        <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
+                                        <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
                                     </div>
+                                    <input type="hidden" class="further-tax-percent" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}">
                                     <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
                                 </td>
 
-                                <!-- AMOUNT -->
+                                <!-- ADV. TAX AMT -->
+                                <td class="col-adv-tax">
+                                    <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)">
+                                    <input type="hidden" class="adv-tax-percent" name="adv_tax_percent[]" value="0">
+                                </td>
+
+                                <!-- NET AMOUNT -->
                                 <td class="col-amount">
-                                    <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
-                                    <input type="hidden" class="gross-amount" name="gross_amount[]">
+                                    <input type="text" class="form-control sales-amount text-start input-readonly fw-bold" name="total[]" value="0.00" readonly tabindex="-1">
                                     <input type="hidden" class="exclusive-gst-amount" name="exclusive_gst_amount[]" value="0">
                                 </td>
 
                                 <!-- ACTION -->
                                 <td class="col-action text-center">
-                                    <button type="button" class="del-row" tabindex="-1" title="Delete Row">
+                                    <button type="button" class="del-row btn btn-sm text-danger p-0 border-0" tabindex="-1" title="Delete Row">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </td>
                             </tr>
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="100" class="p-2 px-3 bg-light border-top">
-                                    <div class="d-flex justify-content-end align-items-center gap-3">
-                                        <span class="grid-total-label mb-0" style="padding-right:0 !important; font-size: 13px; font-weight: 800; color: #0F172A; text-transform: uppercase; letter-spacing: .5px;">GRID TOTAL:</span>
-                                        <span class="grid-total-val mb-0" style="font-size: 17px; font-weight: 800; color: #0F172A;">Rs <span id="totalAmount">0.00</span></span>
-                                    </div>
+                        <tfoot style="border-top: 2px solid #64748B;">
+                            <tr style="background: #F8FAFC;">
+                                <td class="text-center fw-bold text-muted py-2" style="font-size: 11px;">TOTAL</td>
+                                <td class="col-product text-start fw-bold text-secondary py-2 px-2" style="font-size: 11px;">
+                                    <span id="footItemCount">0</span> Items
                                 </td>
+                                @if($canSelectWarehouse)
+                                    <td class="col-warehouse text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                @endif
+                                <td class="col-batch text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                <td class="col-price-p text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                <td class="col-stock text-center text-muted py-2" style="font-size: 11px;" id="footStockTotal">—</td>
+                                <td class="col-qty-ctn text-end fw-bold text-dark py-2 pe-1 font-monospace" style="font-size: 12px;" id="footCtnTotal">0</td>
+                                <td class="col-qty-pcs text-end fw-bold text-dark py-2 pe-1 font-monospace" style="font-size: 12px;" id="footLooseTotal">0</td>
+                                <td class="col-total-qty text-center fw-bold text-dark py-2 font-monospace" style="font-size: 12px; width: 50px; min-width: 48px; max-width: 54px;" id="footQtyTotal">0</td>
+                                <td class="col-gross-p text-end fw-bold text-dark py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footGrossTotal">0.00</td>
+                                <td class="col-trade-activity text-end fw-bold text-warning py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footTradeActivityTotal">0.00</td>
+                                <td class="col-reg-disc-pct text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                <td class="col-reg-disc-amt text-end fw-bold text-danger py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footRegDiscTotal">0.00</td>
+                                <td class="col-sp-disc-pct text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                <td class="col-sp-disc-amt text-end fw-bold text-danger py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footSpDiscTotal">0.00</td>
+                                <td class="col-st text-end fw-bold text-success py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footStTotal">0.00</td>
+                                <td class="col-mrp text-end fw-bold text-success py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footMrpTotal">0.00</td>
+                                <td class="col-ft text-end fw-bold text-primary py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footFtTotal">0.00</td>
+                                <td class="col-adv-tax text-end fw-bold text-danger-emphasis py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="footAdvTaxTotal">0.00</td>
+                                <td class="col-amount text-end fw-bold text-dark py-2 pe-2 font-monospace fs-6" style="background: #EFF6FF; border-left: 2px solid #2563EB !important; border-right: 2px solid #2563EB !important;">
+                                    Rs <span id="totalAmount">0.00</span>
+                                </td>
+                                <td class="col-action" style="background: #F8FAFC;"></td>
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+
+                {{-- Invoice Level Adjustments (Order Discount, Freight & Total Net Amount) --}}
+                <div class="p-2 p-md-3 bg-light border rounded mt-2">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-3 col-6">
+                            <div class="p-2 bg-white border rounded">
+                                <span class="d-block text-secondary fw-bold text-uppercase" style="font-size: 10px;">Order Discount</span>
+                                <div class="input-group input-group-sm mt-1">
+                                    <input type="number" step="0.01" class="form-control text-end fw-bold" id="walkinDiscountRs" value="0" placeholder="0">
+                                    <span class="input-group-text bg-light small fw-bold">Rs</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-6">
+                            <div class="p-2 bg-white border rounded">
+                                <span class="d-block text-secondary fw-bold text-uppercase" style="font-size: 10px;">Freight / Shipping</span>
+                                <div class="input-group input-group-sm mt-1">
+                                    <button type="button" class="btn btn-outline-secondary" id="freightTypeToggle" tabindex="-1" style="width: 34px; border-radius: 6px 0 0 6px; font-weight: bold; font-size: 13px; background: #F8FAFC; color: #64748b; border-color: var(--pos-border);">+</button>
+                                    <input type="hidden" name="freight_type" id="freightType" value="add">
+                                    <input type="number" step="0.01" class="form-control text-end fw-bold" id="freightCharges" name="freight_charges" value="0" placeholder="0">
+                                    <span class="input-group-text bg-light small fw-bold">Rs</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <div class="p-2 bg-white border rounded" style="border-left: 3px solid #10B981 !important;">
+                                <span class="d-block text-success fw-bold text-uppercase" style="font-size: 10px;">Tax Breakdown</span>
+                                <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11.5px;">
+                                    <span class="text-muted">GST: <strong class="text-dark" id="tExclusiveGst">0.00</strong></span>
+                                    <span class="text-success">ST: <strong id="tSalesTax">0.00</strong></span>
+                                    <span class="text-primary">FT: <strong id="tFurtherTax">0.00</strong></span>
+                                </div>
+                                <span id="labelStRate" class="d-none">{{ (float)($saleConfig['default_st_rate'] ?? 18) }}%</span>
+                                <span id="labelFtRate" class="d-none">{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}%</span>
+                                <span id="tGross" class="d-none">0.00</span>
+                                <span id="tLineDisc" class="d-none">0.00</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <div class="p-2 rounded d-flex justify-content-between align-items-center" style="background: #EFF6FF; border: 1.5px solid #2563EB;">
+                                <div>
+                                    <span class="d-block fw-bold text-primary text-uppercase" style="font-size: 11px;">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Total Net Amount
+                                    </span>
+                                    <small class="text-muted" style="font-size: 10px;">Items + Tax &plusmn; Freight - Disc</small>
+                                </div>
+                                <span class="fw-bold text-primary fs-5 font-monospace" id="tSub">0.00</span>
+                                <span id="walkinNetTotal" class="d-none">0.00</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2070,72 +2317,68 @@
                     </div>
                 </div>
 
-                {{-- RIGHT: Order Summary --}}
+                {{-- RIGHT: Bill & Payment Summary --}}
                 <div class="col-lg-6">
-                    <div class="sale-card p-3">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <span class="card-title d-flex align-items-center gap-2" style="font-size: 15px;">
-                                <i class="fas fa-file-alt text-primary"></i> Order Summary
-                            </span>
+                    <div class="sale-card p-3 h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                                <span class="card-title d-flex align-items-center gap-2 mb-0" style="font-size: 14px;">
+                                    <i class="fas fa-balance-scale text-primary me-1"></i> Bill &amp; Payment Summary
+                                </span>
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded">
+                                        <span class="d-block text-muted fw-bold text-uppercase" style="font-size: 10px;">Total Net Amount</span>
+                                        <span class="fw-bold text-primary fs-6 font-monospace" id="tSubSettlement">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded">
+                                        <span class="d-block text-muted fw-bold text-uppercase" style="font-size: 10px;">Previous Balance</span>
+                                        <span class="fw-bold text-secondary fs-6 font-monospace" id="tPrev">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded" style="border-left: 3px solid #2563EB !important;">
+                                        <span class="d-block text-muted fw-bold text-uppercase" style="font-size: 10px;">Total Payable</span>
+                                        <span class="fw-bold text-dark fs-6 font-monospace" id="tPayableCombined">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded" style="border-left: 3px solid #16A34A !important;">
+                                        <span class="d-block text-success fw-bold text-uppercase" style="font-size: 10px;">Paid Amount</span>
+                                        <span class="fw-bold text-success fs-6 font-monospace" id="receiptsTotal">0.00</span>
+                                        <span id="receiptsTotalBadge" style="display:none;">0.00</span>
+                                        <span id="bottomPaymentsTotal" class="d-none">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded" style="background: #FEF2F2; border: 1.5px solid #FECACA;">
+                                        <span class="d-block text-danger fw-bold text-uppercase" style="font-size: 10px;">Balance Due</span>
+                                        <span class="fw-bold text-danger fs-5 font-monospace" id="tPayable">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 rounded" style="background: #ECFDF5; border: 1.5px solid #A7F3D0;">
+                                        <span class="d-block text-success fw-bold text-uppercase" style="font-size: 10px;">Change / Return</span>
+                                        <span class="fw-bold text-success fs-5 font-monospace" id="walkinChange">-0.00</span>
+                                        <span id="bottomChangeVal" class="d-none">-0.00</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div>
-                            <div class="s-row row-summary-gross">
-                                <span class="s-label">Subtotal (Gross)</span>
-                                <span class="s-val" id="tGross">0.00</span>
-                            </div>
-                            <div class="s-row row-summary-line-discount">
-                                <span class="s-label">Line Discount</span>
-                                <span class="s-val" id="tLineDisc">0.00</span>
-                            </div>
-                            <div class="s-row row-summary-exclusive-gst">
-                                <span class="s-label fw-bold text-dark">Exclusive GST Amount</span>
-                                <span class="s-val fw-bold text-dark" id="tExclusiveGst">0.00</span>
-                            </div>
-                            <div class="s-row row-summary-sales-tax">
-                                <span class="s-label text-success">Sales Tax (@<span id="labelStRate">{{ (float)($saleConfig['default_st_rate'] ?? 18) }}%</span>)</span>
-                                <span class="s-val text-success fw-bold" id="tSalesTax">0.00</span>
-                            </div>
-                            <div class="s-row row-summary-further-tax">
-                                <span class="s-label text-primary">Further Tax (@<span id="labelFtRate">{{ (float)($saleConfig['default_ft_rate'] ?? 3) }}%</span>)</span>
-                                <span class="s-val text-primary fw-bold" id="tFurtherTax">0.00</span>
-                            </div>
-                            <div class="s-row row-summary-overall-discount">
-                                <span class="s-label">Discount (Rs)</span>
-                                <div class="input-group input-group-sm discount-input">
-                                    <input type="number" class="form-control text-end" id="walkinDiscountRs" value="0" placeholder="0">
-                                    <span class="input-group-text">Rs</span>
-                                </div>
-                            </div>
-                            <div class="s-row row-summary-freight">
-                                <span class="s-label">Freight</span>
-                                <div class="input-group input-group-sm discount-input">
-                                    <button type="button" class="btn btn-outline-secondary" id="freightTypeToggle" tabindex="-1" style="width: 34px; border-radius: 6px 0 0 6px; font-weight: bold; font-size: 13px; background: #F8FAFC; color: #64748b; border-color: var(--pos-border);">+</button>
-                                    <input type="hidden" name="freight_type" id="freightType" value="add">
-                                    <input type="number" class="form-control text-end" id="freightCharges" name="freight_charges" value="0" placeholder="0">
-                                    <span class="input-group-text">Rs</span>
-                                </div>
-                            </div>
-                            <div class="s-row net my-2 p-2 rounded-3" style="background: #EFF6FF; border: 1px solid #BFDBFE;">
-                                <span class="net-label fw-bold text-primary" style="font-size: 14px;">Net Total</span>
-                                <span class="net-val fw-extrabold text-primary" id="tSub" style="font-size: 18px;">0.00</span>
-                                <span id="walkinNetTotal" class="d-none">0.00</span>
-                            </div>
-                            <div class="s-row">
-                                <span class="s-label">Total Paid</span>
-                                <span class="paid-val text-success fw-bold" id="receiptsTotal">0.00</span>
-                                <span id="receiptsTotalBadge" style="display:none;">0.00</span>
-                                <span id="bottomPaymentsTotal" class="d-none">0.00</span>
-                            </div>
-                            <div class="s-row">
-                                <span class="s-label">Remaining</span>
-                                <span class="s-val text-danger fw-bold" id="tPayable">0.00</span>
-                            </div>
-                            <div class="s-row">
-                                <span class="s-label">Change</span>
-                                <span class="change-val text-success fw-bold" id="walkinChange">-0.00</span>
-                                <span id="bottomChangeVal" class="d-none">-0.00</span>
-                            </div>
+                        {{-- Screen Configuration & Info footer --}}
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-3">
+                            <a href="{{ route('sales.configuration') }}" target="_blank" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" title="Configure Sale Fields & Taxes">
+                                <i class="fas fa-sliders-h text-primary"></i>
+                                <span class="small fw-bold">Screen Configuration</span>
+                            </a>
+                            <small class="text-muted" style="font-size: 11px;">
+                                <i class="fas fa-check-circle text-success me-1"></i> Real-time calculation active
+                            </small>
                         </div>
                     </div>
                 </div>

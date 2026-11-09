@@ -10,7 +10,7 @@
     <style>
         :root {
             --primary-color: #0f172a;
-            --accent-color: #4f46e5;
+            --accent-color: #2563eb;
             --border-color: #000000;
             --text-color: #0f172a;
         }
@@ -25,7 +25,7 @@
         }
 
         .invoice-container {
-            max-width: 210mm;
+            max-width: 215mm;
             margin: 20px auto;
             background: #ffffff;
             padding: 24px;
@@ -398,11 +398,11 @@
 
             if ($hasCartonMode && $sumCartons > 0) {
                 if ($sumLoosePieces > 0) {
-                    $cartonPcsDisplay = "{$sumCartons} Ctn/Bndl + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
-                    $cartonPcsShort = "{$sumCartons} Ctn/Bndl + {$sumLoosePieces} Pcs";
+                    $cartonPcsDisplay = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs (" . number_format($sumTotalPieces) . " Total Pcs)";
+                    $cartonPcsShort = "{$sumCartons} Ctn + {$sumLoosePieces} Pcs";
                 } else {
-                    $cartonPcsDisplay = "{$sumCartons} Ctn/Bndl (" . number_format($sumTotalPieces) . " Total Pcs)";
-                    $cartonPcsShort = "{$sumCartons} Ctn/Bndl";
+                    $cartonPcsDisplay = "{$sumCartons} Ctn (" . number_format($sumTotalPieces) . " Total Pcs)";
+                    $cartonPcsShort = "{$sumCartons} Ctn";
                 }
             } elseif ($hasCartonMode && $sumLoosePieces > 0) {
                 $cartonPcsDisplay = "{$sumLoosePieces} Pcs";
@@ -417,14 +417,18 @@
         <div class="invoice-table-wrap">
             <table class="invoice-table">
                 <thead>
-                    <tr>
-                        <th class="text-center" style="width: 12%">Code</th>
-                        <th class="text-start" style="width: 33%">Description</th>
-                        <th class="text-center" style="width: 12%">Qty</th>
-                        <th class="text-center" style="width: 10%">UOM</th>
-                        <th class="text-end" style="width: 10%">Price</th>
-                        <th class="text-end" style="width: 10%">Disc</th>
-                        <th class="text-end" style="width: 13%">Total</th>
+                    <tr style="background-color: #f8fafc;">
+                        <th class="text-center" style="width: 3%">#</th>
+                        <th class="text-start" style="width: 24%">Item Description</th>
+                        <th class="text-center" style="width: 11%">Qty / Packaging</th>
+                        <th class="text-end" style="width: 12%">Trade Rate</th>
+                        <th class="text-end" style="width: 9%">Gross Value</th>
+                        <th class="text-end" style="width: 8%">Disc.</th>
+                        <th class="text-end" style="width: 9%">After Disc</th>
+                        <th class="text-end" style="width: 9%">Sales Tax</th>
+                        <th class="text-end" style="width: 15%; background-color: #eff6ff; color: #1e40af; border-left: 2px solid #3b82f6;">
+                            Actual Net Cost<br><span style="font-size:9.5px; font-weight:600; text-transform:none;">(Final Parhi / Unit)</span>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>
@@ -443,9 +447,6 @@
                             }
                             if ($piecesPerBox <= 0) $piecesPerBox = 1;
 
-                            $m2PerPiece = (float) ($item->pieces_per_m2 ?? 0);
-                            $m2PerBox = $m2PerPiece * $piecesPerBox;
-
                             $rawUnit = strtolower(trim($item->unit ?? ''));
                             $isPiece = in_array($rawUnit, ['pcs', 'pc', 'piece']);
                             $isCarton = in_array($rawUnit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && (in_array($item->size_mode, ['by_cartons', 'by_bandal'])));
@@ -459,49 +460,19 @@
                                     [$boxes, $loosePieces] = \App\Http\Controllers\PurchaseController::parseCartonQty($item->qty);
                                 }
                                 $totalPieces = ($boxes * $piecesPerBox) + $loosePieces;
-                                $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                                $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
-                                $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bundals' : 'Cartons';
-                                $uomDisplay = $cartonFull;
-                                if ($boxes > 0 && $loosePieces > 0) {
-                                    $qtyDisplay = "{$boxes} {$ctnLbl} + {$loosePieces} Pcs";
-                                } elseif ($boxes > 0) {
-                                    $qtyDisplay = ($boxes == 1 ? "1 {$cartonFull}" : ($boxes . " {$cartonFulls}"));
-                                } elseif ($loosePieces > 0) {
-                                    $qtyDisplay = "{$loosePieces} Pcs";
-                                } else {
-                                    $qtyDisplay = "0 {$cartonFulls}";
-                                }
-                                $subQtyText = '(' . $totalPieces . ' pcs)';
+                                $numCartons = $piecesPerBox > 0 ? ($totalPieces / $piecesPerBox) : $boxes;
                             } elseif ($isPiece) {
                                 $totalPieces = (float) $item->qty;
                                 $boxes = $piecesPerBox > 1 ? floor($totalPieces / $piecesPerBox) : 0;
                                 $loosePieces = $piecesPerBox > 1 ? ($totalPieces % $piecesPerBox) : $totalPieces;
-                                if ($item->size_mode === 'by_bandal') {
-                                    $uomDisplay = 'Bundal';
-                                } elseif ($item->size_mode === 'by_cartons') {
-                                    $uomDisplay = 'Carton';
-                                } else {
-                                    $uomDisplay = 'Pcs';
-                                }
-                                $qtyDisplay = $totalPieces . ' Pcs';
-                                $subQtyText = '';
-                            } elseif ($isWeight) {
-                                $totalPieces = (float) $item->qty;
-                                $uomDisplay = $item->unit ?? 'Kg';
-                                $qtyDisplay = $item->qty . ' ' . $uomDisplay;
-                                $subQtyText = '';
+                                $numCartons = $piecesPerBox > 1 ? ($totalPieces / $piecesPerBox) : 0;
                             } else {
                                 $totalPieces = (float) $item->qty;
-                                $uomDisplay = $item->unit ?? 'Pcs';
-                                $qtyDisplay = $item->qty . ' ' . $uomDisplay;
-                                $subQtyText = '(' . $totalPieces . ' pcs)';
+                                $boxes = $piecesPerBox > 1 ? floor($totalPieces / $piecesPerBox) : 0;
+                                $loosePieces = $piecesPerBox > 1 ? ($totalPieces % $piecesPerBox) : $totalPieces;
+                                $numCartons = $piecesPerBox > 1 ? ($totalPieces / $piecesPerBox) : 0;
                             }
 
-                            $totalM2Line = $m2PerPiece * $totalPieces;
-                            $sizeMode = $item->size_mode ?? ($item->product->size_mode ?? 'by_pieces');
-                        @endphp
-                        @php
                             $baseProductName = $item->product->item_name ?? 'Item';
                             $variantNameDisplay = '';
                             $variantDetails = [];
@@ -545,79 +516,173 @@
                             if (!empty($variantDetails)) {
                                 $fullItemTitle .= ' (' . implode(' | ', $variantDetails) . ')';
                             }
+
+                            $rVal = (float)($item->retail_value ?? 0);
+                            $tVal = (float)($item->trade_value ?: ($item->price * (float)$item->qty));
+                            $discAmt = (float)($item->item_discount ?? 0);
+                            $discPct = $tVal > 0 ? ($discAmt / $tVal) * 100 : 0;
+                            $vAftDisc = (float)($item->value_after_discount ?: max(0, $tVal - $discAmt));
+                            $stRet = (float)($item->sales_tax_on_retail ?? 0);
+                            $stTrd = (float)($item->sales_tax_on_trade ?? 0);
+                            $taxAmt = $stRet > 0 ? $stRet : $stTrd;
+                            $lineTotal = (float) $item->line_total;
+
+                            // Rates: Trade & Retail
+                            $tradeRatePerCtn = 0;
+                            $tradeRatePerPc = 0;
+                            $retailRatePerCtn = 0;
+                            $retailRatePerPc = 0;
+
+                            if ($isCarton) {
+                                $tradeRatePerCtn = (float) $item->price;
+                                $tradeRatePerPc = $piecesPerBox > 0 ? ($tradeRatePerCtn / $piecesPerBox) : $tradeRatePerCtn;
+                                $retailRatePerCtn = (float) ($item->retail_price ?: ($item->product->sale_price_per_box ?? (($item->product->retail_price ?? 0) * $piecesPerBox)));
+                                $retailRatePerPc = $piecesPerBox > 0 ? ($retailRatePerCtn / $piecesPerBox) : $retailRatePerCtn;
+                            } elseif ($piecesPerBox > 1) {
+                                $tradeRatePerPc = (float) $item->price;
+                                $tradeRatePerCtn = $tradeRatePerPc * $piecesPerBox;
+                                $retailRatePerPc = (float) ($item->retail_price ?: ($item->product->retail_price ?? 0));
+                                $retailRatePerCtn = $retailRatePerPc * $piecesPerBox;
+                            } else {
+                                $tradeRatePerPc = (float) $item->price;
+                                $retailRatePerPc = (float) ($item->retail_price ?: ($item->product->retail_price ?? 0));
+                            }
+
+                            // Actual Final Cost (Net Parhi)
+                            $finalCostPerCtn = $numCartons > 0 ? ($lineTotal / $numCartons) : 0;
+                            $finalCostPerPc = $totalPieces > 0 ? ($lineTotal / $totalPieces) : ($lineTotal / max(1, (float)$item->qty));
                         @endphp
                         <tr>
-                            <td class="text-center" style="vertical-align: middle; font-size: 11px; font-weight: bold;">
-                                {{ $item->product->item_code ?? '-' }}
+                            <td class="text-center font-monospace" style="vertical-align: middle;">
+                                {{ $loop->iteration }}
                             </td>
-
-                            <td class="text-start">
-                                <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px;">
+                            <td class="text-start" style="vertical-align: middle;">
+                                <div style="font-weight: 700; font-size: 12.5px; color: #0f172a; margin-bottom: 2px;">
                                     {{ $fullItemTitle }}
                                 </div>
-                                <div style="font-size: 11px; color: #475569;">
-                                    @if ($sizeMode == 'by_size')
-                                        @if ($height > 0 || $width > 0)
-                                            Dims: {{ $width }}x{{ $height }}
-                                        @endif
+                                <div class="d-flex flex-wrap align-items-center gap-1" style="font-size: 10.5px;">
+                                    @if($piecesPerBox > 1)
+                                        <span class="badge bg-light text-secondary border font-monospace">1 Ctn = {{ number_format($piecesPerBox, 0) }} Pcs</span>
+                                    @endif
+                                    @if(!empty($item->product->hs_code))
+                                        <span class="badge bg-light text-secondary border font-monospace">HS: {{ $item->product->hs_code }}</span>
+                                    @endif
+                                    @if($item->is_third_schedule)
+                                        <span class="badge bg-warning text-dark border" style="font-size: 9.5px;">3rd Schedule</span>
+                                    @endif
+                                    @if($retailRatePerPc > 0)
+                                        <span class="text-muted">Retail: Rs. {{ number_format($retailRatePerPc, 2) }}/pc</span>
                                     @endif
                                 </div>
                             </td>
 
-                            <td class="text-center" style="vertical-align: middle;">
-                                <div style="font-weight: bold; color: #0f172a;">
-                                    {{ $qtyDisplay }}
-                                </div>
-                                @if (!empty($subQtyText))
-                                    <small class="text-muted" style="font-size: 10px;">{{ $subQtyText }}</small>
-                                @endif
-                            </td>
-
-                            <td class="text-center" style="vertical-align: middle;">
-                                <span class="fw-bold">{{ $uomDisplay }}</span>
-                            </td>
-
-                            <td class="text-end" style="vertical-align: middle;">
-                                {{ number_format($item->price, 2) }}
-                            </td>
-
-                            <td class="text-end" style="vertical-align: middle; color: #dc2626;">
-                                @if ($item->item_discount > 0)
-                                    @php
-                                        $grossLine = $item->line_total + $item->item_discount;
-                                        $discPercent = $grossLine > 0 ? ($item->item_discount / $grossLine) * 100 : 0;
-                                    @endphp
-                                    <div style="font-size: 10px; line-height: 1;">{{ number_format($discPercent, 1) }}%</div>
-                                    <div style="font-size: 11px; font-weight: bold;">{{ number_format($item->item_discount, 2) }}</div>
+                            {{-- Qty / Packaging --}}
+                            <td class="text-center font-monospace" style="vertical-align: middle;">
+                                @if($isCarton || $piecesPerBox > 1)
+                                    @if($boxes > 0 && $loosePieces > 0)
+                                        <div class="fw-bold text-dark">{{ $boxes }} Ctn + {{ $loosePieces }} Pcs</div>
+                                    @elseif($boxes > 0)
+                                        <div class="fw-bold text-dark">{{ $boxes }} {{ $boxes == 1 ? 'Carton' : 'Cartons' }}</div>
+                                    @elseif($loosePieces > 0)
+                                        <div class="fw-bold text-dark">{{ $loosePieces }} Pcs</div>
+                                    @endif
+                                    <div class="text-muted" style="font-size: 11px;">({{ number_format($totalPieces, 0) }} Total Pcs)</div>
                                 @else
-                                    -
+                                    <div class="fw-bold text-dark">{{ number_format($totalPieces, 2) }} {{ $item->unit ?? 'Pcs' }}</div>
                                 @endif
                             </td>
 
-                            <td class="text-end fw-bold" style="vertical-align: middle;">
-                                {{ number_format($item->line_total, 2) }}
+                            {{-- Trade Rate --}}
+                            <td class="text-end font-monospace" style="vertical-align: middle;">
+                                @if($tradeRatePerCtn > 0)
+                                    <div class="fw-bold text-dark">Rs. {{ number_format($tradeRatePerCtn, 2) }}<span class="text-muted fw-normal" style="font-size: 10px;">/ctn</span></div>
+                                    <div class="text-muted" style="font-size: 10.5px;">Rs. {{ number_format($tradeRatePerPc, 2) }}/pc</div>
+                                @else
+                                    <div class="fw-bold text-dark">Rs. {{ number_format($tradeRatePerPc, 2) }}<span class="text-muted fw-normal" style="font-size: 10px;">/pc</span></div>
+                                @endif
+                            </td>
+
+                            {{-- Gross Trade Value --}}
+                            <td class="text-end font-monospace fw-semibold" style="vertical-align: middle;">
+                                <div>Rs. {{ number_format($tVal, 2) }}</div>
+                                @if($rVal > 0 && $item->is_third_schedule)
+                                    <div class="text-muted" style="font-size: 10px;" title="Retail Value">Ret: {{ number_format($rVal, 2) }}</div>
+                                @endif
+                            </td>
+
+                            {{-- Disc - Trader --}}
+                            <td class="text-end font-monospace" style="vertical-align: middle;">
+                                @if($discAmt > 0)
+                                    <div class="text-danger fw-semibold">-Rs. {{ number_format($discAmt, 2) }}</div>
+                                    <div class="text-muted" style="font-size: 10px;">({{ number_format($discPct, 2) }}%)</div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Value After Disc --}}
+                            <td class="text-end font-monospace fw-bold text-dark" style="vertical-align: middle;">
+                                Rs. {{ number_format($vAftDisc, 2) }}
+                            </td>
+
+                            {{-- Sales Tax (GST) --}}
+                            <td class="text-end font-monospace" style="vertical-align: middle;">
+                                @if($taxAmt > 0)
+                                    <div class="text-success fw-semibold">+Rs. {{ number_format($taxAmt, 2) }}</div>
+                                    <div class="text-muted" style="font-size: 10px;">
+                                        {{ number_format($item->gst_percent ?? 0, 1) }}% {{ $stRet > 0 ? '(Retail)' : '(Trade)' }}
+                                    </div>
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
+
+                            {{-- Actual Net Cost / Final Parhi --}}
+                            <td class="text-end font-monospace" style="vertical-align: middle; background-color: #f8fafc; border-left: 2px solid #3b82f6;">
+                                <div class="fw-bold text-primary" style="font-size: 13.5px;">
+                                    Rs. {{ number_format($lineTotal, 2) }}
+                                </div>
+                                <div class="mt-1 d-flex flex-column align-items-end gap-1">
+                                    @if($numCartons > 0)
+                                        <span class="badge bg-primary text-white font-monospace px-2 py-1" style="font-size: 11px;" title="Net Final Cost Per Carton">
+                                            Rs. {{ number_format($finalCostPerCtn, 2) }} / Ctn
+                                        </span>
+                                    @endif
+                                    <span class="badge bg-dark text-white font-monospace px-2 py-1" style="font-size: 11px;" title="Net Final Cost Per Piece">
+                                        Rs. {{ number_format($finalCostPerPc, 2) }} / Pc
+                                    </span>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
-                    <tr style="background-color: #f8fafc; font-weight: 800; border-top: 2px solid var(--border-color);">
-                        <td colspan="2" class="text-end text-uppercase" style="font-size: 11px; padding: 10px 8px;">Total Quantity:</td>
-                        <td class="text-center" style="font-size: 12px; color: var(--primary-color); padding: 10px 6px;">
-                            {{ $cartonPcsShort }}
-                        </td>
+                    @php
+                        $sumRetailVal = $purchase->items->sum('retail_value');
+                        $sumTradeVal = $purchase->items->sum('trade_value') ?: $purchase->subtotal;
+                        $sumInlineDisc = $purchase->items->sum('item_discount');
+                        $sumValAfterDisc = $purchase->items->sum('value_after_discount') ?: max(0, $sumTradeVal - $sumInlineDisc);
+                        $sumSt = ($purchase->items->sum('sales_tax_on_retail') ?: 0) + ($purchase->items->sum('sales_tax_on_trade') ?: 0);
+                        if ($sumSt <= 0) $sumSt = (float)($purchase->total_gst ?? 0);
+                        $avgFinalCostPerCtn = $sumCartons > 0 ? ($purchase->subtotal / $sumCartons) : 0;
+                        $avgFinalCostPerPc = $sumTotalPieces > 0 ? ($purchase->subtotal / $sumTotalPieces) : 0;
+                    @endphp
+                    <tr style="background-color: #f1f5f9; font-weight: 800; border-top: 2px solid var(--border-color); font-size:11.5px;">
+                        <td colspan="2" class="text-end text-uppercase" style="padding: 10px 8px;">Total:</td>
+                        <td class="text-center text-primary font-monospace">{{ $cartonPcsShort }}</td>
                         <td></td>
-                        <td></td>
-                        <td class="text-end" style="color: #dc2626;">
-                            @php
-                                $totalInlineDisc = $purchase->items->sum('item_discount');
-                            @endphp
-                            @if ($totalInlineDisc > 0)
-                                {{ number_format($totalInlineDisc, 2) }}
+                        <td class="text-end font-monospace">Rs. {{ number_format($sumTradeVal, 2) }}</td>
+                        <td class="text-end text-danger font-monospace">{{ $sumInlineDisc > 0 ? '-Rs. ' . number_format($sumInlineDisc, 2) : '—' }}</td>
+                        <td class="text-end font-monospace">Rs. {{ number_format($sumValAfterDisc, 2) }}</td>
+                        <td class="text-end font-monospace text-success">+Rs. {{ number_format($sumSt, 2) }}</td>
+                        <td class="text-end text-primary font-monospace" style="background-color: #eff6ff; border-left: 2px solid #3b82f6;">
+                            <div style="font-size: 13.5px;">Rs. {{ number_format($purchase->subtotal, 2) }}</div>
+                            @if($sumCartons > 0)
+                                <div class="text-muted fw-normal" style="font-size: 10.5px;">Avg: Rs. {{ number_format($avgFinalCostPerCtn, 2) }}/Ctn</div>
                             @endif
-                        </td>
-                        <td class="text-end" style="font-size: 13px; color: var(--primary-color); padding: 10px 6px;">
-                            {{ number_format($purchase->subtotal, 2) }}
+                            @if($sumTotalPieces > 0)
+                                <div class="text-muted fw-normal" style="font-size: 10.5px;">Avg: Rs. {{ number_format($avgFinalCostPerPc, 2) }}/Pc</div>
+                            @endif
                         </td>
                     </tr>
                 </tfoot>
@@ -640,6 +705,8 @@
                         } else {
                             [$boxes, $loosePieces] = \App\Http\Controllers\PurchaseController::parseCartonQty($item->qty);
                         }
+                        $totalPieces = ($boxes * $piecesPerBox) + $loosePieces;
+                        $numCartons = $piecesPerBox > 0 ? ($totalPieces / $piecesPerBox) : $boxes;
                         $ctnLbl = ($item->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         $cartonFull = ($item->size_mode === 'by_bandal') ? 'Bundal' : 'Carton';
                         $cartonFulls = ($item->size_mode === 'by_bandal') ? 'Bundals' : 'Cartons';
@@ -653,12 +720,15 @@
                             $qtyDisplay = "0 {$cartonFulls}";
                         }
                     } elseif ($isPiece) {
+                        $totalPieces = (float) $item->qty;
+                        $numCartons = $piecesPerBox > 1 ? ($totalPieces / $piecesPerBox) : 0;
                         $qtyDisplay = (float) $item->qty . ' Pcs';
                     } else {
+                        $totalPieces = (float) $item->qty;
+                        $numCartons = $piecesPerBox > 1 ? ($totalPieces / $piecesPerBox) : 0;
                         $qtyDisplay = (float) $item->qty . ' ' . ($item->unit ?? 'Pcs');
                     }
 
-                    $sizeMode = $item->size_mode ?? 'by_pieces';
                     $baseProductName = $item->product->item_name ?? 'Item';
                     $variantNameDisplay = '';
                     $variantDetails = [];
@@ -702,6 +772,10 @@
                     if (!empty($variantDetails)) {
                         $fullItemTitle .= ' (' . implode(' | ', $variantDetails) . ')';
                     }
+
+                    $lineTotal = (float) $item->line_total;
+                    $finalCostPerCtn = $numCartons > 0 ? ($lineTotal / $numCartons) : 0;
+                    $finalCostPerPc = $totalPieces > 0 ? ($lineTotal / $totalPieces) : ($lineTotal / max(1, (float)$item->qty));
                 @endphp
                 <div class="mob-item-card">
                     <div class="mob-item-hdr">
@@ -712,13 +786,29 @@
                     <div class="mob-item-details">
                         <div>
                             <span class="fw-bold text-dark">{{ $qtyDisplay }}</span>
-                            <span class="text-muted ms-1">@ Rs. {{ number_format($item->price, 2) }}</span>
+                            <span class="text-muted ms-1">({{ number_format($totalPieces, 0) }} Pcs)</span>
+                            <div class="text-muted" style="font-size: 0.78rem;">Rate: Rs. {{ number_format($item->price, 2) }}</div>
                         </div>
                         <div class="text-end">
                             @if ($item->item_discount > 0)
-                                <div class="text-danger small" style="font-size: 0.72rem;">Disc: Rs. {{ number_format($item->item_discount, 2) }}</div>
+                                <div class="text-danger small" style="font-size: 0.72rem;">Disc: -Rs. {{ number_format($item->item_discount, 2) }}</div>
                             @endif
-                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Rs. {{ number_format($item->line_total, 2) }}</div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Line Total: Rs. {{ number_format($item->line_total, 2) }}</div>
+                        </div>
+                    </div>
+
+                    {{-- Actual Final Cost Badges for Mobile --}}
+                    <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                        <span class="text-primary fw-bold" style="font-size: 0.8rem;">Actual Final Cost:</span>
+                        <div class="d-flex gap-1">
+                            @if($numCartons > 0)
+                                <span class="badge bg-primary text-white font-monospace" style="font-size: 0.75rem;">
+                                    Rs. {{ number_format($finalCostPerCtn, 2) }} / Ctn
+                                </span>
+                            @endif
+                            <span class="badge bg-dark text-white font-monospace" style="font-size: 0.75rem;">
+                                Rs. {{ number_format($finalCostPerPc, 2) }} / Pc
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -750,9 +840,37 @@
                             <td class="text-end fw-bold text-primary font-monospace" style="font-size: 12px;">{{ $cartonPcsDisplay }}</td>
                         </tr>
                         <tr>
-                            <td class="text-dark">Subtotal</td>
-                            <td class="text-end font-monospace">Rs. {{ number_format($purchase->subtotal, 2) }}</td>
+                            <td class="text-dark">Total Trade Value</td>
+                            <td class="text-end font-monospace">Rs. {{ number_format($purchase->total_trade_value ?: $purchase->subtotal, 2) }}</td>
                         </tr>
+                        @if(($purchase->total_retail_value ?? 0) > 0)
+                        <tr>
+                            <td class="text-dark">Total Retail Value</td>
+                            <td class="text-end font-monospace">Rs. {{ number_format($purchase->total_retail_value, 2) }}</td>
+                        </tr>
+                        @endif
+                        @if($purchase->items->sum('item_discount') > 0)
+                        <tr>
+                            <td class="text-danger">Trade Discount</td>
+                            <td class="text-end text-danger font-monospace">-Rs. {{ number_format($purchase->items->sum('item_discount'), 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-dark fw-bold">Value After Discount</td>
+                            <td class="text-end font-monospace fw-bold">Rs. {{ number_format($purchase->total_value_after_discount ?: ($purchase->total_trade_value - $purchase->items->sum('item_discount')), 2) }}</td>
+                        </tr>
+                        @endif
+                        @if(($purchase->total_sales_tax_on_retail ?? 0) > 0)
+                        <tr>
+                            <td class="text-success fw-bold">ST on Retail (3rd Schedule)</td>
+                            <td class="text-end text-success font-monospace">+Rs. {{ number_format($purchase->total_sales_tax_on_retail, 2) }}</td>
+                        </tr>
+                        @endif
+                        @if(($purchase->total_sales_tax_on_trade ?? 0) > 0)
+                        <tr>
+                            <td class="text-info fw-bold">ST on Trade (Standard)</td>
+                            <td class="text-end text-info font-monospace">+Rs. {{ number_format($purchase->total_sales_tax_on_trade, 2) }}</td>
+                        </tr>
+                        @endif
                         @if (($purchase->total_gst ?? 0) > 0)
                         <tr>
                             <td class="text-muted fw-bold">Excl. GST Subtotal</td>
@@ -775,16 +893,44 @@
                                 </td>
                             </tr>
                         @endif
-                        @if ($purchase->extra_cost > 0)
+                        @php
+                            $extraCostAmt = (float)($purchase->extra_cost ?? 0);
+                            $whtAmt = (float)($purchase->wht_amount ?? 0);
+                            $whtPct = (float)($purchase->wht_percent ?? 0);
+                        @endphp
+                        @if ($extraCostAmt > 0)
                             <tr>
-                                <td>Extra Cost</td>
-                                <td class="text-end font-monospace">Rs. {{ number_format($purchase->extra_cost, 2) }}</td>
+                                <td class="text-dark fw-semibold">Freight / Extra Cost</td>
+                                <td class="text-end font-monospace text-dark fw-bold">+Rs. {{ number_format($extraCostAmt, 2) }}</td>
+                            </tr>
+                        @endif
+                        @if ($whtAmt > 0)
+                            <tr>
+                                <td class="text-dark fw-semibold">Withholding Tax (WHT {{ $whtPct > 0 ? number_format($whtPct, 1).'%' : '' }})</td>
+                                <td class="text-end font-monospace text-primary fw-bold">+Rs. {{ number_format($whtAmt, 2) }}</td>
                             </tr>
                         @endif
                         <tr class="total-row" style="background-color: #f8fafc;">
                             <td>Total Net</td>
                             <td class="text-end font-monospace">Rs. {{ number_format($purchase->net_amount, 2) }}</td>
                         </tr>
+
+                        {{-- Final Landed Parhi (Actual Final Cost per Unit) --}}
+                        @if($sumCartons > 0 || $sumTotalPieces > 0)
+                        <tr style="background-color: #eff6ff; border-top: 1.5px dashed #3b82f6;">
+                            <td class="text-primary fw-bold" style="font-size: 11.5px;">Actual Net Parhi / Carton</td>
+                            <td class="text-end font-monospace fw-bold text-primary" style="font-size: 12px;">
+                                Rs. {{ number_format($sumCartons > 0 ? ($purchase->net_amount / $sumCartons) : 0, 2) }} / Ctn
+                            </td>
+                        </tr>
+                        <tr style="background-color: #eff6ff;">
+                            <td class="text-dark fw-bold" style="font-size: 11.5px;">Actual Net Parhi / Piece</td>
+                            <td class="text-end font-monospace fw-bold text-dark" style="font-size: 12px;">
+                                Rs. {{ number_format($sumTotalPieces > 0 ? ($purchase->net_amount / $sumTotalPieces) : 0, 2) }} / Pc
+                            </td>
+                        </tr>
+                        @endif
+
                         <tr>
                             <td>Paid Amount</td>
                             <td class="text-end text-success fw-bold font-monospace">Rs. {{ number_format($purchase->paid_amount, 2) }}</td>

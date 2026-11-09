@@ -1460,39 +1460,71 @@ class SaleController extends Controller
                     }
                 }
 
-                // Apply Discount correctly
-                if ($discType === 'pkr') {
-                    // User entered a fixed PKR amount
-                    $calcDiscountAmount  = min($lineGross, $discount);
-                    // Back-calculate the equivalent percent for storage/reporting (avoid division by zero)
-                    $calcDiscountPercent = $lineGross > 0 ? round(($calcDiscountAmount / $lineGross) * 100, 4) : 0;
-                } else {
-                    // User entered a percentage
-                    $calcDiscountPercent = $discount;
-                    $calcDiscountAmount  = round(($lineGross * $discount) / 100, 2);
-                }
+                $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
+                $lineGrossAfterActivity = max(0, $lineGross - $tradeActivity);
 
-                $calcExclusiveGst = max(0, round($lineGross - $calcDiscountAmount, 2));
+                // 1. Regular Discount
+                $regDiscPct = isset($request->reg_disc_percent[$index]) ? (float)$request->reg_disc_percent[$index] : 0;
+                $regDiscAmt = isset($request->reg_disc_amount[$index]) && $request->reg_disc_amount[$index] !== ''
+                    ? (float)$request->reg_disc_amount[$index]
+                    : round(($lineGrossAfterActivity * $regDiscPct) / 100, 2);
+
+                // 2. Special Discount
+                $spDiscPct = isset($request->sp_disc_percent[$index]) ? (float)$request->sp_disc_percent[$index] : ($discType === 'percent' ? $discount : 0);
+                $spDiscAmt = isset($request->sp_disc_amount[$index]) && $request->sp_disc_amount[$index] !== ''
+                    ? (float)$request->sp_disc_amount[$index]
+                    : ($discType === 'pkr' ? min($lineGrossAfterActivity, $discount) : round(($lineGrossAfterActivity * $spDiscPct) / 100, 2));
+
+                $calcDiscountAmount  = round($regDiscAmt + $spDiscAmt, 2);
+                $calcDiscountPercent = $lineGrossAfterActivity > 0 ? round(($calcDiscountAmount / $lineGrossAfterActivity) * 100, 2) : 0;
+
+                $calcExclusiveGst = max(0, round($lineGrossAfterActivity - $calcDiscountAmount, 2));
                 // Dynamic Tax Controls
                 $isStEnabled = \App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true);
                 $isFtEnabled = \App\Models\SaleFieldConfiguration::isEnabled('further_tax', true);
                 $strnExemptEnabled = \App\Models\SaleFieldConfiguration::isEnabled('strn_exemption', true);
 
-                $salesTaxPct = $isStEnabled ? (float) ($request->sales_tax_percent[$index] ?? 0) : 0;
-                $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
+                $stType = $request->sales_tax_type[$index] ?? 'percent';
+                $postedStAmt = isset($request->sales_tax_amount[$index]) && $request->sales_tax_amount[$index] !== '' ? (float)$request->sales_tax_amount[$index] : null;
+                if ($isStEnabled) {
+                    if ($stType === 'pkr' && $postedStAmt !== null) {
+                        $salesTaxAmt = round($postedStAmt, 2);
+                        $salesTaxPct = $calcExclusiveGst > 0 ? round(($salesTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
+                    } else {
+                        $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? 0);
+                        $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
+                    }
+                } else {
+                    $salesTaxPct = 0;
+                    $salesTaxAmt = 0;
+                }
 
                 if ($isFtEnabled) {
-                    if ($customerHasStrn && $strnExemptEnabled) {
+                    $postedFtPct = isset($request->further_tax_percent[$index]) && $request->further_tax_percent[$index] !== '' ? (float)$request->further_tax_percent[$index] : null;
+                    $postedFtAmt = isset($request->further_tax_amount[$index]) && $request->further_tax_amount[$index] !== '' ? (float)$request->further_tax_amount[$index] : null;
+                    $ftType = $request->further_tax_type[$index] ?? 'percent';
+
+                    if ($ftType === 'pkr' && $postedFtAmt !== null) {
+                        $furtherTaxAmt = round($postedFtAmt, 2);
+                        $furtherTaxPct = $calcExclusiveGst > 0 ? round(($furtherTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
+                    } elseif ($postedFtPct !== null) {
+                        $furtherTaxPct = $postedFtPct;
+                        $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
+                    } elseif ($customerHasStrn && $strnExemptEnabled) {
                         $furtherTaxPct = 0;
+                        $furtherTaxAmt = 0;
                     } else {
-                        $furtherTaxPct = (float) ($request->further_tax_percent[$index] ?? 0);
+                        $defaultFtRate = (float) (\App\Models\SaleFieldConfiguration::getDefaultValue('further_tax', 4));
+                        $furtherTaxPct = $defaultFtRate;
+                        $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
                     }
-                    $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
                 } else {
                     $furtherTaxPct = 0;
                     $furtherTaxAmt = 0;
                 }
-                $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt, 2);
+                $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
+                $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
+                $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt + $advTaxAmount, 2);
                 $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);
                 $mfgDate = $request->mfg_date[$index] ?? null;
                 $expDate = $request->exp_date[$index] ?? null;
@@ -1549,6 +1581,17 @@ class SaleController extends Controller
 
                 $saleItem->price = $dbPrice;
                 $saleItem->gross_amount = $lineGross;
+                $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
+                $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
+                $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
+
+                $saleItem->trade_activity = $tradeActivity;
+                $saleItem->reg_disc_percent = $regDiscPct;
+                $saleItem->reg_disc_amount = $regDiscAmt;
+                $saleItem->sp_disc_percent = $spDiscPct;
+                $saleItem->sp_disc_amount = $spDiscAmt;
+                $saleItem->mrp_amount = $mrpAmount;
+                $saleItem->adv_tax_amount = $advTaxAmount;
                 $saleItem->discount_percent = $calcDiscountPercent;
                 $saleItem->discount_amount = $calcDiscountAmount;
                 $saleItem->exclusive_gst_amount = $calcExclusiveGst;
@@ -1587,6 +1630,16 @@ class SaleController extends Controller
                 $total_sales_tax += $salesTaxAmt;
                 $total_further_tax += $furtherTaxAmt;
                 $total_bonus_qty += $bonusQty;
+                if (!isset($total_trade_activity)) $total_trade_activity = 0;
+                if (!isset($total_reg_discount)) $total_reg_discount = 0;
+                if (!isset($total_sp_discount)) $total_sp_discount = 0;
+                if (!isset($total_mrp_tax)) $total_mrp_tax = 0;
+                if (!isset($total_adv_tax)) $total_adv_tax = 0;
+                $total_trade_activity += $tradeActivity;
+                $total_reg_discount += $regDiscAmt;
+                $total_sp_discount += $spDiscAmt;
+                $total_mrp_tax += $mrpAmount;
+                $total_adv_tax += $advTaxAmount;
             }
 
             // Update Sale Totals
@@ -1596,6 +1649,11 @@ class SaleController extends Controller
             $sale->total_sales_tax = $total_sales_tax;
             $sale->total_further_tax = $total_further_tax;
             $sale->total_bonus_qty = $total_bonus_qty;
+            $sale->total_trade_activity = $total_trade_activity ?? 0;
+            $sale->total_reg_discount = $total_reg_discount ?? 0;
+            $sale->total_sp_discount = $total_sp_discount ?? 0;
+            $sale->total_mrp_tax = $total_mrp_tax ?? 0;
+            $sale->total_adv_tax = $total_adv_tax ?? 0;
             $sale->total_extradiscount = $request->total_extra_cost ?? 0;
             $sale->freight_charges = $request->freight_charges ?? 0;
             $sale->freight_type = $request->freight_type ?? 'add';
@@ -2047,11 +2105,13 @@ class SaleController extends Controller
             // If AJAX/JSON response needed
             if ($request->ajax() || $request->wantsJson()) {
                 $receiptUrl = route('sales.receipt', $sale->id) . '?from=pos';
+                $invoiceUrl = route('sales.invoice', $sale->id);
                 return response()->json([
                     'ok' => true,
                     'booking_id' => $sale->id,
+                    'id' => $sale->id,
                     'msg' => 'Sale '.ucfirst($status).' Successfully',
-                    'invoice_url' => $receiptUrl,
+                    'invoice_url' => $invoiceUrl,
                     'receipt_url' => $receiptUrl,
                 ]);
             }
@@ -3096,14 +3156,6 @@ class SaleController extends Controller
         $strict = $request->boolean('strict_warehouse', false);
 
         $product = \App\Models\Product::find($productId);
-        if ($product && in_array($product->tracking_type, ['simple', 'serial'])) {
-            return response()->json([
-                'success' => true,
-                'is_batch_product' => false,
-                'batches' => []
-            ]);
-        }
-        $isBatchProduct = ($product && $product->tracking_type === 'batch') || \App\Models\ProductBatch::where('product_id', $productId)->exists();
 
         $query = \App\Models\ProductBatch::with('warehouse')
             ->where('product_id', $productId)
@@ -3116,14 +3168,21 @@ class SaleController extends Controller
         if ($warehouseId) {
             $query->orderByRaw("CASE WHEN warehouse_id = ? THEN 0 ELSE 1 END", [$warehouseId]);
         }
-        $batches = $query->orderBy('warehouse_id', 'asc')
+
+        // Standard FIFO / FEFO Ordering: earliest expiry date first, then earliest created_at / id
+        $batches = $query->orderByRaw("CASE WHEN expiry_date IS NULL OR expiry_date = '' THEN 1 ELSE 0 END ASC")
             ->orderBy('expiry_date', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
+
+        $fifoBatch = $batches->first();
 
         return response()->json([
             'success' => true,
-            'is_batch_product' => $isBatchProduct,
-            'batches' => $batches
+            'is_batch_product' => count($batches) > 0,
+            'batches' => $batches,
+            'fifo_batch' => $fifoBatch
         ]);
     }
 

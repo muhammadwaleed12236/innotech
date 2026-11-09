@@ -55,6 +55,7 @@ class ProductController extends Controller
             'price_per_m2'          => $product->price_per_m2,
             'sale_price_per_box'    => $product->sale_price_per_box,
             'sale_price_per_piece'  => $product->sale_price_per_piece,
+            'trade_price'           => (float)($product->trade_price ?? $product->purchase_price_per_piece ?? 0),
             'height'                => $product->height,
             'width'                 => $product->width,
             'item_code'             => $product->item_code,
@@ -101,18 +102,31 @@ class ProductController extends Controller
     {
         $term = $request->get('term') ?? $request->get('q') ?? '';
 
+        $page = (int) ($request->get('page') ?? 1);
+
+        if ($term === '') {
+            $cacheKey = 'products_ajax_default_page_' . $page;
+            $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+            if ($cached) {
+                return response()->json($cached);
+            }
+        }
+
         $query = Product::query()
-            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece')
+            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code')
             ->with(['unit'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
-            ->where('is_active', true) /* Only active products */
-            ->where(function ($q) use ($term) {
+            ->where('is_active', true); /* Only active products */
+
+        if ($term !== '') {
+            $query->where(function ($q) use ($term) {
                 $q->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
                     ->orWhere('barcode_path', 'like', "%{$term}%");
             });
+        }
 
-        $products = $query->paginate(10); // Lazy loading (10 per request)
+        $products = $query->paginate(30); // 30 per page for fast response
 
         $results = $products->getCollection()->flatMap(function ($p) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
@@ -147,6 +161,8 @@ class ProductController extends Controller
             }
 
             if (count($variants) > 0) {
+                $cacheKey = 'prod_var_search_' . $p->id . '_' . ((int)$stockPieces);
+                return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb) {
                 // Fetch all sales and returns for this product to distribute
                 $salesList = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -352,8 +368,8 @@ class ProductController extends Controller
                         'unit_name' => $vUnitName,
                         'pieces_per_box' => $vPpb,
                         'ppb' => $vPpb,
-                        'trade_price' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
-                        'retail_price' => $v['sale_price'] ?? $p->sale_price_per_piece ?? 0,
+                        'trade_price' => $v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0,
+                        'retail_price' => $v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0, 'retail_price_per_box' => (($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb), 'trade_price_per_box' => (($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->is_third_schedule ?? false),
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
                         'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
                         'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
@@ -366,6 +382,7 @@ class ProductController extends Controller
                     ];
                 }
                 return $expanded;
+                });
             }
 
             return [[
@@ -379,8 +396,8 @@ class ProductController extends Controller
                 'unit_name' => $unitName,
                 'pieces_per_box' => $ppb,
                 'ppb' => $ppb,
-                'trade_price' => $p->purchase_price_per_piece ?? 0,
-                'retail_price' => $p->sale_price_per_piece ?? 0,
+                'trade_price' => $p->trade_price ?: ($p->purchase_price_per_piece ?? 0),
+                'retail_price' => $p->retail_price ?: ($p->sale_price_per_piece ?? 0), 'retail_price_per_box' => $p->sale_price_per_box ?: (($p->retail_price ?: $p->sale_price_per_piece ?: 0) * $ppb), 'trade_price_per_box' => $p->purchase_price_per_box ?: (($p->trade_price ?: $p->purchase_price_per_piece ?: 0) * $ppb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->is_third_schedule ?? false),
                 'wholesale_price' => $p->wholesale_price ?? 0,
                 'weight_per_piece' => $p->weight_per_piece ?? 0,
                 'purchase_price_per_piece' => $p->purchase_price_per_piece ?? 0,
@@ -393,10 +410,16 @@ class ProductController extends Controller
             ]];
         });
 
-        return response()->json([
+        $responsePayload = [
             'results' => $results,
             'pagination' => ['more' => $products->hasMorePages()],
-        ]);
+        ];
+
+        if ($term === '') {
+            \Illuminate\Support\Facades\Cache::put('products_ajax_default_page_' . $page, $responsePayload, 60);
+        }
+
+        return response()->json($responsePayload)->header('Cache-Control', 'public, max-age=60');
     }
 
     // ===== Product search (general) =====
@@ -442,7 +465,7 @@ class ProductController extends Controller
                 'pieces_per_box' => $ppb,
                 'size_mode' => $p->size_mode,
                 'stock' => $stockDisplay,
-                'trade_price' => $p->purchase_price_per_piece ?? 0,
+                'trade_price' => $p->trade_price ?: ($p->purchase_price_per_piece ?? 0),
                 'total_m2' => number_format($p->total_m2 ?? 0, 2),
                 'price_per_m2' => number_format($p->price_per_m2 ?? 0, 2),
                 'total_price' => number_format($p->total_price ?? 0, 2),
@@ -887,6 +910,10 @@ class ProductController extends Controller
                 'weight_per_piece' => $request->weight_per_piece ?? 0,
                 'purchase_price_per_piece' => $purchasePricePerPiece,
                 'purchase_price_per_box' => $purchasePricePerBox,
+                'hs_code' => $request->hs_code,
+                'retail_price' => $request->filled('retail_price') ? (float)$request->retail_price : $salePricePerPiece,
+                'trade_price' => $request->filled('trade_price') ? (float)$request->trade_price : $purchasePricePerPiece,
+                'is_third_schedule' => $request->has('is_third_schedule') && ($request->is_third_schedule == '1' || $request->is_third_schedule === true || $request->is_third_schedule === 'on') ? 1 : 0,
 
                 'is_part' => 0,
                 'is_assembled' => 0,
@@ -1324,6 +1351,10 @@ class ProductController extends Controller
                 'weight_per_piece' => $request->weight_per_piece ?? 0,
                 'purchase_price_per_piece' => $purchasePricePerPiece,
                 'purchase_price_per_box' => $purchasePricePerBox,
+                'hs_code' => $request->hs_code,
+                'retail_price' => $request->filled('retail_price') ? (float)$request->retail_price : $salePricePerPiece,
+                'trade_price' => $request->filled('trade_price') ? (float)$request->trade_price : $purchasePricePerPiece,
+                'is_third_schedule' => $request->has('is_third_schedule') && ($request->is_third_schedule == '1' || $request->is_third_schedule === true || $request->is_third_schedule === 'on') ? 1 : 0,
 
                 // 'total_price' => $totalPrice, // Removed: Not in DB
                 // 'total_purchase_price' => $totalPurchasePrice, // Removed: Not in DB

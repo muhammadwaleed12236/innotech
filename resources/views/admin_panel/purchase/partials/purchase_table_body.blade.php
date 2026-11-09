@@ -1,100 +1,155 @@
 @foreach ($Purchase as $purchase)
     {{-- Table Row --}}
     <tr class="border-bottom-0">
-        <td class="ps-3 text-center" style="width: 40px; vertical-align: middle;">
+        <td class="text-center" style="width: 35px; vertical-align: middle;">
             <input type="checkbox" class="select-purchase-row" value="{{ $purchase->id }}" style="cursor: pointer; width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin: 0 auto !important;">
         </td>
-        <td class="fw-bold text-muted">#{{ $purchase->id }}</td>
-        <td class="text-nowrap">
-            {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}
+        <td class="text-center text-nowrap" style="vertical-align: middle;">
+            <span class="fw-bold text-dark">#{{ $purchase->id }}</span>
+            <div class="text-muted small" style="font-size: 11px;">{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</div>
         </td>
-        <td class="font-monospace text-dark">{{ $purchase->invoice_no }}</td>
-        <td class="font-monospace text-primary fw-medium">{{ $purchase->purchase_order_no ?? '-' }}</td>
-        <td class="font-monospace text-dark small">{{ $purchase->note ?? '-' }}</td>
-        <td>
-            @if ($purchase->status_purchase == 'draft')
-                <span class="badge badge-warning text-dark border border-warning">Draft</span>
-            @elseif ($purchase->status_purchase == 'Returned')
-                <span class="badge bg-danger text-white border border-danger">Returned</span>
-            @else
-                <span class="badge badge-success border border-success">Approved</span>
+        <td style="vertical-align: middle;">
+            <div class="font-monospace fw-bold text-dark">{{ $purchase->invoice_no }}</div>
+            @if ($purchase->purchase_order_no)
+                <div class="text-primary font-monospace small" style="font-size: 11px;"><i class="fas fa-file-alt me-1"></i>Ref: {{ $purchase->purchase_order_no }}</div>
+            @endif
+            @if ($purchase->note)
+                <div class="text-muted small text-truncate" style="max-width: 140px; font-size: 10.5px;" title="{{ $purchase->note }}">
+                    <i class="fas fa-comment-dots me-1"></i>{{ $purchase->note }}
+                </div>
             @endif
         </td>
-        <td>
+        <td style="vertical-align: middle;">
             <div class="d-flex align-items-center">
-                <div class="avatar-circle bg-info-subtle text-info me-2 fw-bold d-flex align-items-center justify-content-center rounded-circle"
-                    style="width: 32px; height: 32px; font-size: 14px;">
+                <div class="avatar-circle bg-info-subtle text-info me-2 fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                    style="width: 30px; height: 30px; font-size: 13px;">
                     {{ strtoupper(substr($purchase->vendor->name ?? 'V', 0, 1)) }}
                 </div>
-                <span class="fw-medium text-dark">{{ $purchase->vendor->name ?? 'N/A' }}</span>
+                <div>
+                    <span class="fw-semibold text-dark d-block">{{ $purchase->vendor->name ?? 'N/A' }}</span>
+                    @if ($purchase->warehouse)
+                        <span class="text-muted small" style="font-size: 11px;">
+                            <i class="fas fa-warehouse me-1 text-secondary"></i>{{ $purchase->warehouse->warehouse_name }}
+                        </span>
+                    @endif
+                </div>
             </div>
         </td>
-        <td class="text-muted small">
-            {{ $purchase->warehouse->warehouse_name ?? 'N/A' }}
-        </td>
-
-        <td class="text-end text-dark">
-            @php
-                $inline_val = $purchase->items->sum('item_discount');
-                $gross_subtotal = $purchase->subtotal + $inline_val;
-                $inline_pct = $gross_subtotal > 0 ? ($inline_val / $gross_subtotal) * 100 : 0;
-            @endphp
-            Rs. {{ number_format($inline_val, 2) }}
-            @if ($inline_val > 0)
-                <div class="text-muted small mt-1" style="font-size: 10px;">({{ number_format($inline_pct, 1) }}%)</div>
-            @endif
-        </td>
-
-        <td class="text-end text-dark">
-            @if ($purchase->additional_discount > 0)
-                @php
-                    $add_val = $purchase->additional_discount;
-                    $original_net = $purchase->net_amount + $add_val;
-                    $add_pct = $original_net > 0 ? ($add_val / $original_net) * 100 : 0;
-                @endphp
-                <span class="badge rounded-pill border px-2 py-1" style="background-color: #fff8e1; color: #b78103; border-color: #ffe082 !important; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-tag" style="font-size: 10px;"></i> Rs. {{ number_format($add_val, 2) }}
-                </span>
-                <div class="text-muted small mt-1" style="font-size: 10px;">({{ number_format($add_pct, 1) }}%)</div>
+        <td class="text-center" style="vertical-align: middle;">
+            @if ($purchase->status_purchase == 'draft')
+                <span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1">Draft</span>
+            @elseif ($purchase->status_purchase == 'Returned')
+                <span class="badge bg-danger text-white border border-danger px-2 py-1">Returned</span>
             @else
-                <span class="text-muted">Rs. 0.00</span>
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1">Approved</span>
             @endif
         </td>
 
-        <td class="text-end fw-bold text-dark">
+        {{-- Trade Value --}}
+        <td class="text-end" style="vertical-align: middle;">
+            <div class="fw-bold text-dark font-monospace">Rs. {{ number_format($purchase->total_trade_value ?: $purchase->subtotal, 2) }}</div>
+            @if (($purchase->total_retail_value ?? 0) > 0)
+                <div class="text-muted small" style="font-size: 10px;" title="Retail Value">Ret: {{ number_format($purchase->total_retail_value, 2) }}</div>
+            @endif
+        </td>
+
+        {{-- Trade Disc. --}}
+        <td class="text-end" style="vertical-align: middle;">
+            @php
+                $inline_val = $purchase->items ? $purchase->items->sum('item_discount') : 0;
+                $order_val = ($purchase->discount ?? 0) + ($purchase->additional_discount ?? 0);
+                $tot_disc = $inline_val + $order_val;
+            @endphp
+            @if ($tot_disc > 0)
+                <div class="fw-semibold text-danger font-monospace">Rs. {{ number_format($tot_disc, 2) }}</div>
+                @if ($order_val > 0 && $inline_val > 0)
+                    <div class="text-muted small" style="font-size: 10px;">Item: {{ number_format($inline_val, 0) }} + Ord: {{ number_format($order_val, 0) }}</div>
+                @elseif ($order_val > 0)
+                    <div class="text-muted small" style="font-size: 10px;">(Order Disc)</div>
+                @endif
+            @else
+                <span class="text-muted font-monospace">0.00</span>
+            @endif
+        </td>
+
+        {{-- Sales Tax (GST) --}}
+        <td class="text-end" style="vertical-align: middle;">
+            @if (($purchase->total_gst ?? 0) > 0)
+                <div class="fw-bold text-info font-monospace">Rs. {{ number_format($purchase->total_gst, 2) }}</div>
+                @if (($purchase->total_sales_tax_on_retail ?? 0) > 0 || ($purchase->total_sales_tax_on_trade ?? 0) > 0)
+                    <div class="text-muted small" style="font-size: 9.5px;">
+                        @if ($purchase->total_sales_tax_on_retail > 0)
+                            <span>Ret: {{ number_format($purchase->total_sales_tax_on_retail, 0) }}</span>
+                        @endif
+                        @if ($purchase->total_sales_tax_on_trade > 0)
+                            <span class="ms-1">Trd: {{ number_format($purchase->total_sales_tax_on_trade, 0) }}</span>
+                        @endif
+                    </div>
+                @endif
+            @else
+                <span class="text-muted font-monospace">0.00</span>
+            @endif
+        </td>
+
+        {{-- WHT Tax --}}
+        <td class="text-end" style="vertical-align: middle;">
+            @if (($purchase->wht_amount ?? 0) > 0)
+                <div class="fw-bold text-dark font-monospace">Rs. {{ number_format($purchase->wht_amount, 2) }}</div>
+                <span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 9.5px;">{{ number_format($purchase->wht_percent, 1) }}%</span>
+            @else
+                <span class="text-muted font-monospace">0.00</span>
+            @endif
+        </td>
+
+        {{-- Freight / Shipping --}}
+        <td class="text-end" style="vertical-align: middle;">
+            @if (($purchase->extra_cost ?? 0) > 0)
+                <span class="fw-semibold text-dark font-monospace">Rs. {{ number_format($purchase->extra_cost, 2) }}</span>
+            @else
+                <span class="text-muted font-monospace">0.00</span>
+            @endif
+        </td>
+
+        {{-- Total Net Amount --}}
+        <td class="text-end font-monospace" style="vertical-align: middle;">
             @if ($purchase->total_returned > 0)
                 <div>
                     <small class="text-muted text-decoration-line-through">Rs. {{ number_format($purchase->net_amount, 2) }}</small>
                 </div>
-                <div class="text-success">
+                <div class="text-primary fw-bold" style="font-size: 13.5px;">
                     Rs. {{ number_format($purchase->updated_net_amount, 2) }}
                 </div>
                 <small class="text-danger">(-{{ number_format($purchase->total_returned, 2) }})</small>
             @else
-                Rs. {{ number_format($purchase->net_amount, 2) }}
+                <span class="fw-bold text-primary" style="font-size: 13.5px;">Rs. {{ number_format($purchase->net_amount, 2) }}</span>
             @endif
         </td>
-        <td class="text-end text-success">
-            {{ number_format($purchase->paid_amount, 2) }}
+
+        {{-- Paid Amount --}}
+        <td class="text-end text-success fw-bold font-monospace" style="vertical-align: middle;">
+            Rs. {{ number_format($purchase->paid_amount, 2) }}
         </td>
-        <td class="text-end">
+
+        {{-- Balance Due --}}
+        <td class="text-end" style="vertical-align: middle;">
             @php
                 $displayDue = $purchase->total_returned > 0 ? $purchase->updated_due_amount : $purchase->due_amount;
             @endphp
             @if ($displayDue > 0)
-                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill">{{ number_format($displayDue, 2) }}</span>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill fw-bold font-monospace px-2 py-1">Rs. {{ number_format($displayDue, 2) }}</span>
             @else
-                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Paid</span>
+                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill fw-bold px-2 py-1">Paid</span>
             @endif
 
             @if ($purchase->has_partial_return)
-                <br><small class="badge bg-danger text-white mt-1"><i class="fas fa-undo-alt me-1"></i> Partial Return</small>
+                <div class="mt-1"><span class="badge bg-warning text-dark" style="font-size: 9.5px;"><i class="fas fa-undo-alt me-1"></i> Partial Return</span></div>
             @elseif($purchase->is_fully_returned)
-                <br><small class="badge bg-danger mt-1">Fully Returned</small>
+                <div class="mt-1"><span class="badge bg-danger text-white" style="font-size: 9.5px;">Fully Returned</span></div>
             @endif
         </td>
 
-        <td class="pe-3 text-center">
+        {{-- Action --}}
+        <td class="pe-3 text-center" style="vertical-align: middle;">
             <div class="dropdown">
                 <button class="btn btn-premium-action dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
                     <i class="fas fa-ellipsis-v small me-1"></i> Actions

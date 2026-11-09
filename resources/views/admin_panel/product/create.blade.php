@@ -614,6 +614,19 @@
                                                 <option value="by_ton">Ton</option>
                                             </select>
                                         </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label-pro">HS Code</label>
+                                            <input type="text" class="form-control-pro font-monospace" name="hs_code" placeholder="e.g. 2103.9000" value="{{ old('hs_code') }}">
+                                        </div>
+                                        <div class="col-md-8 d-flex align-items-center pt-2">
+                                            <div class="form-check form-switch p-2 rounded bg-light border w-100">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_third_schedule" id="is_third_schedule" value="1">
+                                                <label class="form-check-label fw-bold text-dark" for="is_third_schedule">
+                                                    Third Schedule Item (Sales Tax on Retail Price)
+                                                    <small class="text-muted d-block" style="font-size:11px;">Enable agar is item per GST Retail Price / MRP per calculate hona hai.</small>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -691,9 +704,9 @@
                                                         <th class="d-none">Initial Stock</th>
                                                         <th class="text-uppercase text-muted p-1 text-center conv-col" id="convFactorHeader" style="width: 95px; font-size: 10px;">Pcs / Carton</th>
                                                         <th class="text-uppercase text-muted p-1 text-center piece-wt-only-col" style="width: 90px; font-size: 10px;">Piece Wt (g)</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Sale Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Retail Value</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="wholesalePriceHeader">Wholesale</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="purchPriceHeader">Purch Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="purchPriceHeader">Trade Value</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
@@ -744,6 +757,8 @@
                 <input type="number" name="pieces_per_box" id="pieces_per_box" value="1">
                 <input type="number" name="boxes_quantity" id="boxes_quantity" value="0">
                 <input type="number" name="loose_pieces" id="loose_pieces" value="0">
+                <input type="number" name="retail_price" id="retail_price" step="0.01" value="0">
+                <input type="number" name="trade_price" id="trade_price" step="0.01" value="0">
                 <input type="number" name="sale_price_per_box" id="sale_price_per_box" step="0.01" value="0">
                 <input type="number" name="wholesale_price" id="wholesale_price" step="0.01" value="0">
                 <input type="number" name="weight_per_piece" id="weight_per_piece" step="0.0001" value="0">
@@ -918,6 +933,8 @@
                     document.getElementById('boxes_quantity').value = 0;
                     document.getElementById('pieces_per_box').value = 1;
                 }
+                if (document.getElementById('retail_price')) document.getElementById('retail_price').value = firstSale;
+                if (document.getElementById('trade_price')) document.getElementById('trade_price').value = firstPurch;
                 document.getElementById('sale_price_per_box').value = firstSale;
                 document.getElementById('wholesale_price').value = firstWholesale;
                 document.getElementById('weight_per_piece').value = firstWeight;
@@ -1455,12 +1472,12 @@
                 const purchH = document.getElementById('purchPriceHeader');
                 const wsH = document.getElementById('wholesalePriceHeader');
                 if (isCarton) {
-                    if (saleH) saleH.textContent = 'Sale (1 Pc)';
-                    if (purchH) purchH.textContent = 'Purch (1 Pc)';
+                    if (saleH) saleH.textContent = 'Retail Value (1 Pc)';
+                    if (purchH) purchH.textContent = 'Trade Value (1 Pc)';
                     if (wsH) wsH.textContent = 'Wholesale (1 Pc)';
                 } else {
-                    if (saleH) saleH.textContent = 'Sale Price';
-                    if (purchH) purchH.textContent = 'Purch Price';
+                    if (saleH) saleH.textContent = 'Retail Value';
+                    if (purchH) purchH.textContent = 'Trade Value';
                     if (wsH) wsH.textContent = 'Wholesale';
                 }
                 updateAllCartonPrices();

@@ -141,10 +141,34 @@ class PurchaseController extends Controller
             $purchase->has_partial_return = $totalReturned > 0 && $totalReturned < $purchase->net_amount;
         });
 
+        // Summary Statistics
+        $totalPurchases = $Purchase->count();
+        $totalTradeVal = $Purchase->sum(function($p) { return $p->total_trade_value ?: $p->subtotal; });
+        $totalDiscVal = $Purchase->sum(function($p) {
+            return ($p->discount ?? 0) + ($p->additional_discount ?? 0) + ($p->items ? $p->items->sum('item_discount') : 0);
+        });
+        $totalGstVal = $Purchase->sum('total_gst');
+        $totalWhtVal = $Purchase->sum('wht_amount');
+        $totalFreightVal = $Purchase->sum('extra_cost');
+        $totalNetVal = $Purchase->sum(function($p) { return $p->total_returned > 0 ? $p->updated_net_amount : $p->net_amount; });
+        $totalPaidVal = $Purchase->sum('paid_amount');
+        $totalDueVal = $Purchase->sum(function($p) { return $p->total_returned > 0 ? $p->updated_due_amount : $p->due_amount; });
+
         // If AJAX request, return only table rows partial
         if ($request->ajax()) {
             return response()->json([
-                'html' => view('admin_panel.purchase.partials.purchase_table_body', compact('Purchase'))->render()
+                'html' => view('admin_panel.purchase.partials.purchase_table_body', compact('Purchase'))->render(),
+                'stats' => [
+                    'count'       => $totalPurchases,
+                    'trade_value' => 'Rs. ' . number_format($totalTradeVal, 2),
+                    'disc_value'  => 'Rs. ' . number_format($totalDiscVal, 2),
+                    'gst'         => 'Rs. ' . number_format($totalGstVal, 2),
+                    'wht'         => 'Rs. ' . number_format($totalWhtVal, 2),
+                    'freight'     => 'Rs. ' . number_format($totalFreightVal, 2),
+                    'net'         => 'Rs. ' . number_format($totalNetVal, 2),
+                    'paid'        => 'Rs. ' . number_format($totalPaidVal, 2),
+                    'due'         => 'Rs. ' . number_format($totalDueVal, 2),
+                ]
             ]);
         }
 
@@ -154,7 +178,11 @@ class PurchaseController extends Controller
         $purchaseGstEnabled = (bool) \App\Models\Setting::get('purchase_gst_enabled', '1');
         $purchaseGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
 
-        return view('admin_panel.purchase.index', compact('Purchase', 'vendors', 'purchaseGstEnabled', 'purchaseGstPercent'));
+        return view('admin_panel.purchase.index', compact(
+            'Purchase', 'vendors', 'purchaseGstEnabled', 'purchaseGstPercent',
+            'totalTradeVal', 'totalDiscVal', 'totalGstVal', 'totalWhtVal',
+            'totalFreightVal', 'totalNetVal', 'totalPaidVal', 'totalDueVal'
+        ));
     }
 
     public function addBill($gatepassId)
@@ -723,6 +751,9 @@ class PurchaseController extends Controller
                 'note' => 'nullable|string',
                 'discount' => 'nullable|numeric|min:0',
                 'extra_cost' => 'nullable|numeric|min:0',
+                'freight' => 'nullable|numeric|min:0',
+                'wht_percent' => 'nullable|numeric|min:0',
+                'wht_amount' => 'nullable|numeric|min:0',
                 'product_id' => 'array',
                 'product_id.*' => 'nullable|exists:products,id',
                 'qty' => 'array',
@@ -735,6 +766,8 @@ class PurchaseController extends Controller
                 'unit.*' => 'nullable|required_with:product_id.*|string',
                 'item_discount' => 'nullable|array',
                 'item_discount.*' => 'nullable|numeric|min:0',
+                'item_discount_percent' => 'nullable|array',
+                'item_discount_percent.*' => 'nullable|numeric|min:0',
                 'gst_percent' => 'nullable|array',
                 'gst_percent.*' => 'nullable|numeric|min:0|max:100',
             ]);
@@ -799,8 +832,16 @@ class PurchaseController extends Controller
             $prices = $validated['price'] ?? [];
             $cartonPrices = $validated['price_per_carton'] ?? [];
             $units = $validated['unit'] ?? [];
-            $itemDiscs = $validated['item_discount'] ?? [];
+            $itemDiscs = $request->item_discount ?? ($validated['item_discount'] ?? []);
+            $itemDiscPercents = $request->item_discount_percent ?? [];
             $gstPercents = $request->gst_percent ?? [];
+            $retailPrices = $request->retail_price ?? [];
+            $isThirdSchedules = $request->is_third_schedule ?? [];
+            $totalRetailValue = 0;
+            $totalTradeValue = 0;
+            $totalValueAfterDiscount = 0;
+            $totalSalesTaxOnRetail = 0;
+            $totalSalesTaxOnTrade = 0;
             $totalExclusiveGst = 0;
             $totalGst = 0;
 
@@ -821,7 +862,7 @@ class PurchaseController extends Controller
                     continue;
                 }
 
-                $discPercent = (float) ($itemDiscs[$i] ?? 0);
+                // Calculate Line Total matching Frontend Logic
                 $unit = $units[$i] ?? null;
                 $u = strtolower($unit ?? '');
                 $curPPB = (float) ($ppbs[$i] ?? 1);
@@ -838,27 +879,74 @@ class PurchaseController extends Controller
                 $isPiece = in_array($u, ['pcs', 'pc', 'piece']);
                 $isCarton = in_array($u, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($curSizeMode, ['by_cartons', 'by_bandal']));
 
+                $prod = Product::find($pid);
+                if ($curPPB <= 0) {
+                    $curPPB = (float) ($prod->pieces_per_box ?? 1);
+                }
+                if ($curPPB <= 0) $curPPB = 1;
+
+                $tradePrice = (float) ($prices[$i] ?? 0);
+                $retailPrice = isset($retailPrices[$i]) && is_numeric($retailPrices[$i])
+                    ? (float)$retailPrices[$i]
+                    : (float)($prod->retail_price ?: ($prod->sale_price_per_piece ?: 0));
+
+                $isThird = isset($isThirdSchedules[$i])
+                    ? ($isThirdSchedules[$i] == '1' || $isThirdSchedules[$i] === true || $isThirdSchedules[$i] === 'true')
+                    : (bool)($prod->is_third_schedule ?? false);
+
                 if ($curSizeMode === 'by_size') {
-                    // Frontend: pieces_per_m2 * totalPieces * price
-                    $grossTotal = $curPPM2 * $qty * $price;
+                    $tradeValue = $curPPM2 * $qty * $tradePrice;
+                    $retailValue = $curPPM2 * $qty * $retailPrice;
                 } elseif ($u === 'gm' || $u === 'g') {
-                    $grossTotal = ($qty / 1000.0) * $price;
+                    $tradeValue = ($qty / 1000.0) * $tradePrice;
+                    $retailValue = ($qty / 1000.0) * $retailPrice;
                 } elseif ($isPiece) {
-                    $grossTotal = $qty * $price;
+                    $tradeValue = $qty * $tradePrice;
+                    $retailValue = $qty * $retailPrice;
                 } elseif ($isCarton) {
                     [$boxes, $loose] = self::parseCartonQty($rawQtyStr);
-                    $piecePrice = $curPPB > 0 ? ($price / $curPPB) : $price;
-                    $grossTotal = ($boxes * $price) + ($loose * $piecePrice);
+                    $pieceTrade = $curPPB > 0 ? ($tradePrice / $curPPB) : $tradePrice;
+                    $pieceRetail = $curPPB > 0 ? ($retailPrice / $curPPB) : $retailPrice;
+                    $tradeValue = ($boxes * $tradePrice) + ($loose * $pieceTrade);
+                    $retailValue = ($boxes * $retailPrice) + ($loose * $pieceRetail);
                 } else {
-                    $grossTotal = $qty * $price;
+                    $tradeValue = $qty * $tradePrice;
+                    $retailValue = $qty * $retailPrice;
                 }
 
-                // Calculate absolute discount from percentage
-                $discAmount = $grossTotal * ($discPercent / 100);
-                $exclusiveGstAmount = max(0, $grossTotal - $discAmount);
+                $discPercent = isset($itemDiscPercents[$i]) && is_numeric($itemDiscPercents[$i])
+                    ? (float) $itemDiscPercents[$i]
+                    : 0;
+
+                $discAmount = 0;
+                if ($discPercent > 0) {
+                    $discAmount = round($tradeValue * ($discPercent / 100), 2);
+                } elseif (isset($itemDiscs[$i]) && is_numeric($itemDiscs[$i]) && (float)$itemDiscs[$i] > 0) {
+                    $rawDisc = (float) $itemDiscs[$i];
+                    if ($rawDisc <= $tradeValue) {
+                        $discAmount = $rawDisc;
+                        $discPercent = $tradeValue > 0 ? round(($discAmount / $tradeValue) * 100, 2) : 0;
+                    } else {
+                        $discAmount = min($tradeValue, $rawDisc);
+                        $discPercent = $tradeValue > 0 ? round(($discAmount / $tradeValue) * 100, 2) : 0;
+                    }
+                }
+                $valueAfterDiscount = max(0, round($tradeValue - $discAmount, 2));
+
                 $gstPercent = isset($gstPercents[$i]) && is_numeric($gstPercents[$i]) ? (float)$gstPercents[$i] : 0;
-                $gstAmount = round($exclusiveGstAmount * ($gstPercent / 100), 2);
-                $lineTotal = round($exclusiveGstAmount + $gstAmount, 2);
+
+                if ($isThird) {
+                    $stRetail = round($retailValue * ($gstPercent / 100), 2);
+                    $stTrade = 0;
+                    $gstAmount = $stRetail;
+                } else {
+                    $stRetail = 0;
+                    $stTrade = round($valueAfterDiscount * ($gstPercent / 100), 2);
+                    $gstAmount = $stTrade;
+                }
+
+                $exclusiveGstAmount = $valueAfterDiscount;
+                $lineTotal = round($valueAfterDiscount + $gstAmount, 2);
 
                 // Snapshots
                 $bQty = (float) ($boxesQtys[$i] ?? 0);
@@ -896,10 +984,17 @@ class PurchaseController extends Controller
                     'mfg_date' => $itemMfgDate,
                     'exp_date' => $itemExpDate,
                     'unit' => $unit,
-                    'price' => $price,
-                    'item_discount' => $discAmount, // Store calculated amount
+                    'price' => $tradePrice,
+                    'retail_price' => $retailPrice,
+                    'retail_value' => $retailValue,
+                    'trade_value' => $tradeValue,
+                    'item_discount' => $discAmount,
+                    'value_after_discount' => $valueAfterDiscount,
+                    'is_third_schedule' => $isThird ? 1 : 0,
                     'gst_percent' => $gstPercent,
                     'gst_amount' => $gstAmount,
+                    'sales_tax_on_retail' => $stRetail,
+                    'sales_tax_on_trade' => $stTrade,
                     'exclusive_gst_amount' => $exclusiveGstAmount,
                     'qty' => $qty,
                     'line_total' => $lineTotal, // Fixed logic
@@ -916,26 +1011,39 @@ class PurchaseController extends Controller
                 ]);
 
                 $subtotal += $lineTotal;
+                $totalRetailValue += $retailValue;
+                $totalTradeValue += $tradeValue;
+                $totalValueAfterDiscount += $valueAfterDiscount;
+                $totalSalesTaxOnRetail += $stRetail;
+                $totalSalesTaxOnTrade += $stTrade;
                 $totalExclusiveGst += $exclusiveGstAmount;
                 $totalGst += $gstAmount;
             }
 
             // totals
             $discount = (float) ($request->discount ?? 0);
-            $extraCost = (float) ($request->extra_cost ?? 0);
-            $netAmount = ($subtotal - $discount) + $extraCost;
+            $extraCost = (float) ($request->extra_cost ?? $request->freight ?? 0);
+            $whtPercent = (float) ($request->wht_percent ?? 0);
+            $whtAmount = (float) ($request->wht_amount ?? 0);
+            $netAmount = ($subtotal - $discount) + $extraCost + $whtAmount;
 
             $purchase->update([
                 'subtotal' => $subtotal,
                 'total_exclusive_gst' => $totalExclusiveGst,
                 'total_gst' => $totalGst,
+                'total_retail_value' => $totalRetailValue,
+                'total_trade_value' => $totalTradeValue,
+                'total_value_after_discount' => $totalValueAfterDiscount,
+                'total_sales_tax_on_retail' => $totalSalesTaxOnRetail,
+                'total_sales_tax_on_trade' => $totalSalesTaxOnTrade,
+                'wht_percent' => $whtPercent,
+                'wht_amount' => $whtAmount,
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,
                 'net_amount' => $netAmount,
                 'due_amount' => $netAmount,
             ]);
-
             // Check if payment was submitted (array or scalar)
             $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
             $paymentAmounts = (array) ($request->input('payment_amount') ?? []);
@@ -1432,6 +1540,9 @@ class PurchaseController extends Controller
             'note' => 'nullable|string',
             'discount' => 'nullable|numeric|min:0',
             'extra_cost' => 'nullable|numeric|min:0',
+            'freight' => 'nullable|numeric|min:0',
+            'wht_percent' => 'nullable|numeric|min:0',
+            'wht_amount' => 'nullable|numeric|min:0',
 
             'product_id' => 'array',
             'product_id.*' => 'nullable|string',
@@ -1504,8 +1615,16 @@ class PurchaseController extends Controller
             $qtys = $validated['qty'] ?? [];
             $prices = $validated['price'] ?? [];
             $units = $validated['unit'] ?? [];
-            $itemDiscs = $validated['item_discount'] ?? [];
+            $itemDiscs = $request->item_discount ?? ($validated['item_discount'] ?? []);
+            $itemDiscPercents = $request->item_discount_percent ?? [];
             $gstPercents = $request->gst_percent ?? [];
+            $retailPrices = $request->retail_price ?? [];
+            $isThirdSchedules = $request->is_third_schedule ?? [];
+            $totalRetailValue = 0;
+            $totalTradeValue = 0;
+            $totalValueAfterDiscount = 0;
+            $totalSalesTaxOnRetail = 0;
+            $totalSalesTaxOnTrade = 0;
             $totalExclusiveGst = 0;
             $totalGst = 0;
 
@@ -1539,7 +1658,6 @@ class PurchaseController extends Controller
                     continue;
                 }
 
-                $discPercent = (float) ($itemDiscs[$i] ?? 0);
                 $unit = $units[$i] ?? null;
 
                 $u = strtolower($unit ?? '');
@@ -1556,26 +1674,74 @@ class PurchaseController extends Controller
                 $isPiece = in_array($u, ['pcs', 'pc', 'piece']);
                 $isCarton = in_array($u, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (!$isPiece && in_array($curSizeMode, ['by_cartons', 'by_bandal']));
 
+                $prod = Product::find($pid);
+                if ($curPPB <= 0) {
+                    $curPPB = (float) ($prod->pieces_per_box ?? 1);
+                }
+                if ($curPPB <= 0) $curPPB = 1;
+
+                $tradePrice = (float) ($prices[$i] ?? 0);
+                $retailPrice = isset($retailPrices[$i]) && is_numeric($retailPrices[$i])
+                    ? (float)$retailPrices[$i]
+                    : (float)($prod->retail_price ?: ($prod->sale_price_per_piece ?: 0));
+
+                $isThird = isset($isThirdSchedules[$i])
+                    ? ($isThirdSchedules[$i] == '1' || $isThirdSchedules[$i] === true || $isThirdSchedules[$i] === 'true')
+                    : (bool)($prod->is_third_schedule ?? false);
+
                 if ($curSizeMode === 'by_size') {
-                    $grossTotal = $curPPM2 * $qty * $price;
+                    $tradeValue = $curPPM2 * $qty * $tradePrice;
+                    $retailValue = $curPPM2 * $qty * $retailPrice;
                 } elseif (in_array($u, ['gm', 'g'])) {
-                    $grossTotal = ($qty / 1000.0) * $price;
+                    $tradeValue = ($qty / 1000.0) * $tradePrice;
+                    $retailValue = ($qty / 1000.0) * $retailPrice;
                 } elseif ($isPiece) {
-                    $grossTotal = $qty * $price;
+                    $tradeValue = $qty * $tradePrice;
+                    $retailValue = $qty * $retailPrice;
                 } elseif ($isCarton) {
                     [$boxes, $loose] = self::parseCartonQty($rawQtyStr);
-                    $piecePrice = $curPPB > 0 ? ($price / $curPPB) : $price;
-                    $grossTotal = ($boxes * $price) + ($loose * $piecePrice);
+                    $pieceTrade = $curPPB > 0 ? ($tradePrice / $curPPB) : $tradePrice;
+                    $pieceRetail = $curPPB > 0 ? ($retailPrice / $curPPB) : $retailPrice;
+                    $tradeValue = ($boxes * $tradePrice) + ($loose * $pieceTrade);
+                    $retailValue = ($boxes * $retailPrice) + ($loose * $pieceRetail);
                 } else {
-                    $grossTotal = $qty * $price;
+                    $tradeValue = $qty * $tradePrice;
+                    $retailValue = $qty * $retailPrice;
                 }
 
-                // Calculate absolute discount from percentage
-                $discAmount = $grossTotal * ($discPercent / 100);
-                $exclusiveGstAmount = max(0, $grossTotal - $discAmount);
+                $discPercent = isset($itemDiscPercents[$i]) && is_numeric($itemDiscPercents[$i])
+                    ? (float) $itemDiscPercents[$i]
+                    : 0;
+
+                $discAmount = 0;
+                if ($discPercent > 0) {
+                    $discAmount = round($tradeValue * ($discPercent / 100), 2);
+                } elseif (isset($itemDiscs[$i]) && is_numeric($itemDiscs[$i]) && (float)$itemDiscs[$i] > 0) {
+                    $rawDisc = (float) $itemDiscs[$i];
+                    if ($rawDisc <= $tradeValue) {
+                        $discAmount = $rawDisc;
+                        $discPercent = $tradeValue > 0 ? round(($discAmount / $tradeValue) * 100, 2) : 0;
+                    } else {
+                        $discAmount = min($tradeValue, $rawDisc);
+                        $discPercent = $tradeValue > 0 ? round(($discAmount / $tradeValue) * 100, 2) : 0;
+                    }
+                }
+                $valueAfterDiscount = max(0, round($tradeValue - $discAmount, 2));
+
                 $gstPercent = isset($gstPercents[$i]) && is_numeric($gstPercents[$i]) ? (float)$gstPercents[$i] : 0;
-                $gstAmount = round($exclusiveGstAmount * ($gstPercent / 100), 2);
-                $lineTotal = round($exclusiveGstAmount + $gstAmount, 2);
+
+                if ($isThird) {
+                    $stRetail = round($retailValue * ($gstPercent / 100), 2);
+                    $stTrade = 0;
+                    $gstAmount = $stRetail;
+                } else {
+                    $stRetail = 0;
+                    $stTrade = round($valueAfterDiscount * ($gstPercent / 100), 2);
+                    $gstAmount = $stTrade;
+                }
+
+                $exclusiveGstAmount = $valueAfterDiscount;
+                $lineTotal = round($valueAfterDiscount + $gstAmount, 2);
 
                 if ($isPiece) {
                     $baseQty = $qty;
@@ -1623,10 +1789,17 @@ class PurchaseController extends Controller
                     'mfg_date' => $itemMfgDate,
                     'exp_date' => $itemExpDate,
                     'unit' => $unit,
-                    'price' => $price,
+                    'price' => $tradePrice,
+                    'retail_price' => $retailPrice,
+                    'retail_value' => $retailValue,
+                    'trade_value' => $tradeValue,
                     'item_discount' => $discAmount,
+                    'value_after_discount' => $valueAfterDiscount,
+                    'is_third_schedule' => $isThird ? 1 : 0,
                     'gst_percent' => $gstPercent,
                     'gst_amount' => $gstAmount,
+                    'sales_tax_on_retail' => $stRetail,
+                    'sales_tax_on_trade' => $stTrade,
                     'exclusive_gst_amount' => $exclusiveGstAmount,
                     'qty' => $qty,
                     'line_total' => $lineTotal,
@@ -1643,6 +1816,11 @@ class PurchaseController extends Controller
                 ]);
 
                 $subtotal += $lineTotal;
+                $totalRetailValue += $retailValue;
+                $totalTradeValue += $tradeValue;
+                $totalValueAfterDiscount += $valueAfterDiscount;
+                $totalSalesTaxOnRetail += $stRetail;
+                $totalSalesTaxOnTrade += $stTrade;
                 $totalExclusiveGst += $exclusiveGstAmount;
                 $totalGst += $gstAmount;
                 $newMap[$pid] = ($newMap[$pid] ?? 0) + $baseQty;
@@ -1650,8 +1828,10 @@ class PurchaseController extends Controller
 
             // Totals calculation
             $discount = (float) ($request->discount ?? 0);
-            $extraCost = (float) ($request->extra_cost ?? 0);
-            $netAmount = ($subtotal - $discount) + $extraCost;
+            $extraCost = (float) ($request->extra_cost ?? $request->freight ?? 0);
+            $whtPercent = (float) ($request->wht_percent ?? 0);
+            $whtAmount = (float) ($request->wht_amount ?? 0);
+            $netAmount = ($subtotal - $discount) + $extraCost + $whtAmount;
 
             // Payments calculation from request
             $paymentAccountIds = $request->input('payment_account_id', []);
@@ -1685,6 +1865,13 @@ class PurchaseController extends Controller
                 'subtotal' => $subtotal,
                 'total_exclusive_gst' => $totalExclusiveGst,
                 'total_gst' => $totalGst,
+                'total_retail_value' => $totalRetailValue,
+                'total_trade_value' => $totalTradeValue,
+                'total_value_after_discount' => $totalValueAfterDiscount,
+                'total_sales_tax_on_retail' => $totalSalesTaxOnRetail,
+                'total_sales_tax_on_trade' => $totalSalesTaxOnTrade,
+                'wht_percent' => $whtPercent,
+                'wht_amount' => $whtAmount,
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'extra_cost' => $extraCost,

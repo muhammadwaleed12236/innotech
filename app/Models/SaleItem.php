@@ -14,6 +14,8 @@ class SaleItem extends Model
         'color', 'total_pieces', 'loose_pieces',
         'price_per_piece', 'price_per_m2',
         'bonus_qty', 'mfg_date', 'exp_date', 'gross_amount', 'exclusive_gst_amount',
+        'trade_activity', 'mrp_amount', 'adv_tax_percent', 'adv_tax_amount',
+        'reg_disc_percent', 'reg_disc_amount', 'sp_disc_percent', 'sp_disc_amount',
         'sales_tax_percent', 'sales_tax_amount', 'further_tax_percent', 'further_tax_amount',
     ];
 

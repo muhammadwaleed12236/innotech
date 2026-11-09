@@ -301,6 +301,19 @@
                                                 <option value="by_ton" {{ $product->size_mode == 'by_ton' ? 'selected' : '' }}>Ton</option>
                                             </select>
                                         </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label-pro">HS Code</label>
+                                            <input type="text" class="form-control-pro font-monospace" name="hs_code" placeholder="e.g. 2103.9000" value="{{ old('hs_code', $product->hs_code) }}">
+                                        </div>
+                                        <div class="col-md-8 d-flex align-items-center pt-2">
+                                            <div class="form-check form-switch p-2 rounded bg-light border w-100">
+                                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_third_schedule" id="is_third_schedule" value="1" {{ $product->is_third_schedule ? 'checked' : '' }}>
+                                                <label class="form-check-label fw-bold text-dark" for="is_third_schedule">
+                                                    Third Schedule Item (Sales Tax on Retail Price)
+                                                    <small class="text-muted d-block" style="font-size:11px;">Enable agar is item per GST Retail Price / MRP per calculate hona hai.</small>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -343,9 +356,9 @@
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 90px; font-size: 10px;">Initial Stock</th>
                                                         <th class="text-uppercase text-muted p-1 text-center conv-col" id="convFactorHeader" style="width: 95px; font-size: 10px;">Pcs / Carton</th>
                                                         <th class="text-uppercase text-muted p-1 text-center piece-wt-only-col" style="width: 90px; font-size: 10px;">Piece Wt (g)</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Sale Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="salePriceHeader">Retail Value</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="wholesalePriceHeader">Wholesale</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="purchPriceHeader">Purch Price</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 90px; font-size: 10px;" id="purchPriceHeader">Trade Value</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
@@ -431,16 +444,18 @@
                                     <h6 class="form-label-pro text-primary mb-2">Unit Price Settings (Rs.)</h6>
                                     <div class="row g-3">
                                          <div class="col-md-2">
-                                             <label class="form-label-pro text-success">Sale Price <span class="unit-label text-muted fw-normal">(pc)</span></label>
-                                             <input type="number" class="form-control-pro fw-bold text-success" name="sale_price_per_box" id="sale_price_per_box" step="0.01" value="{{ $product->sale_price_per_piece }}" placeholder="0.00">
+                                              <label class="form-label-pro text-success">Retail Price <span class="unit-label text-muted fw-normal">(pc)</span></label>
+                                              <input type="number" class="form-control-pro fw-bold text-success" name="retail_price" id="retail_price" step="0.01" value="{{ $product->retail_price ?: $product->sale_price_per_piece }}" placeholder="0.00">
+                                              <input type="hidden" name="sale_price_per_box" id="sale_price_per_box" value="{{ $product->sale_price_per_box }}">sale_price_per_piece }}" placeholder="0.00">
                                          </div>
                                          <div class="col-md-2">
                                              <label class="form-label-pro text-info">Wholesale Price <span class="unit-label text-muted fw-normal">(pc)</span></label>
                                              <input type="number" class="form-control-pro fw-bold text-info" name="wholesale_price" id="wholesale_price" step="0.01" value="{{ $product->wholesale_price ?? 0 }}" placeholder="0.00">
                                          </div>
                                          <div class="col-md-2">
-                                             <label class="form-label-pro text-secondary">Purchase Price <span class="unit-label text-muted fw-normal">(pc)</span></label>
-                                             <input type="number" class="form-control-pro text-muted" name="purchase_price_per_piece" id="purchase_price_per_piece" step="0.01" value="{{ $product->purchase_price_per_piece }}" placeholder="0.00">
+                                              <label class="form-label-pro text-secondary">Trade Price <span class="unit-label text-muted fw-normal">(pc)</span></label>
+                                              <input type="number" class="form-control-pro text-muted" name="trade_price" id="trade_price" step="0.01" value="{{ $product->trade_price ?: $product->purchase_price_per_piece }}" placeholder="0.00">
+                                              <input type="hidden" name="purchase_price_per_piece" id="purchase_price_per_piece" value="{{ $product->purchase_price_per_piece }}">purchase_price_per_piece }}" placeholder="0.00">
                                          </div>
                                          <div class="col-md-2 factor-col-main d-none">
                                              <label class="form-label-pro text-warning factor-label">Piece Weight (g)</label>
@@ -1082,12 +1097,12 @@
                 const purchH = document.getElementById('purchPriceHeader');
                 const wsH = document.getElementById('wholesalePriceHeader');
                 if (isCarton) {
-                    if (saleH) saleH.textContent = 'Sale (1 Pc)';
-                    if (purchH) purchH.textContent = 'Purch (1 Pc)';
+                    if (saleH) saleH.textContent = 'Retail Value (1 Pc)';
+                    if (purchH) purchH.textContent = 'Trade Value (1 Pc)';
                     if (wsH) wsH.textContent = 'Wholesale (1 Pc)';
                 } else {
-                    if (saleH) saleH.textContent = 'Sale Price';
-                    if (purchH) purchH.textContent = 'Purch Price';
+                    if (saleH) saleH.textContent = 'Retail Value';
+                    if (purchH) purchH.textContent = 'Trade Value';
                     if (wsH) wsH.textContent = 'Wholesale';
                 }
                 updateAllCartonPrices();

@@ -12,14 +12,23 @@ class Purchase extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'purchase_date' => 'date',
-        'subtotal'      => 'decimal:2',
-        'discount'      => 'decimal:2',
-        'additional_discount' => 'decimal:2',
-        'extra_cost'    => 'decimal:2',
-        'net_amount'    => 'decimal:2',
-        'paid_amount'   => 'decimal:2',
-        'due_amount'    => 'decimal:2',
+        'purchase_date'              => 'date',
+        'subtotal'                   => 'decimal:2',
+        'total_retail_value'         => 'decimal:2',
+        'total_trade_value'          => 'decimal:2',
+        'total_value_after_discount' => 'decimal:2',
+        'total_sales_tax_on_retail'  => 'decimal:2',
+        'total_sales_tax_on_trade'   => 'decimal:2',
+        'wht_percent'                => 'decimal:2',
+        'wht_amount'                 => 'decimal:2',
+        'total_exclusive_gst'        => 'decimal:2',
+        'total_gst'                  => 'decimal:2',
+        'discount'                   => 'decimal:2',
+        'additional_discount'        => 'decimal:2',
+        'extra_cost'                 => 'decimal:2',
+        'net_amount'                 => 'decimal:2',
+        'paid_amount'                => 'decimal:2',
+        'due_amount'                 => 'decimal:2',
     ];
 
     public function branch()   { return $this->belongsTo(Branch::class); }

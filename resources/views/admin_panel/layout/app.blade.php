@@ -1157,6 +1157,9 @@
                                             <li><a href="{{ route('report.profit_loss') }}"><i class="fa-solid fa-chart-line"></i>
                                                     Profit & Loss</a></li>
                                         @endcan
+
+                                        <li><a href="{{ route('report.discount_reconciliation') }}"><i class="fa-solid fa-tags text-success"></i>
+                                                Discount &amp; Profit Reconciliation</a></li>
                                         
                                         @can('recovery.report.view')
                                             <li><a href="{{ route('report.recovery') }}"><i class="fa-solid fa-file-invoice-dollar"></i>

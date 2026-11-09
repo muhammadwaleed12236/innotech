@@ -77,7 +77,7 @@
         const cfg = window.saleScreenConfig || {};
         const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
         const strnExempt = cfg.strn_exemption !== undefined ? cfg.strn_exemption : true;
-        const defaultFt = isFtEnabled ? (cfg.default_ft_rate !== undefined ? cfg.default_ft_rate : 3) : 0;
+        const defaultFt = isFtEnabled ? (cfg.default_ft_rate !== undefined ? cfg.default_ft_rate : 4) : 0;
         const badgesEnabled = cfg.flags && cfg.flags.customer_tax_badges !== undefined ? cfg.flags.customer_tax_badges : true;
 
         if (!customerData) {
@@ -101,7 +101,10 @@
             // Update Further Tax percent on all item rows
             $('#salesTableBody tr').each(function() {
                 const $r = $(this);
+                $r.find('.urc-tax-value').val(ftPercent);
                 $r.find('.further-tax-percent').val(ftPercent);
+                $r.find('.urc-toggle').data('type', 'percent').text('%');
+                $r.find('.urc-type-hidden').val('percent');
                 if (typeof computeRow === 'function') {
                     computeRow($r);
                 } else if (typeof recalculateRow === 'function') {
@@ -140,8 +143,8 @@
         } else if (window.currentCustomerHasNtn) {
             $container.html(`
                 <span class="badge bg-info-subtle text-info border border-info fw-bold px-2 py-1" style="font-size: 11px;"><i class="fas fa-id-card me-1"></i> NTN: ${window.currentCustomerNtn}</span>
-                <span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered for Sales Tax - Further Tax 3% applied">
-                    <i class="fas fa-exclamation-triangle me-1"></i> No STRN &bull; FT (3%) Applied
+                <span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered for Sales Tax - Further Tax 4% applied">
+                    <i class="fas fa-exclamation-triangle me-1"></i> No STRN &bull; FT (4%) Applied
                 </span>
             `).removeClass('d-none');
         } else {
@@ -149,8 +152,8 @@
             const hasCust = $('#customerSelect').val();
             if (hasCust || isWalkin) {
                 $container.html(`
-                    <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-bold px-2 py-1" style="font-size: 11px;" title="Unregistered buyer - Further Tax 3% applied">
-                        <i class="fas fa-info-circle me-1"></i> Unregistered (No STRN) &bull; FT (3%) Applied
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-bold px-2 py-1" style="font-size: 11px;" title="Unregistered buyer - Further Tax 4% applied">
+                        <i class="fas fa-info-circle me-1"></i> Unregistered (No STRN) &bull; FT (4%) Applied
                     </span>
                 `).removeClass('d-none');
             } else {
@@ -162,6 +165,24 @@
     /* =========================================
        PRODUCT SELECT2
        ========================================= */
+    // Client-side Memory Cache for Lightning-Fast Instant Product Loading
+    window.productSearchCache = window.productSearchCache || {};
+    window.priceProductCache = window.priceProductCache || {};
+    window.whProductCache = window.whProductCache || {};
+
+    // Pre-warm product search cache in background on page load
+    $(function() {
+        $.ajax({
+            url: '{{ route('products.ajax.search') }}',
+            data: { term: '', page: 1 },
+            dataType: 'json',
+            success: function(data) {
+                window.productSearchCache[''] = data;
+                window.productSearchCache['_p1'] = data;
+            }
+        });
+    });
+
     function initProductSelect2($el) {
         if (!$el || !$el.length) return;
         if ($el.hasClass('select2-hidden-accessible')) {
@@ -175,7 +196,32 @@
             ajax: {
                 url: '{{ route('products.ajax.search') }}',
                 dataType: 'json',
-                delay: 200,
+                delay: 50,
+                transport: function(params, success, failure) {
+                    var term = (params.data.term || params.data.q || '').toLowerCase().trim();
+                    var page = params.data.page || 1;
+                    var cacheKey = term + '_p' + page;
+
+                    // 1. Instant RAM Cache Hit (0ms - ZERO loading spinner!)
+                    if (window.productSearchCache[cacheKey]) {
+                        success(window.productSearchCache[cacheKey]);
+                        return;
+                    }
+                    if (!term && page === 1 && window.productSearchCache['']) {
+                        success(window.productSearchCache['']);
+                        return;
+                    }
+
+                    // 2. Fast Network Fetch and Cache
+                    var $request = $.ajax(params);
+                    $request.then(function(data) {
+                        window.productSearchCache[cacheKey] = data;
+                        if (!term && page === 1) window.productSearchCache[''] = data;
+                        success(data);
+                    });
+                    $request.fail(failure);
+                    return $request;
+                },
                 data: function(params) {
                     return {
                         term: params.term || '',
@@ -185,9 +231,9 @@
                 processResults: function(data, params) {
                     params.page = params.page || 1;
                     return {
-                        results: data.results,
+                        results: data.results || [],
                         pagination: {
-                            more: data.pagination.more
+                            more: data.pagination ? data.pagination.more : false
                         }
                     };
                 },
@@ -196,7 +242,7 @@
             minimumInputLength: 0,
             language: {
                 searching: function() {
-                    return '<div class="p-2 text-muted" style="font-size: 13px;"><i class="fas fa-spinner fa-spin me-1"></i> Searching products...</div>';
+                    return '<div class="p-2 text-muted" style="font-size: 13px;"><i class="fas fa-bolt text-warning me-1"></i> Loading products...</div>';
                 },
                 noResults: function() {
                     return '<div class="p-2 text-muted" style="font-size: 13px;">No product found</div>';
@@ -227,6 +273,13 @@
             }, 50);
         });
     }
+
+    // Direct cell click opens Select2 search bar
+    $(document).on('click', '.sales-table td.col-product', function(e) {
+        if ($(e.target).closest('.select2-container').length === 0) {
+            $(this).find('.product').select2('open');
+        }
+    });
 
     function formatProduct(repo) {
         if (repo.loading) return repo.text;
@@ -288,35 +341,33 @@
         const btnTitle = isWholesale ? 'Wholesale Mode' : 'Retail Mode';
 
         const rowHtml = `
-  <tr>
-    <!-- # ROW INDEX -->
-    <td class="text-center fw-bold text-muted row-index" style="vertical-align:middle; font-size:0.75rem;">1</td>
+  <tr class="sale-item-row">
+    <!-- # -->
+    <td class="col-index text-center fw-bold row-index-cell row-index" style="font-size: 11px;">1</td>
 
-    <!-- PRODUCT -->
+    <!-- ITEM TITLE -->
     <td class="col-product">
-      <select class="form-select product" style="width:100%">
-        <option value=""></option>
-      </select>
+      <select class="form-select product-select2 product" style="width: 100%;"></select>
       <input type="hidden" class="product-id-hidden" name="product_id[]">
       <input type="hidden" class="variant-data-hidden" name="color[]">
-      <input type="hidden" class="batch-id-hidden" name="batch_id[]">
-      <input type="hidden" class="batch-no-hidden" name="batch_no[]">
+      <input type="hidden" class="size-display" name="size_display[]">
+      <input type="hidden" class="size-h" name="size_h[]">
+      <input type="hidden" class="size-w" name="size_w[]">
+      <input type="hidden" class="size-mode-text" name="size_mode_text[]">
+      <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
+      <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
       <input type="hidden" class="serials-hidden" name="serials[]">
       <div class="row-tracking-badges mt-1 d-flex flex-wrap gap-1"></div>
-      <input type="hidden" class="item-code-display">
-      <input type="hidden" class="size-h">
-      <input type="hidden" class="size-w">
-      <input type="hidden" class="size-mode-text">
     </td>
 
     @if($canSelectWarehouse)
     <!-- WAREHOUSE -->
-    <td class="col-warehouse" style="width: 140px; min-width: 130px;">
-      <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
+    <td class="col-warehouse">
+      <select name="warehouse_id[]" class="form-select form-select-sm warehouse row-warehouse-select">
         @if(isset($warehouse) && count($warehouse) > 0)
           @foreach($warehouse as $wh)
             <option value="{{ $wh->id }}" {{ ($userWarehouseId ?? 1) == $wh->id ? 'selected' : '' }}>
-              {{ $wh->warehouse_name }}
+              {{ $wh->name ?? $wh->warehouse_name }}
             </option>
           @endforeach
         @endif
@@ -326,118 +377,139 @@
     <input type="hidden" class="warehouse" name="warehouse_id[]" value="{{ $userWarehouseId ?? 1 }}">
     @endif
 
-    <!-- STOCK -->
-    <td class="col-stock">
-      <input type="text" class="form-control stock text-center input-readonly" readonly tabindex="-1">
-      <input type="hidden" class="variant-stock-value">
-    </td>
-
-    <!-- Qty cell with Sub-Unit toggle on Right and Left-Aligned Cursor -->
-    <td class="col-qty-wrapper">
+    <!-- BATCH NO -->
+    <td class="col-batch text-center">
       <div class="input-group input-group-sm">
-        <input type="number" step="any" class="form-control carton-qty text-start fw-bold" name="carton_qty[]" placeholder="0" min="0" value="">
-        <button type="button" class="btn btn-outline-primary qty-unit-toggle px-1 py-0 d-none fw-bold" 
-                data-unit-mode="main" title="Toggle Unit (Ctn ↔ Pcs / Kg ↔ Gm / Ft ↔ In)">
-          Kg
+        <input type="text" class="form-control selected-batch-no text-center fw-semibold text-primary" readonly placeholder="–" style="cursor: pointer; background: #f0f7ff;" title="Click to select or change batch">
+        <button type="button" class="btn btn-outline-primary btn-select-batch px-1 py-0" tabindex="-1" title="Choose Batch">
+          <i class="fas fa-layer-group" style="font-size: 10px;"></i>
         </button>
       </div>
-      <input type="hidden" class="hidden-sub-unit-mode" name="sub_unit_mode[]" value="main">
+      <input type="hidden" class="batch-id-hidden" name="batch_id[]">
+      <input type="hidden" class="batch-no-hidden" name="batch_no[]">
     </td>
 
-    <!-- BONUS (Commented out) -->
-    <!-- <td class="col-bonus"> -->
-      <input type="hidden" class="bonus-qty" name="bonus_qty[]" value="0">
-    <!-- </td> -->
-
-    <!-- Loose Pieces -->
-    <td style="width:70px;min-width:70px;" class="d-none">
-      <input type="number" class="form-control loose-pcs-input text-end" name="loose_qty[]" placeholder="" min="0" value="">
-    </td>
-
-    <!-- Size -->
-    <td class="col-size">
-       <input type="text" class="form-control size-display text-center" name="size_display[]" placeholder="-">
-       <input type="hidden" class="pack-qty" name="pack_qty[]" value="1">
-    </td>
-
-    <!-- Total Pieces (Calculated) -->
-    <td class="col-pieces">
-      <input type="text" class="form-control total-pieces text-end input-readonly" name="total_pieces[]" readonly placeholder="0" tabindex="-1">
-      <!-- Hidden qty field for backend compatibility -->
-      <input type="hidden" class="sales-qty" name="qty[]" value="0">
-    </td>
-
-    <!-- PCS/CTN (always visible; shows value when unit is Carton, "–" otherwise) -->
-    <td class="col-pcs-ctn text-center">
-      <input type="text" class="form-control pcs-per-ctn text-center input-readonly" readonly tabindex="-1" placeholder="-">
-    </td>
- 
-    <!-- Price/Piece (EDITABLE) -->
+    <!-- TRADE PRICE / RETAIL -->
     <td class="col-price-p">
-      <div class="input-group input-group-sm">
-        <input type="text" class="form-control visible-price text-end fw-semibold" name="visible_price[]" placeholder="0">
-        <button type="button" class="btn ${btnClass} price-mode-row-toggle px-2 py-0 fw-bold" 
-                data-mode="${lastSelectedPriceMode}" title="${btnTitle}">
-          ${btnText}
-        </button>
-      </div>
+      <input type="number" step="0.01" class="form-control visible-price text-start fw-semibold" name="visible_price[]" placeholder="0.00">
       <input type="hidden" class="price-per-piece" name="price_per_piece[]">
       <input type="hidden" class="retail-price">
       <input type="hidden" class="wholesale-price">
       <input type="hidden" class="weight-per-piece">
     </td>
 
-    <!-- SINGLE DISCOUNT COLUMN -->
-    <td class="col-disc">
-      <div class="input-group input-group-sm">
-        <input type="number"
-               class="form-control discount-value text-end"
-               name="item_disc[]"
-               placeholder="0">
-        <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
-        <button type="button"
-                class="btn btn-outline-secondary discount-toggle px-2 py-0 fw-bold"
-                data-type="percent" tabindex="-1">%</button>
-      </div>
+    <!-- STOCK BAL -->
+    <td class="col-stock">
+      <input type="text" class="form-control stock text-center input-readonly" readonly placeholder="0" tabindex="-1">
+      <input type="hidden" class="variant-stock-value">
+    </td>
+
+    <!-- QTY IN CTNS -->
+    <td class="col-qty-ctn">
+      <input type="number" step="0.01" class="form-control carton-qty text-start fw-semibold" name="carton_qty[]" placeholder="0">
+    </td>
+
+    <!-- QTY IN PIECES / BOX -->
+    <td class="col-qty-pcs">
+      <input type="number" step="0.01" class="form-control loose-pcs-input text-start fw-semibold" name="loose_pieces[]" placeholder="0">
+      <input type="hidden" class="sales-qty" name="qty[]" value="0">
+    </td>
+
+    <!-- TOTAL QTY -->
+    <td class="col-total-qty text-center" style="width: 50px; min-width: 48px; max-width: 54px;">
+      <input type="text" class="form-control total-pieces text-center input-readonly fw-bold font-monospace" name="total_pieces[]" readonly placeholder="0" tabindex="-1" style="padding: 2px 1px !important; font-size: 11.5px !important;">
+    </td>
+
+    <!-- GROSS -->
+    <td class="col-gross-p">
+      <input type="text" class="form-control visible-gross text-start input-readonly fw-semibold" readonly tabindex="-1" value="0.00">
+      <input type="hidden" class="gross-amount" name="gross_amount[]" value="0">
+    </td>
+
+    <!-- TRADE ACTIVITY (BONUS AMOUNT) -->
+    <td class="col-trade-activity">
+      <input type="number" step="0.01" class="form-control trade-activity text-start fw-semibold text-warning-emphasis" name="trade_activity[]" value="0.00" placeholder="0.00" title="Bonus Scheme Amount">
+    </td>
+
+    <!-- REG. DISC. % -->
+    <td class="col-reg-disc-pct">
+      <input type="number" step="0.01" class="form-control reg-disc-percent text-start" name="reg_disc_percent[]" value="0.00" placeholder="0.00">
+    </td>
+
+    <!-- REGULAR DISC. AMT -->
+    <td class="col-reg-disc-amt">
+      <input type="number" step="0.01" class="form-control reg-disc-amount text-start" name="reg_disc_amount[]" value="0.00" placeholder="0.00">
+    </td>
+
+    <!-- SP. DISC. % -->
+    <td class="col-sp-disc-pct">
+      <input type="number" step="0.01" class="form-control sp-disc-percent text-start" name="sp_disc_percent[]" value="0.00" placeholder="0.00">
+      <input type="hidden" class="discount-value" name="item_disc[]" value="0">
+      <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
+    </td>
+
+    <!-- SPECIAL DISC. AMT -->
+    <td class="col-sp-disc-amt">
+      <input type="number" step="0.01" class="form-control sp-disc-amount text-start" name="sp_disc_amount[]" value="0.00" placeholder="0.00">
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
-    <!-- ST % (Dynamic Sales Tax) -->
+    <!-- SALES TAX % -->
     <td class="col-st">
       <div class="input-group input-group-sm">
-        <input type="number" step="0.01" class="form-control sales-tax-percent text-end" name="sales_tax_percent[]" value="${window.saleScreenConfig && window.saleScreenConfig.default_st_rate !== undefined ? window.saleScreenConfig.default_st_rate : 18}" placeholder="18">
-        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+        <input type="number" step="0.01" class="form-control sales-tax-value text-start text-success fw-semibold" value="0.00" placeholder="0" title="Sales Tax (% or PKR)">
+        <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="percent">
+        <button type="button" class="btn btn-outline-success st-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 9.5px; padding: 0 3px !important; min-width: 16px;">%</button>
       </div>
+      <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
       <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
+      <input type="hidden" class="visible-st" value="0">
     </td>
 
-    <!-- FT % (Dynamic Further Tax) -->
+    <!-- MRP AMOUNT -->
+    <td class="col-mrp">
+      <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)">
+      <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
+    </td>
+
+    <!-- URC TAX AMOUNT -->
     <td class="col-ft">
       <div class="input-group input-group-sm">
-        <input type="number" step="0.01" class="form-control further-tax-percent text-end" name="further_tax_percent[]" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 3)}" placeholder="0">
-        <span class="input-group-text px-1 py-0 text-muted" style="font-size: 11px; font-weight: 600;">%</span>
+        <input type="number"
+               step="0.01"
+               class="form-control urc-tax-value text-start text-primary fw-semibold"
+               name="further_tax_percent[]"
+               value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}"
+               placeholder="0"
+               title="URC Tax (% or Amount)">
+        <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
+        <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
       </div>
+      <input type="hidden" class="further-tax-percent" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}">
       <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
+    </td>
+
+    <!-- ADV. TAX AMT -->
+    <td class="col-adv-tax">
+      <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)">
+      <input type="hidden" class="adv-tax-percent" name="adv_tax_percent[]" value="0">
     </td>
 
     <!-- NET AMOUNT -->
     <td class="col-amount">
-      <input type="text" class="form-control sales-amount text-end input-readonly" name="total[]" value="0" readonly tabindex="-1">
-      <input type="hidden" class="gross-amount" name="gross_amount[]">
+      <input type="text" class="form-control sales-amount text-start input-readonly fw-bold" name="total[]" value="0.00" readonly tabindex="-1">
       <input type="hidden" class="exclusive-gst-amount" name="exclusive_gst_amount[]" value="0">
     </td>
 
     <!-- ACTION -->
     <td class="col-action text-center">
-      <button type="button" class="del-row" tabindex="-1" title="Delete Row"><i class="fas fa-trash-alt"></i></button>
+      <button type="button" class="del-row btn btn-sm text-danger p-0 border-0" tabindex="-1" title="Delete Row">
+        <i class="fas fa-trash-alt"></i>
+      </button>
     </td>
   </tr>`;
 
         const $row = $(rowHtml);
-        const $initialOpts = $('#salesTableBody tr:first-child .product option').clone();
-        if ($initialOpts.length > 0) {
-            $row.find('.product').html($initialOpts);
-        }
         const $initialWhOpts = $('#salesTableBody tr:first-child .warehouse option').clone();
         if ($initialWhOpts.length > 0) {
             $row.find('.warehouse').html($initialWhOpts);
@@ -451,7 +523,66 @@
     // --- Loading Data for Rows ---
 
     function fetchProductPrice($row, productId) {
-        console.log('Fetching price for product:', productId);
+        if (!productId) return;
+        function applyPrice(pRes) {
+            $row.find('.item-code-display').val(pRes.item_code || '');
+            $row.find('.retail-price').val(pRes.retail_price || 0);
+            $row.find('.wholesale-price').val(pRes.wholesale_price || 0);
+            $row.find('.weight-per-piece').val(pRes.weight_per_piece || 0);
+             
+            let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
+            let wsPrice = parseFloat(pRes.wholesale_price) || 0;
+            let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (pRes.retail_price || 0);
+
+            const ppb = parseFloat(pRes.pieces_per_box) || 1;
+            const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+            if (pRes.size_mode == "by_cartons") {
+                let piecePrice = parseFloat(pRes.sale_price_per_piece || rate || 0);
+                let cartonPrice = ppb > 1 ? (piecePrice * ppb) : piecePrice;
+                $row.find('.visible-price').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
+                $row.find('.price-per-piece').val(unitMode === 'pcs' ? piecePrice : cartonPrice);
+            } else if (pRes.size_mode == "by_pieces" || pRes.size_mode == "by_kg" || pRes.size_mode == "by_gm" || pRes.size_mode == "by_meter") {
+                $row.find('.visible-price').val(pRes.sale_price_per_piece || rate || 0);
+                $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
+            } else {
+                $row.find('.visible-price').val(pRes.price_per_m2 || rate || 0);
+                $row.find('.price-per-piece').val($row.find('.visible-price').val() || 0);
+            }
+
+            $row.find('.pack-qty').val(pRes.pieces_per_box || 1);
+            $row.find('.size-h').val(pRes.height || '-');
+            $row.find('.size-w').val(pRes.width || '-');
+            $row.find('.size-mode-text').val(pRes.size_mode || '-');
+            $row.find('.discount-value').val(pRes.sale_discount_percent || 0);
+
+            const rPerPiece = parseFloat(pRes.sale_price_per_piece || pRes.retail_price || 0);
+            const rPerBox = parseFloat(pRes.sale_price_per_box) || (rPerPiece * ppb);
+            $row.data('retail_price', rPerPiece);
+            $row.data('retail_price_box', rPerBox);
+            const initMrp = (pRes.size_mode == "by_cartons" && unitMode !== 'pcs') ? rPerBox : rPerPiece;
+            $row.find('.mrp-amount').val(initMrp.toFixed(2));
+            $row.find('.visible-mrp').val(initMrp.toFixed(2));
+            $row.data('mrp_manual', false);
+
+            $row.data('size_mode', pRes.size_mode);
+            $row.data('pieces_per_box', pRes.pieces_per_box || 1);
+            $row.data('price_per_m2', pRes.price_per_m2 || 0);
+
+            setupRowQtyToggle($row, pRes.size_mode);
+            computeRow($row);
+        }
+
+        if (window.priceProductCache[productId]) {
+            applyPrice(window.priceProductCache[productId]);
+            return;
+        }
+
+        $.get('{{ route('get-price') }}', { product_id: productId }).done(function(pRes) {
+            window.priceProductCache[productId] = pRes;
+            applyPrice(pRes);
+        });
+        return;
+        // Old fetch preserved below
         $.get('{{ route('get-price') }}', {
             product_id: productId
         }).done(function(pRes) {
@@ -491,6 +622,15 @@
             // Set default discount
             $row.find('.discount-value').val(pRes.sale_discount_percent || 0);
 
+            const rPerPiece = parseFloat(pRes.sale_price_per_piece || pRes.retail_price || 0);
+            const rPerBox = parseFloat(pRes.sale_price_per_box) || (rPerPiece * ppb);
+            $row.data('retail_price', rPerPiece);
+            $row.data('retail_price_box', rPerBox);
+            const initMrp = (pRes.size_mode == "by_cartons" && unitMode !== 'pcs') ? rPerBox : rPerPiece;
+            $row.find('.mrp-amount').val(initMrp.toFixed(2));
+            $row.find('.visible-mrp').val(initMrp.toFixed(2));
+            $row.data('mrp_manual', false);
+
             $row.data('size_mode', pRes.size_mode);
             $row.data('pieces_per_box', pRes.pieces_per_box || 1);
             $row.data('price_per_m2', pRes.price_per_m2 || 0);
@@ -504,9 +644,52 @@
     }
 
     function loadWarehousesForProduct($row, productId, preSelectId = null) {
+        if (!productId) return;
         var $whInput = $row.find('.warehouse');
         var targetWhId = preSelectId || $whInput.val() || $('#headerWarehouseSelect').val() || "{{ auth()->user()->warehouse_id ?? 1 }}";
 
+        function applyWarehouseData(warehouses) {
+            var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
+            var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
+            if (!matched && validWarehouses.length > 0) {
+                matched = validWarehouses[0];
+            }
+
+            if (matched) {
+                $whInput.val(matched.warehouse_id);
+                // If variant stock already populated, do not overwrite with generic product stock
+                if (!$row.find('.variant-stock-value').val()) {
+                    let disp;
+                    const ppb = parseFloat(matched.ppb) || 1;
+
+                    if ((['by_cartons', 'by_bandal'].includes(matched.size_mode) || matched.size_mode === 'by_size') && ppb > 1) {
+                        const boxes = Math.floor(matched.boxes || 0);
+                        const loose = matched.stock % ppb;
+                        disp = loose > 0 ? `${boxes}.${loose}` : boxes;
+                    } else if (matched.size_mode === 'by_kg') {
+                        const s = parseFloat(matched.stock) || 0;
+                        disp = s < 1 && s > 0 ? `${s} Kg (${Math.round(s*1000)} Gm)` : `${s} Kg`;
+                    } else {
+                        disp = matched.stock || 0;
+                    }
+
+                    $row.find('.stock').val(disp);
+                }
+            }
+        }
+
+        if (window.whProductCache[productId]) {
+            applyWarehouseData(window.whProductCache[productId]);
+            return;
+        }
+
+        $.get('{{ route('warehouses.get') }}', { product_id: productId })
+            .done(function(warehouses) {
+                window.whProductCache[productId] = warehouses;
+                applyWarehouseData(warehouses);
+            });
+        return;
+        // Old load preserved below
         $.get('{{ route('warehouses.get') }}', {
                 product_id: productId
             })
@@ -559,133 +742,177 @@
 
     // --- Calculation ---
 
-    function computeRow($row, isManual = false) {
-        const rp = toNum($row.find('.retail-price').val()); // Box Price
+    function computeRow($row, isManual = false, activeField = null) {
+        const rp = toNum($row.find('.retail-price').val());
         const visiblePrice = toNum($row.find('.visible-price').val());
         const weightPerPiece = parseFloat($row.find('.weight-per-piece').val()) || 0;
-
         const m2_per_piece = parseFloat($row.find('.size-h').val() * $row.find('.size-w').val() / 10000);
-
         const sizeMode = $row.data('size_mode') || $row.find('.size-mode-text').val();
         const packQty = parseFloat($row.find('.pack-qty').val()) || 1;
 
-        const rawQtyStr = ($row.find('.carton-qty').val() || '').toString().trim();
-        const rawQty = parseFloat(rawQtyStr) || 0;
-        const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main';
+        const ctnQty = toNum($row.find('.carton-qty').val());
+        const looseQty = toNum($row.find('.loose-pcs-input').val());
 
-        // Unit Price from visible-price
         let unitPrice = toNum($row.find('.visible-price').val());
-
-        let baseQty = rawQty;
-        let pcsDisplay = rawQty;
+        let totalPieces = 0;
+        let baseQty = 0;
         let gross = 0;
 
         if (['by_cartons', 'by_bandal'].includes(sizeMode)) {
-            if (unitMode === 'pcs') {
-                // Selling in Pieces: unitPrice is price per piece
-                pcsDisplay = rawQty;
-                baseQty = packQty > 0 ? (rawQty / packQty) : rawQty;
-                gross = rawQty * unitPrice;
-                $row.find('.loose-pcs-input').val(0);
-            } else {
-                // Selling in Cartons: unitPrice is price per carton
-                if (rawQtyStr.includes('.')) {
-                    const parts = rawQtyStr.split('.');
-                    const boxes = parseInt(parts[0]) || 0;
-                    const loose = parseInt(parts[1]) || 0;
-                    pcsDisplay = (boxes * packQty) + loose;
-                    baseQty = packQty > 0 ? (pcsDisplay / packQty) : rawQty;
-                    const piecePrice = packQty > 0 ? (unitPrice / packQty) : unitPrice;
-                    gross = (boxes * unitPrice) + (loose * piecePrice);
-                    $row.find('.loose-pcs-input').val(loose);
-                } else {
-                    pcsDisplay = rawQty * packQty;
-                    baseQty = rawQty;
-                    gross = rawQty * unitPrice;
-                    $row.find('.loose-pcs-input').val(0);
-                }
-            }
-        } else if (sizeMode === 'by_kg' || sizeMode === 'by_gm') {
-            if (unitMode === 'gm') {
-                baseQty = rawQty / 1000;
-                pcsDisplay = baseQty;
-                gross = rawQty * unitPrice; // unitPrice is per Gm
-            } else {
-                baseQty = rawQty;
-                pcsDisplay = rawQty;
-                gross = rawQty * unitPrice; // unitPrice is per Kg
-            }
-        } else if (sizeMode === 'by_feet' || sizeMode === 'by_meter') {
-            if (unitMode === 'in') {
-                baseQty = rawQty / 12;
-            } else {
-                baseQty = rawQty;
-            }
-            pcsDisplay = baseQty.toFixed(3);
-            gross = rawQty * unitPrice;
-        } else if (sizeMode === 'by_size') {
-            gross = m2_per_piece * baseQty * unitPrice;
-            if (!m2_per_piece) gross = 0;
+            totalPieces = (ctnQty * packQty) + looseQty;
+            baseQty = packQty > 0 ? (totalPieces / packQty) : totalPieces;
+            const piecePrice = packQty > 0 ? (unitPrice / packQty) : unitPrice;
+            gross = (ctnQty * unitPrice) + (looseQty * piecePrice);
         } else {
-            gross = baseQty * unitPrice;
+            totalPieces = (ctnQty > 0 ? ctnQty : looseQty);
+            baseQty = totalPieces;
+            gross = totalPieces * unitPrice;
         }
 
-        // Sync hidden qty and total-pieces field for backend
         $row.find('.sales-qty').val(baseQty);
-        $row.find('.total-pieces').val(pcsDisplay);
+        $row.find('.total-pieces').val(totalPieces);
         $row.find('.price-per-piece').val(unitPrice);
 
-        const discValue = toNum($row.find('.discount-value').val());
-        const discType = $row.find('.discount-toggle').data('type');
-        let dam = toNum($row.find('.discount-amount').val());
+        // 1. Gross
+        $row.find('.visible-gross').val(gross.toFixed(2));
+        $row.find('.gross-amount').val(gross.toFixed(2));
 
-        // Discount Calculation
-        if (discType === 'percent') {
-            dam = discValue > 0 ? (gross * discValue) / 100 : 0;
+        // 2. Trade Activity
+        const tradeActivity = toNum($row.find('.trade-activity').val());
+        const grossAfterActivity = Math.max(0, gross - tradeActivity);
+
+        // 3. Regular Discount
+        let regDiscPct = toNum($row.find('.reg-disc-percent').val());
+        let regDiscAmt = toNum($row.find('.reg-disc-amount').val());
+        if (activeField === 'reg-disc-amount') {
+            regDiscPct = grossAfterActivity > 0 ? ((regDiscAmt / grossAfterActivity) * 100) : 0;
+            $row.find('.reg-disc-percent').val(regDiscPct.toFixed(2));
         } else {
-            dam = discValue > 0 ? discValue : 0;
+            regDiscAmt = grossAfterActivity > 0 ? ((grossAfterActivity * regDiscPct) / 100) : 0;
+            $row.find('.reg-disc-amount').val(regDiscAmt.toFixed(2));
         }
-        $row.find('.discount-amount').val(dam.toFixed(2));
 
-        const exclusiveGst = Math.max(0, gross - dam);
+        // 4. Special Discount
+        let spDiscPct = toNum($row.find('.sp-disc-percent').val());
+        let spDiscAmt = toNum($row.find('.sp-disc-amount').val());
+        if (activeField === 'sp-disc-amount') {
+            spDiscPct = grossAfterActivity > 0 ? ((spDiscAmt / grossAfterActivity) * 100) : 0;
+            $row.find('.sp-disc-percent').val(spDiscPct.toFixed(2));
+        } else {
+            spDiscAmt = grossAfterActivity > 0 ? ((grossAfterActivity * spDiscPct) / 100) : 0;
+            $row.find('.sp-disc-amount').val(spDiscAmt.toFixed(2));
+        }
+
+        const totalDam = regDiscAmt + spDiscAmt;
+        $row.find('.discount-amount').val(totalDam.toFixed(2));
+        $row.find('.discount-value').val(spDiscPct.toFixed(2));
+
+        // 5. Value After Discount (Exclusive GST)
+        const exclusiveGst = Math.max(0, grossAfterActivity - totalDam);
         $row.find('.exclusive-gst-amount').val(exclusiveGst.toFixed(2));
 
+        // 6. MRP Amount (Retail Amount)
+        let mrpAmount = 0;
+        const retailPricePerPiece = toNum($row.find('.retail-price').val()) || toNum($row.data('retail_price'));
+        const retailPriceBox = toNum($row.data('retail_price_box'));
+        const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
+
+        if ($row.data('mrp_manual') || activeField === 'mrp_amount') {
+            mrpAmount = toNum($row.find('.mrp-amount').val() || $row.find('.visible-mrp').val());
+        } else if (totalPieces > 0 && retailPricePerPiece > 0) {
+            mrpAmount = retailPricePerPiece * totalPieces;
+        } else if (retailPricePerPiece > 0) {
+            mrpAmount = (['by_cartons', 'by_bandal'].includes(sizeMode) && unitMode !== 'pcs') ? (retailPriceBox || (retailPricePerPiece * packQty)) : retailPricePerPiece;
+        } else {
+            mrpAmount = toNum($row.find('.mrp-amount').val() || $row.find('.visible-mrp').val());
+        }
+
+        // 7. Taxes (Sales Tax)
         const cfg = window.saleScreenConfig || {};
         const isStEnabled = cfg.flags && cfg.flags.sales_tax !== undefined ? cfg.flags.sales_tax : true;
         const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
 
-        const salesTaxPct = isStEnabled ? toNum($row.find('.sales-tax-percent').val()) : 0;
+        let stVal = toNum($row.find('.sales-tax-value').val());
+        let stType = $row.find('.st-toggle').data('type') || 'percent';
+        let salesTaxPct = 0;
+        let salesTaxAmt = 0;
+
         if (!isStEnabled) {
+            salesTaxPct = 0;
+            salesTaxAmt = 0;
             $row.find('.sales-tax-percent').val(0);
+        } else if (stType === 'percent') {
+            salesTaxPct = stVal;
+            salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+            $row.find('.sales-tax-percent').val(salesTaxPct);
+        } else {
+            salesTaxAmt = stVal;
+            salesTaxPct = exclusiveGst > 0 ? ((salesTaxAmt / exclusiveGst) * 100) : 0;
+            $row.find('.sales-tax-percent').val(salesTaxPct.toFixed(2));
         }
-        const salesTaxAmt = isStEnabled && exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+
         $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
+        $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
 
-        const furtherTaxPct = isFtEnabled ? toNum($row.find('.further-tax-percent').val()) : 0;
+        // 8. URC Tax (Further Tax for Unregistered Customer)
+        let urcVal = toNum($row.find('.urc-tax-value').val());
+        let urcType = $row.find('.urc-toggle').data('type') || 'percent';
+        let furtherTaxPct = 0;
+        let furtherTaxAmt = 0;
+
         if (!isFtEnabled) {
+            furtherTaxPct = 0;
+            furtherTaxAmt = 0;
             $row.find('.further-tax-percent').val(0);
+        } else if (urcType === 'percent') {
+            furtherTaxPct = urcVal;
+            furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
+            $row.find('.further-tax-percent').val(furtherTaxPct);
+        } else {
+            furtherTaxAmt = urcVal;
+            furtherTaxPct = exclusiveGst > 0 ? ((furtherTaxAmt / exclusiveGst) * 100) : 0;
+            $row.find('.further-tax-percent').val(furtherTaxPct.toFixed(2));
         }
-        const furtherTaxAmt = isFtEnabled && exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
+
+        // 9. Adv. Tax Amt
+        let advTaxAmt = toNum($row.find('.adv-tax-amount').val());
+
+        // 10. Net Amount
+        const netLineTotal = exclusiveGst + salesTaxAmt + furtherTaxAmt + advTaxAmt;
+
+        // Populate visible and hidden tax amounts
+        if (activeField !== 'sales_tax_amount') {
+            $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
+            $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
+        }
+        if (activeField !== 'mrp_amount') {
+            $row.find('.mrp-amount').val(mrpAmount.toFixed(2));
+            $row.find('.visible-mrp').val(mrpAmount.toFixed(2));
+        }
         $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
-
-        const netRow = exclusiveGst + salesTaxAmt + furtherTaxAmt;
-        $row.find('.gross-amount').val(gross.toFixed(2));
-        $row.find('.sales-amount').val(netRow.toFixed(2));
-
-        if (typeof updateGrandTotals === 'function') {
-            updateGrandTotals();
-        }
+        $row.find('.visible-ft').val(furtherTaxAmt.toFixed(2));
+        $row.find('.sales-amount').val(netLineTotal.toFixed(2));
     }
 
     function updateGrandTotals() {
         let tQty = 0;
+        let tCartonQty = 0;
+        let tPcs = 0;
         let tBonus = 0;
         let tGross = 0;
+        let tTradeActivity = 0;
         let tLineDisc = 0;
         let tExclusiveGst = 0;
         let tSalesTax = 0;
+        let tMrpTax = 0;
         let tFurtherTax = 0;
         let tNet = 0;
+
+        let tRegDisc = 0;
+        let tSpDisc = 0;
+        let tAdvTax = 0;
+        let tStock = 0;
+        let tLoose = 0;
 
         $('#salesTableBody tr').each(function() {
             const $r = $(this);
@@ -699,16 +926,34 @@
             
             if (gross <= 0 && net > 0) gross = net + dam;
 
-            // Piece calc: use total-pieces field (already computed)
+            const ctn = toNum($r.find('.carton-qty').val());
+            const loose = toNum($r.find('.loose-pcs-input').val());
             const pieces = parseInt($r.find('.total-pieces').val()) || 0;
+            const stock = toNum($r.find('.stock').val());
 
+            tStock += stock;
+            tCartonQty += ctn;
+            tLoose += loose;
+            tPcs += pieces;
             tQty += pieces;
             tBonus += bonus;
+
+            const actAmt = toNum($r.find('.trade-activity').val());
+            const regAmt = toNum($r.find('.reg-disc-amount').val());
+            const spAmt = toNum($r.find('.sp-disc-amount').val());
+            const mrpAmt = toNum($r.find('.mrp-amount').val());
+            const advAmt = toNum($r.find('.adv-tax-amount').val());
+
             tGross += gross;
+            tTradeActivity += actAmt;
+            tRegDisc += regAmt;
+            tSpDisc += spAmt;
             tLineDisc += dam;
             tExclusiveGst += exclGst;
             tSalesTax += stAmt;
+            tMrpTax += mrpAmt;
             tFurtherTax += ftAmt;
+            tAdvTax += advAmt;
             tNet += net;
         });
 
@@ -735,13 +980,25 @@
         const receipts = toNum($('#receiptsTotal').text());
         const payable = Math.max(0, currentInvoiceTotal + prev - receipts);
 
-        $('#tQty').text(tQty.toFixed(0));
-        if ($('#tBonus').length) $('#tBonus').text(tBonus.toFixed(0));
+        let rowCount = $('#salesTableBody tr').length;
+        $('#footerRowCount').text(rowCount);
+        $('#footerStock').text(tStock);
+        $('#footerCtnQty').text(tCartonQty.toFixed(0));
+        $('#footerLooseQty').text(tLoose.toFixed(0));
+        $('#tQty').text(tPcs.toFixed(0));
+        $('#footerGross').text(tGross.toFixed(2));
+        $('#footerTradeActivity').text(tTradeActivity.toFixed(2));
+        $('#footerRegDisc').text(tRegDisc.toFixed(2));
+        $('#footerSpDisc').text(tSpDisc.toFixed(2));
+        $('#tSalesTax').text(tSalesTax.toFixed(2));
+        $('#tMrpTax').text(tMrpTax.toFixed(2));
+        $('#tFurtherTax').text(tFurtherTax.toFixed(2));
+        $('#tAdvTax').text(tAdvTax.toFixed(2));
+        $('#footerNetTotal').text(tNet.toFixed(2));
+
         $('#tGross').text(tGross.toFixed(2));
         $('#tLineDisc').text(tLineDisc.toFixed(2));
         if ($('#tExclusiveGst').length) $('#tExclusiveGst').text(tExclusiveGst.toFixed(2));
-        if ($('#tSalesTax').length) $('#tSalesTax').text(tSalesTax.toFixed(2));
-        if ($('#tFurtherTax').length) $('#tFurtherTax').text(tFurtherTax.toFixed(2));
 
         // Dynamic Tax Rate Labels in Summary
         if ($('#labelStRate').length) {
@@ -776,7 +1033,27 @@
         $('#walkinNetTotal').text(currentInvoiceTotal.toFixed(2));
         $('#bottomPaymentsTotal').text(receipts.toFixed(2));
         $('#receiptsTotalBadge').text(receipts.toFixed(2));
-        $('#itemsRowCount').text($('#salesTableBody tr').length);
+        rowCount = $('#salesTableBody tr').length;
+        $('#itemsRowCount').text(rowCount);
+        if ($('#footItemCount').length) $('#footItemCount').text(rowCount);
+        if ($('#footStockTotal').length) $('#footStockTotal').text(tStock);
+        if ($('#footCtnTotal').length) $('#footCtnTotal').text(tCartonQty.toFixed(0));
+        if ($('#footLooseTotal').length) $('#footLooseTotal').text(tLoose.toFixed(0));
+        if ($('#footQtyTotal').length) $('#footQtyTotal').text(tPcs.toFixed(0));
+        if ($('#footPcsTotal').length) $('#footPcsTotal').text(tPcs.toFixed(0));
+        if ($('#footGrossTotal').length) $('#footGrossTotal').text(tGross.toFixed(2));
+        if ($('#footTradeActivityTotal').length) $('#footTradeActivityTotal').text(tTradeActivity.toFixed(2));
+        if ($('#footRegDiscTotal').length) $('#footRegDiscTotal').text(tRegDisc.toFixed(2));
+        if ($('#footSpDiscTotal').length) $('#footSpDiscTotal').text(tSpDisc.toFixed(2));
+        if ($('#footLineDiscTotal').length) $('#footLineDiscTotal').text(tLineDisc.toFixed(2));
+        if ($('#footStTotal').length) $('#footStTotal').text(tSalesTax.toFixed(2));
+        if ($('#footMrpTotal').length) $('#footMrpTotal').text(tMrpTax.toFixed(2));
+        if ($('#footFtTotal').length) $('#footFtTotal').text(tFurtherTax.toFixed(2));
+        if ($('#footAdvTaxTotal').length) $('#footAdvTaxTotal').text(tAdvTax.toFixed(2));
+        if ($('#tSubSettlement').length) $('#tSubSettlement').text(currentInvoiceTotal.toFixed(2));
+        if ($('#tPayableCombined').length) $('#tPayableCombined').text((currentInvoiceTotal + prev).toFixed(2));
+        if ($('#footerTotal').length) $('#footerTotal').text(currentInvoiceTotal.toFixed(2));
+        if ($('#footerItemCount').length) $('#footerItemCount').text(rowCount);
 
         // Display current bill total after all discounts
         $('#tCurrentBill').text(currentInvoiceTotal.toFixed(2));
@@ -1361,7 +1638,14 @@
             
             // Set properties directly
             $row.find('.item-code-display').val(data.sku || '');
-            $row.find('.retail-price').val(data.retail_price || data.trade_price || 0);
+            
+            const retailPerPiece = parseFloat(data.retail_price || 0);
+            const ppb = parseFloat(data.pieces_per_box) || 1;
+            const retailPerBox = parseFloat(data.retail_price_per_box) || (retailPerPiece * ppb);
+
+            $row.find('.retail-price').val(retailPerPiece || data.trade_price || 0);
+            $row.data('retail_price', retailPerPiece);
+            $row.data('retail_price_box', retailPerBox);
             $row.find('.wholesale-price').val(data.wholesale_price || 0);
             $row.find('.weight-per-piece').val(data.weight_per_piece || 0);
             
@@ -1369,7 +1653,6 @@
             let wsPrice = parseFloat(data.wholesale_price) || 0;
             let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
 
-            const ppb = parseFloat(data.pieces_per_box) || 1;
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
             if (['by_cartons', 'by_bandal'].includes(data.size_mode)) {
                 let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
@@ -1380,6 +1663,12 @@
                 $row.find('.price-per-piece').val(rate);
             }
             
+            // Set MRP Amount directly from retail price
+            const initialRetailAmount = (['by_cartons', 'by_bandal'].includes(data.size_mode) && unitMode !== 'pcs') ? retailPerBox : retailPerPiece;
+            $row.find('.mrp-amount').val(initialRetailAmount.toFixed(2));
+            $row.find('.visible-mrp').val(initialRetailAmount.toFixed(2));
+            $row.data('mrp_manual', false);
+            
             $row.find('.pack-qty').val(data.pieces_per_box || 1);
             $row.find('.size-h').val(data.height || '-');
             $row.find('.size-w').val(data.width || '-');
@@ -1389,9 +1678,13 @@
             
             $row.data('size_mode', data.size_mode);
             $row.data('pieces_per_box', data.pieces_per_box || 1);
+            $row.data('is_third_schedule', !!data.is_third_schedule);
+            $row.find('.hidden-is-third-schedule').val(data.is_third_schedule ? '1' : '0');
             
             setupRowQtyToggle($row, data.size_mode);
 
+            $row.data('st_manual', false);
+            $row.data('mrp_manual', false);
             computeRow($row);
             checkAndOpenProductTracking($row, pid);
             setTimeout(() => {
@@ -1631,7 +1924,107 @@
         // ... existing bindings ...
 
         // Inputs -> Calc
-        $(document).on('input', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price, .sales-tax-percent, .further-tax-percent, .bonus-qty',
+        
+        // URC Tax Toggle (% vs PKR)
+        $(document).on('click', '.urc-toggle', function() {
+            const $btn = $(this);
+            const $row = $btn.closest('tr');
+            const curType = $btn.data('type') || 'percent';
+            const newType = curType === 'percent' ? 'pkr' : 'percent';
+            $btn.data('type', newType).text(newType === 'percent' ? '%' : 'PKR');
+            $row.find('.urc-type-hidden').val(newType);
+
+            const curAmt = toNum($row.find('.further-tax-amount').val());
+            const curPct = toNum($row.find('.further-tax-percent').val());
+            if (newType === 'pkr') {
+                $row.find('.urc-tax-value').val(curAmt.toFixed(2));
+            } else {
+                $row.find('.urc-tax-value').val(curPct || 4);
+            }
+            computeRow($row, true);
+            updateGrandTotals();
+        });
+
+        
+        // Interactive Discount & Tax Inputs
+        $(document).on('input change', '.reg-disc-percent', function() {
+            computeRow($(this).closest('tr'), true, 'reg-disc-percent');
+            updateGrandTotals();
+        });
+        $(document).on('input change', '.reg-disc-amount', function() {
+            computeRow($(this).closest('tr'), true, 'reg-disc-amount');
+            updateGrandTotals();
+        });
+        $(document).on('input change', '.sp-disc-percent', function() {
+            computeRow($(this).closest('tr'), true, 'sp-disc-percent');
+            updateGrandTotals();
+        });
+        $(document).on('input change', '.sp-disc-amount', function() {
+            computeRow($(this).closest('tr'), true, 'sp-disc-amount');
+            updateGrandTotals();
+        });
+        $(document).on('input change', '.adv-tax-amount', function() {
+            computeRow($(this).closest('tr'), true, 'adv-tax-amount');
+            updateGrandTotals();
+        });
+
+        $(document).on('input change', '.sales-table .sales-tax-value', function() {
+            const $row = $(this).closest('tr');
+            $row.data('st_manual', true);
+            computeRow($row, true, 'sales_tax_value');
+            updateGrandTotals();
+            refreshPostedState();
+        });
+
+        $(document).on('click', '.st-toggle', function() {
+            const $btn = $(this);
+            const $row = $btn.closest('tr');
+            const $typeHidden = $row.find('.sales-tax-type-hidden');
+            const curType = $btn.data('type') || 'percent';
+            const newType = curType === 'percent' ? 'pkr' : 'percent';
+
+            $btn.data('type', newType).text(newType === 'percent' ? '%' : 'PKR');
+            $typeHidden.val(newType);
+
+            const curAmt = toNum($row.find('.sales-tax-amount').val());
+            const curPct = toNum($row.find('.sales-tax-percent').val());
+            if (newType === 'pkr') {
+                $row.find('.sales-tax-value').val(curAmt.toFixed(2));
+            } else {
+                $row.find('.sales-tax-value').val(curPct);
+            }
+
+            computeRow($row, true);
+            updateGrandTotals();
+            refreshPostedState();
+        });
+
+        $(document).on('input change', '.sales-table .mrp-amount, .sales-table .visible-mrp', function() {
+            const $row = $(this).closest('tr');
+            $row.data('mrp_manual', true);
+            computeRow($row, true, 'mrp_amount');
+            updateGrandTotals();
+        });
+
+        $(document).on('blur', '.sales-table .mrp-amount, .sales-table .visible-mrp', function() {
+            const val = toNum($(this).val());
+            $(this).val(val.toFixed(2));
+        });
+
+        $(document).on('input change', '.urc-tax-value', function() {
+            computeRow($(this).closest('tr'), true);
+            updateGrandTotals();
+        });
+
+        // Auto-select text on click/focus for easy editing, replacing, and cutting
+        $(document).on('focus click', '.sales-table tbody input:not([readonly])', function() {
+            const input = this;
+            setTimeout(() => {
+                input.select();
+            }, 30);
+        });
+
+        $(document).on('input', '.carton-qty, .loose-pcs-input, .pack-qty, .discount-value, .visible-price, .further-tax-percent, .bonus-qty, .trade-activity',
             function() {
                 // If user manually changes the visible price, also update the hidden price-per-piece and normalized base rate
                 if ($(this).hasClass('visible-price')) {
@@ -1944,6 +2337,8 @@
 
             const v = validateFormAll();
             if (!v.ok) {
+                window.isSaveAndPrintAction = false;
+                $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
                 showAlert('warning', v.message);
                 if (v.el && v.el.length) {
                     v.el.focus();
@@ -1960,6 +2355,8 @@
             if (isWalkin) {
                 // For walk-in, they must pay 100% upfront (with a small floating point tolerance)
                 if (paidNow < (invoiceNet - 0.05)) {
+                    window.isSaveAndPrintAction = false;
+                    $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
                     Swal.fire({
                         icon: 'error',
                         title: '100% Payment Required',
@@ -1998,10 +2395,18 @@
 
             if (!canPost()) {
                 showAlert('warning', 'No valid item lines to post.');
+                window.isSaveAndPrintAction = false;
+                $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
                 return;
             }
 
             ensureSaved().then(function(res) {
+                if (window.isSaveAndPrintAction) {
+                    const saleId = res.booking_id || res.id;
+                    const printUrl = res.invoice_url || ('{{ url("sales") }}/' + saleId + '/invoice');
+                    window.location.href = printUrl;
+                    return;
+                }
                 Swal.fire({
                     title: 'Success!',
                     text: (res && res.msg) ? res.msg : 'Sale saved successfully',
@@ -2010,6 +2415,9 @@
                     showConfirmButton: false
                 });
                 setTimeout(() => window.location.href = "{{ route('sale.index') }}", 1500);
+            }).catch(function() {
+                window.isSaveAndPrintAction = false;
+                $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
             });
         });
 
@@ -2281,7 +2689,21 @@
         });
 
         // --- Save & Complete (F9) Handler ---
-        $('#btnSaveAndComplete, #btnHeaderSaveSale').on('click', function() {
+        $('#btnSaveAndComplete').on('click', function() {
+            window.isSaveAndPrintAction = true;
+            const $btn = $(this);
+            const origHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving &amp; Opening Print...');
+            $('#btnPosted').trigger('click');
+            setTimeout(() => {
+                if ($btn.prop('disabled')) {
+                    $btn.prop('disabled', false).html(origHtml);
+                }
+            }, 3500);
+        });
+
+        $('#btnHeaderSaveSale').on('click', function() {
+            window.isSaveAndPrintAction = false;
             $('#btnPosted').trigger('click');
         });
 
@@ -2306,14 +2728,26 @@
             if (!productId) return;
             warehouseId = warehouseId || $row.find('.warehouse').val() || 1;
 
-            // Check Batches first
+            // Fetch Batches & Apply FIFO by Default
             $.get('{{ route("sale.get_batches") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
-                if (res.success && res.is_batch_product) {
-                    openBatchSelectModal($row, res.batches || []);
-                    return;
+                if (res.success && res.batches && res.batches.length > 0) {
+                    $row.data('available_batches', res.batches);
+                    // FIFO: automatically set the first batch (oldest / earliest expiry)
+                    const fifo = res.fifo_batch || res.batches[0];
+                    if (fifo) {
+                        $row.find('.batch-id-hidden').val(fifo.id);
+                        $row.find('.batch-no-hidden').val(fifo.batch_no);
+                        $row.find('.selected-batch-no').val(fifo.batch_no);
+                        $row.find('.selected-batch-no').attr('title', 'FIFO Batch: ' + fifo.batch_no + ' (Qty: ' + fifo.qty + ', Exp: ' + (fifo.expiry_date || 'N/A') + ')');
+                    }
+                } else {
+                    $row.find('.batch-id-hidden').val('');
+                    $row.find('.batch-no-hidden').val('');
+                    $row.find('.selected-batch-no').val('–');
+                    $row.removeData('available_batches');
                 }
 
-                // If not batch product, check Serials / IMEIs
+                // If serial product, check Serials / IMEIs
                 $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
                     if (sRes.success && sRes.is_serial_product) {
                         openSerialSelectModal($row, sRes.serials || [], sRes);
@@ -2321,6 +2755,25 @@
                 });
             });
         };
+
+        // Click to Open Batch Selection Modal
+        $(document).on('click', '.selected-batch-no, .btn-select-batch', function(e) {
+            e.preventDefault();
+            const $row = $(this).closest('tr');
+            const pid = $row.find('.product-id-hidden').val();
+            if (!pid) return;
+
+            const whId = $row.find('.warehouse').val() || 1;
+            const cachedBatches = $row.data('available_batches');
+            if (cachedBatches && cachedBatches.length > 0) {
+                openBatchSelectModal($row, cachedBatches);
+            } else {
+                $.get('{{ route("sale.get_batches") }}', { product_id: pid, warehouse_id: whId }).done(function(res) {
+                    $row.data('available_batches', res.batches || []);
+                    openBatchSelectModal($row, res.batches || []);
+                });
+            }
+        });
 
         // Open Batch Modal
         function openBatchSelectModal($row, batches) {
@@ -2376,15 +2829,13 @@
             if ($row.length) {
                 $row.find('.batch-id-hidden').val(batchId);
                 $row.find('.batch-no-hidden').val(batchNo);
+                $row.find('.selected-batch-no').val(batchNo);
+                $row.find('.selected-batch-no').attr('title', 'Selected Batch: ' + batchNo);
 
                 const whId = $(this).data('warehouse-id');
                 if (whId) {
                     $row.find('.warehouse').val(whId);
                 }
-
-                // Update tracking badges display on row
-                let badgeHtml = `<span class="badge bg-info text-dark" style="font-size:0.7rem;"><i class="fas fa-layer-group me-1"></i>Batch: ${batchNo}</span>`;
-                $row.find('.row-tracking-badges').html(badgeHtml);
 
                 $('#modalSelectBatch').modal('hide');
                 $row.find('.carton-qty').focus().select();

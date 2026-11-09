@@ -164,7 +164,7 @@ class SaleFieldConfiguration extends Model
             $salesTaxEnabled = $bundle['flags']['sales_tax'] ?? true;
             $furtherTaxEnabled = $bundle['flags']['further_tax'] ?? true;
             $bundle['default_st_rate'] = $salesTaxEnabled ? (float) ($bundle['values']['sales_tax'] ?? 18) : 0;
-            $bundle['default_ft_rate'] = $furtherTaxEnabled ? (float) ($bundle['values']['further_tax'] ?? 3) : 0;
+            $bundle['default_ft_rate'] = $furtherTaxEnabled ? (float) ($bundle['values']['further_tax'] ?? 4) : 0;
             $bundle['strn_exemption'] = $bundle['flags']['strn_exemption'] ?? true;
 
             return $bundle;

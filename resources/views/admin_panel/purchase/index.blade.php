@@ -236,9 +236,6 @@
                 flex: 0 0 auto;
                 white-space: nowrap;
             }
-            .table-responsive {
-                display: none !important;
-            }
         }
         @media (min-width: 769px) {
             .purch-hdr-actions {
@@ -304,6 +301,52 @@
                     </a>
                 </div>
 
+                {{-- KPI Summary Stats Hub --}}
+                <div class="row g-3 mb-4">
+                    <div class="col-xl-2 col-md-4 col-6">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid #475569 !important;">
+                            <div class="text-secondary text-uppercase fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">Purchases</div>
+                            <div class="h4 fw-bold text-dark mb-0 mt-1" id="stat-total-purchases">{{ $Purchase->count() }}</div>
+                            <small class="text-muted" style="font-size: 11px;">Invoices</small>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-6">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-left: 4px solid #2563eb !important;">
+                            <div class="text-primary text-uppercase fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">Trade Value</div>
+                            <div class="h5 fw-bold text-dark mb-0 mt-1 font-monospace" id="stat-trade-value">Rs. {{ number_format($totalTradeVal ?? 0, 2) }}</div>
+                            <small class="text-muted" style="font-size: 11px;">Exc. Tax</small>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-6">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-left: 4px solid #16a34a !important;">
+                            <div class="text-success text-uppercase fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">Total GST</div>
+                            <div class="h5 fw-bold text-dark mb-0 mt-1 font-monospace" id="stat-gst">Rs. {{ number_format($totalGstVal ?? 0, 2) }}</div>
+                            <small class="text-muted" style="font-size: 11px;">Retail + Trade Tax</small>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-6">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); border-left: 4px solid #d97706 !important;">
+                            <div class="text-warning-emphasis text-uppercase fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">WHT Tax</div>
+                            <div class="h5 fw-bold text-dark mb-0 mt-1 font-monospace" id="stat-wht">Rs. {{ number_format($totalWhtVal ?? 0, 2) }}</div>
+                            <small class="text-muted" style="font-size: 11px;">Withheld Amount</small>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-6">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-left: 4px solid #7c3aed !important;">
+                            <div class="text-uppercase fw-bold" style="color: #7c3aed; font-size: 11px; letter-spacing: 0.5px;">Net Purchases</div>
+                            <div class="h5 fw-bold text-dark mb-0 mt-1 font-monospace" id="stat-net">Rs. {{ number_format($totalNetVal ?? 0, 2) }}</div>
+                            <small class="text-muted" style="font-size: 11px;">Final Payable</small>
+                        </div>
+                    </div>
+                    <div class="col-xl-2 col-md-4 col-6">
+                        <div class="card border-0 shadow-sm rounded-3 p-3 h-100" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-left: 4px solid #dc2626 !important;">
+                            <div class="text-danger text-uppercase fw-bold" style="font-size: 11px; letter-spacing: 0.5px;">Balance Due</div>
+                            <div class="h5 fw-bold text-danger mb-0 mt-1 font-monospace" id="stat-due">Rs. {{ number_format($totalDueVal ?? 0, 2) }}</div>
+                            <small class="text-muted" style="font-size: 11px;">Unpaid Balance</small>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card premium-card">
                     <div class="card-body p-4">
                         @if (session('success'))
@@ -367,7 +410,7 @@
                                     </div> -->
                                     <div class="col-md-2 d-flex gap-2">
                                         <button type="button" class="btn btn-premium-secondary w-50" id="btnReset">
-                                            <i class="fas fa-undo me-1"></i>Reset
+                                             <i class="fas fa-undo me-1"></i>Reset
                                         </button>
                                         <button type="submit" class="btn btn-premium-primary w-50" id="btnSearch">
                                             <i class="fas fa-search me-1"></i>Search
@@ -381,28 +424,67 @@
                             <table id="purchase-table" class="table table-hover align-middle datanew premium-table" style="width:100%">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small" style="width: 40px; vertical-align: middle;">
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="width: 35px; vertical-align: middle;">
                                             <input type="checkbox" id="selectAllPurchases" style="cursor: pointer; width: 16px; height: 16px; margin: 0 auto !important;">
                                         </th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Bill#</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Date</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Invoice No</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor Ref#</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Remarks</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Status</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Vendor</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Location</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Inline Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Add. Disc</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Net Amount</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Paid</th>
-                                        <th class="py-3 text-secondary fw-semibold text-uppercase small text-end">Due</th>
-                                        <th class="py-3 pe-3 rounded-end text-secondary fw-semibold text-uppercase small text-center">Action</th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="width: 85px; vertical-align: middle;">
+                                            Bill# /<br>Date
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Invoice No
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Vendor /<br>Warehouse
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="width: 75px; vertical-align: middle;">
+                                            Status
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Trade<br>Value
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Trade<br>Disc.
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Sales Tax<br>(GST)
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            WHT<br>Tax
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Freight /<br>Shipping
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Total Net<br>Amount
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Paid<br>Amount
+                                        </th>
+                                        <th class="py-2 text-center text-secondary fw-bold text-uppercase small" style="vertical-align: middle;">
+                                            Balance<br>Due
+                                        </th>
+                                        <th class="py-2 pe-3 text-center text-secondary fw-bold text-uppercase small" style="width: 80px; vertical-align: middle;">
+                                            Action
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody id="purchaseTableBody">
                                     @include('admin_panel.purchase.partials.purchase_table_body')
                                 </tbody>
+                                <tfoot class="bg-light fw-bold border-top-2">
+                                    <tr>
+                                        <th colspan="5" class="text-end py-2 text-uppercase text-secondary" style="font-size: 11px;">Total Summary:</th>
+                                        <th class="text-end py-2 font-monospace text-dark" id="foot-trade-value">Rs. {{ number_format($totalTradeVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-danger" id="foot-disc-value">Rs. {{ number_format($totalDiscVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-info" id="foot-gst-value">Rs. {{ number_format($totalGstVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-warning-emphasis" id="foot-wht-value">Rs. {{ number_format($totalWhtVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-secondary" id="foot-freight-value">Rs. {{ number_format($totalFreightVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-primary" id="foot-net-value">Rs. {{ number_format($totalNetVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-success" id="foot-paid-value">Rs. {{ number_format($totalPaidVal ?? 0, 2) }}</th>
+                                        <th class="text-end py-2 font-monospace text-danger" id="foot-due-value">Rs. {{ number_format($totalDueVal ?? 0, 2) }}</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
 
@@ -640,7 +722,7 @@
                     "pageLength": 10,
                     "order": [],
                     "columnDefs": [
-                        { "orderable": false, "targets": 0 }
+                        { "orderable": false, "targets": [0, 13] }
                     ],
                     "language": {
                         "search": "",
@@ -711,22 +793,28 @@
                         
                         // 2. Safely replace the table body HTML
                         $('#purchaseTableBody').html(response.html);
+
+                        // 3. Update stats & footer if returned
+                        if (response.stats) {
+                            $('#stat-total-purchases').text(response.stats.count);
+                            $('#stat-trade-value').text(response.stats.trade_value);
+                            $('#stat-gst').text(response.stats.gst);
+                            $('#stat-wht').text(response.stats.wht);
+                            $('#stat-net').text(response.stats.net);
+                            $('#stat-due').text(response.stats.due);
+
+                            $('#foot-trade-value').text(response.stats.trade_value);
+                            $('#foot-disc-value').text(response.stats.disc_value);
+                            $('#foot-gst-value').text(response.stats.gst);
+                            $('#foot-wht-value').text(response.stats.wht);
+                            $('#foot-freight-value').text(response.stats.freight);
+                            $('#foot-net-value').text(response.stats.net);
+                            $('#foot-paid-value').text(response.stats.paid);
+                            $('#foot-due-value').text(response.stats.due);
+                        }
                         
-                        // 3. Re-initialize the DataTable on the new HTML
-                        $('.datanew').DataTable({
-                            "pageLength": 10,
-                            "order": [],
-                            "columnDefs": [
-                                { "orderable": false, "targets": 0 }
-                            ],
-                            "language": {
-                                "search": "",
-                                "searchPlaceholder": "Search purchases..."
-                            },
-                            "dom": "<'row mb-3'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
-                                "<'row'<'col-sm-12'tr>>" +
-                                "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
-                        });
+                        // 4. Re-initialize the DataTable on the new HTML
+                        initDataTable();
                     },
                     error: function(err) {
                         $btn.prop('disabled', false).html(origHtml);

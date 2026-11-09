@@ -224,6 +224,17 @@
             background: #ffffff;
         }
 
+        
+        /* ==================== CLEAN EXCEL GRID & REMOVE NUMBER SPINNERS ==================== */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+            -webkit-appearance: none !important;
+            margin: 0 !important;
+        }
+        input[type=number] {
+            -moz-appearance: textfield !important;
+        }
+
         .sales-table {
             width: 100%;
             border-collapse: collapse !important;
@@ -282,7 +293,7 @@
             height: 34px !important;
             border: none !important;
             border-radius: 0 !important;
-            padding: 2px 6px !important;
+            padding: 2px 4px !important;
             font-size: 13px !important;
             font-weight: 500 !important;
             background: transparent !important;
@@ -378,6 +389,88 @@
         }
 
         /* ---------- SUMMARY CARD (IDENTICAL TO SALE SCREEN) ---------- */
+        /* ---------- ORDER SUMMARY (COMPACT 2-3 ITEMS PER ROW GRID) ---------- */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        @media (max-width: 1300px) {
+            .summary-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 575px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .sm-card {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            padding: 5px 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 48px;
+        }
+        .sm-card.sm-card-danger {
+            background: #FEF2F2;
+            border-color: #FECACA;
+        }
+        .sm-card.sm-card-primary {
+            background: #F1F5F9;
+            border-color: #CBD5E1;
+        }
+        .sm-card.sm-card-success {
+            background: #F0FDF4;
+            border-color: #BBF7D0;
+        }
+        .sm-card.sm-card-wht {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+        }
+        .sm-card.sm-card-net {
+            background: #EFF6FF !important;
+            border: 1.5px solid #2563EB !important;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
+        }
+        .sm-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            line-height: 1.15;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sm-val {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: #0F172A;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.2;
+        }
+        .net-card {
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 6px;
+            padding: 7px 12px;
+        }
+        .sb-label {
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+        .sb-val {
+            font-size: 17px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+        }
         .s-row {
             display: flex;
             justify-content: space-between;
@@ -602,21 +695,22 @@
                     <table class="sales-table" id="purchaseTable">
                         <thead>
                             <tr>
-                                <th style="width: 36px;" class="text-center">#</th>
-                                <th class="col-product">Product Description</th>
-                                @if($canSelectWarehouse)
-                                    <th style="width: 140px; min-width: 130px;">Warehouse</th>
-                                @endif
-                                <th style="width: 80px;">Unit</th>
-                                <th style="width: 90px;">Qty</th>
-                                <th style="width: 120px;">Price</th>
-                                <th style="width: 90px;">Disc %</th>
-                                <th style="width: 100px;">Disc Amt</th>
+                                <th style="width: 28px;" class="text-center">#</th>
+                                <th class="col-product text-center" style="width: 140px; min-width: 135px;">Item</th>
+                                <th style="width: 65px;" class="text-center" title="Unit / Carton">Carton</th>
+                                <th style="width: 65px;" class="text-center">Qty</th>
+                                <th style="width: 95px;" class="text-center" title="Retail Value Exc. All Taxes">Retail<br>Value</th>
+                                <th style="width: 95px;" class="text-center" title="Trade Value Exc. All Taxes">Trade<br>Value</th>
+                                <th style="width: 70px;" class="text-center" title="Trade Discount Rate (%)">Disc -<br>Trader</th>
+                                <th style="width: 90px;" class="text-center" title="Discount Value Amount">Discount<br>Value</th>
+                                <th style="width: 95px;" class="text-center" title="Value After Discount">Value After<br>Discount</th>
                                 @if($purchaseGstEnabled ?? true)
-                                    <th style="width: 95px;" class="col-purchase-gst text-center">GST %</th>
+                                    <th style="width: 65px;" class="col-purchase-gst text-center" title="Sales Tax Rate (%)">Sales Tax<br>(%)</th>
+                                    <th style="width: 100px;" class="col-purchase-gst text-center" title="Sales Tax on Retail Value">Sales Tax on<br>Retail Value</th>
+                                    <th style="width: 105px;" class="col-purchase-gst text-center" title="Sales Tax on Disct. Trade">Sales Tax on<br>Disct. Trade</th>
                                 @endif
-                                <th style="width: 120px;">Subtotal</th>
-                                <th style="width: 36px;" class="text-center"><i class="fas fa-times text-danger"></i></th>
+                                <th style="width: 100px;" class="text-center">Total</th>
+                                <th style="width: 28px;" class="text-center"><i class="fas fa-times text-danger"></i></th>
                             </tr>
                         </thead>
                         <tbody id="purchaseTableBody">
@@ -656,9 +750,12 @@
                                         $optionVal = $item->product_id . '|variant|' . $encodedVar;
                                     }
 
-                                    $gross = $item->line_total + $item->item_discount;
-                                    $dPct = $gross > 0 ? ($item->item_discount / $gross) * 100 : 0;
-                                    $btnClass = $isCtn ? 'btn-outline-success' : (in_array($uVal, ['kg', 'gm']) ? 'btn-outline-primary' : 'btn-outline-info');
+                                    $tValItem = (float)($item->trade_value ?: ($item->price * $displayQty));
+                                    $rValItem = (float)($item->retail_value ?: (($item->retail_price ?: ($item->product->retail_price ?: $item->price)) * $displayQty));
+                                    $curTradePrice = (float)$item->price;
+                                    $curRetPrice = (float)($item->retail_price ?: ($item->product->retail_price ?: ($item->product->sale_price_per_piece ?: 0)));
+                                    $dPct = $tValItem > 0 ? ($item->item_discount / $tValItem) * 100 : 0;
+                                    $isThirdItem = (bool)($item->is_third_schedule ?? ($item->product->is_third_schedule ?? false));
                                 @endphp
                                 <tr data-sizemode="{{ $sizeMode }}" data-pieces_per_m2="{{ $item->pieces_per_m2 }}">
                                     <td class="row-index-cell text-center">{{ $loop->iteration }}</td>
@@ -668,7 +765,11 @@
                                                 {{ $variantNameDisplay }} ({{ $item->product->item_code ?? 'SKU' }})
                                             </option>
                                         </select>
-                                        {{-- Hidden Snapshots --}}
+                                        {{-- Hidden Snapshots & Prices --}}
+                                        <input type="hidden" name="warehouse_id[]" class="row-warehouse-select" value="{{ $item->warehouse_id ?: ($purchase->warehouse_id ?? $userWarehouseId) }}">
+                                        <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
+                                        <input type="hidden" name="price[]" class="price trade-price-input" value="{{ $curTradePrice }}">
+                                        <input type="hidden" name="retail_price[]" class="retail-price-input" value="{{ $curRetPrice }}">
                                         <input type="hidden" name="size_mode[]" class="hidden-size-mode" value="{{ $sizeMode }}">
                                         <input type="hidden" name="pieces_per_box[]" class="hidden-pieces-per-box" value="{{ $ppb }}">
                                         <input type="hidden" name="pieces_per_m2[]" class="hidden-pieces-per-m2" value="{{ $item->pieces_per_m2 }}">
@@ -685,6 +786,7 @@
                                         <input type="hidden" class="exp-date-hidden" name="exp_date[]" value="{{ $item->exp_date ?? '' }}">
                                         <input type="hidden" class="serials-hidden" name="serials[]" value="{{ isset($item->serials) ? (is_array($item->serials) ? json_encode($item->serials) : $item->serials) : '' }}">
                                         <input type="hidden" class="tracking-type-hidden" name="tracking_type[]" value="{{ $item->product->tracking_type ?? 'simple' }}">
+                                        <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="{{ $isThirdItem ? '1' : '0' }}">
                                         <div class="row-tracking-badges d-flex flex-wrap gap-1 px-1 py-0">
                                             @if(!empty($item->batch_no))
                                                 <span class="badge bg-info text-dark tracking-badge" style="cursor:pointer; font-size:0.7rem;"><i class="fas fa-layer-group me-1"></i>Batch: {{ $item->batch_no }}</span>
@@ -694,48 +796,48 @@
                                             @endif
                                         </div>
                                     </td>
-                                    @if($canSelectWarehouse)
-                                    <td>
-                                        <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
-                                            @foreach ($Warehouse as $w)
-                                                <option value="{{ $w->id }}" {{ ($item->warehouse_id ?: $purchase->warehouse_id) == $w->id ? 'selected' : '' }}>
-                                                    {{ $w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id) }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    @else
-                                        <input type="hidden" name="warehouse_id[]" class="row-warehouse-select" value="{{ $item->warehouse_id ?: ($purchase->warehouse_id ?? $userWarehouseId) }}">
-                                    @endif
                                     <td class="text-center align-middle">
-                                        <button type="button" class="btn btn-sm {{ $btnClass }} fw-bold unit-toggle-btn" data-unit="{{ $unitName }}" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)">{{ $unitName }}</button>
-                                        <input type="hidden" name="unit[]" class="unit-input-val" value="{{ $unitName }}">
+                                        <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn w-100" data-unit="{{ $unitName }}" style="height:30px; border:none; border-radius:0; font-size:11px;" title="Click to toggle (Carton / Pcs)">{{ $unitName }}</button>
                                     </td>
                                     <td>
                                         <input type="number" step="any" min="0.0001" name="qty[]" class="form-control text-center main-qty-input fw-bold" value="{{ $displayQty }}" placeholder="Qty">
                                     </td>
                                     <td>
-                                        <input type="number" step="0.01" name="price[]" class="form-control text-end price fw-semibold" value="{{ (float) $item->price }}">
+                                        <input type="number" step="0.01" class="form-control text-end item-retail-value fw-semibold" name="retail_value[]" value="{{ number_format($rValItem, 2, '.', '') }}" title="Retail Value Exc. All Taxes">
                                     </td>
                                     <td>
-                                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-percent" value="{{ round($dPct, 2) }}">
+                                        <input type="number" step="0.01" class="form-control text-end item-trade-value fw-semibold" name="trade_value[]" value="{{ number_format($tValItem, 2, '.', '') }}" title="Trade Value Exc. All Taxes">
                                     </td>
                                     <td>
-                                        <input type="number" class="form-control text-end input-readonly item-disc-amt" value="{{ number_format($item->item_discount, 2, '.', '') }}" readonly tabindex="-1">
+                                        <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="{{ round($dPct, 2) }}" title="Disc - Trader (%)">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="{{ number_format($item->item_discount, 2, '.', '') }}" title="Discount Value">
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" class="form-control text-end input-readonly item-val-after-disc fw-bold text-dark" name="value_after_discount[]" value="{{ number_format($item->value_after_discount ?? max(0, $tValItem - $item->item_discount), 2, '.', '') }}" readonly tabindex="-1" title="Value After Discount">
                                     </td>
                                     @if($purchaseGstEnabled ?? true)
                                     <td class="col-purchase-gst">
-                                        <input type="number" step="0.01" min="0" max="100" name="gst_percent[]" class="form-control text-end item-gst-percent fw-semibold" value="{{ (float)($item->gst_percent ?? ($defaultGstPercent ?? 18)) }}" placeholder="18">
+                                        <input type="number" step="0.01" min="0" max="100" name="gst_percent[]" class="form-control text-center item-gst-percent fw-semibold" value="{{ (float)($item->gst_percent ?? ($defaultGstPercent ?? 18)) }}" placeholder="18" title="Sales Tax (%)">
                                         <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="{{ number_format($item->gst_amount ?? 0, 2, '.', '') }}">
                                         <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="{{ number_format($item->exclusive_gst_amount ?? 0, 2, '.', '') }}">
                                     </td>
+                                    <td class="col-purchase-gst">
+                                        <input type="number" step="0.01" class="form-control text-end input-readonly item-st-retail text-success fw-semibold" name="sales_tax_on_retail[]" value="{{ number_format($item->sales_tax_on_retail ?? 0, 2, '.', '') }}" readonly tabindex="-1" title="Sales Tax on Retail Value">
+                                    </td>
+                                    <td class="col-purchase-gst">
+                                        <input type="number" step="0.01" class="form-control text-end input-readonly item-st-trade text-info fw-semibold" name="sales_tax_on_trade[]" value="{{ number_format($item->sales_tax_on_trade ?? 0, 2, '.', '') }}" readonly tabindex="-1" title="Sales Tax on Disct. Trade">
+                                    </td>
                                     @else
-                                    <input type="hidden" name="gst_percent[]" class="item-gst-percent" value="{{ (float)($item->gst_percent ?? 0) }}">
-                                    <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="{{ number_format($item->gst_amount ?? 0, 2, '.', '') }}">
-                                    <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="{{ number_format($item->exclusive_gst_amount ?? 0, 2, '.', '') }}">
+                                    <input type="hidden" name="sales_tax_on_retail[]" class="item-st-retail" value="0.00">
+                                    <input type="hidden" name="gst_percent[]" class="item-gst-percent" value="0">
+                                    <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="0.00">
+                                    <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="0.00">
+                                    <input type="hidden" name="sales_tax_on_trade[]" class="item-st-trade" value="0.00">
                                     @endif
                                     <td>
-                                        <input type="number" class="form-control text-end input-readonly row-total fw-bold" value="{{ number_format($item->line_total, 2, '.', '') }}" readonly tabindex="-1">
+                                        <input type="number" step="0.01" class="form-control text-end input-readonly row-total fw-bold text-primary" name="line_total[]" value="{{ number_format($item->line_total, 2, '.', '') }}" readonly tabindex="-1" title="Total">
                                     </td>
                                     <td class="text-center align-middle">
                                         <button type="button" class="remove-row" title="Remove Item"><i class="fas fa-times"></i></button>
@@ -743,153 +845,224 @@
                                 </tr>
                             @endforeach
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="{{ $canSelectWarehouse ? (($purchaseGstEnabled ?? true) ? 9 : 8) : (($purchaseGstEnabled ?? true) ? 8 : 7) }}" class="text-end fw-bold text-muted py-2 pe-2" style="background:#F8FAFC;">Total Item Amount:</td>
-                                <td class="text-end fw-bold fs-6 text-dark py-2 pe-2" style="background:#F8FAFC;"><span id="totalAmount">0.00</span></td>
-                                <td style="background:#F8FAFC;"></td>
+                        <tfoot style="border-top: 2px solid #64748B;">
+                            <tr style="background: #F8FAFC;">
+                                <td class="text-center fw-bold text-muted py-2" style="font-size: 11px;">TOTAL</td>
+                                <td class="text-center fw-bold text-secondary py-2" style="font-size: 11px;"><span id="footItemCount">0</span> Items</td>
+                                <td class="text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                <td class="text-center fw-bold text-dark py-2 font-monospace" style="font-size: 12.5px;" id="footQtyTotal">0</td>
+                                <td class="text-end fw-bold text-dark py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="tRetailValue">0.00</td>
+                                <td class="text-end fw-bold text-dark py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="tTradeValue">0.00</td>
+                                <td class="text-center text-muted py-2" style="font-size: 11px;">—</td>
+                                <td class="text-end fw-bold text-danger py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="tLineDisc">0.00</td>
+                                <td class="text-end fw-bold text-primary py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="tValueAfterDisc">0.00</td>
+                                @if($purchaseGstEnabled ?? true)
+                                    <td class="text-center py-2" style="font-size: 10px;">
+                                        <span class="badge bg-success-subtle text-success border border-success px-1" title="Total GST Amount">GST: <span id="tGstAmount">0.00</span></span>
+                                    </td>
+                                    <td class="text-end fw-bold text-success py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="tStRetail">0.00</td>
+                                    <td class="text-end fw-bold text-info py-2 pe-1 font-monospace" style="font-size: 12.5px;" id="tStTrade">0.00</td>
+                                @endif
+                                <td class="text-end fw-bold text-dark py-2 pe-1 font-monospace fs-6" style="background: #EFF6FF; border-left: 2px solid #2563EB !important; border-right: 2px solid #2563EB !important;" id="totalAmount">0.00</td>
+                                <td style="background: #F8FAFC;"></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-            </div>
 
-            {{-- ============================ PAYMENT & ORDER SUMMARY ============================ --}}
-            <div class="row g-2 align-items-start">
-                {{-- Left: Payment / Receipt Voucher & Notes --}}
-                <div class="col-lg-7 col-md-12">
-                    <div class="sale-card p-3 mb-2">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="card-title"><i class="fas fa-money-check-alt text-primary me-2"></i>Payment Accounts</span>
-                            <div class="d-flex gap-1 align-items-center">
-                                <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 fw-semibold" id="btnPayFull" title="Pay full bill amount now">
-                                    <i class="fas fa-check-circle me-1"></i> Pay Full
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 fw-semibold" id="btnPayLater" title="Pay later (Clear payments, 0 paid)">
-                                    <i class="fas fa-clock me-1"></i> Pay Later
-                                </button>
-                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 fw-bold" id="btnAddPayment">
-                                    <i class="fas fa-plus me-1"></i> Add Account
-                                </button>
+                {{-- Invoice Level Adjustments (Order Discount, Freight, WHT & Total Net Amount) --}}
+                <div class="p-2 p-md-3 bg-light border rounded mt-2">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-3 col-6">
+                            <div class="p-2 bg-white border rounded">
+                                <span class="d-block text-secondary fw-bold text-uppercase" style="font-size: 10px;">Order Discount</span>
+                                <div class="input-group input-group-sm mt-1">
+                                    <input type="number" step="0.01" class="form-control text-end fw-bold" id="billDiscount" name="discount" value="{{ (float)$purchase->discount }}" placeholder="0">
+                                    <span class="input-group-text bg-light small fw-bold">Rs</span>
+                                </div>
+                                <input type="hidden" id="discountInput" name="discount" value="{{ (float)$purchase->discount }}">
+                                <input type="hidden" id="billDiscountPct" name="discount_percent" value="0">
                             </div>
                         </div>
-                        <div id="paymentWrapper">
-                            @if (isset($existingPayments) && $existingPayments->isNotEmpty())
-                                @foreach ($existingPayments as $pIndex => $pDetail)
-                                    <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                        <select class="form-select rv-account" name="payment_account_id[]" style="max-width: 320px; flex: 1;">
-                                            <option value="" disabled>Select Account</option>
-                                            @foreach ($accounts as $acc)
-                                                <option value="{{ $acc->id }}" {{ $acc->id == $pDetail->account_id ? 'selected' : '' }}>
-                                                    {{ $acc->title }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        <input type="number" class="form-control text-end payment-amount fw-bold" name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="Amount" style="width:140px" step="0.01">
-                                        @if ($loop->first)
-                                            <button type="button" class="btn btn-outline-danger remove-payment" title="Remove" style="display:none;"><i class="fas fa-trash"></i></button>
-                                        @else
-                                            <button type="button" class="btn btn-outline-danger remove-payment" title="Remove"><i class="fas fa-trash"></i></button>
-                                        @endif
-                                    </div>
-                                @endforeach
-                            @else
-                                <div class="d-flex gap-2 align-items-center mb-2 payment-row flex-wrap">
-                                    <select class="form-select rv-account" name="payment_account_id[]" style="max-width: 320px; flex: 1;">
-                                        <option value="" disabled>Select Account</option>
-                                        @foreach ($accounts as $acc)
-                                            <option value="{{ $acc->id }}" {{ (str_contains(strtolower($acc->title), 'cash') || $loop->first) ? 'selected' : '' }}>{{ $acc->title }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="number" class="form-control text-end payment-amount fw-bold" name="payment_amount[]" placeholder="0.00" value="0.00" style="width:140px" step="0.01">
-                                    <button type="button" class="btn btn-outline-danger remove-payment" title="Remove" style="display:none;"><i class="fas fa-trash"></i></button>
+                        <div class="col-md-3 col-6">
+                            <div class="p-2 bg-white border rounded">
+                                <span class="d-block text-secondary fw-bold text-uppercase" style="font-size: 10px;">Freight / Shipping</span>
+                                <div class="input-group input-group-sm mt-1">
+                                    <input type="number" step="0.01" class="form-control text-end fw-bold" id="extraCost" name="extra_cost" value="{{ (float)$purchase->extra_cost }}" placeholder="0">
+                                    <span class="input-group-text bg-light small fw-bold">Rs</span>
                                 </div>
-                            @endif
+                                <input type="hidden" name="freight" id="freightInput" value="{{ (float)$purchase->extra_cost }}">
+                            </div>
                         </div>
+                        <div class="col-md-3 col-12">
+                            <div class="p-2 bg-white border rounded" style="border-left: 3px solid #2563EB !important;">
+                                <span class="d-block text-primary fw-bold text-uppercase" style="font-size: 10px;">Withholding Tax (WHT)</span>
+                                <div class="input-group input-group-sm mt-1">
+                                    <input type="number" step="0.01" class="form-control text-center fw-bold p-1" id="whtPct" name="wht_percent" placeholder="0" style="max-width: 48px;" value="{{ (float)($purchase->wht_percent ?? 0) }}">
+                                    <span class="input-group-text px-1 bg-light small fw-bold">%</span>
+                                    <input type="number" step="0.01" class="form-control text-end fw-bold p-1" id="whtAmount" name="wht_amount" placeholder="0.00" value="{{ (float)($purchase->wht_amount ?? 0) }}">
+                                    <span class="input-group-text px-1 bg-light small fw-bold">Rs</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-12">
+                            <div class="p-2 rounded d-flex justify-content-between align-items-center" style="background: #EFF6FF; border: 1.5px solid #2563EB;">
+                                <div>
+                                    <span class="d-block fw-bold text-primary text-uppercase" style="font-size: 11px;">
+                                        <i class="fas fa-file-invoice-dollar me-1"></i> Total Net Amount
+                                    </span>
+                                    <small class="text-muted" style="font-size: 10px;">Amount + WHT + Freight - Disc</small>
+                                </div>
+                                <span class="fw-bold text-primary fs-5 font-monospace" id="tPayable">{{ number_format($purchase->net_amount, 2) }}</span>
+                                <input type="hidden" name="net_amount" id="netAmountInput" value="{{ $purchase->net_amount }}">
+                            </div>
+                        </div>
+                    </div>
 
-                        <div class="mt-3">
-                            <label class="field-label mb-1">Remarks / Note</label>
-                            <input type="text" class="form-control" name="note" id="remarks" placeholder="Optional notes about this purchase..." value="{{ $purchase->note }}">
+                    {{-- Hidden inputs for backend controller --}}
+                    <input type="hidden" name="total_trade_value" id="tradeValueInput" value="{{ $purchase->total_trade_value ?? 0 }}">
+                    <input type="hidden" name="subtotal" id="subtotalInput" value="{{ $purchase->subtotal }}">
+                    <input type="hidden" name="total_retail_value" id="retailValueInput" value="{{ $purchase->total_retail_value ?? 0 }}">
+                    <input type="hidden" name="total_value_after_discount" id="valueAfterDiscInput" value="{{ $purchase->total_value_after_discount ?? 0 }}">
+                    <input type="hidden" name="total_sales_tax_on_retail" id="stRetailInput" value="{{ $purchase->total_sales_tax_on_retail ?? 0 }}">
+                    <input type="hidden" name="total_sales_tax_on_trade" id="stTradeInput" value="{{ $purchase->total_sales_tax_on_trade ?? 0 }}">
+                    <input type="hidden" name="total_gst" id="totalGstInput" value="{{ $purchase->total_gst ?? 0 }}">
+                    <input type="hidden" name="total_exclusive_gst" id="exclusiveGstInput" value="{{ $purchase->total_exclusive_gst ?? 0 }}">
+                    <span class="d-none" id="tTotalBeforeWht">0.00</span>
+                    <span class="d-none" id="tSub">0.00</span>
+                    <span class="d-none" id="tExclusiveGst">0.00</span>
+                    <span class="d-none" id="tBreakValAfterDisc">0.00</span>
+                    <span class="d-none" id="tBreakGst">0.00</span>
+                    <span class="d-none" id="tBreakBeforeWht">0.00</span>
+                    <span class="d-none" id="tBreakWht">0.00</span>
+                    <span class="d-none" id="tBreakFreight">0.00</span>
+                    <span class="d-none" id="tBreakDisc">0.00</span>
+                </div>
+            </div>
+
+            {{-- ============================ PAYMENT & FINANCIAL SETTLEMENT ============================ --}}
+            <div class="row g-3">
+                {{-- Left: Payment Accounts --}}
+                <div class="col-lg-6 col-md-12">
+                    <div class="sale-card p-2 p-md-3 h-100">
+                        <div>
+                            <div class="mb-3">
+                                <label class="field-label mb-1 fw-bold text-dark"><i class="fas fa-sticky-note text-secondary me-1"></i> Remarks / Note</label>
+                                <input type="text" class="form-control form-control-sm" name="note" id="remarks" placeholder="Optional notes about this purchase..." value="{{ $purchase->note }}">
+                            </div>
+
+                            {{-- Payment Accounts Box --}}
+                            <div class="border rounded-3 p-3 bg-white shadow-sm mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                    <span class="field-label mb-0 text-primary fw-bold" style="font-size: 13px;">
+                                        <i class="fas fa-wallet me-1"></i> Payment Accounts
+                                    </span>
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 fw-semibold" id="btnAddPayment">
+                                        <i class="fas fa-plus me-1"></i> Add Account
+                                    </button>
+                                </div>
+                                <div id="paymentWrapper">
+                                    @if (isset($existingPayments) && $existingPayments->isNotEmpty())
+                                        @foreach ($existingPayments as $pIndex => $pDetail)
+                                            <div class="d-flex gap-2 align-items-center mb-2 payment-row">
+                                                <div class="flex-grow-1">
+                                                    <select class="form-select form-select-sm rv-account fw-semibold" name="payment_account_id[]">
+                                                        <option value="">-- Select Account --</option>
+                                                        @foreach ($accounts as $acc)
+                                                            <option value="{{ $acc->id }}" {{ $acc->id == $pDetail->account_id ? 'selected' : '' }}>
+                                                                {{ $acc->title }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div class="input-group input-group-sm" style="width: 170px;">
+                                                    <span class="input-group-text bg-light fw-bold text-muted">Rs</span>
+                                                    <input type="number" class="form-control text-end payment-amount fw-bold" name="payment_amount[]" value="{{ (float) $pDetail->credit }}" placeholder="0.00" step="0.01">
+                                                </div>
+                                                @if ($loop->first)
+                                                    <button type="button" class="btn btn-outline-danger btn-sm px-2 remove-payment" title="Remove" style="visibility: hidden;"><i class="fas fa-times"></i></button>
+                                                @else
+                                                    <button type="button" class="btn btn-outline-danger btn-sm px-2 remove-payment" title="Remove"><i class="fas fa-times"></i></button>
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="d-flex gap-2 align-items-center mb-2 payment-row">
+                                            <div class="flex-grow-1">
+                                                <select class="form-select form-select-sm rv-account fw-semibold" name="payment_account_id[]">
+                                                    <option value="">-- Select Account --</option>
+                                                    @foreach ($accounts as $acc)
+                                                        <option value="{{ $acc->id }}" {{ (str_contains(strtolower($acc->title), 'cash') || $loop->first) ? 'selected' : '' }}>{{ $acc->title }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="input-group input-group-sm" style="width: 170px;">
+                                                <span class="input-group-text bg-light fw-bold text-muted">Rs</span>
+                                                <input type="number" class="form-control text-end payment-amount fw-bold" name="payment_amount[]" placeholder="0.00" value="0.00" step="0.01">
+                                            </div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm px-2 remove-payment" title="Remove" style="visibility: hidden;"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Right: Order Summary --}}
-                <div class="col-lg-5 col-md-12">
-                    <div class="sale-card p-3">
-                        <div class="card-title mb-2 pb-1 border-bottom d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-receipt text-primary me-2"></i>Order Summary</span>
-                            <span class="badge bg-light text-secondary border">Purchase #{{ $purchase->invoice_no }}</span>
-                        </div>
+                {{-- Right: Financial Settlement & Update Button --}}
+                <div class="col-lg-6 col-md-12">
+                    <div class="sale-card p-2 p-md-3 h-100 d-flex flex-column justify-content-between">
+                        {{-- Financial Settlement Summary --}}
+                        <div class="border rounded-3 p-3 bg-light shadow-sm">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
+                                <span class="field-label mb-0 text-dark fw-bold" style="font-size: 13px;">
+                                    <i class="fas fa-balance-scale text-primary me-1"></i> Bill &amp; Payment Summary
+                                </span>
+                            </div>
 
-                        <div class="s-row">
-                            <span class="s-label">Total Gross</span>
-                            <span class="s-val" id="tSub">0.00</span>
-                            <input type="hidden" name="subtotal" id="subtotalInput" value="{{ $purchase->subtotal }}">
-                        </div>
-
-                        <div class="s-row">
-                            <span class="s-label">Item Discounts</span>
-                            <span class="s-val text-success" id="tLineDisc">0.00</span>
-                        </div>
-
-                        @if($purchaseGstEnabled ?? true)
-                        <div class="s-row" id="rowSummaryExclGst">
-                            <span class="s-label fw-bold text-dark">Exclusive GST Amount</span>
-                            <span class="s-val fw-bold text-dark" id="tExclusiveGst">{{ number_format($purchase->total_exclusive_gst ?? 0, 2) }}</span>
-                            <input type="hidden" name="total_exclusive_gst" id="exclusiveGstInput" value="{{ $purchase->total_exclusive_gst ?? 0 }}">
-                        </div>
-                        <div class="s-row" id="rowSummaryGstAmt">
-                            <span class="s-label text-success fw-bold">GST Amount</span>
-                            <span class="s-val text-success fw-bold" id="tGstAmount">{{ number_format($purchase->total_gst ?? 0, 2) }}</span>
-                            <input type="hidden" name="total_gst" id="totalGstInput" value="{{ $purchase->total_gst ?? 0 }}">
-                        </div>
-                        @endif
-
-                        <div class="s-row">
-                            <span class="s-label">Bill Discount</span>
-                            <div class="d-flex align-items-center gap-1 discount-input">
-                                <div class="input-group input-group-sm">
-                                    <input type="number" step="0.01" class="form-control text-end fw-bold" id="billDiscountPct" placeholder="0" style="max-width: 45px;">
-                                    <span class="input-group-text">%</span>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded">
+                                        <span class="d-block text-muted fw-bold text-uppercase" style="font-size: 10px;">Total Net Amount</span>
+                                        <span class="fw-bold text-primary fs-6 font-monospace" id="tPayableLeft">0.00</span>
+                                    </div>
                                 </div>
-                                <input type="number" step="0.01" class="form-control text-end fw-bold" id="billDiscount" value="{{ (float)$purchase->discount }}">
-                                <input type="hidden" name="discount" id="discountInput" value="{{ (float)$purchase->discount }}">
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded">
+                                        <span class="d-block text-muted fw-bold text-uppercase" style="font-size: 10px;">Previous Balance</span>
+                                        <span class="fw-bold text-secondary fs-6 font-monospace" id="tPrev">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded" style="border-left: 3px solid #2563EB !important;">
+                                        <span class="d-block text-muted fw-bold text-uppercase" style="font-size: 10px;">Total Payable</span>
+                                        <span class="fw-bold text-dark fs-6 font-monospace" id="tTotalPayable">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-white border rounded" style="border-left: 3px solid #16A34A !important;">
+                                        <span class="d-block text-success fw-bold text-uppercase" style="font-size: 10px;">Paid Amount</span>
+                                        <span class="fw-bold text-success fs-6 font-monospace" id="totalPaid">0.00</span>
+                                        <span class="d-none" id="tPaidSummary">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="p-2 rounded d-flex justify-content-between align-items-center" style="background: #FEF2F2; border: 1.5px solid #FECACA;">
+                                        <div>
+                                            <span class="d-block fw-bold text-danger text-uppercase" style="font-size: 11px;">Balance Due</span>
+                                            <small class="text-muted" style="font-size: 10.5px;">Remaining balance payable</small>
+                                        </div>
+                                        <span class="fw-bold text-danger fs-5 font-monospace" id="tBalanceDue">0.00</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="s-row">
-                            <span class="s-label">Extra Cost</span>
-                            <input type="number" step="0.01" class="form-control form-control-sm text-end fw-bold" name="extra_cost" id="extraCost" value="{{ (float)$purchase->extra_cost }}" style="width: 120px;">
-                        </div>
-
-                        <div class="s-row net">
-                            <span class="net-label">Net Payable</span>
-                            <span class="net-val" id="tPayable">0.00</span>
-                            <input type="hidden" name="net_amount" id="netAmountInput" value="{{ $purchase->net_amount }}">
-                        </div>
-
-                        <div class="s-row">
-                            <span class="s-label text-muted">Previous Balance</span>
-                            <span class="s-val text-danger" id="tPrev">0.00</span>
-                        </div>
-
-                        <div class="s-row">
-                            <span class="s-label">Total Payable</span>
-                            <span class="s-val fw-bold" id="tTotalPayable">0.00</span>
-                        </div>
-
-                        <div class="s-row">
-                            <span class="s-label text-success">Total Paid</span>
-                            <span class="paid-val" id="totalPaid">0.00</span>
-                        </div>
-
-                        <div class="s-row border-0 pt-1">
-                            <span class="s-label fw-bold">Balance Due</span>
-                            <span class="change-val text-danger fw-bold fs-6" id="tBalanceDue">0.00</span>
-                        </div>
-
-                        <div class="mt-3 pt-2 border-top text-end">
+                        {{-- Action Buttons --}}
+                        <div class="mt-3 pt-2 border-top d-flex justify-content-end gap-2">
+                            <a href="{{ route('Purchase.home') }}" class="btn btn-outline-secondary fw-bold px-3">
+                                <i class="fas fa-arrow-left me-1"></i> Cancel
+                            </a>
                             <button type="submit" class="btn btn-success fw-bold px-4 shadow-sm" id="btnUpdatePurchase">
                                 <i class="fas fa-save me-1"></i> Update Purchase
                             </button>
@@ -1314,31 +1487,18 @@
             });
 
             function addBlankRow() {
-                const canSelectWh = {{ $canSelectWarehouse ? 'true' : 'false' }};
                 const userDefaultWh = {{ $userWarehouseId ?? 1 }};
                 const curHeaderWh = $('#warehouseSelect').val() || userDefaultWh;
-                let whCellHtml = `<input type="hidden" name="warehouse_id[]" class="row-warehouse-select" value="${userDefaultWh}">`;
-
-                if (canSelectWh) {
-                    let whOptionsHtml = '';
-                    @if(isset($Warehouse) && count($Warehouse) > 0)
-                        @foreach($Warehouse as $w)
-                            whOptionsHtml += `<option value="{{ $w->id }}" ${curHeaderWh == '{{ $w->id }}' ? 'selected' : ''}>{{ addslashes($w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id)) }}</option>`;
-                        @endforeach
-                    @endif
-                    whCellHtml = `<td>
-                        <select name="warehouse_id[]" class="form-select form-select-sm row-warehouse-select fw-semibold border-secondary" style="height: 31px; font-size: 0.8rem;">
-                            ${whOptionsHtml}
-                        </select>
-                    </td>`;
-                }
 
                 const html = `
                 <tr>
                     <td class="row-index-cell text-center">1</td>
                     <td>
                         <select class="form-select product-select2" name="product_id[]"></select>
-                        <!-- Hidden fields for product data snapshot -->
+                        <input type="hidden" name="warehouse_id[]" class="row-warehouse-select" value="${curHeaderWh}">
+                        <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
+                        <input type="hidden" name="price[]" class="price trade-price-input" value="0.00">
+                        <input type="hidden" name="retail_price[]" class="retail-price-input" value="0.00">
                         <input type="hidden" name="size_mode[]" class="hidden-size-mode" value="">
                         <input type="hidden" name="pieces_per_box[]" class="hidden-pieces-per-box" value="1">
                         <input type="hidden" name="pieces_per_m2[]" class="hidden-pieces-per-m2" value="0">
@@ -1355,38 +1515,51 @@
                         <input type="hidden" class="exp-date-hidden" name="exp_date[]" value="">
                         <input type="hidden" class="serials-hidden" name="serials[]" value="">
                         <input type="hidden" class="tracking-type-hidden" name="tracking_type[]" value="">
+                        <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
                         <div class="row-tracking-badges d-flex flex-wrap gap-1 px-1 py-0"></div>
                     </td>
-                    ${whCellHtml}
                     <td class="text-center align-middle">
-                        <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn" data-unit="Pcs" title="Click to toggle unit (Carton ↔ Pcs / Kg ↔ Gm)">Pcs</button>
-                        <input type="hidden" name="unit[]" class="unit-input-val" value="Pcs">
+                        <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn w-100" data-unit="Carton" style="height:30px; border:none; border-radius:0; font-size:11px;" title="Click to toggle (Carton / Pcs)">Carton</button>
                     </td>
                     <td>
                         <input type="number" step="any" min="0.01" name="qty[]" class="form-control text-center main-qty-input fw-bold" value="1" placeholder="Qty">
                     </td>
                     <td>
-                        <input type="number" step="0.01" name="price[]" class="form-control text-end price fw-semibold" value="0">
+                        <input type="number" step="0.01" class="form-control text-end item-retail-value fw-semibold" name="retail_value[]" value="0.00" title="Retail Value Exc. All Taxes">
                     </td>
                     <td>
-                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-percent" value="0">
+                        <input type="number" step="0.01" class="form-control text-end item-trade-value fw-semibold" name="trade_value[]" value="0.00" title="Trade Value Exc. All Taxes">
                     </td>
                     <td>
-                        <input type="number" class="form-control text-end input-readonly item-disc-amt" value="0.00" readonly tabindex="-1">
+                        <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="0" placeholder="0" title="Disc - Trader (%)">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="0.00" placeholder="0.00" title="Discount Value">
+                    </td>
+                    <td>
+                        <input type="number" step="0.01" class="form-control text-end input-readonly item-val-after-disc fw-bold text-dark" name="value_after_discount[]" value="0.00" readonly tabindex="-1" title="Value After Discount">
                     </td>
                     @if($purchaseGstEnabled ?? true)
                     <td class="col-purchase-gst">
-                        <input type="number" step="0.01" min="0" max="100" name="gst_percent[]" class="form-control text-end item-gst-percent fw-semibold" value="{{ (float)($defaultGstPercent ?? 18) }}" placeholder="18">
+                        <input type="number" step="0.01" min="0" max="100" name="gst_percent[]" class="form-control text-center item-gst-percent fw-semibold" value="{{ (float)($defaultGstPercent ?? 18) }}" placeholder="18" title="Sales Tax (%)">
                         <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="0.00">
                         <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="0.00">
                     </td>
+                    <td class="col-purchase-gst">
+                        <input type="number" step="0.01" class="form-control text-end input-readonly item-st-retail text-success fw-semibold" name="sales_tax_on_retail[]" value="0.00" readonly tabindex="-1" title="Sales Tax on Retail Value">
+                    </td>
+                    <td class="col-purchase-gst">
+                        <input type="number" step="0.01" class="form-control text-end input-readonly item-st-trade text-info fw-semibold" name="sales_tax_on_trade[]" value="0.00" readonly tabindex="-1" title="Sales Tax on Disct. Trade">
+                    </td>
                     @else
+                    <input type="hidden" name="sales_tax_on_retail[]" class="item-st-retail" value="0.00">
                     <input type="hidden" name="gst_percent[]" class="item-gst-percent" value="0">
                     <input type="hidden" name="gst_amount[]" class="item-gst-amt" value="0.00">
                     <input type="hidden" name="exclusive_gst_amount[]" class="item-excl-gst-amt" value="0.00">
+                    <input type="hidden" name="sales_tax_on_trade[]" class="item-st-trade" value="0.00">
                     @endif
                     <td>
-                        <input type="number" class="form-control text-end input-readonly row-total fw-bold" value="0.00" readonly tabindex="-1">
+                        <input type="number" step="0.01" class="form-control text-end input-readonly row-total fw-bold text-primary" name="line_total[]" value="0.00" readonly tabindex="-1" title="Total">
                     </td>
                     <td class="text-center align-middle">
                         <button type="button" class="remove-row" title="Remove Item"><i class="fas fa-times"></i></button>
@@ -1401,6 +1574,9 @@
             }
             window.addBlankRow = addBlankRow;
 
+            // Client-side Memory Cache for Lightning-Fast Instant Product Loading
+            window.productSearchCache = window.productSearchCache || {};
+
             function initProductSelect2($el) {
                 $el.select2({
                     placeholder: 'Type Product Name or Code...',
@@ -1410,7 +1586,33 @@
                     ajax: {
                         url: "{{ route('products.ajax.search') }}",
                         dataType: 'json',
-                        delay: 200,
+                        delay: 50,
+                        transport: function(params, success, failure) {
+                            window.productSearchCache = window.productSearchCache || {};
+                            var term = (params.data.q || params.data.term || '').toLowerCase().trim();
+                            var page = params.data.page || 1;
+                            var cacheKey = term + '_p' + page;
+
+                            // 1. Instant RAM Cache Hit (0ms - ZERO loading spinner!)
+                            if (window.productSearchCache[cacheKey]) {
+                                success(window.productSearchCache[cacheKey]);
+                                return;
+                            }
+                            if (!term && page === 1 && window.productSearchCache['']) {
+                                success(window.productSearchCache['']);
+                                return;
+                            }
+
+                            // 2. Fast Network Fetch and Cache
+                            var $request = $.ajax(params);
+                            $request.then(function(data) {
+                                window.productSearchCache[cacheKey] = data;
+                                if (!term && page === 1) window.productSearchCache[''] = data;
+                                success(data);
+                            });
+                            $request.fail(failure);
+                            return $request;
+                        },
                         data: function(params) {
                             return {
                                 q: params.term || '',
@@ -1480,11 +1682,29 @@
                         $row.find('.unit-input-val').val(unitName);
                     }
 
-                    // Prices
-                    const pPiece = parseFloat(data.purchase_price_per_piece) || parseFloat(data.trade_price) || 0;
-                    const pBox = parseFloat(data.purchase_price_per_box) || (pPiece * ppb);
+                    // Prices (Trade & Retail)
+                    const pPiece = parseFloat(data.trade_price) || parseFloat(data.purchase_price_per_piece) || 0;
+                    const pBox = parseFloat(data.trade_price_per_box) || parseFloat(data.purchase_price_per_box) || (pPiece * ppb);
+                    const rPiece = parseFloat(data.retail_price) || parseFloat(data.sale_price_per_piece) || 0;
+                    const rBox = parseFloat(data.retail_price_per_box) || parseFloat(data.sale_price_per_box) || (rPiece * ppb);
                     const pM2 = parseFloat(data.purchase_price_per_m2) || 0;
                     const sizeMode = data.size_mode || 'std';
+
+                    // HS Code & Third Schedule
+                    if (data.hs_code) {
+                        $row.find('.hs-val').text(data.hs_code);
+                        $row.find('.hs-badge').removeClass('d-none');
+                    } else {
+                        $row.find('.hs-badge').addClass('d-none');
+                    }
+
+                    const isThird = !!data.is_third_schedule;
+                    $row.find('.hidden-is-third-schedule').val(isThird ? '1' : '0');
+                    if (isThird) {
+                        $row.find('.toggle-third-schedule-btn').removeClass('btn-outline-secondary').addClass('btn-warning text-dark fw-bold').find('.sched-text').text('3rd Sched (Tax on Retail)');
+                    } else {
+                        $row.find('.toggle-third-schedule-btn').removeClass('btn-warning text-dark fw-bold').addClass('btn-outline-secondary').find('.sched-text').text('Standard');
+                    }
 
                     // Snapshot Data Population
                     $row.find('.hidden-size-mode').val(data.size_mode || '');
@@ -1499,22 +1719,25 @@
                     $row.data('pieces_per_m2', Number(data.pieces_per_m2) || 0);
                     $row.data('p_price_piece', pPiece);
                     $row.data('p_price_box', pBox);
+                    $row.data('r_price_piece', rPiece);
+                    $row.data('r_price_box', rBox);
                     $row.data('pieces_per_box', ppb);
 
                     // Discount
                     $row.find('.item-disc-percent').val(data.purchase_discount_percent || 0);
 
                     // Determine initial price based on selected unit mode
-                    let finalPrice = pPiece;
+                    let finalTradePrice = pPiece;
+                    let finalRetailPrice = rPiece;
                     if (sizeMode === 'by_size') {
-                        finalPrice = pM2;
+                        finalTradePrice = pM2;
                     } else if (isCartonMode) {
-                        finalPrice = pBox > 0 ? pBox : (pPiece * ppb);
-                    } else {
-                        finalPrice = pPiece;
+                        finalTradePrice = pBox > 0 ? pBox : (pPiece * ppb);
+                        finalRetailPrice = rBox > 0 ? rBox : (rPiece * ppb);
                     }
 
-                    $row.find('.price').val(finalPrice % 1 === 0 ? finalPrice : finalPrice.toFixed(2));
+                    $row.find('.trade-price-input').val(finalTradePrice.toFixed(2));
+                    $row.find('.retail-price-input').val(finalRetailPrice.toFixed(2));
 
                     recalcRow($row);
                     recalcAll();
@@ -1625,12 +1848,41 @@
             });
 
             // Grid Inputs -> Recalculate
-            $('#purchaseTableBody').on('input', '.main-qty-input, .price, .item-disc-percent, .item-gst-percent', function() {
+            $('#purchaseTableBody').on('input', '.main-qty-input, .price, .trade-price-input, .retail-price-input, .item-gst-percent', function() {
                 recalcRow($(this).closest('tr'));
                 recalcAll();
             });
 
-            $('#billDiscount, #billDiscountPct, #extraCost').on('input', function() {
+            $('#purchaseTableBody').on('input', '.item-disc-percent', function() {
+                $(this).closest('tr').data('last_disc_input', 'pct');
+                recalcRow($(this).closest('tr'));
+                recalcAll();
+            });
+
+            $('#purchaseTableBody').on('input', '.item-disc-amt', function() {
+                $(this).closest('tr').data('last_disc_input', 'amt');
+                recalcRow($(this).closest('tr'));
+                recalcAll();
+            });
+
+            // Toggle Third Schedule per row
+            $('#purchaseTableBody').on('click', '.toggle-third-schedule-btn', function(e) {
+                e.preventDefault();
+                const $row = $(this).closest('tr');
+                const $hidden = $row.find('.hidden-is-third-schedule');
+                const isThird = $hidden.val() === '1';
+                if (isThird) {
+                    $hidden.val('0');
+                    $(this).removeClass('btn-warning text-dark fw-bold').addClass('btn-outline-secondary').find('.sched-text').text('Standard');
+                } else {
+                    $hidden.val('1');
+                    $(this).removeClass('btn-outline-secondary').addClass('btn-warning text-dark fw-bold').find('.sched-text').text('3rd Sched (Tax on Retail)');
+                }
+                recalcRow($row);
+                recalcAll();
+            });
+
+            $('#billDiscount, #billDiscountPct, #extraCost, #whtPct, #whtAmount').on('input', function() {
                 recalcAll();
             });
 
@@ -1642,12 +1894,14 @@
                     const $row = $input.closest('tr');
 
                     if ($input.hasClass('main-qty-input')) {
-                        // Qty -> Price
-                        $row.find('.price').focus().select();
-                    } else if ($input.hasClass('price')) {
-                        // Price -> Disc %
+                        $row.find('.item-retail-value').focus().select();
+                    } else if ($input.hasClass('item-retail-value')) {
+                        $row.find('.item-trade-value').focus().select();
+                    } else if ($input.hasClass('item-trade-value')) {
                         $row.find('.item-disc-percent').focus().select();
                     } else if ($input.hasClass('item-disc-percent')) {
+                        $row.find('.item-disc-amt').focus().select();
+                    } else if ($input.hasClass('item-disc-amt')) {
                         if ($row.find('.item-gst-percent').length) {
                             $row.find('.item-gst-percent').focus().select();
                         } else {
@@ -1677,118 +1931,211 @@
             function recalcRow($row) {
                 const qtyStr = $row.find('.main-qty-input').val() || '0';
                 const qty = parseFloat(qtyStr) || 0;
-                const price = parseFloat($row.find('.price').val()) || 0;
+                const tradePrice = parseFloat($row.find('.trade-price-input').val()) || 0;
+                const retailPrice = parseFloat($row.find('.retail-price-input').val()) || 0;
                 const discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
+                const gstPct = parseFloat($row.find('.item-gst-percent').val()) || 0;
+                const isThirdSchedule = $row.find('.hidden-is-third-schedule').val() === '1';
 
                 const unitVal = ($row.find('.unit-input-val').val() || '').toLowerCase();
                 const ppb = parseFloat($row.find('.hidden-pieces-per-box').val()) || 1;
                 const pieces_per_m2 = parseFloat($row.find('.hidden-pieces-per-m2').val()) || 0;
                 const sizeMode = $row.find('.hidden-size-mode').val();
 
-                let gross = 0;
+                let tradeVal = 0;
+                let retailVal = 0;
                 const isPiece = (unitVal === 'pcs' || unitVal === 'piece' || unitVal === 'pieces');
                 const isCarton = (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || (!isPiece && ['by_cartons', 'by_bandal'].includes(sizeMode)));
 
                 if (sizeMode === 'by_size') {
-                    gross = (pieces_per_m2 || 1) * qty * price;
+                    tradeVal = (pieces_per_m2 || 1) * qty * tradePrice;
+                    retailVal = (pieces_per_m2 || 1) * qty * retailPrice;
                 } else if (unitVal === 'gm' || unitVal === 'g') {
-                    gross = (qty / 1000.0) * price;
+                    tradeVal = (qty / 1000.0) * tradePrice;
+                    retailVal = (qty / 1000.0) * retailPrice;
                 } else if (isPiece) {
-                    gross = qty * price;
+                    tradeVal = qty * tradePrice;
+                    retailVal = qty * retailPrice;
                     const bQty = ppb > 1 ? Math.floor(qty / ppb) : 0;
                     $row.find('.hidden-boxes-qty').val(bQty);
                     $row.find('.hidden-loose-qty').val(qty);
                 } else if (isCarton) {
                     let s = qtyStr.trim();
                     if (s.startsWith('.')) s = '0' + s;
+                    let boxes = 0;
+                    let loose = 0;
                     if (s.includes('.')) {
                         const parts = s.split('.');
-                        const boxes = parseInt(parts[0]) || 0;
-                        const loose = parseInt(parts[1]) || 0;
-                        const piecePrice = ppb > 0 ? (price / ppb) : price;
-                        gross = (boxes * price) + (loose * piecePrice);
-                        $row.find('.hidden-boxes-qty').val(boxes);
-                        $row.find('.hidden-loose-qty').val(loose);
+                        boxes = parseInt(parts[0]) || 0;
+                        loose = parseInt(parts[1]) || 0;
                     } else {
-                        const boxes = parseInt(s) || 0;
-                        gross = boxes * price;
-                        $row.find('.hidden-boxes-qty').val(boxes);
-                        $row.find('.hidden-loose-qty').val(0);
+                        boxes = parseInt(s) || 0;
                     }
+                    $row.find('.hidden-boxes-qty').val(boxes);
+                    $row.find('.hidden-loose-qty').val(loose);
+
+                    const pieceTrade = ppb > 0 ? (tradePrice / ppb) : tradePrice;
+                    const pieceRetail = ppb > 0 ? (retailPrice / ppb) : retailPrice;
+                    tradeVal = (boxes * tradePrice) + (loose * pieceTrade);
+                    retailVal = (boxes * retailPrice) + (loose * pieceRetail);
                 } else {
-                    gross = qty * price;
+                    tradeVal = qty * tradePrice;
+                    retailVal = qty * retailPrice;
                 }
 
-                const discAmt = gross * (discPct / 100);
-                const exclGst = Math.max(0, gross - discAmt);
-                const gstPct = parseFloat($row.find('.item-gst-percent').val()) || 0;
-                const gstAmt = exclGst * (gstPct / 100);
-                const lineTotal = exclGst + gstAmt;
+                const discAmt = tradeVal * (discPct / 100);
+                const valAfterDisc = Math.max(0, tradeVal - discAmt);
 
+                let stRetail = 0;
+                let stTrade = 0;
+
+                if (isThirdSchedule) {
+                    stRetail = retailVal * (gstPct / 100);
+                    stTrade = 0;
+                } else {
+                    stRetail = 0;
+                    stTrade = valAfterDisc * (gstPct / 100);
+                }
+
+                const totalGst = stRetail + stTrade;
+                const lineTotal = valAfterDisc + totalGst;
+
+                $row.find('.item-trade-value').val(tradeVal.toFixed(2));
+                $row.find('.item-retail-value').val(retailVal.toFixed(2));
                 $row.find('.item-disc-amt').val(discAmt.toFixed(2));
-                $row.find('.item-excl-gst-amt').val(exclGst.toFixed(2));
-                $row.find('.item-gst-amt').val(gstAmt.toFixed(2));
+                $row.find('.item-val-after-disc').val(valAfterDisc.toFixed(2));
+                $row.find('.item-st-retail').val(stRetail.toFixed(2));
+                $row.find('.item-st-trade').val(stTrade.toFixed(2));
+                $row.find('.item-gst-amt').val(totalGst.toFixed(2));
+                $row.find('.item-excl-gst-amt').val(valAfterDisc.toFixed(2));
                 $row.find('.row-total').val(lineTotal.toFixed(2));
             }
 
             function recalcAll() {
                 let subtotal = 0;
-                let totalInlineDiscount = 0;
-                let totalExclusiveGst = 0;
+                let totalTradeVal = 0;
+                let totalRetailVal = 0;
+                let totalLineDiscount = 0;
+                let totalValAfterDisc = 0;
+                let totalStRetail = 0;
+                let totalStTrade = 0;
                 let totalGstAmount = 0;
+                let totalQty = 0;
+                let rowCount = 0;
 
                 $('#purchaseTableBody tr').each(function() {
-                    const total = parseFloat($(this).find('.row-total').val()) || 0;
+                    const rowTotal = parseFloat($(this).find('.row-total').val()) || 0;
+                    const rowTradeVal = parseFloat($(this).find('.item-trade-value').val()) || 0;
+                    const rowRetailVal = parseFloat($(this).find('.item-retail-value').val()) || 0;
                     const rowDiscAmt = parseFloat($(this).find('.item-disc-amt').val()) || 0;
-                    const rowExclGst = parseFloat($(this).find('.item-excl-gst-amt').val()) || 0;
+                    const rowValAfterDisc = parseFloat($(this).find('.item-val-after-disc').val()) || 0;
+                    const rowStRetail = parseFloat($(this).find('.item-st-retail').val()) || 0;
+                    const rowStTrade = parseFloat($(this).find('.item-st-trade').val()) || 0;
                     const rowGstAmt = parseFloat($(this).find('.item-gst-amt').val()) || 0;
+                    const rowQty = parseFloat($(this).find('.main-qty-input').val()) || 0;
 
-                    subtotal += total;
-                    totalInlineDiscount += rowDiscAmt;
-                    totalExclusiveGst += rowExclGst;
+                    subtotal += rowTotal;
+                    totalTradeVal += rowTradeVal;
+                    totalRetailVal += rowRetailVal;
+                    totalLineDiscount += rowDiscAmt;
+                    totalValAfterDisc += rowValAfterDisc;
+                    totalStRetail += rowStRetail;
+                    totalStTrade += rowStTrade;
                     totalGstAmount += rowGstAmt;
+                    totalQty += rowQty;
+                    rowCount++;
                 });
 
-                const grossSubtotal = totalExclusiveGst + totalInlineDiscount;
-
-                $('#tSub').text(grossSubtotal.toFixed(2));
+                $('#footItemCount').text(rowCount);
+                $('#footQtyTotal').text(totalQty);
+                $('#totalAmount').text(subtotal.toFixed(2));
+                $('#tSub').text(totalTradeVal.toFixed(2));
                 $('#subtotalInput').val(subtotal.toFixed(2));
-                $('#tLineDisc').text(totalInlineDiscount.toFixed(2));
-                $('#tExclusiveGst').text(totalExclusiveGst.toFixed(2));
-                $('#exclusiveGstInput').val(totalExclusiveGst.toFixed(2));
+
+                $('#tRetailValue').text(totalRetailVal.toFixed(2));
+                $('#retailValueInput').val(totalRetailVal.toFixed(2));
+
+                $('#tTradeValue').text(totalTradeVal.toFixed(2));
+                $('#tradeValueInput').val(totalTradeVal.toFixed(2));
+
+                $('#tLineDisc').text(totalLineDiscount.toFixed(2));
+
+                $('#tValueAfterDisc').text(totalValAfterDisc.toFixed(2));
+                $('#valueAfterDiscInput').val(totalValAfterDisc.toFixed(2));
+
+                $('#tStRetail').text(totalStRetail.toFixed(2));
+                $('#stRetailInput').val(totalStRetail.toFixed(2));
+
+                $('#tStTrade').text(totalStTrade.toFixed(2));
+                $('#stTradeInput').val(totalStTrade.toFixed(2));
+
+                $('#tExclusiveGst').text(totalValAfterDisc.toFixed(2));
+                $('#exclusiveGstInput').val(totalValAfterDisc.toFixed(2));
+
                 $('#tGstAmount').text(totalGstAmount.toFixed(2));
                 $('#totalGstInput').val(totalGstAmount.toFixed(2));
 
-                let additionalDiscount = parseFloat($('#discountInput').val()) || 0;
-                let billDiscVal = parseFloat($('#billDiscount').val());
+                let orderDiscount = parseFloat($('#billDiscount').val()) || 0;
+                let billDiscPct = parseFloat($('#billDiscountPct').val()) || 0;
 
-                if ($(document.activeElement).is('#billDiscount')) {
-                    if (!isNaN(billDiscVal)) {
-                        additionalDiscount = Math.max(0, billDiscVal - totalInlineDiscount);
-                    } else {
-                        additionalDiscount = 0;
-                    }
-                } else {
-                    billDiscVal = totalInlineDiscount + additionalDiscount;
-                    $('#billDiscount').val(billDiscVal.toFixed(2));
+                if ($(document.activeElement).is('#billDiscountPct')) {
+                    orderDiscount = totalValAfterDisc > 0 ? (totalValAfterDisc * billDiscPct) / 100 : 0;
+                    $('#billDiscount').val(orderDiscount.toFixed(2));
+                } else if ($(document.activeElement).is('#billDiscount')) {
+                    billDiscPct = totalValAfterDisc > 0 ? (orderDiscount / totalValAfterDisc) * 100 : 0;
+                    $('#billDiscountPct').val(billDiscPct.toFixed(2));
                 }
-                
-                const pct = grossSubtotal > 0 ? (billDiscVal / grossSubtotal) * 100 : 0;
-                $('#billDiscountPct').val(pct.toFixed(2));
-                $('#discountInput').val(additionalDiscount.toFixed(2));
+                $('#discountInput').val(orderDiscount.toFixed(2));
 
                 const extraCost = parseFloat($('#extraCost').val()) || 0;
-                const net = Math.max(0, subtotal - additionalDiscount + extraCost);
+                $('#freightInput').val(extraCost.toFixed(2));
+
+                // Amount (Before WHT) = Value After Disc + Total GST
+                const totalBeforeWht = totalValAfterDisc + totalGstAmount;
+                $('#tTotalBeforeWht').text(totalBeforeWht.toFixed(2));
+
+                // WHT (Withholding Tax) Calculation based on totalBeforeWht
+                let whtPct = parseFloat($('#whtPct').val()) || 0;
+                let whtAmount = parseFloat($('#whtAmount').val()) || 0;
+
+                if ($(document.activeElement).is('#whtPct')) {
+                    whtAmount = totalBeforeWht > 0 ? (totalBeforeWht * whtPct) / 100 : 0;
+                    $('#whtAmount').val(whtAmount.toFixed(2));
+                } else if ($(document.activeElement).is('#whtAmount')) {
+                    whtPct = totalBeforeWht > 0 ? (whtAmount / totalBeforeWht) * 100 : 0;
+                    $('#whtPct').val(whtPct.toFixed(2));
+                } else {
+                    if (whtPct > 0) {
+                        whtAmount = (totalBeforeWht * whtPct) / 100;
+                        $('#whtAmount').val(whtAmount.toFixed(2));
+                    }
+                }
+
+                const net = Math.max(0, totalBeforeWht + whtAmount + extraCost - orderDiscount);
 
                 $('#tPayable').text(net.toFixed(2));
+                $('#tPayableLeft').text(net.toFixed(2));
                 $('#netAmountInput').val(net.toFixed(2));
                 $('#totalAmount').text(subtotal.toFixed(2));
 
+                // Live Formula Breakdown
+                $('#tBreakValAfterDisc').text(totalValAfterDisc.toFixed(2));
+                $('#tBreakGst').text(totalGstAmount.toFixed(2));
+                $('#tBreakBeforeWht').text(totalBeforeWht.toFixed(2));
+                $('#tBreakWht').text(whtAmount.toFixed(2));
+                $('#tBreakFreight').text(extraCost.toFixed(2));
+                $('#tBreakDisc').text(orderDiscount.toFixed(2));
+
                 const prevBal = parseFloat($('#tPrev').text()) || 0;
-                const totalPaid = parseFloat($('#totalPaid').text()) || 0;
+                let totalPaid = 0;
+                $('.payment-amount').each(function() {
+                    totalPaid += parseFloat($(this).val()) || 0;
+                });
                 const totalPayable = prevBal + net;
                 const balanceDue = totalPayable - totalPaid;
                 
+                $('#totalPaid').text(totalPaid.toFixed(2));
+                $('#tPaidSummary').text(totalPaid.toFixed(2));
                 $('#tTotalPayable').text(totalPayable.toFixed(2));
                 $('#tBalanceDue').text(balanceDue.toFixed(2));
             }
@@ -1828,40 +2175,8 @@
             }
 
             function normalizeDiscountInput() {
-                let totalInlineDiscount = 0;
-                $('#purchaseTableBody tr').each(function() {
-                    const rowDiscAmt = parseFloat($(this).find('.item-disc-amt').val()) || 0;
-                    totalInlineDiscount += rowDiscAmt;
-                });
-
-                let billDiscVal = parseFloat($('#billDiscount').val());
-                if (isNaN(billDiscVal) || billDiscVal < totalInlineDiscount) {
-                    $('#billDiscount').val(totalInlineDiscount.toFixed(2));
-                }
                 recalcAll();
             }
-
-            // Quick Pay Full & Pay Later actions
-            $('#btnPayFull').on('click', function() {
-                const net = parseFloat($('#netAmountInput').val()) || 0;
-                const $firstRow = $('#paymentWrapper .payment-row').first();
-                if ($firstRow.length) {
-                    $firstRow.find('.payment-amount').val(net.toFixed(2));
-                    // Remove extra payment rows if any
-                    $('#paymentWrapper .payment-row').not(':first').remove();
-                    // Select first available account if empty
-                    const $acc = $firstRow.find('.rv-account');
-                    if (!$acc.val()) {
-                        $acc.find('option:not([disabled])').first().prop('selected', true);
-                    }
-                }
-                recalcPayments();
-            });
-
-            $('#btnPayLater').on('click', function() {
-                $('.payment-amount').val('0.00');
-                recalcPayments();
-            });
 
             $('#purchaseForm').on('submit', function(e) {
                 normalizeDiscountInput();
