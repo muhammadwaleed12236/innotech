@@ -605,6 +605,9 @@ Route::middleware('auth')->group(function () {
     Route::post('report/discount-reconciliation/save-custom-head', [\App\Http\Controllers\DiscountReconciliationController::class, 'saveCustomHead'])->name('report.discount_reconciliation.save_custom_head');
     Route::post('report/discount-reconciliation/delete-custom-head', [\App\Http\Controllers\DiscountReconciliationController::class, 'deleteCustomHead'])->name('report.discount_reconciliation.delete_custom_head');
     Route::get('report/discount-reconciliation/export', [\App\Http\Controllers\DiscountReconciliationController::class, 'exportCsv'])->name('report.discount_reconciliation.export');
+    Route::get('report/discount-heads', function () {
+        return redirect()->route('report.discount_reconciliation', ['tab' => 'heads']);
+    })->name('report.discount_heads');
 
     // Return modules list for permission dropdowns (AJAX)
     Route::get('/modules/list', function () {

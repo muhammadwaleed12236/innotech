@@ -141,6 +141,31 @@
         margin: 1px;
         border: 1px solid #e2e8f0;
     }
+    .madd-kpi-card {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+        min-width: 175px;
+        flex: 1 1 185px;
+        position: relative;
+    }
+    .madd-kpi-card:hover {
+        border-color: #2563eb;
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+    }
+    .madd-kpi-card.active-head {
+        border-color: #2563eb;
+        background: #eff6ff;
+        box-shadow: 0 0 0 2px rgba(37,99,235,0.25);
+    }
+    .badge-head-owner { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-head-customer { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
+    .badge-head-custom { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
 </style>
 
 <div class="discount-recon-container">
@@ -290,6 +315,11 @@
         <li class="nav-item">
             <a class="nav-link" id="tab-profit-link" data-bs-toggle="tab" href="#tab-profit" role="tab">
                 <i class="fas fa-chart-pie me-1"></i> Profit Calculation Statement
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="tab-heads-link" data-bs-toggle="tab" href="#tab-heads" role="tab">
+                <i class="fas fa-layer-group text-warning me-1"></i> Madd-wise Discount Breakdown (Heads Report)
             </a>
         </li>
     </ul>
@@ -487,6 +517,89 @@
             </div>
         </div>
 
+        {{-- Tab 4: Madd-wise Discount Breakdown Report (Detailed Heads) --}}
+        <div class="tab-pane fade" id="tab-heads" role="tabpanel">
+            {{-- Filter & Actions Toolbar --}}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 bg-white p-2 border rounded shadow-sm">
+                <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 650px;">
+                    <div style="min-width: 220px;">
+                        <label class="form-label small fw-bold text-muted mb-0">Filter by Madd / Head:</label>
+                        <select class="form-select form-select-sm" id="filterMaddSelect">
+                            <option value="">All Maddain (All Discount Heads)</option>
+                        </select>
+                    </div>
+                    <div class="flex-grow-1">
+                        <label class="form-label small fw-bold text-muted mb-0">Search Records:</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control" id="searchHeadTable" placeholder="Search by Invoice, Product, Supplier, Madd...">
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-secondary-subtle text-dark border px-2 py-1 font-monospace" id="headRecordsCountBadge" style="font-size: 11px;">0 Records</span>
+                    <button type="button" class="btn btn-outline-success btn-sm fw-bold" id="btnExportMaddCsv">
+                        <i class="fas fa-file-excel me-1"></i> Export Madd-wise CSV
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm fw-bold" onclick="window.print()">
+                        <i class="fas fa-print me-1"></i> Print Statement
+                    </button>
+                </div>
+            </div>
+
+            {{-- Madd Summary Cards Grid --}}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small fw-bold text-uppercase text-muted" style="letter-spacing: .5px;">
+                        <i class="fas fa-chart-pie text-primary me-1"></i> Madd-wise Discount Summary Matrix (Click any Madd card to filter)
+                    </span>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 text-muted" id="btnResetMaddFilter" style="font-size: 11px;">
+                        <i class="fas fa-undo me-1"></i> Show All Maddain
+                    </button>
+                </div>
+                <div class="d-flex flex-wrap gap-2" id="headSummaryCardsGrid" style="max-height: 180px; overflow-y: auto; padding-bottom: 4px;">
+                    <!-- Head summary cards dynamically rendered here -->
+                </div>
+            </div>
+
+            {{-- Detailed Table --}}
+            <div class="report-table-wrap">
+                <table class="report-table" id="headWiseTable">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 38px;">#</th>
+                            <th style="width: 95px;">Date</th>
+                            <th style="width: 110px;">Invoice #</th>
+                            <th>Company / Supplier</th>
+                            <th>Product Name</th>
+                            <th style="width: 85px;">Batch #</th>
+                            <th>Discount Head / Madd</th>
+                            <th class="text-end" style="width: 120px;">Trade Value (PKR)</th>
+                            <th class="text-end" style="width: 80px;">Rate (%)</th>
+                            <th class="text-end" style="width: 130px;">Discount Amt (PKR)</th>
+                            <th class="text-center" style="width: 70px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="headWiseTableBody">
+                        <tr>
+                            <td colspan="11" class="text-center py-4 text-muted">
+                                <i class="fas fa-spinner fa-spin me-1"></i> Loading Madd-wise Discount Report...
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="7" class="text-end fw-bold">Total (Filtered Maddain):</td>
+                            <td class="text-end fw-bold font-monospace text-dark" id="footHeadTradeVal">0.00</td>
+                            <td class="text-end fw-bold font-monospace text-muted" id="footHeadAvgPct">—</td>
+                            <td class="text-end fw-bold font-monospace text-primary fs-6" id="footHeadDiscAmt">0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
     </div>
 
 </div>
@@ -591,6 +704,9 @@
 $(document).ready(function() {
     let currentInvoices = [];
     let currentSummary = {};
+    let currentHeadWiseDetails = [];
+    let currentHeadSummaryTotals = [];
+    let selectedMaddFilter = '';
 
     function formatRs(num) {
         num = parseFloat(num) || 0;
@@ -684,6 +800,13 @@ $(document).ready(function() {
                 </td>
             </tr>
         `);
+        $('#headWiseTableBody').html(`
+            <tr>
+                <td colspan="11" class="text-center py-4 text-muted">
+                    <i class="fas fa-spinner fa-spin me-1"></i> Loading Madd-wise Discount Breakdown Data...
+                </td>
+            </tr>
+        `);
 
         $.ajax({
             url: "{{ route('report.discount_reconciliation.fetch') }}",
@@ -698,14 +821,22 @@ $(document).ready(function() {
                 if (res && res.ok) {
                     currentSummary = res.summary || {};
                     currentInvoices = res.invoices || [];
+                    currentHeadWiseDetails = res.head_wise_details || [];
+                    currentHeadSummaryTotals = res.head_summary_totals || [];
+
                     renderSummary(currentSummary);
                     renderInvoicesTable(currentInvoices);
+                    populateMaddDropdown(currentHeadSummaryTotals);
+                    renderHeadSummaryCards(currentHeadSummaryTotals);
+                    applyHeadWiseFilters();
                 } else {
                     $('#invoicesTableBody').html('<tr><td colspan="11" class="text-center py-3 text-danger">Failed to load report data</td></tr>');
+                    $('#headWiseTableBody').html('<tr><td colspan="11" class="text-center py-3 text-danger">Failed to load Madd-wise report data</td></tr>');
                 }
             },
             error: function() {
                 $('#invoicesTableBody').html('<tr><td colspan="11" class="text-center py-3 text-danger">Error communicating with server</td></tr>');
+                $('#headWiseTableBody').html('<tr><td colspan="11" class="text-center py-3 text-danger">Error communicating with server</td></tr>');
             }
         });
     }
@@ -1177,6 +1308,207 @@ $(document).ready(function() {
             }
         });
     });
+
+    // ==========================================
+    // MADD-WISE DISCOUNT BREAKDOWN REPORT LOGIC
+    // ==========================================
+
+    function populateMaddDropdown(totals) {
+        const $select = $('#filterMaddSelect');
+        const currentVal = $select.val();
+        $select.html('<option value="">All Maddain (All Discount Heads)</option>');
+        
+        totals.forEach(t => {
+            $select.append(`<option value="${t.head}">${t.head} (${formatRs(t.total_amount)})</option>`);
+        });
+
+        // Ensure static heads are also in list for completeness
+        const existingHeads = totals.map(t => t.head.toLowerCase());
+        RECON_STATIC_DISCOUNT_HEADS.forEach(sh => {
+            if (!existingHeads.includes(sh.toLowerCase())) {
+                $select.append(`<option value="${sh}">${sh} (Rs 0.00)</option>`);
+            }
+        });
+
+        if (currentVal && $select.find(`option[value="${currentVal}"]`).length) {
+            $select.val(currentVal);
+        }
+    }
+
+    function renderHeadSummaryCards(totals) {
+        const $grid = $('#headSummaryCardsGrid');
+        if (!totals || !totals.length) {
+            $grid.html('<div class="text-muted small py-2"><i class="fas fa-info-circle me-1"></i> No discount heads recorded yet for this selected period.</div>');
+            return;
+        }
+
+        let html = '';
+        totals.forEach(t => {
+            const isActive = selectedMaddFilter === t.head ? 'active-head' : '';
+            let badgeClass = 'badge-head-custom';
+            let icon = 'fa-tag';
+            if (t.type === 'owner') {
+                badgeClass = 'badge-head-owner';
+                icon = 'fa-user-shield';
+            } else if (t.type === 'customer') {
+                badgeClass = 'badge-head-customer';
+                icon = 'fa-users';
+            }
+
+            html += `
+                <div class="madd-kpi-card ${isActive}" data-head="${t.head}" title="Click to filter by ${t.head}">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge ${badgeClass} font-monospace text-truncate" style="font-size: 10px; max-width: 140px;">
+                            <i class="fas ${icon} me-1"></i>${t.head}
+                        </span>
+                        <span class="badge bg-light text-secondary border font-monospace ms-1" style="font-size: 9.5px;">${t.count} items</span>
+                    </div>
+                    <div class="fw-bold text-dark font-monospace fs-6">${formatRs(t.total_amount)}</div>
+                    <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 10.5px; color: #64748b;">
+                        <span>Avg: <strong>${t.avg_percent}%</strong></span>
+                        <span>${t.invoices_count} inv</span>
+                    </div>
+                </div>
+            `;
+        });
+        $grid.html(html);
+    }
+
+    function applyHeadWiseFilters() {
+        const selectedHead = $('#filterMaddSelect').val() || '';
+        const searchKeyword = ($('#searchHeadTable').val() || '').toLowerCase().trim();
+
+        selectedMaddFilter = selectedHead;
+
+        // Update card active classes
+        $('.madd-kpi-card').removeClass('active-head');
+        if (selectedHead) {
+            $(`.madd-kpi-card[data-head="${selectedHead}"]`).addClass('active-head');
+        }
+
+        const filtered = currentHeadWiseDetails.filter(row => {
+            if (selectedHead && row.head !== selectedHead) {
+                return false;
+            }
+            if (searchKeyword) {
+                const searchStr = `${row.invoice_no} ${row.date} ${row.vendor_name} ${row.product_name} ${row.batch_no} ${row.head}`.toLowerCase();
+                if (!searchStr.includes(searchKeyword)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        renderHeadWiseTable(filtered);
+    }
+
+    function renderHeadWiseTable(rows) {
+        $('#headRecordsCountBadge').text(`${rows.length} Records`);
+
+        if (!rows || rows.length === 0) {
+            $('#headWiseTableBody').html('<tr><td colspan="11" class="text-center py-4 text-muted"><i class="fas fa-search me-1"></i> No discount records match the selected Madd / filter criteria.</td></tr>');
+            $('#footHeadTradeVal').text('0.00');
+            $('#footHeadAvgPct').text('—');
+            $('#footHeadDiscAmt').text('0.00');
+            return;
+        }
+
+        let totTradeVal = 0;
+        let totDiscAmt = 0;
+        let html = '';
+
+        rows.forEach((r, idx) => {
+            totTradeVal += parseFloat(r.trade_value) || 0;
+            totDiscAmt += parseFloat(r.amount) || 0;
+
+            let badgeClass = 'badge-head-custom';
+            if (r.head_type === 'owner') badgeClass = 'badge-head-owner';
+            else if (r.head_type === 'customer') badgeClass = 'badge-head-customer';
+
+            html += `
+                <tr class="align-middle">
+                    <td class="text-center font-monospace text-muted">${idx + 1}</td>
+                    <td class="font-monospace text-muted" style="font-size: 11px;">${r.date}</td>
+                    <td class="fw-bold font-monospace text-dark">
+                        <a href="javascript:void(0)" class="text-decoration-none btn-open-split" data-id="${r.purchase_id}" title="View Invoice Split">
+                            ${r.invoice_no}
+                        </a>
+                    </td>
+                    <td class="fw-semibold text-dark">${r.vendor_name}</td>
+                    <td>
+                        <strong class="text-dark">${r.product_name}</strong>
+                    </td>
+                    <td class="text-muted font-monospace" style="font-size: 11px;">${r.batch_no}</td>
+                    <td>
+                        <span class="badge ${badgeClass} p-1 px-2 font-monospace" style="font-size: 11px;">
+                            ${r.head}
+                        </span>
+                    </td>
+                    <td class="text-end font-monospace">${formatNum(r.trade_value)}</td>
+                    <td class="text-end font-monospace text-muted">${r.percent}%</td>
+                    <td class="text-end font-monospace fw-bold text-primary">${formatNum(r.amount)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-outline-primary btn-xs py-0 px-2 btn-open-item-split-recon" data-item-id="${r.item_id}" data-inv-id="${r.purchase_id}" title="Split / View Item" style="font-size: 11px;">
+                            <i class="fas fa-sliders-h me-1"></i> Split
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        $('#headWiseTableBody').html(html);
+        $('#footHeadTradeVal').text(formatNum(totTradeVal));
+        const avgPct = totTradeVal > 0 ? ((totDiscAmt / totTradeVal) * 100).toFixed(2) + '%' : '—';
+        $('#footHeadAvgPct').text(avgPct);
+        $('#footHeadDiscAmt').text(formatRs(totDiscAmt));
+    }
+
+    // Madd-wise Filter Events
+    $('#filterMaddSelect').on('change', function() {
+        applyHeadWiseFilters();
+    });
+
+    $('#searchHeadTable').on('input', function() {
+        applyHeadWiseFilters();
+    });
+
+    $(document).on('click', '.madd-kpi-card', function() {
+        const head = $(this).data('head');
+        if ($('#filterMaddSelect').val() === head) {
+            $('#filterMaddSelect').val('');
+        } else {
+            $('#filterMaddSelect').val(head);
+        }
+        applyHeadWiseFilters();
+    });
+
+    $('#btnResetMaddFilter').on('click', function() {
+        $('#filterMaddSelect').val('');
+        $('#searchHeadTable').val('');
+        applyHeadWiseFilters();
+    });
+
+    // Export Madd-wise CSV
+    $('#btnExportMaddCsv').on('click', function() {
+        const params = $.param({
+            type: 'heads',
+            date_from: $('#dateFrom').val(),
+            date_to: $('#dateTo').val(),
+            vendor_id: $('#vendorSelect').val(),
+            head: $('#filterMaddSelect').val()
+        });
+        window.location.href = "{{ route('report.discount_reconciliation.export') }}?" + params;
+    });
+
+    // Check URL parameter to auto-switch to Madd-wise tab
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'heads' || window.location.hash === '#tab-heads') {
+        const headTabLink = document.querySelector('#tab-heads-link');
+        if (headTabLink) {
+            const tabObj = new bootstrap.Tab(headTabLink);
+            tabObj.show();
+        }
+    }
 
     // Initial Load
     loadReportData();

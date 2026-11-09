@@ -84,6 +84,8 @@ class DiscountReconciliationController extends Controller
         $totalCustomHeadsAmt = 0;
         $periodCustomHeadsSummary = [];
         $periodOurSubheadsSummary = [];
+        $headWiseDetails = [];
+        $headSummaryTotals = [];
 
         foreach ($purchases as $p) {
             $baseValue = (float)($p->total_trade_value > 0 ? $p->total_trade_value : ($p->subtotal > 0 ? $p->subtotal : $p->net_amount));
@@ -170,6 +172,94 @@ class DiscountReconciliationController extends Controller
                     'our_disc_breakdown' => $ourBreakdown,
                     'our_disc_notes' => $item->our_disc_notes ?: '',
                 ];
+
+                $prodName = $item->product ? $item->product->name : ('Product #' . $item->product_id);
+                $invNo = $p->invoice_no ?: ('PUR-' . $p->id);
+                $invDate = $p->purchase_date ? Carbon::parse($p->purchase_date)->format('d-M-Y') : 'N/A';
+                $vName = $p->vendor ? $p->vendor->name : 'N/A';
+                $batchStr = $item->batch_no ?: '—';
+
+                // Collect Owner Share Head
+                if ($iOurAmt > 0 || $iOurPct > 0) {
+                    $hName = 'Owner Share (Humara)';
+                    $headWiseDetails[] = [
+                        'purchase_id' => $p->id,
+                        'item_id' => $item->id,
+                        'invoice_no' => $invNo,
+                        'date' => $invDate,
+                        'vendor_name' => $vName,
+                        'product_name' => $prodName,
+                        'batch_no' => $batchStr,
+                        'head' => $hName,
+                        'head_type' => 'owner',
+                        'percent' => $iOurPct,
+                        'amount' => $iOurAmt,
+                        'trade_value' => $tVal,
+                    ];
+                    if (!isset($headSummaryTotals[$hName])) {
+                        $headSummaryTotals[$hName] = ['head' => $hName, 'type' => 'owner', 'total_amount' => 0, 'count' => 0, 'total_trade_value' => 0, 'invoices' => []];
+                    }
+                    $headSummaryTotals[$hName]['total_amount'] += $iOurAmt;
+                    $headSummaryTotals[$hName]['total_trade_value'] += $tVal;
+                    $headSummaryTotals[$hName]['count']++;
+                    $headSummaryTotals[$hName]['invoices'][$p->id] = true;
+                }
+
+                // Collect Customer Share Head
+                if ($iCustAmt > 0 || $iCustPct > 0) {
+                    $hName = 'Customer Share (Market)';
+                    $headWiseDetails[] = [
+                        'purchase_id' => $p->id,
+                        'item_id' => $item->id,
+                        'invoice_no' => $invNo,
+                        'date' => $invDate,
+                        'vendor_name' => $vName,
+                        'product_name' => $prodName,
+                        'batch_no' => $batchStr,
+                        'head' => $hName,
+                        'head_type' => 'customer',
+                        'percent' => $iCustPct,
+                        'amount' => $iCustAmt,
+                        'trade_value' => $tVal,
+                    ];
+                    if (!isset($headSummaryTotals[$hName])) {
+                        $headSummaryTotals[$hName] = ['head' => $hName, 'type' => 'customer', 'total_amount' => 0, 'count' => 0, 'total_trade_value' => 0, 'invoices' => []];
+                    }
+                    $headSummaryTotals[$hName]['total_amount'] += $iCustAmt;
+                    $headSummaryTotals[$hName]['total_trade_value'] += $tVal;
+                    $headSummaryTotals[$hName]['count']++;
+                    $headSummaryTotals[$hName]['invoices'][$p->id] = true;
+                }
+
+                // Collect Custom & Standard Heads (e.g. Del Norm, Del Return, Del Freight etc.)
+                foreach ($customBreakdown as $cb) {
+                    $h = trim($cb['head'] ?? '');
+                    $amt = (float)($cb['amount'] ?? 0);
+                    $pct = (float)($cb['percent'] ?? 0);
+                    if ($h !== '' && ($amt > 0 || $pct > 0)) {
+                        $headWiseDetails[] = [
+                            'purchase_id' => $p->id,
+                            'item_id' => $item->id,
+                            'invoice_no' => $invNo,
+                            'date' => $invDate,
+                            'vendor_name' => $vName,
+                            'product_name' => $prodName,
+                            'batch_no' => $batchStr,
+                            'head' => $h,
+                            'head_type' => 'custom',
+                            'percent' => $pct,
+                            'amount' => $amt,
+                            'trade_value' => $tVal,
+                        ];
+                        if (!isset($headSummaryTotals[$h])) {
+                            $headSummaryTotals[$h] = ['head' => $h, 'type' => 'custom', 'total_amount' => 0, 'count' => 0, 'total_trade_value' => 0, 'invoices' => []];
+                        }
+                        $headSummaryTotals[$h]['total_amount'] += $amt;
+                        $headSummaryTotals[$h]['total_trade_value'] += $tVal;
+                        $headSummaryTotals[$h]['count']++;
+                        $headSummaryTotals[$h]['invoices'][$p->id] = true;
+                    }
+                }
             }
 
             $ourDiscPct = (float)$p->our_disc_percent;
@@ -330,6 +420,19 @@ class DiscountReconciliationController extends Controller
         // Total Net Profit: Trading Margin + Retained Company Discount Margin - (any extra advance discount given beyond company share)
         $adjustedNetProfit = ($totalSalesNet - $cogs) + $retainedDiscountProfit;
 
+        // Finalize Head Summary Totals
+        foreach ($headSummaryTotals as &$hst) {
+            $hst['invoices_count'] = count($hst['invoices']);
+            unset($hst['invoices']);
+            $hst['avg_percent'] = $hst['total_trade_value'] > 0 ? round(($hst['total_amount'] / $hst['total_trade_value']) * 100, 2) : 0;
+            $hst['total_amount'] = round($hst['total_amount'], 2);
+            $hst['total_trade_value'] = round($hst['total_trade_value'], 2);
+        }
+        unset($hst);
+        uasort($headSummaryTotals, function($a, $b) {
+            return $b['total_amount'] <=> $a['total_amount'];
+        });
+
         return response()->json([
             'ok' => true,
             'summary' => [
@@ -359,8 +462,11 @@ class DiscountReconciliationController extends Controller
                 'adjusted_net_profit' => round($adjustedNetProfit, 2),
             ],
             'invoices' => $purchaseInvoices,
+            'head_wise_details' => $headWiseDetails,
+            'head_summary_totals' => array_values($headSummaryTotals),
             'counts' => [
                 'purchases_count' => count($purchaseInvoices),
+                'head_records_count' => count($headWiseDetails),
                 'sales_count' => $sales->count(),
             ]
         ]);
@@ -632,9 +738,11 @@ class DiscountReconciliationController extends Controller
 
     public function exportCsv(Request $request)
     {
+        $exportType = $request->input('type') ?: $request->input('export_type');
         $vendorId = $request->filled('vendor_id') ? $request->vendor_id : null;
+        $selectedHead = $request->filled('head') ? trim($request->input('head')) : null;
 
-        $purchasesQuery = Purchase::with(['vendor']);
+        $purchasesQuery = Purchase::with(['vendor', 'items.product']);
 
         if ($request->filled('date_from')) {
             $purchasesQuery->whereDate('purchase_date', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));
@@ -648,6 +756,81 @@ class DiscountReconciliationController extends Controller
         }
 
         $purchases = $purchasesQuery->orderBy('purchase_date', 'desc')->get();
+
+        if ($exportType === 'heads' || $exportType === 'head_wise') {
+            $headers = [
+                'Content-Type' => 'text/csv',
+                'Content-Disposition' => 'attachment; filename="discount_madd_breakdown_report_' . date('Y-m-d') . '.csv"',
+            ];
+
+            $callback = function () use ($purchases, $selectedHead) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, [
+                    'Date', 'Invoice #', 'Supplier / Principal', 'Product Name', 'Batch #',
+                    'Discount Head / Madd', 'Head Type', 'Rate (%)', 'Discount Amount (PKR)', 'Trade Value (PKR)'
+                ]);
+
+                foreach ($purchases as $p) {
+                    $invNo = $p->invoice_no ?: ('PUR-' . $p->id);
+                    $invDate = $p->purchase_date ? Carbon::parse($p->purchase_date)->format('Y-m-d') : '';
+                    $vName = $p->vendor ? $p->vendor->name : '';
+
+                    foreach ($p->items as $item) {
+                        $prodName = $item->product ? $item->product->name : ('Product #' . $item->product_id);
+                        $batchStr = $item->batch_no ?: '—';
+                        $tVal = (float)($item->trade_value > 0 ? $item->trade_value : ($item->subtotal > 0 ? $item->subtotal : $item->net_amount));
+                        $iOurAmt = (float)$item->our_disc_amount;
+                        $iOurPct = (float)$item->our_disc_percent;
+                        $iCustAmt = (float)$item->customer_disc_amount;
+                        $iCustPct = (float)$item->customer_disc_percent;
+
+                        $customBreakdown = is_array($item->custom_disc_breakdown)
+                            ? $item->custom_disc_breakdown
+                            : (json_decode($item->custom_disc_breakdown ?? '[]', true) ?: []);
+
+                        // Owner Share
+                        if ($iOurAmt > 0 || $iOurPct > 0) {
+                            $hName = 'Owner Share (Humara)';
+                            if (!$selectedHead || strcasecmp($selectedHead, $hName) === 0) {
+                                fputcsv($file, [
+                                    $invDate, $invNo, $vName, $prodName, $batchStr,
+                                    $hName, 'Owner Share', $iOurPct . '%', $iOurAmt, $tVal
+                                ]);
+                            }
+                        }
+
+                        // Customer Share
+                        if ($iCustAmt > 0 || $iCustPct > 0) {
+                            $hName = 'Customer Share (Market)';
+                            if (!$selectedHead || strcasecmp($selectedHead, $hName) === 0) {
+                                fputcsv($file, [
+                                    $invDate, $invNo, $vName, $prodName, $batchStr,
+                                    $hName, 'Customer Share', $iCustPct . '%', $iCustAmt, $tVal
+                                ]);
+                            }
+                        }
+
+                        // Custom / Standard Maddain
+                        foreach ($customBreakdown as $cb) {
+                            $h = trim($cb['head'] ?? '');
+                            $amt = (float)($cb['amount'] ?? 0);
+                            $pct = (float)($cb['percent'] ?? 0);
+                            if ($h !== '' && ($amt > 0 || $pct > 0)) {
+                                if (!$selectedHead || strcasecmp($selectedHead, $h) === 0) {
+                                    fputcsv($file, [
+                                        $invDate, $invNo, $vName, $prodName, $batchStr,
+                                        $h, 'Standard / Custom Head', $pct . '%', $amt, $tVal
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
 
         $headers = [
             'Content-Type' => 'text/csv',
