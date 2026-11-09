@@ -809,7 +809,7 @@
                                         <input type="number" step="0.01" class="form-control text-end item-trade-value fw-semibold" name="trade_value[]" value="{{ number_format($tValItem, 2, '.', '') }}" title="Trade Value Exc. All Taxes">
                                     </td>
                                     <td>
-                                        <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="{{ round($dPct, 2) }}" title="Disc - Trader (%)">
+                                        <input type="number" step="0.01" min="0" max="100" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="{{ round($dPct, 2) }}" title="Disc - Trader (%)">
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center gap-1">
@@ -1565,7 +1565,7 @@
                         <input type="number" step="0.01" class="form-control text-end item-trade-value fw-semibold" name="trade_value[]" value="0.00" title="Trade Value Exc. All Taxes">
                     </td>
                     <td>
-                        <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="0" placeholder="0" title="Disc - Trader (%)">
+                        <input type="number" step="0.01" min="0" max="100" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="0" placeholder="0" title="Disc - Trader (%)">
                     </td>
                     <td>
                         <div class="d-flex align-items-center gap-1">
@@ -1930,14 +1930,37 @@
             });
 
             $('#purchaseTableBody').on('input', '.item-disc-percent', function() {
-                $(this).closest('tr').data('last_disc_input', 'pct');
-                recalcRow($(this).closest('tr'), 'disc_pct');
+                let p = parseFloat($(this).val()) || 0;
+                if (p > 100) {
+                    p = 100;
+                    $(this).val('100');
+                }
+                if (p < 0) {
+                    p = 0;
+                    $(this).val('0');
+                }
+                const $row = $(this).closest('tr');
+                $row.data('last_disc_input', 'pct');
+                recalcRow($row, 'disc_pct');
+                if (typeof window.syncRowSplitWithDiscInput === 'function') {
+                    window.syncRowSplitWithDiscInput($row);
+                }
                 recalcAll();
             });
 
             $('#purchaseTableBody').on('input', '.item-disc-amt', function() {
-                $(this).closest('tr').data('last_disc_input', 'amt');
-                recalcRow($(this).closest('tr'), 'disc_amt');
+                const $row = $(this).closest('tr');
+                const tradeVal = parseFloat($row.find('.item-trade-value').val()) || 0;
+                let amt = parseFloat($(this).val()) || 0;
+                if (tradeVal > 0 && amt > tradeVal) {
+                    amt = tradeVal;
+                    $(this).val(tradeVal.toFixed(2));
+                }
+                $row.data('last_disc_input', 'amt');
+                recalcRow($row, 'disc_amt');
+                if (typeof window.syncRowSplitWithDiscInput === 'function') {
+                    window.syncRowSplitWithDiscInput($row);
+                }
                 recalcAll();
             });
 
@@ -2010,6 +2033,14 @@
                 let tradePrice = parseFloat($row.find('.trade-price-input').val()) || 0;
                 let retailPrice = parseFloat($row.find('.retail-price-input').val()) || 0;
                 let discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
+                if (discPct > 100) {
+                    discPct = 100;
+                    $row.find('.item-disc-percent').val('100.00');
+                }
+                if (discPct < 0) {
+                    discPct = 0;
+                    $row.find('.item-disc-percent').val('0.00');
+                }
                 let discAmt = parseFloat($row.find('.item-disc-amt').val()) || 0;
                 const gstPct = parseFloat($row.find('.item-gst-percent').val()) || 0;
                 const isThirdSchedule = $row.find('.hidden-is-third-schedule').val() === '1';

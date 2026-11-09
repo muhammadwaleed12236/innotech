@@ -945,6 +945,14 @@
             }
 
             if ($targetRow && $targetRow.length) {
+                const totalAllocatedPct = getAllocatedPct();
+                const tradeVal = round2($targetRow.find('.item-trade-value').val());
+                const totalAllocatedAmt = tradeVal > 0 ? round2(tradeVal * (totalAllocatedPct / 100)) : getAllocatedAmt();
+
+                // TIGHT COUPLING: Update visible table inputs so table matches the split
+                $targetRow.find('.item-disc-percent').val(totalAllocatedPct.toFixed(2));
+                $targetRow.find('.item-disc-amt').val(totalAllocatedAmt.toFixed(2));
+
                 // Store into hidden inputs of row
                 $targetRow.find('.item-our-disc-percent').val(ownerPct);
                 $targetRow.find('.item-our-disc-amount').val(ownerAmt);
@@ -956,6 +964,15 @@
 
                 // Render badge pill under discount input
                 updateRowSplitBadge($targetRow, ownerPct, custPct, customHeads);
+
+                // Trigger row recalculation and footer totals
+                if (typeof recalcRow === 'function') {
+                    $targetRow.data('last_disc_input', 'pct');
+                    recalcRow($targetRow, 'disc_pct');
+                }
+                if (typeof recalcAll === 'function') {
+                    recalcAll();
+                }
 
                 // Flash row briefly to give visual feedback
                 $targetRow.addClass('table-success');
@@ -1061,6 +1078,71 @@
         `;
         $cont.html(badgeHtml);
         $row.find('.btn-open-item-split').removeClass('btn-outline-primary').addClass('btn-primary');
+    };
+
+    // Helper to keep row discount input and split breakdown tightly coupled
+    window.syncRowSplitWithDiscInput = function($row) {
+        if (!$row || !$row.length) return;
+
+        let totalPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
+        if (totalPct > 100) {
+            totalPct = 100;
+            $row.find('.item-disc-percent').val('100.00');
+        }
+        if (totalPct < 0) {
+            totalPct = 0;
+            $row.find('.item-disc-percent').val('0.00');
+        }
+
+        const tradeVal = round2($row.find('.item-trade-value').val());
+        const totalAmt = tradeVal > 0 ? round2(tradeVal * (totalPct / 100)) : 0;
+        $row.find('.item-disc-amt').val(totalAmt.toFixed(2));
+
+        let ourPct = parseFloat($row.find('.item-our-disc-percent').val()) || 0;
+        let custPct = parseFloat($row.find('.item-customer-disc-percent').val()) || 0;
+        let customJson = $row.find('.item-custom-disc-breakdown').val() || '[]';
+        let customHeads = [];
+        try { customHeads = typeof customJson === 'string' ? JSON.parse(customJson) : customJson; } catch(e) { customHeads = []; }
+        if (!Array.isArray(customHeads)) customHeads = [];
+
+        let customPctSum = 0;
+        customHeads.forEach(ch => { customPctSum += (parseFloat(ch.percent) || 0); });
+        customPctSum = round2(customPctSum);
+
+        const hasSplitConfigured = (ourPct > 0 || custPct > 0 || customHeads.length > 0);
+
+        if (!hasSplitConfigured || totalPct === 0) {
+            ourPct = totalPct;
+            custPct = 0;
+            customHeads = [];
+        } else {
+            const othersPct = round2(custPct + customPctSum);
+            if (othersPct <= totalPct) {
+                ourPct = round2(totalPct - othersPct);
+            } else {
+                const ratio = othersPct > 0 ? (totalPct / othersPct) : 1;
+                custPct = round2(custPct * ratio);
+                customHeads.forEach(ch => {
+                    ch.percent = round2((parseFloat(ch.percent) || 0) * ratio);
+                    ch.amount = tradeVal > 0 ? round2(tradeVal * (ch.percent / 100)) : 0;
+                });
+                ourPct = 0;
+            }
+        }
+
+        const ourAmt = tradeVal > 0 ? round2(tradeVal * (ourPct / 100)) : 0;
+        const custAmt = tradeVal > 0 ? round2(tradeVal * (custPct / 100)) : 0;
+        customHeads.forEach(ch => {
+            ch.amount = tradeVal > 0 ? round2(tradeVal * ((parseFloat(ch.percent) || 0) / 100)) : 0;
+        });
+
+        $row.find('.item-our-disc-percent').val(ourPct);
+        $row.find('.item-our-disc-amount').val(ourAmt);
+        $row.find('.item-customer-disc-percent').val(custPct);
+        $row.find('.item-customer-disc-amount').val(custAmt);
+        $row.find('.item-custom-disc-breakdown').val(JSON.stringify(customHeads));
+
+        updateRowSplitBadge($row, ourPct, custPct, customHeads);
     };
 
     // On clicking the badge pill, trigger split modal
