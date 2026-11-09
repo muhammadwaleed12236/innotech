@@ -6,7 +6,7 @@
                 <h6 class="modal-title fw-bold" id="itemDiscountSplitModalLabel">
                     <i class="fas fa-sliders-h text-warning me-2"></i> Item Discount Split &amp; Heads Breakdown
                 </h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-3">
                 {{-- Item Header Info Banner --}}
@@ -183,7 +183,7 @@
                     <i class="fas fa-undo me-1"></i> Reset to 100% Owner
                 </button>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal" id="btnCancelItemSplit">Cancel</button>
                     <button type="button" class="btn btn-primary btn-sm fw-bold px-3" id="btnApplyItemSplit">
                         <i class="fas fa-check me-1"></i> Apply Split to Item
                     </button>
@@ -209,11 +209,76 @@
         return 'Rs ' + num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function safeOpenSplitModal() {
+        const el = document.getElementById('itemDiscountSplitModal');
+        if (!el) return;
+
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            try {
+                const inst = bootstrap.Modal.getOrCreateInstance ? bootstrap.Modal.getOrCreateInstance(el) : (bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el));
+                if (inst) {
+                    inst.show();
+                    return;
+                }
+            } catch (e) {
+                console.warn('Bootstrap 5 modal show error:', e);
+            }
+        }
+        if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+            try {
+                $('#itemDiscountSplitModal').modal('show');
+                return;
+            } catch (e) {
+                console.warn('jQuery modal show error:', e);
+            }
+        }
+        $('#itemDiscountSplitModal').addClass('show').css('display', 'block').attr('aria-hidden', 'false');
+        if (!$('.modal-backdrop').length) {
+            $('body').append('<div class="modal-backdrop fade show"></div>');
+        }
+        $('body').addClass('modal-open');
+    }
+
+    function safeCloseSplitModal() {
+        const el = document.getElementById('itemDiscountSplitModal');
+        if (!el) return;
+
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            try {
+                const inst = bootstrap.Modal.getInstance ? bootstrap.Modal.getInstance(el) : null;
+                if (inst) inst.hide();
+            } catch (e) {
+                console.warn('Bootstrap 5 modal hide error:', e);
+            }
+        }
+        if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+            try {
+                $('#itemDiscountSplitModal').modal('hide');
+            } catch (e) {
+                console.warn('jQuery modal hide error:', e);
+            }
+        }
+        setTimeout(function() {
+            const $m = $('#itemDiscountSplitModal');
+            $m.removeClass('show').css('display', 'none').attr('aria-hidden', 'true');
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open').css({ 'overflow': '', 'padding-right': '' });
+        }, 120);
+    }
+
+    // Dismiss buttons listener
+    $(document).on('click', '#btnCancelItemSplit, #itemDiscountSplitModal [data-dismiss="modal"], #itemDiscountSplitModal [data-bs-dismiss="modal"]', function(e) {
+        safeCloseSplitModal();
+    });
+
     // Open Split Modal on Button Click
     $(document).on('click', '.btn-open-item-split', function(e) {
         e.preventDefault();
+        $('#purchaseTableBody tr').removeClass('split-active-row');
         $activeRow = $(this).closest('tr');
         if (!$activeRow.length) return;
+        $activeRow.addClass('split-active-row');
+        $('#itemDiscountSplitModal').data('active-row-index', $activeRow.index());
 
         // Retrieve row info
         const productName = $activeRow.find('.product-search-input').val() || $activeRow.find('td:eq(1)').text().trim() || 'Product';
@@ -281,8 +346,7 @@
         // Run recalculation & validation
         recalcModalSplits();
 
-        const modal = new bootstrap.Modal(document.getElementById('itemDiscountSplitModal'));
-        modal.show();
+        safeOpenSplitModal();
     });
 
     // Render Our Sub-heads
@@ -509,93 +573,131 @@
     });
 
     // Apply Split back to the Active Table Row or save to DB if in Reconciliation
-    $('#btnApplyItemSplit').on('click', function() {
-        const ownerPct = parseFloat($('#splitOwnerPct').val()) || 0;
-        const ownerAmt = parseFloat($('#splitOwnerAmt').val()) || 0;
-        const custPct = parseFloat($('#splitCustPct').val()) || 0;
-        const custAmt = parseFloat($('#splitCustAmt').val()) || 0;
-        const notes = $('#splitOwnerNotes').val() || '';
+    $('#btnApplyItemSplit').on('click', function(e) {
+        e.preventDefault();
+        try {
+            const ownerPct = parseFloat($('#splitOwnerPct').val()) || 0;
+            const ownerAmt = parseFloat($('#splitOwnerAmt').val()) || 0;
+            const custPct = parseFloat($('#splitCustPct').val()) || 0;
+            const custAmt = parseFloat($('#splitCustAmt').val()) || 0;
+            const notes = $('#splitOwnerNotes').val() || '';
 
-        // Collect custom heads
-        const customHeads = [];
-        $('#splitCustomHeadsBody tr.custom-head-row').each(function() {
-            const hName = $(this).find('.custom-head-name').val().trim();
-            const hPct = parseFloat($(this).find('.custom-head-pct').val()) || 0;
-            const hAmt = parseFloat($(this).find('.custom-head-amt').val()) || 0;
-            if (hName !== '' && (hPct > 0 || hAmt > 0)) {
-                customHeads.push({ head: hName, percent: hPct, amount: hAmt });
-            }
-        });
-
-        // Collect our sub-heads
-        const ourSubheads = [];
-        $('#splitOurSubheadsContainer .our-subhead-row').each(function() {
-            const sName = $(this).find('.our-subhead-name').val().trim();
-            const sPct = parseFloat($(this).find('.our-subhead-pct').val()) || 0;
-            const sAmt = parseFloat($(this).find('.our-subhead-amt').val()) || 0;
-            if (sName !== '' && (sPct > 0 || sAmt > 0)) {
-                ourSubheads.push({ head: sName, percent: sPct, amount: sAmt });
-            }
-        });
-
-        // If in Reconciliation Mode, save directly to server
-        if (window.reconActiveItem && window.reconActiveItem.id) {
-            const $btn = $('#btnApplyItemSplit');
-            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
-            $.ajax({
-                url: "{{ route('report.discount_reconciliation.update_item_split') }}",
-                type: "POST",
-                data: {
-                    _token: "{{ csrf_token() }}",
-                    item_id: window.reconActiveItem.id,
-                    our_disc_percent: ownerPct,
-                    customer_disc_percent: custPct,
-                    our_disc_notes: notes,
-                    custom_disc_breakdown: customHeads,
-                    our_disc_breakdown: ourSubheads
-                },
-                success: function(res) {
-                    $btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Apply Split to Item');
-                    bootstrap.Modal.getInstance(document.getElementById('itemDiscountSplitModal')).hide();
-                    window.reconActiveItem = null;
-                    if (typeof loadReportData === 'function') {
-                        loadReportData();
-                    }
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Item Split Saved!',
-                            text: res.msg,
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    }
-                },
-                error: function(xhr) {
-                    $btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Apply Split to Item');
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire('Error', xhr.responseJSON?.message || 'Error saving item split', 'error');
-                    }
+            // Collect custom heads
+            const customHeads = [];
+            $('#splitCustomHeadsBody tr.custom-head-row').each(function() {
+                const hName = $(this).find('.custom-head-name').val() ? $(this).find('.custom-head-name').val().trim() : '';
+                const hPct = parseFloat($(this).find('.custom-head-pct').val()) || 0;
+                const hAmt = parseFloat($(this).find('.custom-head-amt').val()) || 0;
+                if (hName !== '' && (hPct > 0 || hAmt > 0)) {
+                    customHeads.push({ head: hName, percent: hPct, amount: hAmt });
                 }
             });
-            return;
+
+            // Collect our sub-heads
+            const ourSubheads = [];
+            $('#splitOurSubheadsContainer .our-subhead-row').each(function() {
+                const sName = $(this).find('.our-subhead-name').val() ? $(this).find('.our-subhead-name').val().trim() : '';
+                const sPct = parseFloat($(this).find('.our-subhead-pct').val()) || 0;
+                const sAmt = parseFloat($(this).find('.our-subhead-amt').val()) || 0;
+                if (sName !== '' && (sPct > 0 || sAmt > 0)) {
+                    ourSubheads.push({ head: sName, percent: sPct, amount: sAmt });
+                }
+            });
+
+            // If in Reconciliation Mode, save directly to server
+            if (window.reconActiveItem && window.reconActiveItem.id) {
+                const $btn = $('#btnApplyItemSplit');
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+                $.ajax({
+                    url: "{{ route('report.discount_reconciliation.update_item_split') }}",
+                    type: "POST",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        item_id: window.reconActiveItem.id,
+                        our_disc_percent: ownerPct,
+                        customer_disc_percent: custPct,
+                        our_disc_notes: notes,
+                        custom_disc_breakdown: customHeads,
+                        our_disc_breakdown: ourSubheads
+                    },
+                    success: function(res) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Apply Split to Item');
+                        safeCloseSplitModal();
+                        window.reconActiveItem = null;
+                        if (typeof loadReportData === 'function') {
+                            loadReportData();
+                        }
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Item Split Saved!',
+                                text: res.msg || 'Split saved successfully.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        $btn.prop('disabled', false).html('<i class="fas fa-check me-1"></i> Apply Split to Item');
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire('Error', xhr.responseJSON?.message || 'Error saving item split', 'error');
+                        }
+                    }
+                });
+                return;
+            }
+
+            // Normal Purchase Form Mode (/add/Purchase or /edit/Purchase)
+            let $targetRow = ($activeRow && $activeRow.length) ? $activeRow : $('#purchaseTableBody tr.split-active-row');
+            if (!$targetRow.length) {
+                const savedIndex = $('#itemDiscountSplitModal').data('active-row-index');
+                if (savedIndex !== undefined && savedIndex >= 0) {
+                    $targetRow = $('#purchaseTableBody tr').eq(savedIndex);
+                }
+            }
+            if (!$targetRow.length) {
+                $targetRow = $('#purchaseTableBody tr').first();
+            }
+
+            if ($targetRow && $targetRow.length) {
+                // Store into hidden inputs of row
+                $targetRow.find('.item-our-disc-percent').val(ownerPct);
+                $targetRow.find('.item-our-disc-amount').val(ownerAmt);
+                $targetRow.find('.item-customer-disc-percent').val(custPct);
+                $targetRow.find('.item-customer-disc-amount').val(custAmt);
+                $targetRow.find('.item-custom-disc-breakdown').val(JSON.stringify(customHeads));
+                $targetRow.find('.item-our-disc-breakdown').val(JSON.stringify(ourSubheads));
+                $targetRow.find('.item-our-disc-notes').val(notes);
+
+                // Render badge pill under discount input
+                updateRowSplitBadge($targetRow, ownerPct, custPct, customHeads);
+
+                // Flash row briefly to give visual feedback
+                $targetRow.addClass('table-success');
+                setTimeout(function() {
+                    $targetRow.removeClass('table-success');
+                }, 1200);
+            }
+
+            safeCloseSplitModal();
+
+            if (typeof Swal !== 'undefined') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    timerProgressBar: true
+                });
+                Toast.fire({
+                    icon: 'success',
+                    title: 'Item Split Applied!'
+                });
+            }
+        } catch (err) {
+            console.error('Error applying item split:', err);
+            safeCloseSplitModal();
         }
-
-        if (!$activeRow || !$activeRow.length) return;
-
-        // Store into hidden inputs of row
-        $activeRow.find('.item-our-disc-percent').val(ownerPct);
-        $activeRow.find('.item-our-disc-amount').val(ownerAmt);
-        $activeRow.find('.item-customer-disc-percent').val(custPct);
-        $activeRow.find('.item-customer-disc-amount').val(custAmt);
-        $activeRow.find('.item-custom-disc-breakdown').val(JSON.stringify(customHeads));
-        $activeRow.find('.item-our-disc-breakdown').val(JSON.stringify(ourSubheads));
-        $activeRow.find('.item-our-disc-notes').val(notes);
-
-        // Render badge pill under discount input
-        updateRowSplitBadge($activeRow, ownerPct, custPct, customHeads);
-
-        bootstrap.Modal.getInstance(document.getElementById('itemDiscountSplitModal')).hide();
     });
 
     // Helper for Reconciliation Report to open modal
@@ -636,8 +738,7 @@
         renderCustomHeads(customBreakdown);
         recalcModalSplits();
 
-        const modal = new bootstrap.Modal(document.getElementById('itemDiscountSplitModal'));
-        modal.show();
+        safeOpenSplitModal();
     };
 
     // Helper to update split badge in row
