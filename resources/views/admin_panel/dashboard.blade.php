@@ -392,10 +392,54 @@
         box-shadow: var(--shadow-md);
         transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         border: 1px solid rgba(255, 255, 255, 0.15);
+        text-decoration: none !important;
+        color: #ffffff !important;
     }
     .kpi-card:hover {
         transform: translateY(-3px);
-        box-shadow: var(--shadow-lg);
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.2);
+        color: #ffffff !important;
+    }
+    a.kpi-card {
+        cursor: pointer;
+        display: flex;
+    }
+    .kpi-card .kpi-sub {
+        font-size: 0.74rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.88);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        width: 100%;
+    }
+    .kpi-card .kpi-view-report {
+        font-size: 0.68rem;
+        font-weight: 800;
+        opacity: 0.88;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.22);
+        padding: 2px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+    a.kpi-card:hover .kpi-view-report {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.35);
+        transform: translateX(3px);
+    }
+    a.biz-box {
+        text-decoration: none !important;
+        cursor: pointer;
+    }
+    a.biz-box:hover {
+        transform: translateY(-2px);
     }
     .kpi-gradient-purple {
         background: linear-gradient(135deg, #4f46e5 0%, #6366f1 60%, #818cf8 100%);
@@ -862,10 +906,33 @@
                     </div>
                     <div class="conclusion-formula">
                         <div class="formula-row">
-                            (Customer Dues <strong style="color: #ffffff;">Rs {{ number_format($totalReceivables ?? 0, 0) }}</strong> + Cash & Bank <strong style="color: #ffffff;">Rs {{ number_format($totalCashAndBankBalance ?? 0, 0) }}</strong>)
+                            (Customer Dues 
+                            @canany(['recovery.report.view', 'customers.view'])
+                                <a href="{{ auth()->user()->can('recovery.report.view') ? route('report.recovery') : route('customers.index') }}" title="Click to view Customer Recovery & Aging Report" style="color: #ffffff; text-decoration: underline; font-weight: 800;">
+                                    Rs {{ number_format($totalReceivables ?? 0, 0) }}
+                                </a>
+                            @else
+                                <strong style="color: #ffffff;">Rs {{ number_format($totalReceivables ?? 0, 0) }}</strong>
+                            @endcanany
+                            + Cash & Bank 
+                            @canany(['balance.sheet.report.view', 'chart.of.accounts.view'])
+                                <a href="{{ auth()->user()->can('balance.sheet.report.view') ? route('report.balance_sheet') : route('view_all') }}" title="Click to view Balance Sheet & Treasury" style="color: #ffffff; text-decoration: underline; font-weight: 800;">
+                                    Rs {{ number_format($totalCashAndBankBalance ?? 0, 0) }}
+                                </a>
+                            @else
+                                <strong style="color: #ffffff;">Rs {{ number_format($totalCashAndBankBalance ?? 0, 0) }}</strong>
+                            @endcanany
+                            )
                         </div>
                         <div class="formula-row">
-                            - Vendor Payables <strong style="color: #fda4af;">Rs {{ number_format($totalPayables ?? 0, 0) }}</strong>
+                            - Vendor Payables 
+                            @canany(['payable.report.view', 'vendors.view'])
+                                <a href="{{ auth()->user()->can('payable.report.view') ? route('report.payable') : route('vendors.index') }}" title="Click to view Vendor Payables Report" style="color: #fda4af; text-decoration: underline; font-weight: 800;">
+                                    Rs {{ number_format($totalPayables ?? 0, 0) }}
+                                </a>
+                            @else
+                                <strong style="color: #fda4af;">Rs {{ number_format($totalPayables ?? 0, 0) }}</strong>
+                            @endcanany
                         </div>
                         <div class="formula-result">
                             <span>= Net Liquid Capital:</span>
@@ -877,14 +944,26 @@
                 <div class="conclusion-divider"></div>
 
                 <div class="conclusion-right">
+                    @canany(['executive.report.view', 'balance.sheet.report.view'])
+                        <a href="{{ auth()->user()->can('executive.report.view') ? route('report.executive') : route('report.balance_sheet') }}" style="text-decoration:none; color:inherit; display:block;" title="Click to view Executive Financial Performance Report">
+                    @endcanany
                     <div class="conclusion-biz-tag">TOTAL NET BUSINESS VALUE</div>
                     <div class="conclusion-biz-breakdown">
                         Net Liquid Capital <strong>Rs {{ number_format($calcLiquidBalance, 0) }}</strong><br>
-                        + Stock Valuation <strong>Rs {{ number_format($totalStockValue ?? 0, 0) }}</strong>
+                        + Stock Valuation 
+                        @can('item.stock.report.view')
+                            <span style="color:#ffffff; text-decoration: underline; font-weight:800;">Rs {{ number_format($totalStockValue ?? 0, 0) }}</span>
+                        @else
+                            <strong>Rs {{ number_format($totalStockValue ?? 0, 0) }}</strong>
+                        @endcan
                     </div>
                     <div class="conclusion-total-val">
                         Rs {{ number_format($calcTotalBusinessValue, 0) }}
                     </div>
+                    @canany(['executive.report.view', 'balance.sheet.report.view'])
+                        <div style="font-size: 0.70rem; color: rgba(255,255,255,0.85); margin-top: 4px; text-align: right; text-transform: uppercase; font-weight: 700;">Executive Report <i class="fas fa-arrow-right ms-1"></i></div>
+                        </a>
+                    @endcanany
                 </div>
             </div>
         </div>
@@ -901,7 +980,16 @@
     <div class="kpi-grid">
         {{-- Card 1: Total Sales --}}
         @can('sales.view')
-            <div class="kpi-card kpi-gradient-purple">
+            @php
+                $salesReportUrl = auth()->user()->can('sale.report.view') 
+                    ? route('report.sale') 
+                    : (auth()->user()->can('sales.view') ? route('sales.index') : null);
+            @endphp
+            @if($salesReportUrl)
+                <a href="{{ $salesReportUrl }}" class="kpi-card kpi-gradient-purple is-clickable" title="Click to view complete Sales Report">
+            @else
+                <div class="kpi-card kpi-gradient-purple">
+            @endif
                 <div class="kpi-top">
                     <span class="kpi-label">Sales Revenue</span>
                     <div class="kpi-icon"><i class="fa-solid fa-cart-shopping"></i></div>
@@ -909,13 +997,29 @@
                 <div class="kpi-value">Rs {{ number_format($salesPeriod ?? 0, 0) }}</div>
                 <div class="kpi-sub">
                     <span>Today: <strong>Rs {{ number_format($salesToday ?? 0, 0) }}</strong></span>
+                    @if($salesReportUrl)
+                        <span class="kpi-view-report">Report <i class="fas fa-arrow-right"></i></span>
+                    @endif
                 </div>
-            </div>
+            @if($salesReportUrl)
+                </a>
+            @else
+                </div>
+            @endif
         @endcan
 
         {{-- Card 2: Total Purchases --}}
         @can('purchases.view')
-            <div class="kpi-card kpi-gradient-rose">
+            @php
+                $purchaseReportUrl = auth()->user()->can('purchase.report.view') 
+                    ? route('report.purchase') 
+                    : (auth()->user()->can('purchases.view') ? route('purchases.index') : null);
+            @endphp
+            @if($purchaseReportUrl)
+                <a href="{{ $purchaseReportUrl }}" class="kpi-card kpi-gradient-rose is-clickable" title="Click to view complete Purchase Report">
+            @else
+                <div class="kpi-card kpi-gradient-rose">
+            @endif
                 <div class="kpi-top">
                     <span class="kpi-label">Procurement & Purchases</span>
                     <div class="kpi-icon"><i class="fa-solid fa-bag-shopping"></i></div>
@@ -923,13 +1027,29 @@
                 <div class="kpi-value">Rs {{ number_format($purchasesPeriod ?? 0, 0) }}</div>
                 <div class="kpi-sub">
                     <span>Today: <strong>Rs {{ number_format($purchasesToday ?? 0, 0) }}</strong></span>
+                    @if($purchaseReportUrl)
+                        <span class="kpi-view-report">Report <i class="fas fa-arrow-right"></i></span>
+                    @endif
                 </div>
-            </div>
+            @if($purchaseReportUrl)
+                </a>
+            @else
+                </div>
+            @endif
         @endcan
 
         {{-- Card 3: Gross Profit --}}
         @if($grossProfitPeriod !== null)
-            <div class="kpi-card kpi-gradient-amber">
+            @php
+                $grossProfitUrl = auth()->user()->can('profit.loss.report.view') 
+                    ? route('report.profit_loss') 
+                    : (auth()->user()->can('executive.report.view') ? route('report.executive') : null);
+            @endphp
+            @if($grossProfitUrl)
+                <a href="{{ $grossProfitUrl }}" class="kpi-card kpi-gradient-amber is-clickable" title="Click to view complete Profit & Loss Report">
+            @else
+                <div class="kpi-card kpi-gradient-amber">
+            @endif
                 <div class="kpi-top">
                     <span class="kpi-label">Gross Margin</span>
                     <div class="kpi-icon"><i class="fa-solid fa-chart-line"></i></div>
@@ -937,13 +1057,29 @@
                 <div class="kpi-value">Rs {{ number_format($grossProfitPeriod, 0) }}</div>
                 <div class="kpi-sub">
                     <span>Revenue minus Product Cost</span>
+                    @if($grossProfitUrl)
+                        <span class="kpi-view-report">P&L Report <i class="fas fa-arrow-right"></i></span>
+                    @endif
                 </div>
-            </div>
+            @if($grossProfitUrl)
+                </a>
+            @else
+                </div>
+            @endif
         @endif
 
         {{-- Card 4: Operating Expenses --}}
         @if($expensesPeriod > 0 || Auth::user()->can('expense.voucher.view'))
-            <div class="kpi-card kpi-gradient-coral">
+            @php
+                $expensesUrl = auth()->user()->can('expense.voucher.view') 
+                    ? route('all_expense_vochers') 
+                    : (auth()->user()->can('profit.loss.report.view') ? route('report.profit_loss') : null);
+            @endphp
+            @if($expensesUrl)
+                <a href="{{ $expensesUrl }}" class="kpi-card kpi-gradient-coral is-clickable" title="Click to view Expense Vouchers & Details">
+            @else
+                <div class="kpi-card kpi-gradient-coral">
+            @endif
                 <div class="kpi-top">
                     <span class="kpi-label">Expenses Incurred</span>
                     <div class="kpi-icon"><i class="fa-solid fa-file-invoice"></i></div>
@@ -951,13 +1087,29 @@
                 <div class="kpi-value">Rs {{ number_format($expensesPeriod ?? 0, 0) }}</div>
                 <div class="kpi-sub">
                     <span>Today: <strong>Rs {{ number_format($expensesToday ?? 0, 0) }}</strong></span>
+                    @if($expensesUrl)
+                        <span class="kpi-view-report">Expenses <i class="fas fa-arrow-right"></i></span>
+                    @endif
                 </div>
-            </div>
+            @if($expensesUrl)
+                </a>
+            @else
+                </div>
+            @endif
         @endif
 
         {{-- Card 5: Net Profit --}}
         @if($netProfitPeriod !== null)
-            <div class="kpi-card kpi-gradient-emerald">
+            @php
+                $netProfitUrl = auth()->user()->can('profit.loss.report.view') 
+                    ? route('report.profit_loss') 
+                    : (auth()->user()->can('executive.report.view') ? route('report.executive') : null);
+            @endphp
+            @if($netProfitUrl)
+                <a href="{{ $netProfitUrl }}" class="kpi-card kpi-gradient-emerald is-clickable" title="Click to view complete Profit & Loss Report">
+            @else
+                <div class="kpi-card kpi-gradient-emerald">
+            @endif
                 <div class="kpi-top">
                     <span class="kpi-label">Net Operating Profit</span>
                     <div class="kpi-icon"><i class="fa-solid fa-circle-dollar-to-slot"></i></div>
@@ -965,13 +1117,29 @@
                 <div class="kpi-value">Rs {{ number_format($netProfitPeriod, 0) }}</div>
                 <div class="kpi-sub">
                     <span>Gross Profit minus Expenses</span>
+                    @if($netProfitUrl)
+                        <span class="kpi-view-report">P&L Report <i class="fas fa-arrow-right"></i></span>
+                    @endif
                 </div>
-            </div>
+            @if($netProfitUrl)
+                </a>
+            @else
+                </div>
+            @endif
         @endif
 
         {{-- Card 6: Cash & Bank Liquid --}}
         @if($totalCashAndBankBalance !== null)
-            <div class="kpi-card kpi-gradient-sky">
+            @php
+                $cashBankUrl = auth()->user()->can('balance.sheet.report.view') 
+                    ? route('report.balance_sheet') 
+                    : (auth()->user()->can('chart.of.accounts.view') ? route('view_all') : null);
+            @endphp
+            @if($cashBankUrl)
+                <a href="{{ $cashBankUrl }}" class="kpi-card kpi-gradient-sky is-clickable" title="Click to view Balance Sheet & Treasury Accounts">
+            @else
+                <div class="kpi-card kpi-gradient-sky">
+            @endif
                 <div class="kpi-top">
                     <span class="kpi-label">Total Liquid Cash</span>
                     <div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div>
@@ -979,8 +1147,15 @@
                 <div class="kpi-value">Rs {{ number_format($totalCashAndBankBalance, 0) }}</div>
                 <div class="kpi-sub">
                     <span>Active Cash & Bank Balance</span>
+                    @if($cashBankUrl)
+                        <span class="kpi-view-report">Balance Sheet <i class="fas fa-arrow-right"></i></span>
+                    @endif
                 </div>
-            </div>
+            @if($cashBankUrl)
+                </a>
+            @else
+                </div>
+            @endif
         @endif
     </div>
 
@@ -1028,7 +1203,12 @@
             <div class="panel-card">
                 <div class="panel-hd">
                     <span class="panel-title"><i class="fas fa-pie-chart" style="color:var(--brand-sky);"></i> Category Share</span>
-                    <span class="panel-badge">Top 5</span>
+                    <div class="d-flex align-items-center gap-1.5">
+                        <span class="panel-badge">Top 5</span>
+                        @can('sale.report.view')
+                            <a href="{{ route('report.sale') }}" style="font-size: 0.72rem; color: var(--brand-sky); font-weight: 700; text-decoration: none;" title="View Complete Sales Report">Report &rarr;</a>
+                        @endcan
+                    </div>
                 </div>
                 <div class="panel-body-flex d-flex flex-column align-items-center">
                     <div style="position: relative; width: 140px; height: 140px; margin-bottom: 0.85rem;">
@@ -1042,7 +1222,12 @@
             <div class="panel-card">
                 <div class="panel-hd">
                     <span class="panel-title"><i class="fas fa-fire" style="color:var(--brand-rose);"></i> Top Selling Products</span>
-                    <span class="panel-badge">By Quantity</span>
+                    <div class="d-flex align-items-center gap-1.5">
+                        <span class="panel-badge">By Quantity</span>
+                        @can('sale.report.view')
+                            <a href="{{ route('report.product_sale_customer_wise') }}" style="font-size: 0.72rem; color: var(--brand-rose); font-weight: 700; text-decoration: none;" title="View Product Sale Analysis">Report &rarr;</a>
+                        @endcan
+                    </div>
                 </div>
                 <div class="panel-body-flex">
                     <div class="rank-list">
@@ -1086,40 +1271,72 @@
             <div class="panel-body-flex">
                 <div class="biz-grid">
                     @if($customerscount !== null)
-                        <div class="biz-box">
+                        @can('customers.view')
+                            <a href="{{ route('customers.index') }}" class="biz-box" title="View Customer Directory & Balances">
+                        @else
+                            <div class="biz-box">
+                        @endcan
                             <div class="biz-icon" style="background:#e0f2fe; color:#0284c7;"><i class="fas fa-users"></i></div>
                             <div>
                                 <div class="biz-val">{{ number_format($customerscount) }}</div>
                                 <div class="biz-lbl">Customers</div>
                             </div>
-                        </div>
+                        @can('customers.view')
+                            </a>
+                        @else
+                            </div>
+                        @endcan
                     @endif
                     @if($vendorCount !== null)
-                        <div class="biz-box">
+                        @can('vendors.view')
+                            <a href="{{ route('vendors.index') }}" class="biz-box" title="View Vendor Directory & Ledgers">
+                        @else
+                            <div class="biz-box">
+                        @endcan
                             <div class="biz-icon" style="background:#f3e8ff; color:#8b5cf6;"><i class="fas fa-truck"></i></div>
                             <div>
                                 <div class="biz-val">{{ number_format($vendorCount) }}</div>
                                 <div class="biz-lbl">Vendors</div>
                             </div>
-                        </div>
+                        @can('vendors.view')
+                            </a>
+                        @else
+                            </div>
+                        @endcan
                     @endif
                     @if($productCount !== null)
-                        <div class="biz-box">
+                        @can('products.view')
+                            <a href="{{ route('product') }}" class="biz-box" title="View Product Catalog & Inventory">
+                        @else
+                            <div class="biz-box">
+                        @endcan
                             <div class="biz-icon" style="background:#fef3c7; color:#d97706;"><i class="fas fa-box-open"></i></div>
                             <div>
                                 <div class="biz-val">{{ number_format($productCount) }}</div>
                                 <div class="biz-lbl">Products</div>
                             </div>
-                        </div>
+                        @can('products.view')
+                            </a>
+                        @else
+                            </div>
+                        @endcan
                     @endif
                     @if($employeeCount !== null)
-                        <div class="biz-box">
+                        @can('users.view')
+                            <a href="{{ route('users.index') }}" class="biz-box" title="View Staff / User Accounts">
+                        @else
+                            <div class="biz-box">
+                        @endcan
                             <div class="biz-icon" style="background:#ecfdf5; color:#10b981;"><i class="fas fa-user-tie"></i></div>
                             <div>
                                 <div class="biz-val">{{ number_format($employeeCount) }}</div>
                                 <div class="biz-lbl">Staff</div>
                             </div>
-                        </div>
+                        @can('users.view')
+                            </a>
+                        @else
+                            </div>
+                        @endcan
                     @endif
                 </div>
             </div>
@@ -1130,7 +1347,12 @@
         <div class="panel-card">
             <div class="panel-hd">
                 <span class="panel-title"><i class="fas fa-exchange-alt" style="color:var(--brand-emerald);"></i> Cash Flow</span>
-                <span class="panel-badge">In vs Out</span>
+                <div class="d-flex align-items-center gap-1.5">
+                    <span class="panel-badge">In vs Out</span>
+                    @can('balance.sheet.report.view')
+                        <a href="{{ route('report.balance_sheet') }}" style="font-size: 0.72rem; color: var(--brand-emerald); font-weight: 700; text-decoration: none;" title="View Balance Sheet">Report &rarr;</a>
+                    @endcan
+                </div>
             </div>
             <div class="panel-body-flex">
                 <div style="height: 190px; position: relative;">
@@ -1145,6 +1367,9 @@
         <div class="panel-card">
             <div class="panel-hd">
                 <span class="panel-title"><i class="fas fa-receipt" style="color:var(--brand-rose);"></i> Expenses</span>
+                @can('expense.voucher.view')
+                    <a href="{{ route('all_expense_vochers') }}" style="font-size: 0.72rem; color: var(--brand-rose); font-weight: 700; text-decoration: none;" title="View Expense Vouchers">Vouchers &rarr;</a>
+                @endcan
             </div>
             <div class="panel-body-flex d-flex flex-column align-items-center">
                 <div style="position: relative; width: 120px; height: 120px; margin-bottom: 0.65rem;">
