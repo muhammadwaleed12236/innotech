@@ -18,9 +18,29 @@ class PrincipalDeliveryReportController extends Controller
     public function index(Request $request)
     {
         $vendors = Vendor::orderBy('name')->get();
-        $currentMonth = Carbon::now()->format('Y-m');
-        $dateFrom = Carbon::now()->startOfMonth()->format('Y-m-d');
-        $dateTo = Carbon::now()->endOfMonth()->format('Y-m-d');
+        $now = Carbon::now();
+        $currentMonth = $now->format('Y-m');
+
+        $hasCurrentMonthPurchases = Purchase::whereBetween('purchase_date', [
+            $now->copy()->startOfMonth()->format('Y-m-d'),
+            $now->copy()->endOfMonth()->format('Y-m-d')
+        ])->exists();
+
+        if (!$hasCurrentMonthPurchases) {
+            $latestPurchase = Purchase::orderBy('purchase_date', 'desc')->first();
+            if ($latestPurchase && $latestPurchase->purchase_date) {
+                $latestDate = Carbon::parse($latestPurchase->purchase_date);
+                $currentMonth = $latestDate->format('Y-m');
+                $dateFrom = $latestDate->copy()->startOfYear()->format('Y-m-d');
+                $dateTo = $latestDate->copy()->endOfMonth()->format('Y-m-d');
+            } else {
+                $dateFrom = '';
+                $dateTo = '';
+            }
+        } else {
+            $dateFrom = $now->copy()->startOfMonth()->format('Y-m-d');
+            $dateTo = $now->copy()->endOfMonth()->format('Y-m-d');
+        }
 
         return view('admin_panel.reporting.principal_delivery_statement', compact(
             'vendors',
@@ -204,7 +224,7 @@ class PrincipalDeliveryReportController extends Controller
         $companyTitle = Setting::get('company_title', 'Jamal & Brothers');
         $distributorSapCode = Setting::get('distributor_sap_code', '1000203');
 
-        $query = Purchase::with(['vendor', 'branch', 'items.product.category'])
+        $query = Purchase::with(['vendor', 'branch', 'items.product.category_relation'])
             ->orderBy('purchase_date', 'asc')
             ->orderBy('id', 'asc');
 
@@ -262,7 +282,7 @@ class PrincipalDeliveryReportController extends Controller
                 $prod = $item->product;
                 $matCode = $prod ? ($prod->item_code ?: $prod->id) : ('MAT-' . $item->product_id);
                 $matDesc = $prod ? $prod->item_name : ('Product #' . $item->product_id);
-                $catName = ($prod && $prod->category) ? $prod->category->name : 'Metro Town';
+                $catName = ($prod && $prod->category_relation) ? $prod->category_relation->name : 'Metro Town';
                 $taxType = ($item->is_third_schedule || ($prod && $prod->is_third_schedule)) ? 'Third Schedule' : 'Standard Rate';
 
                 $qty = (float)$item->qty;
