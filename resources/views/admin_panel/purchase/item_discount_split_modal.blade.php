@@ -115,26 +115,30 @@
                         </div>
                     </div>
 
-                    {{-- Section 3: Custom Remaining Heads (Expiry, Return, Damage, Schemes etc.) --}}
+                    {{-- Section 3: Standard & Custom Discount Heads Breakdown --}}
                     <div class="col-12">
                         <div class="card border-warning-subtle shadow-sm" style="border-width: 1.5px;">
-                            <div class="card-header bg-warning-subtle text-dark py-2 d-flex justify-content-between align-items-center flex-wrap gap-1">
-                                <span class="fw-bold small">
-                                    <i class="fas fa-layer-group me-1 text-warning-emphasis"></i> 3. Additional Custom Heads (Expiry, Return, Breakage, etc.)
-                                </span>
-                                <div class="d-flex align-items-center gap-1 flex-wrap">
-                                    <span class="badge bg-white text-dark border me-1 font-monospace" id="splitUnallocatedBadge">
+                            <div class="card-header bg-warning-subtle text-dark py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fw-bold small">
+                                        <i class="fas fa-layer-group me-1 text-warning-emphasis"></i> 3. Standard Discount Heads Breakdown
+                                    </span>
+                                    <span class="badge bg-dark text-white font-monospace" id="splitActiveHeadsBadge" style="font-size: 10px;">0 Active</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div class="input-group input-group-sm" style="max-width: 210px;">
+                                        <span class="input-group-text bg-white py-0 px-2 text-muted"><i class="fas fa-search" style="font-size: 10px;"></i></span>
+                                        <input type="text" id="splitCustomHeadSearch" class="form-control form-control-sm py-0" placeholder="Filter heads..." style="font-size: 11px;">
+                                    </div>
+                                    <span class="badge bg-white text-dark border font-monospace" id="splitUnallocatedBadge">
                                         Unallocated: 0.00% (Rs 0.00)
                                     </span>
                                     <div class="btn-group btn-group-sm">
-                                        <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2 btn-add-preset-head" data-head="Expiry Allowance" style="font-size: 10.5px;">
-                                            + Expiry
+                                        <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2" id="btnToggleActiveOnly" style="font-size: 10.5px;">
+                                            <i class="fas fa-filter"></i> Active Only
                                         </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2 btn-add-preset-head" data-head="Return Allowance" style="font-size: 10.5px;">
-                                            + Return
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2 btn-add-preset-head" data-head="Breakage / Damage" style="font-size: 10.5px;">
-                                            + Breakage
+                                        <button type="button" class="btn btn-outline-danger btn-xs py-0 px-2" id="btnClearCustomHeads" style="font-size: 10.5px;" title="Reset all head rates to 0">
+                                            <i class="fas fa-undo"></i> Reset
                                         </button>
                                         <button type="button" class="btn btn-primary btn-xs py-0 px-2" id="btnAddCustomHead" style="font-size: 10.5px;">
                                             <i class="fas fa-plus"></i> Custom Head
@@ -142,24 +146,22 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="card-body p-2">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-bordered align-middle mb-0" id="splitCustomHeadsTable">
-                                        <thead class="bg-light">
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover table-bordered align-middle mb-0" id="splitCustomHeadsTable">
+                                        <thead class="bg-light sticky-top" style="z-index: 2;">
                                             <tr style="font-size: 11px;">
-                                                <th>Head / Madd Name</th>
-                                                <th style="width: 130px;" class="text-center">Rate (%)</th>
-                                                <th style="width: 160px;" class="text-center">Amount (Rs)</th>
-                                                <th style="width: 38px;" class="text-center"></th>
+                                                <th style="width: 34px;" class="text-center bg-light">#</th>
+                                                <th class="bg-light">Standard Head / Madd Name</th>
+                                                <th style="width: 125px;" class="text-center bg-light">Rate (%)</th>
+                                                <th style="width: 155px;" class="text-center bg-light">Amount (Rs)</th>
+                                                <th style="width: 70px;" class="text-center bg-light">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody id="splitCustomHeadsBody">
-                                            {{-- Dynamic custom head rows --}}
+                                            {{-- Pre-populated static head rows + any extra custom rows --}}
                                         </tbody>
                                     </table>
-                                </div>
-                                <div id="splitNoCustomHeadsMsg" class="text-center py-2 text-muted" style="font-size: 11px;">
-                                    No custom heads added yet. Click "+ Expiry", "+ Return", or "+ Custom Head" to allocate remaining discount.
                                 </div>
                             </div>
                         </div>
@@ -388,43 +390,124 @@
         $(this).closest('.our-subhead-row').remove();
     });
 
-    // Render Custom Heads Table
+    // Pre-defined Static Standard Discount Heads
+    const STATIC_DISCOUNT_HEADS = [
+        "Del Norm Discount",
+        "Del Discount on Return expiry",
+        "Del Display Discount",
+        "Del Extra Discount",
+        "Del Freight Discount",
+        "Del Market Price Discount",
+        "Del Trade Offer",
+        "Del Trade Activity Discount",
+        "Del Direct Discount",
+        "Del Distributor Comp",
+        "Del DSF Income",
+        "Del DSF Salary",
+        "Del Freight Charges Claim",
+        "Del JBP Claim",
+        "Del Perf. Store Claims",
+        "Del Price Adjustment Discount",
+        "Del Progressive Rebate and ROI"
+    ];
+
+    // Render Custom Heads Table (Populates all 17 Static Heads + any extra custom heads)
     function renderCustomHeads(heads) {
+        heads = heads || [];
+        const existingMap = {};
+        heads.forEach(h => {
+            if (h && h.head) {
+                existingMap[h.head.trim().toLowerCase()] = h;
+            }
+        });
+
         const $tbody = $('#splitCustomHeadsBody');
         $tbody.empty();
 
-        if (!heads || !heads.length) {
-            $('#splitNoCustomHeadsMsg').show();
-            return;
-        }
+        // 1. Render all 17 Static Heads
+        STATIC_DISCOUNT_HEADS.forEach((headName, idx) => {
+            const key = headName.trim().toLowerCase();
+            const existing = existingMap[key];
+            const pct = existing ? (parseFloat(existing.percent) || 0) : 0;
+            const amt = existing ? (parseFloat(existing.amount) || 0) : 0;
 
-        $('#splitNoCustomHeadsMsg').hide();
-        heads.forEach(h => {
+            appendStaticHeadRow(headName, pct, amt, idx + 1);
+            if (existing) {
+                delete existingMap[key];
+            }
+        });
+
+        // 2. Render any remaining non-static custom heads
+        Object.values(existingMap).forEach(h => {
             appendCustomHeadRow(h.head || '', h.percent || 0, h.amount || 0);
         });
+
+        updateActiveHeadsCount();
+    }
+
+    function appendStaticHeadRow(headName, pct, amt, rowNum) {
+        const isActive = (pct > 0 || amt > 0);
+        const rowBg = isActive ? 'table-warning bg-opacity-25' : '';
+        const html = `
+            <tr class="custom-head-row static-head-row ${rowBg}" data-head="${headName.toLowerCase()}">
+                <td class="text-center text-muted small fw-semibold py-1 row-idx">${rowNum}</td>
+                <td class="py-1">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="fw-semibold text-dark head-label" style="font-size: 11.5px;">${headName}</span>
+                        ${isActive ? '<span class="badge bg-warning text-dark px-1 py-0 active-mark" style="font-size: 9px;"><i class="fas fa-check"></i></span>' : ''}
+                    </div>
+                    <input type="hidden" class="custom-head-name" value="${headName}">
+                </td>
+                <td class="py-1">
+                    <div class="input-group input-group-sm">
+                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-pct font-monospace fw-bold text-dark py-0" placeholder="0.00" value="${pct > 0 ? pct : ''}" style="font-size: 11.5px;">
+                        <span class="input-group-text py-0 px-1 fw-bold small">%</span>
+                    </div>
+                </td>
+                <td class="py-1">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text py-0 px-1 small">Rs</span>
+                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-amt font-monospace fw-bold text-dark py-0" placeholder="0.00" value="${amt > 0 ? amt : ''}" style="font-size: 11.5px;">
+                    </div>
+                </td>
+                <td class="text-center py-1">
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary btn-xs py-0 px-1 btn-fill-head-remaining" title="Fill unallocated discount into this head" style="font-size: 9.5px;">
+                            Fill
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-1 btn-clear-head-row" title="Clear this head" style="font-size: 9.5px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        $('#splitCustomHeadsBody').append(html);
     }
 
     function appendCustomHeadRow(headName, pct, amt) {
-        $('#splitNoCustomHeadsMsg').hide();
+        const isActive = (pct > 0 || amt > 0);
+        const rowBg = isActive ? 'table-warning bg-opacity-25' : '';
         const html = `
-            <tr class="custom-head-row">
-                <td>
-                    <input type="text" class="form-control form-control-sm custom-head-name fw-semibold" placeholder="Head Name (e.g. Expiry)" value="${headName}" style="font-size: 11.5px;">
+            <tr class="custom-head-row extra-custom-head-row ${rowBg}" data-head="${(headName || '').toLowerCase()}">
+                <td class="text-center text-primary small fw-semibold py-1 row-idx"><i class="fas fa-tag"></i></td>
+                <td class="py-1">
+                    <input type="text" class="form-control form-control-sm custom-head-name fw-semibold py-0" placeholder="Custom Head Name" value="${headName}" style="font-size: 11.5px;">
                 </td>
-                <td>
+                <td class="py-1">
                     <div class="input-group input-group-sm">
-                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-pct font-monospace fw-bold text-dark" placeholder="0.00" value="${pct}">
-                        <span class="input-group-text fw-bold">%</span>
+                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-pct font-monospace fw-bold text-dark py-0" placeholder="0.00" value="${pct > 0 ? pct : ''}" style="font-size: 11.5px;">
+                        <span class="input-group-text py-0 px-1 fw-bold small">%</span>
                     </div>
                 </td>
-                <td>
+                <td class="py-1">
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text">Rs</span>
-                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-amt font-monospace fw-bold text-dark" placeholder="0.00" value="${amt}">
+                        <span class="input-group-text py-0 px-1 small">Rs</span>
+                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-amt font-monospace fw-bold text-dark py-0" placeholder="0.00" value="${amt > 0 ? amt : ''}" style="font-size: 11.5px;">
                     </div>
                 </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-outline-danger btn-xs py-0 px-2 btn-remove-custom-head" title="Remove">
+                <td class="text-center py-1">
+                    <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1 btn-remove-custom-head" title="Remove" style="font-size: 9.5px;">
                         <i class="fas fa-trash-alt"></i>
                     </button>
                 </td>
@@ -433,27 +516,108 @@
         $('#splitCustomHeadsBody').append(html);
     }
 
+    function updateActiveHeadsCount() {
+        let count = 0;
+        $('#splitCustomHeadsBody tr.custom-head-row').each(function() {
+            const pct = parseFloat($(this).find('.custom-head-pct').val()) || 0;
+            const amt = parseFloat($(this).find('.custom-head-amt').val()) || 0;
+            if (pct > 0 || amt > 0) {
+                count++;
+                $(this).addClass('table-warning bg-opacity-25');
+                if (!$(this).find('.active-mark').length) {
+                    $(this).find('.head-label').after('<span class="badge bg-warning text-dark px-1 py-0 active-mark" style="font-size: 9px;"><i class="fas fa-check"></i></span>');
+                }
+            } else {
+                $(this).removeClass('table-warning bg-opacity-25');
+                $(this).find('.active-mark').remove();
+            }
+        });
+        $('#splitActiveHeadsBadge').text(count + ' Active');
+    }
+
+    // Add extra custom head
     $('#btnAddCustomHead').on('click', function() {
         appendCustomHeadRow('Custom Allowance', 0, 0);
         recalcModalSplits();
+        updateActiveHeadsCount();
+        // Scroll to bottom
+        const cont = document.querySelector('#splitCustomHeadsTable').parentElement;
+        if (cont) cont.scrollTop = cont.scrollHeight;
     });
 
-    $('.btn-add-preset-head').on('click', function() {
-        const head = $(this).data('head');
-        // If unallocated % exists, auto-fill it
-        const currentAllocated = getAllocatedPct();
-        const remainingPct = Math.max(0, round2(modalTotalDiscPct - currentAllocated));
+    // Fill remaining unallocated discount into this specific head
+    $(document).on('click', '.btn-fill-head-remaining', function() {
+        const $row = $(this).closest('tr');
+        const currentPct = parseFloat($row.find('.custom-head-pct').val()) || 0;
+        const totalAllocated = getAllocatedPct();
+        const otherAllocated = totalAllocated - currentPct;
+        const remainingPct = Math.max(0, round2(modalTotalDiscPct - otherAllocated));
         const remainingAmt = modalTradeVal > 0 ? round2(modalTradeVal * (remainingPct / 100)) : 0;
-        appendCustomHeadRow(head, remainingPct, remainingAmt);
+
+        $row.find('.custom-head-pct').val(remainingPct > 0 ? remainingPct : '');
+        $row.find('.custom-head-amt').val(remainingAmt > 0 ? remainingAmt : '');
         recalcModalSplits();
+        updateActiveHeadsCount();
     });
 
+    // Clear single head row
+    $(document).on('click', '.btn-clear-head-row', function() {
+        const $row = $(this).closest('tr');
+        $row.find('.custom-head-pct').val('');
+        $row.find('.custom-head-amt').val('');
+        $row.removeClass('table-warning bg-opacity-25');
+        recalcModalSplits();
+        updateActiveHeadsCount();
+    });
+
+    // Remove extra custom head row
     $(document).on('click', '.btn-remove-custom-head', function() {
         $(this).closest('tr').remove();
-        if ($('#splitCustomHeadsBody tr').length === 0) {
-            $('#splitNoCustomHeadsMsg').show();
-        }
         recalcModalSplits();
+        updateActiveHeadsCount();
+    });
+
+    // Reset all custom head inputs to 0
+    $('#btnClearCustomHeads').on('click', function() {
+        $('#splitCustomHeadsBody .custom-head-pct').val('');
+        $('#splitCustomHeadsBody .custom-head-amt').val('');
+        $('#splitCustomHeadsBody tr.extra-custom-head-row').remove();
+        $('#splitCustomHeadsBody tr').removeClass('table-warning bg-opacity-25');
+        recalcModalSplits();
+        updateActiveHeadsCount();
+    });
+
+    // Search / Filter heads in table
+    $('#splitCustomHeadSearch').on('input', function() {
+        const query = $(this).val().toLowerCase().trim();
+        $('#splitCustomHeadsBody tr').each(function() {
+            const head = $(this).attr('data-head') || $(this).find('.custom-head-name').val() || '';
+            if (!query || head.toLowerCase().includes(query)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    // Toggle Active Only rows
+    let showActiveOnly = false;
+    $('#btnToggleActiveOnly').on('click', function() {
+        showActiveOnly = !showActiveOnly;
+        $(this).toggleClass('btn-dark btn-outline-secondary');
+        $('#splitCustomHeadsBody tr').each(function() {
+            const pct = parseFloat($(this).find('.custom-head-pct').val()) || 0;
+            const amt = parseFloat($(this).find('.custom-head-amt').val()) || 0;
+            if (showActiveOnly) {
+                if (pct > 0 || amt > 0) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            } else {
+                $(this).show();
+            }
+        });
     });
 
     // Inputs Events in Modal
@@ -557,6 +721,7 @@
             $statusCont.html('<span class="badge bg-danger py-1 px-2"><i class="fas fa-times-circle me-1"></i> ' + Math.abs(diffPct).toFixed(2) + '% Exceeds Total</span>');
             $('#barDiffDisc').removeClass('text-success text-warning').addClass('text-danger');
         }
+        updateActiveHeadsCount();
     }
 
     // Reset Split to 100% Owner
@@ -565,11 +730,14 @@
         $('#splitOwnerAmt').val(modalTotalDiscAmt);
         $('#splitCustPct').val(0);
         $('#splitCustAmt').val(0);
-        $('#splitCustomHeadsBody').empty();
-        $('#splitNoCustomHeadsMsg').show();
+        $('#splitCustomHeadsBody .custom-head-pct').val('');
+        $('#splitCustomHeadsBody .custom-head-amt').val('');
+        $('#splitCustomHeadsBody tr.extra-custom-head-row').remove();
+        $('#splitCustomHeadsBody tr').removeClass('table-warning bg-opacity-25');
         $('#splitOurSubheadsContainer').empty();
         $('#splitOwnerNotes').val('');
         recalcModalSplits();
+        updateActiveHeadsCount();
     });
 
     // Apply Split back to the Active Table Row or save to DB if in Reconciliation

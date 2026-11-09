@@ -994,10 +994,38 @@ $(document).ready(function() {
         }
     });
 
+    // Standard Static Discount Heads
+    const RECON_STATIC_DISCOUNT_HEADS = [
+        "Del Norm Discount",
+        "Del Discount on Return expiry",
+        "Del Display Discount",
+        "Del Extra Discount",
+        "Del Freight Discount",
+        "Del Market Price Discount",
+        "Del Trade Offer",
+        "Del Trade Activity Discount",
+        "Del Direct Discount",
+        "Del Distributor Comp",
+        "Del DSF Income",
+        "Del DSF Salary",
+        "Del Freight Charges Claim",
+        "Del JBP Claim",
+        "Del Perf. Store Claims",
+        "Del Price Adjustment Discount",
+        "Del Progressive Rebate and ROI"
+    ];
+
     // Invoice Custom Heads helpers in modal
     function renderInvCustomHeads(heads) {
         const $cont = $('#editInvCustomHeadsContainer');
         $cont.empty();
+
+        // Ensure datalist is present for autocomplete
+        if (!$('#invStaticHeadOptions').length) {
+            let opts = RECON_STATIC_DISCOUNT_HEADS.map(h => `<option value="${h}"></option>`).join('');
+            $('body').append(`<datalist id="invStaticHeadOptions">${opts}</datalist>`);
+        }
+
         if (!heads || !heads.length) return;
 
         heads.forEach(h => {
@@ -1008,7 +1036,7 @@ $(document).ready(function() {
     function appendInvCustomHeadRow(head, pct, amt) {
         const html = `
             <div class="d-flex align-items-center gap-1 inv-custom-head-row">
-                <input type="text" class="form-control form-control-sm inv-custom-head-name" placeholder="Head Name (e.g. Expiry)" value="${head}" style="font-size: 11px;">
+                <input type="text" list="invStaticHeadOptions" class="form-control form-control-sm inv-custom-head-name fw-semibold" placeholder="Select or type Head Name" value="${head}" style="font-size: 11px;">
                 <div class="input-group input-group-sm" style="max-width: 95px;">
                     <input type="number" step="0.01" class="form-control text-end inv-custom-head-pct font-monospace" placeholder="%" value="${pct}" style="font-size: 11px;">
                     <span class="input-group-text p-1 small">%</span>
@@ -1026,7 +1054,7 @@ $(document).ready(function() {
     }
 
     $('#btnAddInvCustomHead').on('click', function() {
-        appendInvCustomHeadRow('Expiry Allowance', 0, 0);
+        appendInvCustomHeadRow('Del Norm Discount', 0, 0);
     });
 
     $(document).on('click', '.btn-remove-inv-custom-head', function() {
