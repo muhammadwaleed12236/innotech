@@ -1778,7 +1778,20 @@
                         <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="0" placeholder="0" title="Disc - Trader (%)">
                     </td>
                     <td>
-                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="0.00" placeholder="0.00" title="Discount Value">
+                        <div class="d-flex align-items-center gap-1">
+                            <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="0.00" placeholder="0.00" title="Discount Value">
+                            <button type="button" class="btn btn-outline-primary btn-xs p-1 btn-open-item-split" title="Split Discount (Owner / Customer / Expiry / Return)" style="font-size: 11px; line-height: 1; min-width: 26px;">
+                                <i class="fas fa-sliders-h"></i>
+                            </button>
+                        </div>
+                        <div class="item-split-badge-container mt-1"></div>
+                        <input type="hidden" name="item_our_disc_percent[]" class="item-our-disc-percent" value="0">
+                        <input type="hidden" name="item_our_disc_amount[]" class="item-our-disc-amount" value="0">
+                        <input type="hidden" name="item_customer_disc_percent[]" class="item-customer-disc-percent" value="0">
+                        <input type="hidden" name="item_customer_disc_amount[]" class="item-customer-disc-amount" value="0">
+                        <input type="hidden" name="item_custom_disc_breakdown[]" class="item-custom-disc-breakdown" value="[]">
+                        <input type="hidden" name="item_our_disc_breakdown[]" class="item-our-disc-breakdown" value="[]">
+                        <input type="hidden" name="item_our_disc_notes[]" class="item-our-disc-notes" value="">
                     </td>
                     <td>
                         <input type="number" step="0.01" class="form-control text-end input-readonly item-val-after-disc fw-bold text-dark" name="value_after_discount[]" value="0.00" readonly tabindex="-1" title="Value After Discount">
@@ -2720,5 +2733,6 @@
             });
         });
     </script>
+@include('admin_panel.purchase.item_discount_split_modal')
 @include('admin_panel.partials.location_selector_script')
 @endsection

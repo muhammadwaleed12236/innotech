@@ -812,7 +812,41 @@
                                         <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="{{ round($dPct, 2) }}" title="Disc - Trader (%)">
                                     </td>
                                     <td>
-                                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="{{ number_format($item->item_discount, 2, '.', '') }}" title="Discount Value">
+                                        <div class="d-flex align-items-center gap-1">
+                                            <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="{{ number_format($item->item_discount, 2, '.', '') }}" title="Discount Value">
+                                            <button type="button" class="btn btn-outline-primary btn-xs p-1 btn-open-item-split" title="Split Discount (Owner / Customer / Expiry / Return)" style="font-size: 11px; line-height: 1; min-width: 26px;">
+                                                <i class="fas fa-sliders-h"></i>
+                                            </button>
+                                        </div>
+                                        <div class="item-split-badge-container mt-1">
+                                            @php
+                                                $hasSplit = ($item->our_disc_percent > 0 || $item->customer_disc_percent > 0 || !empty($item->custom_disc_breakdown));
+                                            @endphp
+                                            @if($hasSplit)
+                                                <div class="d-flex align-items-center gap-1" style="cursor: pointer;" title="Click to view/edit split">
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 9px; line-height: 1.2; padding: 2px 4px; white-space: normal;">
+                                                        @php
+                                                            $parts = [];
+                                                            if ($item->our_disc_percent > 0) $parts[] = 'Own: ' . (float)$item->our_disc_percent . '%';
+                                                            if ($item->customer_disc_percent > 0) $parts[] = 'Cust: ' . (float)$item->customer_disc_percent . '%';
+                                                            if (!empty($item->custom_disc_breakdown) && is_array($item->custom_disc_breakdown)) {
+                                                                foreach ($item->custom_disc_breakdown as $ch) {
+                                                                    if (!empty($ch['percent'])) $parts[] = ($ch['head'] ?? 'Other') . ': ' . (float)$ch['percent'] . '%';
+                                                                }
+                                                            }
+                                                        @endphp
+                                                        {{ implode(' | ', $parts) }}
+                                                    </span>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <input type="hidden" name="item_our_disc_percent[]" class="item-our-disc-percent" value="{{ (float)($item->our_disc_percent ?? 0) }}">
+                                        <input type="hidden" name="item_our_disc_amount[]" class="item-our-disc-amount" value="{{ (float)($item->our_disc_amount ?? 0) }}">
+                                        <input type="hidden" name="item_customer_disc_percent[]" class="item-customer-disc-percent" value="{{ (float)($item->customer_disc_percent ?? 0) }}">
+                                        <input type="hidden" name="item_customer_disc_amount[]" class="item-customer-disc-amount" value="{{ (float)($item->customer_disc_amount ?? 0) }}">
+                                        <input type="hidden" name="item_custom_disc_breakdown[]" class="item-custom-disc-breakdown" value="{{ json_encode($item->custom_disc_breakdown ?? []) }}">
+                                        <input type="hidden" name="item_our_disc_breakdown[]" class="item-our-disc-breakdown" value="{{ json_encode($item->our_disc_breakdown ?? []) }}">
+                                        <input type="hidden" name="item_our_disc_notes[]" class="item-our-disc-notes" value="{{ $item->our_disc_notes ?? '' }}">
                                     </td>
                                     <td>
                                         <input type="number" step="0.01" class="form-control text-end input-readonly item-val-after-disc fw-bold text-dark" name="value_after_discount[]" value="{{ number_format($item->value_after_discount ?? max(0, $tValItem - $item->item_discount), 2, '.', '') }}" readonly tabindex="-1" title="Value After Discount">
@@ -1534,7 +1568,20 @@
                         <input type="number" step="0.01" name="item_discount_percent[]" class="form-control text-end item-disc-percent" value="0" placeholder="0" title="Disc - Trader (%)">
                     </td>
                     <td>
-                        <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="0.00" placeholder="0.00" title="Discount Value">
+                        <div class="d-flex align-items-center gap-1">
+                            <input type="number" step="0.01" name="item_discount[]" class="form-control text-end item-disc-amt" value="0.00" placeholder="0.00" title="Discount Value">
+                            <button type="button" class="btn btn-outline-primary btn-xs p-1 btn-open-item-split" title="Split Discount (Owner / Customer / Expiry / Return)" style="font-size: 11px; line-height: 1; min-width: 26px;">
+                                <i class="fas fa-sliders-h"></i>
+                            </button>
+                        </div>
+                        <div class="item-split-badge-container mt-1"></div>
+                        <input type="hidden" name="item_our_disc_percent[]" class="item-our-disc-percent" value="0">
+                        <input type="hidden" name="item_our_disc_amount[]" class="item-our-disc-amount" value="0">
+                        <input type="hidden" name="item_customer_disc_percent[]" class="item-customer-disc-percent" value="0">
+                        <input type="hidden" name="item_customer_disc_amount[]" class="item-customer-disc-amount" value="0">
+                        <input type="hidden" name="item_custom_disc_breakdown[]" class="item-custom-disc-breakdown" value="[]">
+                        <input type="hidden" name="item_our_disc_breakdown[]" class="item-our-disc-breakdown" value="[]">
+                        <input type="hidden" name="item_our_disc_notes[]" class="item-our-disc-notes" value="">
                     </td>
                     <td>
                         <input type="number" step="0.01" class="form-control text-end input-readonly item-val-after-disc fw-bold text-dark" name="value_after_discount[]" value="0.00" readonly tabindex="-1" title="Value After Discount">
@@ -2593,5 +2640,6 @@
             recalcAll();
         });
     </script>
+@include('admin_panel.purchase.item_discount_split_modal')
 @include('admin_panel.partials.location_selector_script')
 @endsection

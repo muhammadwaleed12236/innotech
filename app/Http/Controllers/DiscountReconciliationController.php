@@ -80,6 +80,9 @@ class DiscountReconciliationController extends Controller
         $totalCustomerPassThroughAmt = 0;
         $totalCompanySettledAmt = 0;
         $totalCompanyPendingAmt = 0;
+        $totalCustomHeadsAmt = 0;
+        $periodCustomHeadsSummary = [];
+        $periodOurSubheadsSummary = [];
 
         foreach ($purchases as $p) {
             $baseValue = (float)($p->total_trade_value > 0 ? $p->total_trade_value : ($p->subtotal > 0 ? $p->subtotal : $p->net_amount));
@@ -102,12 +105,86 @@ class DiscountReconciliationController extends Controller
                 $companyDiscPct = 100;
             }
 
+            // Extract item-level details
+            $itemsList = [];
+            $aggItemOurAmt = 0;
+            $aggItemCustAmt = 0;
+            $dynCustomHeads = [];
+            $dynOurSubheads = [];
+
+            foreach ($p->items as $item) {
+                $tVal = (float)$item->trade_value;
+                $iDiscAmt = (float)$item->item_discount;
+                $iDiscPct = (float)$item->company_disc_percent;
+                if ($iDiscPct <= 0 && $tVal > 0 && $iDiscAmt > 0) {
+                    $iDiscPct = round(($iDiscAmt / $tVal) * 100, 2);
+                }
+
+                $iOurPct = (float)$item->our_disc_percent;
+                $iOurAmt = (float)$item->our_disc_amount;
+                $iCustPct = (float)$item->customer_disc_percent;
+                $iCustAmt = (float)$item->customer_disc_amount;
+
+                $customBreakdown = is_array($item->custom_disc_breakdown) ? $item->custom_disc_breakdown : (json_decode($item->custom_disc_breakdown ?? '[]', true) ?: []);
+                $ourBreakdown = is_array($item->our_disc_breakdown) ? $item->our_disc_breakdown : (json_decode($item->our_disc_breakdown ?? '[]', true) ?: []);
+
+                // Default fallback if no split set on item
+                if ($iOurAmt <= 0 && $iCustAmt <= 0 && empty($customBreakdown) && $iDiscAmt > 0) {
+                    $iOurPct = $iDiscPct;
+                    $iOurAmt = $iDiscAmt;
+                }
+
+                $aggItemOurAmt += $iOurAmt;
+                $aggItemCustAmt += $iCustAmt;
+
+                foreach ($customBreakdown as $cb) {
+                    $h = trim($cb['head'] ?? 'Other');
+                    $amt = (float)($cb['amount'] ?? 0);
+                    if (!isset($dynCustomHeads[$h])) $dynCustomHeads[$h] = ['head' => $h, 'amount' => 0, 'percent' => 0];
+                    $dynCustomHeads[$h]['amount'] += $amt;
+                }
+
+                foreach ($ourBreakdown as $ob) {
+                    $h = trim($ob['head'] ?? 'Subhead');
+                    $amt = (float)($ob['amount'] ?? 0);
+                    if (!isset($dynOurSubheads[$h])) $dynOurSubheads[$h] = ['head' => $h, 'amount' => 0, 'percent' => 0];
+                    $dynOurSubheads[$h]['amount'] += $amt;
+                }
+
+                $itemsList[] = [
+                    'id' => $item->id,
+                    'product_name' => $item->product ? $item->product->name : ('Product #' . $item->product_id),
+                    'product_code' => $item->product ? $item->product->code : '',
+                    'batch_no' => $item->batch_no ?: '—',
+                    'qty' => (float)$item->qty,
+                    'unit' => $item->unit ?: 'Carton',
+                    'trade_value' => $tVal,
+                    'company_disc_percent' => $iDiscPct,
+                    'company_disc_amount' => $iDiscAmt,
+                    'our_disc_percent' => $iOurPct,
+                    'our_disc_amount' => $iOurAmt,
+                    'customer_disc_percent' => $iCustPct,
+                    'customer_disc_amount' => $iCustAmt,
+                    'custom_disc_breakdown' => $customBreakdown,
+                    'our_disc_breakdown' => $ourBreakdown,
+                    'our_disc_notes' => $item->our_disc_notes ?: '',
+                ];
+            }
+
             $ourDiscPct = (float)$p->our_disc_percent;
             $ourDiscAmt = (float)$p->our_disc_amount;
             $custDiscPct = (float)$p->customer_disc_percent;
             $custDiscAmt = (float)$p->customer_disc_amount;
 
-            // Auto-calculate split if our and customer are not set yet
+            // If invoice-level was 0 but items had split, use aggregated item split
+            if ($ourDiscAmt <= 0 && $custDiscAmt <= 0 && ($aggItemOurAmt > 0 || $aggItemCustAmt > 0)) {
+                $ourDiscAmt = $aggItemOurAmt;
+                $ourDiscPct = $baseValue > 0 ? round(($ourDiscAmt / $baseValue) * 100, 2) : 0;
+                $custDiscAmt = $aggItemCustAmt;
+                $custDiscPct = $baseValue > 0 ? round(($custDiscAmt / $baseValue) * 100, 2) : 0;
+            }
+
+            // Auto-calculate split if our and customer are still not set
             if ($ourDiscAmt <= 0 && $custDiscAmt <= 0 && $companyDiscAmt > 0) {
                 if ($ourDiscPct > 0) {
                     $ourDiscAmt = round($baseValue * ($ourDiscPct / 100), 2);
@@ -126,6 +203,52 @@ class DiscountReconciliationController extends Controller
                 }
             }
 
+            // Custom heads for invoice
+            $invCustom = is_array($p->custom_disc_breakdown) ? $p->custom_disc_breakdown : (json_decode($p->custom_disc_breakdown ?? '[]', true) ?: []);
+            if (empty($invCustom) && !empty($dynCustomHeads)) {
+                if ($baseValue > 0) {
+                    foreach ($dynCustomHeads as &$dch) {
+                        $dch['percent'] = round(($dch['amount'] / $baseValue) * 100, 2);
+                    }
+                    unset($dch);
+                }
+                $invCustom = array_values($dynCustomHeads);
+            }
+
+            // Our subheads for invoice
+            $invOurSub = is_array($p->our_disc_breakdown) ? $p->our_disc_breakdown : (json_decode($p->our_disc_breakdown ?? '[]', true) ?: []);
+            if (empty($invOurSub) && !empty($dynOurSubheads)) {
+                if ($baseValue > 0) {
+                    foreach ($dynOurSubheads as &$doh) {
+                        $doh['percent'] = round(($doh['amount'] / $baseValue) * 100, 2);
+                    }
+                    unset($doh);
+                }
+                $invOurSub = array_values($dynOurSubheads);
+            }
+
+            $invCustomAmt = 0;
+            foreach ($invCustom as $ch) {
+                $h = trim($ch['head'] ?? 'Other');
+                $amt = (float)($ch['amount'] ?? 0);
+                $invCustomAmt += $amt;
+                if (!isset($periodCustomHeadsSummary[$h])) {
+                    $periodCustomHeadsSummary[$h] = ['head' => $h, 'amount' => 0, 'count' => 0];
+                }
+                $periodCustomHeadsSummary[$h]['amount'] += $amt;
+                $periodCustomHeadsSummary[$h]['count']++;
+            }
+
+            foreach ($invOurSub as $ob) {
+                $h = trim($ob['head'] ?? 'Subhead');
+                $amt = (float)($ob['amount'] ?? 0);
+                if (!isset($periodOurSubheadsSummary[$h])) {
+                    $periodOurSubheadsSummary[$h] = ['head' => $h, 'amount' => 0, 'count' => 0];
+                }
+                $periodOurSubheadsSummary[$h]['amount'] += $amt;
+                $periodOurSubheadsSummary[$h]['count']++;
+            }
+
             $settled = (float)$p->company_settled_amount;
             $pending = max(0, $companyDiscAmt - $settled);
             $settleStatus = $p->settlement_status ?: ($settled >= $companyDiscAmt && $companyDiscAmt > 0 ? 'settled' : ($settled > 0 ? 'partial' : 'pending'));
@@ -134,6 +257,7 @@ class DiscountReconciliationController extends Controller
             $totalCompanyDiscAmt += $companyDiscAmt;
             $totalOurDiscAmt += $ourDiscAmt;
             $totalCustomerPassThroughAmt += $custDiscAmt;
+            $totalCustomHeadsAmt += $invCustomAmt;
             $totalCompanySettledAmt += $settled;
             $totalCompanyPendingAmt += $pending;
 
@@ -149,11 +273,15 @@ class DiscountReconciliationController extends Controller
                 'our_disc_amount' => $ourDiscAmt,
                 'customer_disc_percent' => $custDiscPct,
                 'customer_disc_amount' => $custDiscAmt,
+                'custom_disc_amount' => round($invCustomAmt, 2),
+                'custom_disc_breakdown' => $invCustom,
+                'our_disc_breakdown' => $invOurSub,
                 'our_disc_notes' => $p->our_disc_notes ?: '',
                 'company_settled_amount' => $settled,
                 'company_pending_amount' => $pending,
                 'settlement_status' => $settleStatus,
-                'items_count' => $p->items->count(),
+                'items_count' => count($itemsList),
+                'items' => $itemsList,
             ];
         }
 
@@ -208,6 +336,9 @@ class DiscountReconciliationController extends Controller
                 'total_company_disc_amt' => round($totalCompanyDiscAmt, 2),
                 'total_our_disc_amt' => round($totalOurDiscAmt, 2),
                 'total_customer_passthrough_amt' => round($totalCustomerPassThroughAmt, 2),
+                'total_custom_heads_amt' => round($totalCustomHeadsAmt, 2),
+                'custom_heads_summary' => array_values($periodCustomHeadsSummary),
+                'our_subheads_summary' => array_values($periodOurSubheadsSummary),
                 'total_company_settled_amt' => round($totalCompanySettledAmt, 2),
                 'total_company_pending_amt' => round($totalCompanyPendingAmt, 2),
 
@@ -279,6 +410,16 @@ class DiscountReconciliationController extends Controller
         $purchase->customer_disc_percent = $custPct;
         $purchase->customer_disc_amount = $custAmt;
 
+        if ($request->has('custom_disc_breakdown')) {
+            $cb = $request->input('custom_disc_breakdown');
+            $purchase->custom_disc_breakdown = is_string($cb) ? (json_decode($cb, true) ?: []) : $cb;
+        }
+
+        if ($request->has('our_disc_breakdown')) {
+            $ob = $request->input('our_disc_breakdown');
+            $purchase->our_disc_breakdown = is_string($ob) ? (json_decode($ob, true) ?: []) : $ob;
+        }
+
         if ($request->has('our_disc_notes')) {
             $purchase->our_disc_notes = $request->our_disc_notes;
         }
@@ -304,11 +445,110 @@ class DiscountReconciliationController extends Controller
                 'our_disc_amount' => $purchase->our_disc_amount,
                 'customer_disc_percent' => $purchase->customer_disc_percent,
                 'customer_disc_amount' => $purchase->customer_disc_amount,
+                'custom_disc_breakdown' => $purchase->custom_disc_breakdown,
+                'our_disc_breakdown' => $purchase->our_disc_breakdown,
                 'our_disc_notes' => $purchase->our_disc_notes,
                 'company_settled_amount' => $purchase->company_settled_amount,
                 'company_pending_amount' => max(0, $purchase->company_disc_amount - $purchase->company_settled_amount),
                 'settlement_status' => $purchase->settlement_status,
             ]
+        ]);
+    }
+
+    public function updateItemSplit(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:purchase_items,id',
+            'our_disc_percent' => 'nullable|numeric|min:0|max:100',
+            'customer_disc_percent' => 'nullable|numeric|min:0|max:100',
+            'our_disc_notes' => 'nullable|string',
+        ]);
+
+        $item = PurchaseItem::findOrFail($request->item_id);
+        $purchase = $item->purchase;
+
+        $tVal = (float)$item->trade_value;
+        $discAmt = (float)$item->item_discount;
+        $discPct = (float)$item->company_disc_percent;
+        if ($discPct <= 0 && $tVal > 0 && $discAmt > 0) {
+            $discPct = round(($discAmt / $tVal) * 100, 2);
+        }
+
+        $ourPct = (float)($request->input('our_disc_percent') ?? 0);
+        $ourAmt = $tVal > 0 ? round($tVal * ($ourPct / 100), 2) : 0;
+
+        $custPct = (float)($request->input('customer_disc_percent') ?? 0);
+        $custAmt = $tVal > 0 ? round($tVal * ($custPct / 100), 2) : 0;
+
+        $customBreakdown = $request->input('custom_disc_breakdown');
+        if (is_string($customBreakdown)) {
+            $customBreakdown = json_decode($customBreakdown, true) ?: [];
+        }
+
+        $ourBreakdown = $request->input('our_disc_breakdown');
+        if (is_string($ourBreakdown)) {
+            $ourBreakdown = json_decode($ourBreakdown, true) ?: [];
+        }
+
+        $item->our_disc_percent = $ourPct;
+        $item->our_disc_amount = $ourAmt;
+        $item->customer_disc_percent = $custPct;
+        $item->customer_disc_amount = $custAmt;
+        $item->custom_disc_breakdown = $customBreakdown;
+        $item->our_disc_breakdown = $ourBreakdown;
+        if ($request->has('our_disc_notes')) {
+            $item->our_disc_notes = $request->our_disc_notes;
+        }
+        $item->save();
+
+        // Re-aggregate parent purchase totals
+        $purchase->load('items');
+        $aggOurAmt = (float)$purchase->items->sum('our_disc_amount');
+        $aggCustAmt = (float)$purchase->items->sum('customer_disc_amount');
+        $baseValue = (float)($purchase->total_trade_value > 0 ? $purchase->total_trade_value : ($purchase->subtotal > 0 ? $purchase->subtotal : $purchase->net_amount));
+
+        $aggCustom = [];
+        $aggOurSub = [];
+        foreach ($purchase->items as $pi) {
+            $cb = is_array($pi->custom_disc_breakdown) ? $pi->custom_disc_breakdown : (json_decode($pi->custom_disc_breakdown ?? '[]', true) ?: []);
+            foreach ($cb as $c) {
+                $h = trim($c['head'] ?? 'Other');
+                $a = (float)($c['amount'] ?? 0);
+                if (!isset($aggCustom[$h])) $aggCustom[$h] = ['head' => $h, 'amount' => 0, 'percent' => 0];
+                $aggCustom[$h]['amount'] += $a;
+            }
+
+            $ob = is_array($pi->our_disc_breakdown) ? $pi->our_disc_breakdown : (json_decode($pi->our_disc_breakdown ?? '[]', true) ?: []);
+            foreach ($ob as $o) {
+                $h = trim($o['head'] ?? 'Subhead');
+                $a = (float)($o['amount'] ?? 0);
+                if (!isset($aggOurSub[$h])) $aggOurSub[$h] = ['head' => $h, 'amount' => 0, 'percent' => 0];
+                $aggOurSub[$h]['amount'] += $a;
+            }
+        }
+
+        if ($baseValue > 0) {
+            foreach ($aggCustom as &$ac) {
+                $ac['percent'] = round(($ac['amount'] / $baseValue) * 100, 2);
+            }
+            unset($ac);
+            foreach ($aggOurSub as &$ao) {
+                $ao['percent'] = round(($ao['amount'] / $baseValue) * 100, 2);
+            }
+            unset($ao);
+        }
+
+        $purchase->our_disc_amount = $aggOurAmt;
+        $purchase->our_disc_percent = $baseValue > 0 ? round(($aggOurAmt / $baseValue) * 100, 2) : 0;
+        $purchase->customer_disc_amount = $aggCustAmt;
+        $purchase->customer_disc_percent = $baseValue > 0 ? round(($aggCustAmt / $baseValue) * 100, 2) : 0;
+        $purchase->custom_disc_breakdown = array_values($aggCustom);
+        $purchase->our_disc_breakdown = array_values($aggOurSub);
+        $purchase->save();
+
+        return response()->json([
+            'ok' => true,
+            'msg' => 'Item discount split updated successfully and purchase totals recalculated!',
         ]);
     }
 
@@ -341,8 +581,8 @@ class DiscountReconciliationController extends Controller
             fputcsv($file, [
                 'Invoice #', 'Date', 'Supplier / Company', 'Invoice Trade Value (PKR)',
                 'Company Disc %', 'Company Disc (PKR)', 'Our Share %', 'Our Share (PKR)',
-                'Customer Share %', 'Customer Share (PKR)', 'Our Share Maddain / Notes',
-                'Settled by Company (PKR)', 'Pending from Company (PKR)', 'Settlement Status'
+                'Customer Share %', 'Customer Share (PKR)', 'Custom Heads (Expiry / Return etc)',
+                'Our Share Maddain / Notes', 'Settled by Company (PKR)', 'Pending from Company (PKR)', 'Settlement Status'
             ]);
 
             foreach ($purchases as $p) {
@@ -351,6 +591,13 @@ class DiscountReconciliationController extends Controller
                 $compPct = (float)$p->company_disc_percent;
                 $settled = (float)$p->company_settled_amount;
                 $pending = max(0, $compAmt - $settled);
+
+                $customBreakdown = is_array($p->custom_disc_breakdown) ? $p->custom_disc_breakdown : (json_decode($p->custom_disc_breakdown ?? '[]', true) ?: []);
+                $customStrParts = [];
+                foreach ($customBreakdown as $cb) {
+                    $customStrParts[] = ($cb['head'] ?? 'Head') . ': ' . ($cb['percent'] ?? 0) . '% (Rs ' . ($cb['amount'] ?? 0) . ')';
+                }
+                $customStr = implode('; ', $customStrParts);
 
                 fputcsv($file, [
                     $p->invoice_no ?: ('PUR-' . $p->id),
@@ -363,6 +610,7 @@ class DiscountReconciliationController extends Controller
                     $p->our_disc_amount,
                     $p->customer_disc_percent . '%',
                     $p->customer_disc_amount,
+                    $customStr,
                     $p->our_disc_notes ?: '',
                     $settled,
                     $pending,

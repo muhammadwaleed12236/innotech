@@ -245,6 +245,12 @@
         </div>
 
         <div class="metric-card card-amber">
+            <div class="m-title">Custom Heads (Expiry/Return)</div>
+            <div class="m-val text-warning-emphasis" id="cardCustomHeadsAmt">Rs 0.00</div>
+            <div class="m-sub" id="cardCustomHeadsSub">Expiry, Return, Breakage etc.</div>
+        </div>
+
+        <div class="metric-card card-amber">
             <div class="m-title">Actual Customer Discount Given</div>
             <div class="m-val text-warning-emphasis" id="cardCustomerDiscGiven">Rs 0.00</div>
             <div class="m-sub">Advance given on Sales Invoices</div>
@@ -304,25 +310,27 @@
                             <th class="text-end">Company Disc.</th>
                             <th class="text-end text-success">Our Share</th>
                             <th class="text-end text-primary">Customer Share</th>
-                            <th style="min-width: 180px;">Our Maddain (Breakdown Notes)</th>
+                            <th class="text-end" style="color: #d97706; min-width: 140px;">Other Heads (Expiry/Return)</th>
+                            <th style="min-width: 160px;">Our Maddain (Breakdown Notes)</th>
                             <th class="text-center">Settlement</th>
-                            <th class="text-center" style="width: 90px;">Action</th>
+                            <th class="text-center" style="width: 130px;">Action</th>
                         </tr>
                     </thead>
                     <tbody id="invoicesTableBody">
                         <tr>
-                            <td colspan="11" class="text-center py-4 text-muted">
+                            <td colspan="12" class="text-center py-4 text-muted">
                                 <i class="fas fa-spinner fa-spin me-1"></i> Loading Discount Data...
                             </td>
                         </tr>
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="4" class="text-end">Total Period Summary:</td>
-                            <td class="text-end" id="footTradeVal">0.00</td>
-                            <td class="text-end text-primary" id="footCompanyDisc">0.00</td>
-                            <td class="text-end text-success" id="footOurDisc">0.00</td>
-                            <td class="text-end text-purple" id="footCustDisc">0.00</td>
+                            <td colspan="4" class="text-end fw-bold">Total Period Summary:</td>
+                            <td class="text-end font-monospace fw-bold" id="footTradeVal">0.00</td>
+                            <td class="text-end text-primary font-monospace fw-bold" id="footCompanyDisc">0.00</td>
+                            <td class="text-end text-success font-monospace fw-bold" id="footOurDisc">0.00</td>
+                            <td class="text-end text-purple font-monospace fw-bold" id="footCustDisc">0.00</td>
+                            <td class="text-end font-monospace fw-bold" style="color: #d97706;" id="footCustomDisc">0.00</td>
                             <td colspan="2" class="text-center" id="footSettledStatus">—</td>
                             <td></td>
                         </tr>
@@ -361,6 +369,18 @@
                                             <i class="fas fa-users me-1"></i> Customer Share Provided by Company
                                         </td>
                                         <td class="text-end fw-bold font-monospace text-primary" id="summCustShare">0.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ps-3 fw-semibold" style="color: #d97706;">
+                                            <i class="fas fa-layer-group me-1"></i> Custom Allowance Heads (Expiry, Return etc.)
+                                        </td>
+                                        <td class="text-end fw-bold font-monospace" style="color: #d97706;" id="summCustomHeads">0.00</td>
+                                    </tr>
+                                    <tr id="summCustomHeadsRow" style="display: none;">
+                                        <td colspan="2" class="p-2 bg-light">
+                                            <div class="small fw-bold text-muted mb-1" style="font-size: 10px;">Custom Heads Breakdown in Period:</div>
+                                            <div id="summCustomHeadsPills" class="d-flex flex-wrap gap-1"></div>
+                                        </td>
                                     </tr>
                                     <tr class="table-light">
                                         <td class="fw-semibold">Company Already Settled / Credited</td>
@@ -519,6 +539,19 @@
                     </label>
                     <textarea class="form-control form-control-sm" id="editOurNotes" rows="2" placeholder="e.g. 3% Commission, 2% Target Scheme, 2% Cash Discount"></textarea>
                     <small class="text-muted" style="font-size: 10.5px;">Detail of which specific heads this margin was earned under.</small>
+                </div>
+
+                {{-- Custom Heads for Invoice --}}
+                <div class="mb-3 border rounded p-2 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-bold mb-0" style="color: #d97706; font-size: 11.5px;">
+                            <i class="fas fa-layer-group me-1"></i> Custom Allowance Heads (Expiry, Return etc.)
+                        </label>
+                        <button type="button" class="btn btn-outline-warning text-dark btn-xs py-0 px-2" id="btnAddInvCustomHead" style="font-size: 10px;">
+                            <i class="fas fa-plus"></i> Add Head
+                        </button>
+                    </div>
+                    <div id="editInvCustomHeadsContainer" class="d-flex flex-column gap-1 mt-1"></div>
                 </div>
 
                 <hr class="my-2 text-muted">
@@ -682,6 +715,7 @@ $(document).ready(function() {
         $('#cardCompanyDiscAmt').text(formatRs(s.total_company_disc_amt));
         $('#cardOurDiscAmt').text(formatRs(s.total_our_disc_amt));
         $('#cardCustomerPassThroughAmt').text(formatRs(s.total_customer_passthrough_amt));
+        $('#cardCustomHeadsAmt').text(formatRs(s.total_custom_heads_amt || 0));
         $('#cardCustomerDiscGiven').text(formatRs(s.total_customer_disc_given));
         
         // Variance
@@ -710,6 +744,20 @@ $(document).ready(function() {
         $('#summCompanyDisc').text(formatNum(s.total_company_disc_amt));
         $('#summOurShare').text(formatNum(s.total_our_disc_amt));
         $('#summCustShare').text(formatNum(s.total_customer_passthrough_amt));
+        $('#summCustomHeads').text(formatNum(s.total_custom_heads_amt || 0));
+
+        if (s.custom_heads_summary && s.custom_heads_summary.length > 0) {
+            $('#summCustomHeadsRow').show();
+            const pills = s.custom_heads_summary.map(c => 
+                `<span class="badge bg-warning-subtle text-dark border border-warning-subtle p-1 px-2 font-monospace me-1 mb-1" style="font-size: 11px;">
+                    <i class="fas fa-tag me-1 text-warning"></i>${c.head}: <strong>${formatRs(c.amount)}</strong> (${c.count} items)
+                </span>`
+            ).join('');
+            $('#summCustomHeadsPills').html(pills);
+        } else {
+            $('#summCustomHeadsRow').hide();
+        }
+
         $('#summSettled').text(formatNum(s.total_company_settled_amt));
         $('#summPending').text(formatNum(s.total_company_pending_amt));
 
@@ -735,12 +783,78 @@ $(document).ready(function() {
         $('#footCompanyDisc').text(formatNum(s.total_company_disc_amt));
         $('#footOurDisc').text(formatNum(s.total_our_disc_amt));
         $('#footCustDisc').text(formatNum(s.total_customer_passthrough_amt));
+        $('#footCustomDisc').text(formatNum(s.total_custom_heads_amt || 0));
         $('#footSettledStatus').html(`Settled: <strong>${formatNum(s.total_company_settled_amt)}</strong> | Pending: <strong>${formatNum(s.total_company_pending_amt)}</strong>`);
+    }
+
+    function renderSubtableItems(items, inv) {
+        if (!items || !items.length) {
+            return `<tr><td colspan="10" class="text-center py-2 text-muted">No items recorded for this purchase invoice.</td></tr>`;
+        }
+
+        let rows = '';
+        items.forEach((it, idx) => {
+            // Custom heads pills
+            let customPills = '<span class="text-muted small">—</span>';
+            if (it.custom_disc_breakdown && it.custom_disc_breakdown.length > 0) {
+                customPills = it.custom_disc_breakdown.map(ch => 
+                    `<span class="badge bg-warning-subtle text-dark border border-warning-subtle d-inline-block me-1 mb-1 font-monospace" style="font-size: 10px;">
+                        ${ch.head}: ${ch.percent}% (${formatNum(ch.amount)})
+                    </span>`
+                ).join('');
+            }
+
+            // Subheads / Notes
+            let subheadPills = '';
+            if (it.our_disc_breakdown && it.our_disc_breakdown.length > 0) {
+                subheadPills = it.our_disc_breakdown.map(ob => 
+                    `<span class="badge bg-success-subtle text-success border border-success-subtle d-inline-block me-1 mb-1 font-monospace" style="font-size: 10px;">
+                        ${ob.head}: ${ob.percent}% (${formatNum(ob.amount)})
+                    </span>`
+                ).join('');
+            }
+            if (it.our_disc_notes && it.our_disc_notes.trim() !== '') {
+                subheadPills += `<small class="d-block text-muted" style="font-size: 10px;">${it.our_disc_notes}</small>`;
+            }
+            if (!subheadPills) subheadPills = '<span class="text-muted small">—</span>';
+
+            rows += `
+                <tr class="align-middle">
+                    <td class="text-center font-monospace text-muted">${idx + 1}</td>
+                    <td>
+                        <strong class="text-dark">${it.product_name}</strong>
+                        ${it.batch_no && it.batch_no !== '—' ? `<span class="badge bg-light text-secondary border ms-1" style="font-size: 10px;">Batch: ${it.batch_no}</span>` : ''}
+                    </td>
+                    <td class="text-center font-monospace">${formatNum(it.qty)} <span class="text-muted small">${it.unit}</span></td>
+                    <td class="text-end font-monospace">${formatNum(it.trade_value)}</td>
+                    <td class="text-end font-monospace">
+                        <span class="d-block fw-bold text-primary">${formatNum(it.company_disc_amount)}</span>
+                        <small class="text-muted" style="font-size: 10px;">${it.company_disc_percent}%</small>
+                    </td>
+                    <td class="text-end font-monospace">
+                        <span class="d-block fw-bold text-success">${formatNum(it.our_disc_amount)}</span>
+                        <small class="text-muted" style="font-size: 10px;">${it.our_disc_percent}%</small>
+                    </td>
+                    <td class="text-end font-monospace">
+                        <span class="d-block fw-bold" style="color: #8b5cf6;">${formatNum(it.customer_disc_amount)}</span>
+                        <small class="text-muted" style="font-size: 10px;">${it.customer_disc_percent}%</small>
+                    </td>
+                    <td>${customPills}</td>
+                    <td>${subheadPills}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-outline-primary btn-xs py-0 px-2 btn-open-item-split-recon" data-item-id="${it.id}" data-inv-id="${inv.id}" title="Split Discount for this item" style="font-size: 11px;">
+                            <i class="fas fa-sliders-h me-1"></i> Split
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        return rows;
     }
 
     function renderInvoicesTable(list) {
         if (!list || list.length === 0) {
-            $('#invoicesTableBody').html('<tr><td colspan="11" class="text-center py-4 text-muted">No purchase invoices found for this period.</td></tr>');
+            $('#invoicesTableBody').html('<tr><td colspan="12" class="text-center py-4 text-muted">No purchase invoices found for this period.</td></tr>');
             return;
         }
 
@@ -751,6 +865,16 @@ $(document).ready(function() {
                 statusBadge = '<span class="badge-status badge-settled">Settled</span>';
             } else if (inv.settlement_status === 'partial') {
                 statusBadge = '<span class="badge-status badge-partial">Partial</span>';
+            }
+
+            // Custom heads pills
+            let customHtml = '<span class="text-muted small">—</span>';
+            if (inv.custom_disc_breakdown && inv.custom_disc_breakdown.length > 0) {
+                customHtml = inv.custom_disc_breakdown.map(ch => 
+                    `<span class="badge bg-warning-subtle text-dark border border-warning-subtle d-inline-block me-1 mb-1 font-monospace" style="font-size: 10px;">
+                        ${ch.head}: ${ch.percent}% (${formatNum(ch.amount)})
+                    </span>`
+                ).join('');
             }
 
             // Render Maddain tags
@@ -783,6 +907,7 @@ $(document).ready(function() {
                         <span class="d-block fw-bold" style="color: #8b5cf6;">${formatNum(inv.customer_disc_amount)}</span>
                         <small class="text-muted" style="font-size: 10px;">${inv.customer_disc_percent}%</small>
                     </td>
+                    <td class="text-end">${customHtml}</td>
                     <td>${notesHtml}</td>
                     <td class="text-center">
                         ${statusBadge}
@@ -791,9 +916,48 @@ $(document).ready(function() {
                         </div>
                     </td>
                     <td class="text-center">
-                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-open-split" data-id="${inv.id}" title="Edit Discount Split & Maddain">
-                            <i class="fas fa-edit"></i> Split
-                        </button>
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <button type="button" class="btn btn-outline-info btn-xs py-0 px-2 btn-toggle-items" data-id="${inv.id}" title="Toggle Items Breakdown" style="font-size: 11px;">
+                                <i class="fas fa-chevron-down"></i> Items (${inv.items ? inv.items.length : 0})
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-xs py-0 px-2 btn-open-split" data-id="${inv.id}" title="Edit Invoice Split" style="font-size: 11px;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {{-- Nested Items Sub-Table --}}
+                <tr id="items-row-${inv.id}" class="items-detail-row" style="display: none; background: #f8fafc;">
+                    <td colspan="12" class="p-3">
+                        <div class="border rounded bg-white shadow-sm p-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                <span class="fw-bold small text-dark">
+                                    <i class="fas fa-boxes-stacked text-primary me-1"></i> Item-Level Discount Split (${inv.invoice_no})
+                                </span>
+                                <span class="text-muted small">Total ${inv.items ? inv.items.length : 0} Items</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 align-middle" style="font-size: 11.5px;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 30px;" class="text-center">#</th>
+                                            <th>Product Name &amp; Batch</th>
+                                            <th class="text-center" style="width: 90px;">Qty &amp; Unit</th>
+                                            <th class="text-end" style="width: 105px;">Trade Value</th>
+                                            <th class="text-end" style="width: 105px;">Item Disc.</th>
+                                            <th class="text-end text-success" style="width: 110px;">Our Share</th>
+                                            <th class="text-end text-primary" style="width: 110px;">Customer Share</th>
+                                            <th style="min-width: 150px;">Other Heads (Expiry/Return)</th>
+                                            <th style="min-width: 120px;">Notes / Maddain</th>
+                                            <th class="text-center" style="width: 70px;">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${renderSubtableItems(inv.items, inv)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -802,7 +966,74 @@ $(document).ready(function() {
         $('#invoicesTableBody').html(html);
     }
 
-    // Modal Interaction
+    // Toggle Items Row
+    $(document).on('click', '.btn-toggle-items', function() {
+        const id = $(this).data('id');
+        const $row = $(`#items-row-${id}`);
+        const $icon = $(this).find('i');
+        if ($row.is(':visible')) {
+            $row.hide();
+            $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        } else {
+            $row.show();
+            $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        }
+    });
+
+    // Open Item Split Modal for Reconciliation Item
+    $(document).on('click', '.btn-open-item-split-recon', function() {
+        const itemId = $(this).data('item-id');
+        const invId = $(this).data('inv-id');
+        const inv = currentInvoices.find(i => i.id == invId);
+        if (!inv) return;
+        const item = (inv.items || []).find(it => it.id == itemId);
+        if (!item) return;
+
+        if (typeof window.openItemSplitModalForRecon === 'function') {
+            window.openItemSplitModalForRecon(item, inv);
+        }
+    });
+
+    // Invoice Custom Heads helpers in modal
+    function renderInvCustomHeads(heads) {
+        const $cont = $('#editInvCustomHeadsContainer');
+        $cont.empty();
+        if (!heads || !heads.length) return;
+
+        heads.forEach(h => {
+            appendInvCustomHeadRow(h.head || '', h.percent || 0, h.amount || 0);
+        });
+    }
+
+    function appendInvCustomHeadRow(head, pct, amt) {
+        const html = `
+            <div class="d-flex align-items-center gap-1 inv-custom-head-row">
+                <input type="text" class="form-control form-control-sm inv-custom-head-name" placeholder="Head Name (e.g. Expiry)" value="${head}" style="font-size: 11px;">
+                <div class="input-group input-group-sm" style="max-width: 95px;">
+                    <input type="number" step="0.01" class="form-control text-end inv-custom-head-pct font-monospace" placeholder="%" value="${pct}" style="font-size: 11px;">
+                    <span class="input-group-text p-1 small">%</span>
+                </div>
+                <div class="input-group input-group-sm" style="max-width: 115px;">
+                    <span class="input-group-text p-1 small">Rs</span>
+                    <input type="number" step="0.01" class="form-control text-end inv-custom-head-amt font-monospace" placeholder="Rs" value="${amt}" style="font-size: 11px;">
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1 btn-remove-inv-custom-head" title="Remove" style="font-size: 10px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        $('#editInvCustomHeadsContainer').append(html);
+    }
+
+    $('#btnAddInvCustomHead').on('click', function() {
+        appendInvCustomHeadRow('Expiry Allowance', 0, 0);
+    });
+
+    $(document).on('click', '.btn-remove-inv-custom-head', function() {
+        $(this).closest('.inv-custom-head-row').remove();
+    });
+
+    // Invoice Modal Interaction
     $(document).on('click', '.btn-open-split', function() {
         const id = $(this).data('id');
         const inv = currentInvoices.find(item => item.id == id);
@@ -819,6 +1050,8 @@ $(document).ready(function() {
         $('#editOurNotes').val(inv.our_disc_notes || '');
         $('#editSettledAmt').val(inv.company_settled_amount || 0);
         $('#editSettlementStatus').val(inv.settlement_status || 'pending');
+
+        renderInvCustomHeads(inv.custom_disc_breakdown || []);
 
         recalcModalAmounts(inv.base_value, inv.company_disc_percent, inv.company_disc_amount);
 
@@ -870,6 +1103,17 @@ $(document).ready(function() {
         const $btn = $(this);
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
 
+        // Collect custom heads
+        const customHeads = [];
+        $('#editInvCustomHeadsContainer .inv-custom-head-row').each(function() {
+            const hName = $(this).find('.inv-custom-head-name').val().trim();
+            const hPct = parseFloat($(this).find('.inv-custom-head-pct').val()) || 0;
+            const hAmt = parseFloat($(this).find('.inv-custom-head-amt').val()) || 0;
+            if (hName !== '' && (hPct > 0 || hAmt > 0)) {
+                customHeads.push({ head: hName, percent: hPct, amount: hAmt });
+            }
+        });
+
         $.ajax({
             url: "{{ route('report.discount_reconciliation.update_split') }}",
             type: "POST",
@@ -878,6 +1122,7 @@ $(document).ready(function() {
                 purchase_id: id,
                 our_disc_percent: $('#editOurPct').val(),
                 customer_disc_percent: $('#editCustPct').val(),
+                custom_disc_breakdown: customHeads,
                 our_disc_notes: $('#editOurNotes').val(),
                 company_settled_amount: $('#editSettledAmt').val(),
                 settlement_status: $('#editSettlementStatus').val()
@@ -909,5 +1154,6 @@ $(document).ready(function() {
     loadReportData();
 });
 </script>
+@include('admin_panel.purchase.item_discount_split_modal')
 @endpush
 @endsection

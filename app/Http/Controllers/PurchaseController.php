@@ -845,6 +845,12 @@ class PurchaseController extends Controller
             $totalExclusiveGst = 0;
             $totalGst = 0;
 
+            $aggTotalItemDisc = 0;
+            $aggTotalOurDisc = 0;
+            $aggTotalCustDisc = 0;
+            $aggCustomHeads = [];
+            $aggOurBreakdown = [];
+
             // Snapshot fields
             $sizeModes = $request->size_mode ?? [];
             $ppbs = $request->pieces_per_box ?? [];
@@ -983,6 +989,68 @@ class PurchaseController extends Controller
 
                 $itemWh = !empty($rowWhIds[$i]) ? (int)$rowWhIds[$i] : $warehouseId;
 
+                // Item Discount Split Handling
+                $rawOurPct = $request->item_our_disc_percent[$i] ?? null;
+                $rawOurAmt = $request->item_our_disc_amount[$i] ?? null;
+                $rawCustPct = $request->item_customer_disc_percent[$i] ?? null;
+                $rawCustAmt = $request->item_customer_disc_amount[$i] ?? null;
+                $rowOurNotes = $request->item_our_disc_notes[$i] ?? null;
+
+                $rawCustomBreakdown = $request->item_custom_disc_breakdown[$i] ?? null;
+                $rowCustomBreakdown = null;
+                if (!empty($rawCustomBreakdown)) {
+                    $rowCustomBreakdown = is_array($rawCustomBreakdown) ? $rawCustomBreakdown : json_decode($rawCustomBreakdown, true);
+                }
+
+                $rawOurBreakdown = $request->item_our_disc_breakdown[$i] ?? null;
+                $rowOurBreakdown = null;
+                if (!empty($rawOurBreakdown)) {
+                    $rowOurBreakdown = is_array($rawOurBreakdown) ? $rawOurBreakdown : json_decode($rawOurBreakdown, true);
+                }
+
+                $hasExplicitSplit = ($rawOurPct !== null && is_numeric($rawOurPct) && (float)$rawOurPct > 0)
+                    || ($rawCustPct !== null && is_numeric($rawCustPct) && (float)$rawCustPct > 0)
+                    || !empty($rowCustomBreakdown);
+
+                if ($hasExplicitSplit) {
+                    $rowOurPct = (float)($rawOurPct ?? 0);
+                    $rowOurAmt = isset($rawOurAmt) && is_numeric($rawOurAmt) && (float)$rawOurAmt > 0 ? (float)$rawOurAmt : ($tradeValue > 0 ? round($tradeValue * ($rowOurPct / 100), 2) : 0);
+                    $rowCustPct = (float)($rawCustPct ?? 0);
+                    $rowCustAmt = isset($rawCustAmt) && is_numeric($rawCustAmt) && (float)$rawCustAmt > 0 ? (float)$rawCustAmt : ($tradeValue > 0 ? round($tradeValue * ($rowCustPct / 100), 2) : 0);
+                } else {
+                    // Default: 100% of discount allocated to Owner / Distributor
+                    $rowOurPct = $discPercent;
+                    $rowOurAmt = $discAmount;
+                    $rowCustPct = 0;
+                    $rowCustAmt = 0;
+                }
+
+                $aggTotalItemDisc += $discAmount;
+                $aggTotalOurDisc += $rowOurAmt;
+                $aggTotalCustDisc += $rowCustAmt;
+
+                if (!empty($rowCustomBreakdown) && is_array($rowCustomBreakdown)) {
+                    foreach ($rowCustomBreakdown as $ch) {
+                        $hName = trim($ch['head'] ?? 'Other');
+                        $hAmt = (float)($ch['amount'] ?? 0);
+                        if (!isset($aggCustomHeads[$hName])) {
+                            $aggCustomHeads[$hName] = ['head' => $hName, 'amount' => 0, 'percent' => 0];
+                        }
+                        $aggCustomHeads[$hName]['amount'] += $hAmt;
+                    }
+                }
+
+                if (!empty($rowOurBreakdown) && is_array($rowOurBreakdown)) {
+                    foreach ($rowOurBreakdown as $ob) {
+                        $hName = trim($ob['head'] ?? 'Subhead');
+                        $hAmt = (float)($ob['amount'] ?? 0);
+                        if (!isset($aggOurBreakdown[$hName])) {
+                            $aggOurBreakdown[$hName] = ['head' => $hName, 'amount' => 0, 'percent' => 0];
+                        }
+                        $aggOurBreakdown[$hName]['amount'] += $hAmt;
+                    }
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'warehouse_id' => $itemWh,
@@ -997,6 +1065,15 @@ class PurchaseController extends Controller
                     'retail_value' => $retailValue,
                     'trade_value' => $tradeValue,
                     'item_discount' => $discAmount,
+                    'company_disc_percent' => $discPercent,
+                    'company_disc_amount' => $discAmount,
+                    'our_disc_percent' => $rowOurPct,
+                    'our_disc_amount' => $rowOurAmt,
+                    'customer_disc_percent' => $rowCustPct,
+                    'customer_disc_amount' => $rowCustAmt,
+                    'our_disc_notes' => $rowOurNotes,
+                    'custom_disc_breakdown' => $rowCustomBreakdown,
+                    'our_disc_breakdown' => $rowOurBreakdown,
                     'value_after_discount' => $valueAfterDiscount,
                     'is_third_schedule' => $isThird ? 1 : 0,
                     'gst_percent' => $gstPercent,
@@ -1028,6 +1105,22 @@ class PurchaseController extends Controller
                 $totalGst += $gstAmount;
             }
 
+            // Calculate effective percentages for aggregated heads
+            foreach ($aggCustomHeads as &$ach) {
+                $ach['percent'] = $totalTradeValue > 0 ? round(($ach['amount'] / $totalTradeValue) * 100, 2) : 0;
+                $ach['amount'] = round($ach['amount'], 2);
+            }
+            unset($ach);
+
+            foreach ($aggOurBreakdown as &$aob) {
+                $aob['percent'] = $totalTradeValue > 0 ? round(($aob['amount'] / $totalTradeValue) * 100, 2) : 0;
+                $aob['amount'] = round($aob['amount'], 2);
+            }
+            unset($aob);
+
+            $invCustomBreakdown = !empty($aggCustomHeads) ? array_values($aggCustomHeads) : (is_array($request->custom_disc_breakdown) ? $request->custom_disc_breakdown : json_decode($request->custom_disc_breakdown ?? '[]', true));
+            $invOurBreakdown = !empty($aggOurBreakdown) ? array_values($aggOurBreakdown) : (is_array($request->our_disc_breakdown) ? $request->our_disc_breakdown : json_decode($request->our_disc_breakdown ?? '[]', true));
+
             // totals
             $discount = (float) ($request->discount ?? 0);
             $extraCost = (float) ($request->extra_cost ?? $request->freight ?? 0);
@@ -1035,12 +1128,15 @@ class PurchaseController extends Controller
             $whtAmount = (float) ($request->wht_amount ?? 0);
             $netAmount = ($subtotal - $discount) + $extraCost + $whtAmount;
 
-            $ourDiscPct = $request->filled('our_disc_percent') ? (float)$request->our_disc_percent : (float)$purchase->our_disc_percent;
-            $custDiscPct = $request->filled('customer_disc_percent') ? (float)$request->customer_disc_percent : (float)$purchase->customer_disc_percent;
+            $finalCompanyDiscAmt = $discount > 0 ? $discount : $aggTotalItemDisc;
+            $companyDiscPct = $request->filled('company_disc_percent') ? (float)$request->company_disc_percent : ($totalTradeValue > 0 ? round(($finalCompanyDiscAmt / $totalTradeValue) * 100, 2) : 0);
+
+            $ourDiscAmt = $aggTotalOurDisc > 0 ? $aggTotalOurDisc : ($request->filled('our_disc_amount') ? (float)$request->our_disc_amount : ($totalTradeValue > 0 && $request->filled('our_disc_percent') ? round($totalTradeValue * ((float)$request->our_disc_percent / 100), 2) : $finalCompanyDiscAmt));
+            $ourDiscPct = $request->filled('our_disc_percent') ? (float)$request->our_disc_percent : ($totalTradeValue > 0 ? round(($ourDiscAmt / $totalTradeValue) * 100, 2) : 0);
+
+            $custDiscAmt = $aggTotalCustDisc > 0 ? $aggTotalCustDisc : ($request->filled('customer_disc_amount') ? (float)$request->customer_disc_amount : ($totalTradeValue > 0 && $request->filled('customer_disc_percent') ? round($totalTradeValue * ((float)$request->customer_disc_percent / 100), 2) : 0));
+            $custDiscPct = $request->filled('customer_disc_percent') ? (float)$request->customer_disc_percent : ($totalTradeValue > 0 ? round(($custDiscAmt / $totalTradeValue) * 100, 2) : 0);
             $ourNotes = $request->has('our_disc_notes') ? $request->our_disc_notes : $purchase->our_disc_notes;
-            $companyDiscPct = $request->filled('company_disc_percent') ? (float)$request->company_disc_percent : ($totalTradeValue > 0 ? round(($discount / $totalTradeValue) * 100, 2) : 0);
-            $ourDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($ourDiscPct / 100), 2) : 0;
-            $custDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($custDiscPct / 100), 2) : 0;
 
             $purchase->update([
                 'subtotal' => $subtotal,
@@ -1056,11 +1152,13 @@ class PurchaseController extends Controller
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'company_disc_percent' => $companyDiscPct,
-                'company_disc_amount' => $discount,
+                'company_disc_amount' => $finalCompanyDiscAmt,
                 'our_disc_percent' => $ourDiscPct,
                 'our_disc_amount' => $ourDiscAmt,
                 'customer_disc_percent' => $custDiscPct,
                 'customer_disc_amount' => $custDiscAmt,
+                'custom_disc_breakdown' => $invCustomBreakdown,
+                'our_disc_breakdown' => $invOurBreakdown,
                 'our_disc_notes' => $ourNotes,
                 'extra_cost' => $extraCost,
                 'net_amount' => $netAmount,
@@ -1650,6 +1748,12 @@ class PurchaseController extends Controller
             $totalExclusiveGst = 0;
             $totalGst = 0;
 
+            $aggTotalItemDisc = 0;
+            $aggTotalOurDisc = 0;
+            $aggTotalCustDisc = 0;
+            $aggCustomHeads = [];
+            $aggOurBreakdown = [];
+
             // Snapshot fields (Raw Request)
             $sizeModes = $request->size_mode ?? [];
             $ppbs = $request->pieces_per_box ?? [];
@@ -1810,6 +1914,68 @@ class PurchaseController extends Controller
 
                 $itemWh = !empty($rowWhIds[$i]) ? (int)$rowWhIds[$i] : $warehouseId;
 
+                // Item Discount Split Handling
+                $rawOurPct = $request->item_our_disc_percent[$i] ?? null;
+                $rawOurAmt = $request->item_our_disc_amount[$i] ?? null;
+                $rawCustPct = $request->item_customer_disc_percent[$i] ?? null;
+                $rawCustAmt = $request->item_customer_disc_amount[$i] ?? null;
+                $rowOurNotes = $request->item_our_disc_notes[$i] ?? null;
+
+                $rawCustomBreakdown = $request->item_custom_disc_breakdown[$i] ?? null;
+                $rowCustomBreakdown = null;
+                if (!empty($rawCustomBreakdown)) {
+                    $rowCustomBreakdown = is_array($rawCustomBreakdown) ? $rawCustomBreakdown : json_decode($rawCustomBreakdown, true);
+                }
+
+                $rawOurBreakdown = $request->item_our_disc_breakdown[$i] ?? null;
+                $rowOurBreakdown = null;
+                if (!empty($rawOurBreakdown)) {
+                    $rowOurBreakdown = is_array($rawOurBreakdown) ? $rawOurBreakdown : json_decode($rawOurBreakdown, true);
+                }
+
+                $hasExplicitSplit = ($rawOurPct !== null && is_numeric($rawOurPct) && (float)$rawOurPct > 0)
+                    || ($rawCustPct !== null && is_numeric($rawCustPct) && (float)$rawCustPct > 0)
+                    || !empty($rowCustomBreakdown);
+
+                if ($hasExplicitSplit) {
+                    $rowOurPct = (float)($rawOurPct ?? 0);
+                    $rowOurAmt = isset($rawOurAmt) && is_numeric($rawOurAmt) && (float)$rawOurAmt > 0 ? (float)$rawOurAmt : ($tradeValue > 0 ? round($tradeValue * ($rowOurPct / 100), 2) : 0);
+                    $rowCustPct = (float)($rawCustPct ?? 0);
+                    $rowCustAmt = isset($rawCustAmt) && is_numeric($rawCustAmt) && (float)$rawCustAmt > 0 ? (float)$rawCustAmt : ($tradeValue > 0 ? round($tradeValue * ($rowCustPct / 100), 2) : 0);
+                } else {
+                    // Default: 100% of discount allocated to Owner / Distributor
+                    $rowOurPct = $discPercent;
+                    $rowOurAmt = $discAmount;
+                    $rowCustPct = 0;
+                    $rowCustAmt = 0;
+                }
+
+                $aggTotalItemDisc += $discAmount;
+                $aggTotalOurDisc += $rowOurAmt;
+                $aggTotalCustDisc += $rowCustAmt;
+
+                if (!empty($rowCustomBreakdown) && is_array($rowCustomBreakdown)) {
+                    foreach ($rowCustomBreakdown as $ch) {
+                        $hName = trim($ch['head'] ?? 'Other');
+                        $hAmt = (float)($ch['amount'] ?? 0);
+                        if (!isset($aggCustomHeads[$hName])) {
+                            $aggCustomHeads[$hName] = ['head' => $hName, 'amount' => 0, 'percent' => 0];
+                        }
+                        $aggCustomHeads[$hName]['amount'] += $hAmt;
+                    }
+                }
+
+                if (!empty($rowOurBreakdown) && is_array($rowOurBreakdown)) {
+                    foreach ($rowOurBreakdown as $ob) {
+                        $hName = trim($ob['head'] ?? 'Subhead');
+                        $hAmt = (float)($ob['amount'] ?? 0);
+                        if (!isset($aggOurBreakdown[$hName])) {
+                            $aggOurBreakdown[$hName] = ['head' => $hName, 'amount' => 0, 'percent' => 0];
+                        }
+                        $aggOurBreakdown[$hName]['amount'] += $hAmt;
+                    }
+                }
+
                 PurchaseItem::create([
                     'purchase_id' => $purchase->id,
                     'warehouse_id' => $itemWh,
@@ -1824,6 +1990,15 @@ class PurchaseController extends Controller
                     'retail_value' => $retailValue,
                     'trade_value' => $tradeValue,
                     'item_discount' => $discAmount,
+                    'company_disc_percent' => $discPercent,
+                    'company_disc_amount' => $discAmount,
+                    'our_disc_percent' => $rowOurPct,
+                    'our_disc_amount' => $rowOurAmt,
+                    'customer_disc_percent' => $rowCustPct,
+                    'customer_disc_amount' => $rowCustAmt,
+                    'our_disc_notes' => $rowOurNotes,
+                    'custom_disc_breakdown' => $rowCustomBreakdown,
+                    'our_disc_breakdown' => $rowOurBreakdown,
                     'value_after_discount' => $valueAfterDiscount,
                     'is_third_schedule' => $isThird ? 1 : 0,
                     'gst_percent' => $gstPercent,
@@ -1856,6 +2031,22 @@ class PurchaseController extends Controller
                 $newMap[$pid] = ($newMap[$pid] ?? 0) + $baseQty;
             }
 
+            // Calculate effective percentages for aggregated heads
+            foreach ($aggCustomHeads as &$ach) {
+                $ach['percent'] = $totalTradeValue > 0 ? round(($ach['amount'] / $totalTradeValue) * 100, 2) : 0;
+                $ach['amount'] = round($ach['amount'], 2);
+            }
+            unset($ach);
+
+            foreach ($aggOurBreakdown as &$aob) {
+                $aob['percent'] = $totalTradeValue > 0 ? round(($aob['amount'] / $totalTradeValue) * 100, 2) : 0;
+                $aob['amount'] = round($aob['amount'], 2);
+            }
+            unset($aob);
+
+            $invCustomBreakdown = !empty($aggCustomHeads) ? array_values($aggCustomHeads) : (is_array($request->custom_disc_breakdown) ? $request->custom_disc_breakdown : json_decode($request->custom_disc_breakdown ?? '[]', true));
+            $invOurBreakdown = !empty($aggOurBreakdown) ? array_values($aggOurBreakdown) : (is_array($request->our_disc_breakdown) ? $request->our_disc_breakdown : json_decode($request->our_disc_breakdown ?? '[]', true));
+
             // Totals calculation
             $discount = (float) ($request->discount ?? 0);
             $extraCost = (float) ($request->extra_cost ?? $request->freight ?? 0);
@@ -1863,12 +2054,15 @@ class PurchaseController extends Controller
             $whtAmount = (float) ($request->wht_amount ?? 0);
             $netAmount = ($subtotal - $discount) + $extraCost + $whtAmount;
 
-            $ourDiscPct = $request->filled('our_disc_percent') ? (float)$request->our_disc_percent : (float)$purchase->our_disc_percent;
-            $custDiscPct = $request->filled('customer_disc_percent') ? (float)$request->customer_disc_percent : (float)$purchase->customer_disc_percent;
+            $finalCompanyDiscAmt = $discount > 0 ? $discount : $aggTotalItemDisc;
+            $companyDiscPct = $request->filled('company_disc_percent') ? (float)$request->company_disc_percent : ($totalTradeValue > 0 ? round(($finalCompanyDiscAmt / $totalTradeValue) * 100, 2) : 0);
+
+            $ourDiscAmt = $aggTotalOurDisc > 0 ? $aggTotalOurDisc : ($request->filled('our_disc_amount') ? (float)$request->our_disc_amount : ($totalTradeValue > 0 && $request->filled('our_disc_percent') ? round($totalTradeValue * ((float)$request->our_disc_percent / 100), 2) : $finalCompanyDiscAmt));
+            $ourDiscPct = $request->filled('our_disc_percent') ? (float)$request->our_disc_percent : ($totalTradeValue > 0 ? round(($ourDiscAmt / $totalTradeValue) * 100, 2) : 0);
+
+            $custDiscAmt = $aggTotalCustDisc > 0 ? $aggTotalCustDisc : ($request->filled('customer_disc_amount') ? (float)$request->customer_disc_amount : ($totalTradeValue > 0 && $request->filled('customer_disc_percent') ? round($totalTradeValue * ((float)$request->customer_disc_percent / 100), 2) : 0));
+            $custDiscPct = $request->filled('customer_disc_percent') ? (float)$request->customer_disc_percent : ($totalTradeValue > 0 ? round(($custDiscAmt / $totalTradeValue) * 100, 2) : 0);
             $ourNotes = $request->has('our_disc_notes') ? $request->our_disc_notes : $purchase->our_disc_notes;
-            $companyDiscPct = $request->filled('company_disc_percent') ? (float)$request->company_disc_percent : ($totalTradeValue > 0 ? round(($discount / $totalTradeValue) * 100, 2) : 0);
-            $ourDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($ourDiscPct / 100), 2) : 0;
-            $custDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($custDiscPct / 100), 2) : 0;
 
             // Payments calculation from request
             $paymentAccountIds = $request->input('payment_account_id', []);
@@ -1912,11 +2106,13 @@ class PurchaseController extends Controller
                 'discount' => $discount,
                 'additional_discount' => $discount,
                 'company_disc_percent' => $companyDiscPct,
-                'company_disc_amount' => $discount,
+                'company_disc_amount' => $finalCompanyDiscAmt,
                 'our_disc_percent' => $ourDiscPct,
                 'our_disc_amount' => $ourDiscAmt,
                 'customer_disc_percent' => $custDiscPct,
                 'customer_disc_amount' => $custDiscAmt,
+                'custom_disc_breakdown' => $invCustomBreakdown,
+                'our_disc_breakdown' => $invOurBreakdown,
                 'our_disc_notes' => $ourNotes,
                 'extra_cost' => $extraCost,
                 'net_amount' => $netAmount,
