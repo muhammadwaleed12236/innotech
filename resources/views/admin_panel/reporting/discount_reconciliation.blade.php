@@ -197,11 +197,31 @@
                 </select>
             </div>
             <div class="col-md-1 col-6 d-flex gap-1">
-                <button type="button" class="btn btn-primary btn-sm w-100 fw-bold" id="btnFilter">
+                <button type="button" class="btn btn-primary btn-sm w-100 fw-bold" id="btnFilter" title="Apply Filter">
                     <i class="fas fa-filter"></i> Apply
                 </button>
             </div>
         </form>
+
+        {{-- Quick Range Presets --}}
+        <div class="d-flex flex-wrap align-items-center gap-1 mt-2 pt-2 border-top">
+            <span class="text-muted small fw-bold me-1" style="font-size: 11px;"><i class="fas fa-bolt text-warning me-1"></i> Quick Presets:</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-preset" data-preset="all" style="font-size: 11px;">
+                <i class="fas fa-globe me-1"></i> All Time (All Records)
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-preset" data-preset="ytd" style="font-size: 11px;">
+                This Year (YTD)
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-preset" data-preset="this_month" style="font-size: 11px;">
+                This Month
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-preset" data-preset="last_month" style="font-size: 11px;">
+                Last Month
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 ms-auto" id="btnResetFilter" style="font-size: 11px;">
+                <i class="fas fa-undo me-1"></i> Reset
+            </button>
+        </div>
     </div>
 
     {{-- KPI Metric Cards --}}
@@ -563,6 +583,50 @@ $(document).ready(function() {
             $('#dateTo').val(lastDate);
             loadReportData();
         }
+    });
+
+    // Quick Presets
+    $('.btn-preset').on('click', function() {
+        const preset = $(this).data('preset');
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-based
+
+        if (preset === 'all') {
+            $('#monthPicker').val('');
+            $('#dateFrom').val('');
+            $('#dateTo').val('');
+        } else if (preset === 'ytd') {
+            $('#monthPicker').val('');
+            $('#dateFrom').val(`${year}-01-01`);
+            $('#dateTo').val(now.toISOString().split('T')[0]);
+        } else if (preset === 'this_month') {
+            const mStr = String(month + 1).padStart(2, '0');
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            $('#monthPicker').val(`${year}-${mStr}`);
+            $('#dateFrom').val(`${year}-${mStr}-01`);
+            $('#dateTo').val(`${year}-${mStr}-${String(lastDay).padStart(2, '0')}`);
+        } else if (preset === 'last_month') {
+            const prevMonthDate = new Date(year, month - 1, 1);
+            const pYear = prevMonthDate.getFullYear();
+            const pMonth = prevMonthDate.getMonth();
+            const pmStr = String(pMonth + 1).padStart(2, '0');
+            const lastDay = new Date(pYear, pMonth + 1, 0).getDate();
+            $('#monthPicker').val(`${pYear}-${pmStr}`);
+            $('#dateFrom').val(`${pYear}-${pmStr}-01`);
+            $('#dateTo').val(`${pYear}-${pmStr}-${String(lastDay).padStart(2, '0')}`);
+        }
+
+        loadReportData();
+    });
+
+    $('#btnResetFilter').on('click', function() {
+        $('#monthPicker').val('');
+        $('#dateFrom').val('');
+        $('#dateTo').val('');
+        $('#vendorSelect').val('');
+        $('#settlementFilter').val('all');
+        loadReportData();
     });
 
     $('#btnFilter').on('click', function() {

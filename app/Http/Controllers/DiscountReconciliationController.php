@@ -18,23 +18,50 @@ class DiscountReconciliationController extends Controller
     public function index(Request $request)
     {
         $vendors = Vendor::orderBy('name')->get();
-        $currentMonth = Carbon::now()->format('Y-m');
-        $dateFrom = Carbon::now()->startOfMonth()->format('Y-m-d');
-        $dateTo = Carbon::now()->format('Y-m-d');
+        $now = Carbon::now();
+        $currentMonth = $now->format('Y-m');
+
+        // Check if current month has any purchases
+        $hasCurrentMonthPurchases = Purchase::whereBetween('purchase_date', [
+            $now->copy()->startOfMonth()->format('Y-m-d'),
+            $now->copy()->endOfMonth()->format('Y-m-d')
+        ])->exists();
+
+        if (!$hasCurrentMonthPurchases) {
+            // Fallback to latest purchase date so user sees data immediately
+            $latestPurchase = Purchase::orderBy('purchase_date', 'desc')->first();
+            if ($latestPurchase && $latestPurchase->purchase_date) {
+                $latestDate = Carbon::parse($latestPurchase->purchase_date);
+                $currentMonth = $latestDate->format('Y-m');
+                // Use the entire year of latest transaction or month to show all data
+                $dateFrom = $latestDate->copy()->startOfYear()->format('Y-m-d');
+                $dateTo = $latestDate->copy()->endOfMonth()->format('Y-m-d');
+            } else {
+                $dateFrom = $now->copy()->startOfYear()->format('Y-m-d');
+                $dateTo = $now->copy()->format('Y-m-d');
+            }
+        } else {
+            $dateFrom = $now->copy()->startOfMonth()->format('Y-m-d');
+            $dateTo = $now->copy()->format('Y-m-d');
+        }
 
         return view('admin_panel.reporting.discount_reconciliation', compact('vendors', 'currentMonth', 'dateFrom', 'dateTo'));
     }
 
     public function fetchData(Request $request)
     {
-        $dateFrom = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : Carbon::now()->startOfMonth()->startOfDay();
-        $dateTo = $request->filled('date_to') ? Carbon::parse($request->date_to)->endOfDay() : Carbon::now()->endOfDay();
         $vendorId = $request->filled('vendor_id') ? $request->vendor_id : null;
         $statusFilter = $request->filled('settlement_status') ? $request->settlement_status : 'all';
 
-        // 1. Fetch Purchases in period
-        $purchasesQuery = Purchase::with(['vendor', 'items.product'])
-            ->whereBetween('purchase_date', [$dateFrom->format('Y-m-d'), $dateTo->format('Y-m-d')]);
+        // 1. Fetch Purchases in period (flexible date filtering)
+        $purchasesQuery = Purchase::with(['vendor', 'items.product']);
+
+        if ($request->filled('date_from')) {
+            $purchasesQuery->whereDate('purchase_date', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));
+        }
+        if ($request->filled('date_to')) {
+            $purchasesQuery->whereDate('purchase_date', '<=', Carbon::parse($request->date_to)->format('Y-m-d'));
+        }
 
         if ($vendorId) {
             $purchasesQuery->where('vendor_id', $vendorId);
@@ -69,6 +96,12 @@ class DiscountReconciliationController extends Controller
                 $companyDiscPct = $baseValue > 0 ? round(($companyDiscAmt / $baseValue) * 100, 2) : 0;
             }
 
+            // Guard against corrupted discount exceeding base value
+            if ($companyDiscAmt > $baseValue && $baseValue > 0) {
+                $companyDiscAmt = $baseValue;
+                $companyDiscPct = 100;
+            }
+
             $ourDiscPct = (float)$p->our_disc_percent;
             $ourDiscAmt = (float)$p->our_disc_amount;
             $custDiscPct = (float)$p->customer_disc_percent;
@@ -76,7 +109,6 @@ class DiscountReconciliationController extends Controller
 
             // Auto-calculate split if our and customer are not set yet
             if ($ourDiscAmt <= 0 && $custDiscAmt <= 0 && $companyDiscAmt > 0) {
-                // If company disc is e.g. 15%, check if our_disc_percent is set, else default proportional or saved
                 if ($ourDiscPct > 0) {
                     $ourDiscAmt = round($baseValue * ($ourDiscPct / 100), 2);
                     $custDiscPct = max(0, $companyDiscPct - $ourDiscPct);
@@ -126,8 +158,14 @@ class DiscountReconciliationController extends Controller
         }
 
         // 2. Fetch Sales in period (Discounts passed to customers)
-        $salesQuery = Sale::where('sale_status', 'posted')
-            ->whereBetween('created_at', [$dateFrom, $dateTo]);
+        $salesQuery = Sale::where('sale_status', 'posted');
+
+        if ($request->filled('date_from')) {
+            $salesQuery->whereDate('created_at', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));
+        }
+        if ($request->filled('date_to')) {
+            $salesQuery->whereDate('created_at', '<=', Carbon::parse($request->date_to)->format('Y-m-d'));
+        }
 
         $sales = $salesQuery->get();
 
@@ -276,12 +314,16 @@ class DiscountReconciliationController extends Controller
 
     public function exportCsv(Request $request)
     {
-        $dateFrom = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : Carbon::now()->startOfMonth()->startOfDay();
-        $dateTo = $request->filled('date_to') ? Carbon::parse($request->date_to)->endOfDay() : Carbon::now()->endOfDay();
         $vendorId = $request->filled('vendor_id') ? $request->vendor_id : null;
 
-        $purchasesQuery = Purchase::with(['vendor'])
-            ->whereBetween('purchase_date', [$dateFrom->format('Y-m-d'), $dateTo->format('Y-m-d')]);
+        $purchasesQuery = Purchase::with(['vendor']);
+
+        if ($request->filled('date_from')) {
+            $purchasesQuery->whereDate('purchase_date', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));
+        }
+        if ($request->filled('date_to')) {
+            $purchasesQuery->whereDate('purchase_date', '<=', Carbon::parse($request->date_to)->format('Y-m-d'));
+        }
 
         if ($vendorId) {
             $purchasesQuery->where('vendor_id', $vendorId);
