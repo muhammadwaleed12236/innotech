@@ -179,6 +179,9 @@
             <small class="text-muted">Company Purchase Discounts vs Customer Advance Discounts &amp; Profit Tracking</small>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ route('report.principal_delivery_statement') }}" class="btn btn-outline-primary btn-sm fw-bold">
+                <i class="fas fa-file-invoice me-1"></i> Principal Delivery Statement (SAP)
+            </a>
             <button type="button" class="btn btn-outline-success btn-sm fw-bold" id="btnExportCsv">
                 <i class="fas fa-file-excel me-1"></i> Export Excel/CSV
             </button>
@@ -1129,6 +1132,7 @@ $(document).ready(function() {
     const RECON_STATIC_DISCOUNT_HEADS = [
         "Del Norm Discount",
         "Del Discount on Return expiry",
+        "Del Discount on Return",
         "Del Display Discount",
         "Del Extra Discount",
         "Del Freight Discount",
@@ -1143,7 +1147,9 @@ $(document).ready(function() {
         "Del JBP Claim",
         "Del Perf. Store Claims",
         "Del Price Adjustment Discount",
-        "Del Progressive Rebate and ROI"
+        "Del Progressive Rebate and ROI",
+        "Del TCI MFG Claim",
+        "Del VB Payout"
     ];
 
     // Invoice Custom Heads helpers in modal

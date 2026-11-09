@@ -403,6 +403,7 @@
     const BASE_STATIC_DISCOUNT_HEADS = [
         "Del Norm Discount",
         "Del Discount on Return expiry",
+        "Del Discount on Return",
         "Del Display Discount",
         "Del Extra Discount",
         "Del Freight Discount",
@@ -417,7 +418,9 @@
         "Del JBP Claim",
         "Del Perf. Store Claims",
         "Del Price Adjustment Discount",
-        "Del Progressive Rebate and ROI"
+        "Del Progressive Rebate and ROI",
+        "Del TCI MFG Claim",
+        "Del VB Payout"
     ];
 
     // Load saved custom heads from DB and localStorage

@@ -609,6 +609,11 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('report.discount_reconciliation', ['tab' => 'heads']);
     })->name('report.discount_heads');
 
+    // Principal Delivery & Discount Statement (SAP Format Report)
+    Route::get('report/principal-delivery-statement', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'index'])->name('report.principal_delivery_statement');
+    Route::get('report/principal-delivery-statement/fetch', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'fetchData'])->name('report.principal_delivery_statement.fetch');
+    Route::get('report/principal-delivery-statement/export', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'exportCsv'])->name('report.principal_delivery_statement.export');
+
     // Return modules list for permission dropdowns (AJAX)
     Route::get('/modules/list', function () {
         return response()->json(\Illuminate\Support\Facades\DB::table('modules')->pluck('name'));

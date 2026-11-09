@@ -378,6 +378,7 @@
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.vendor.ledger') }}"><i class="fa-solid fa-truck mr-2"></i><span>Vendor Ledger</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.profit_loss') }}"><i class="fa-solid fa-chart-line mr-2"></i><span>Profit & Loss</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.discount_reconciliation') }}"><i class="fa-solid fa-tags mr-2 text-success"></i><span>Discount &amp; Profit Reconciliation</span></a></li>
+                                    <li class="nav-item"><a class="nav-link" href="{{ route('report.principal_delivery_statement') }}"><i class="fa-solid fa-file-invoice mr-2 text-info"></i><span>Principal Delivery Statement (SAP)</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.discount_heads') }}"><i class="fa-solid fa-layer-group mr-2 text-warning"></i><span>Discount Madd-wise Report</span></a></li>
                                 </ul>
                             </div>

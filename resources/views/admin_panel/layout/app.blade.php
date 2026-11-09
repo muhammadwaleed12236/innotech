@@ -1160,6 +1160,8 @@
 
                                         <li><a href="{{ route('report.discount_reconciliation') }}"><i class="fa-solid fa-tags text-success"></i>
                                                 Discount &amp; Profit Reconciliation</a></li>
+                                        <li><a href="{{ route('report.principal_delivery_statement') }}"><i class="fa-solid fa-file-invoice text-info"></i>
+                                                Principal Delivery Statement (SAP)</a></li>
                                         <li><a href="{{ route('report.discount_heads') }}"><i class="fa-solid fa-layer-group text-warning"></i>
                                                 Discount Madd-wise Report</a></li>
                                         
