@@ -1027,6 +1027,13 @@ class PurchaseController extends Controller
             $whtAmount = (float) ($request->wht_amount ?? 0);
             $netAmount = ($subtotal - $discount) + $extraCost + $whtAmount;
 
+            $ourDiscPct = $request->filled('our_disc_percent') ? (float)$request->our_disc_percent : (float)$purchase->our_disc_percent;
+            $custDiscPct = $request->filled('customer_disc_percent') ? (float)$request->customer_disc_percent : (float)$purchase->customer_disc_percent;
+            $ourNotes = $request->has('our_disc_notes') ? $request->our_disc_notes : $purchase->our_disc_notes;
+            $companyDiscPct = $request->filled('company_disc_percent') ? (float)$request->company_disc_percent : ($totalTradeValue > 0 ? round(($discount / $totalTradeValue) * 100, 2) : 0);
+            $ourDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($ourDiscPct / 100), 2) : 0;
+            $custDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($custDiscPct / 100), 2) : 0;
+
             $purchase->update([
                 'subtotal' => $subtotal,
                 'total_exclusive_gst' => $totalExclusiveGst,
@@ -1040,6 +1047,13 @@ class PurchaseController extends Controller
                 'wht_amount' => $whtAmount,
                 'discount' => $discount,
                 'additional_discount' => $discount,
+                'company_disc_percent' => $companyDiscPct,
+                'company_disc_amount' => $discount,
+                'our_disc_percent' => $ourDiscPct,
+                'our_disc_amount' => $ourDiscAmt,
+                'customer_disc_percent' => $custDiscPct,
+                'customer_disc_amount' => $custDiscAmt,
+                'our_disc_notes' => $ourNotes,
                 'extra_cost' => $extraCost,
                 'net_amount' => $netAmount,
                 'due_amount' => $netAmount,
@@ -1833,6 +1847,13 @@ class PurchaseController extends Controller
             $whtAmount = (float) ($request->wht_amount ?? 0);
             $netAmount = ($subtotal - $discount) + $extraCost + $whtAmount;
 
+            $ourDiscPct = $request->filled('our_disc_percent') ? (float)$request->our_disc_percent : (float)$purchase->our_disc_percent;
+            $custDiscPct = $request->filled('customer_disc_percent') ? (float)$request->customer_disc_percent : (float)$purchase->customer_disc_percent;
+            $ourNotes = $request->has('our_disc_notes') ? $request->our_disc_notes : $purchase->our_disc_notes;
+            $companyDiscPct = $request->filled('company_disc_percent') ? (float)$request->company_disc_percent : ($totalTradeValue > 0 ? round(($discount / $totalTradeValue) * 100, 2) : 0);
+            $ourDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($ourDiscPct / 100), 2) : 0;
+            $custDiscAmt = $totalTradeValue > 0 ? round($totalTradeValue * ($custDiscPct / 100), 2) : 0;
+
             // Payments calculation from request
             $paymentAccountIds = $request->input('payment_account_id', []);
             $paymentAmounts = $request->input('payment_amount', []);
@@ -1874,6 +1895,13 @@ class PurchaseController extends Controller
                 'wht_amount' => $whtAmount,
                 'discount' => $discount,
                 'additional_discount' => $discount,
+                'company_disc_percent' => $companyDiscPct,
+                'company_disc_amount' => $discount,
+                'our_disc_percent' => $ourDiscPct,
+                'our_disc_amount' => $ourDiscAmt,
+                'customer_disc_percent' => $custDiscPct,
+                'customer_disc_amount' => $custDiscAmt,
+                'our_disc_notes' => $ourNotes,
                 'extra_cost' => $extraCost,
                 'net_amount' => $netAmount,
                 'paid_amount' => $newPaidAmount,

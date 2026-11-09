@@ -126,7 +126,7 @@
                     <div class="d-flex align-items-center me-auto flex-wrap" style="gap: 16px !important;">
                         <div class="d-flex align-items-center gap-1">
                             <label for="start_date_desk" class="sale-filter-label mb-0 ms-1 me-1">From:</label>
-                            <input type="datetime-local" id="start_date_desk" class="form-control form-control-sm fw-bold startDateInput" value="{{ date('Y-m-d\T00:00') }}" style="height: 32px; width: 175px; font-size: .78rem; border-radius: 6px;">
+                            <input type="datetime-local" id="start_date_desk" class="form-control form-control-sm fw-bold startDateInput" value="{{ date('Y-m-01\T00:00') }}" style="height: 32px; width: 175px; font-size: .78rem; border-radius: 6px;">
                         </div>
                         <div class="d-flex align-items-center gap-1">
                             <label for="end_date_desk" class="sale-filter-label mb-0 ms-2 me-1">To:</label>
@@ -179,6 +179,26 @@
                     </div>
                 </div>
 
+                {{-- Quick Range Presets --}}
+                <div class="d-flex flex-wrap align-items-center gap-1 mt-2 pt-2 border-top">
+                    <span class="text-muted small fw-bold me-1" style="font-size: 11px;"><i class="fas fa-bolt text-warning me-1"></i> Quick Presets:</span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="all" style="font-size: 11px;">
+                        <i class="fas fa-globe me-1"></i> All Time
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="ytd" style="font-size: 11px;">
+                        This Year (YTD)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="this_month" style="font-size: 11px;">
+                        This Month
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="last_month" style="font-size: 11px;">
+                        Last Month
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="today" style="font-size: 11px;">
+                        Today
+                    </button>
+                </div>
+
             </form>
         </div>
     </div>
@@ -197,7 +217,7 @@
                     {{-- 1. Start & End Date --}}
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">From</label>
-                        <input type="datetime-local" id="start_date_mob" class="form-control form-control-sm startDateInput" value="{{ date('Y-m-d\T00:00') }}" style="font-size: 11px;">
+                        <input type="datetime-local" id="start_date_mob" class="form-control form-control-sm startDateInput" value="{{ date('Y-m-01\T00:00') }}" style="font-size: 11px;">
                     </div>
                     <div class="col-6 mb-1">
                         <label class="form-label mb-1 fw-bold text-secondary" style="font-size: 11px;">To</label>
@@ -256,6 +276,26 @@
                         </div>
                     </div>
                 </div>
+                {{-- Quick Range Presets --}}
+                <div class="d-flex flex-wrap align-items-center gap-1 mt-2 pt-2 border-top">
+                    <span class="text-muted small fw-bold me-1" style="font-size: 11px;"><i class="fas fa-bolt text-warning me-1"></i> Quick Presets:</span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="all" style="font-size: 11px;">
+                        <i class="fas fa-globe me-1"></i> All Time
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="ytd" style="font-size: 11px;">
+                        This Year (YTD)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="this_month" style="font-size: 11px;">
+                        This Month
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="last_month" style="font-size: 11px;">
+                        Last Month
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-pl-preset" data-preset="today" style="font-size: 11px;">
+                        Today
+                    </button>
+                </div>
+
             </form>
         </div>
     </div>
@@ -442,10 +482,46 @@ $(document).ready(function() {
         return Math.round(parseFloat(n)).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0});
     }
 
+    // Quick Presets
+    $('.btn-pl-preset').on('click', function() {
+        const preset = $(this).data('preset');
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth(); // 0-based
+
+        if (preset === 'all') {
+            $('.startDateInput').val('');
+            $('.endDateInput').val('');
+        } else if (preset === 'ytd') {
+            const todayStr = now.toISOString().split('T')[0];
+            $('.startDateInput').val(`${year}-01-01T00:00`);
+            $('.endDateInput').val(`${todayStr}T23:59`);
+        } else if (preset === 'this_month') {
+            const mStr = String(month + 1).padStart(2, '0');
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            $('.startDateInput').val(`${year}-${mStr}-01T00:00`);
+            $('.endDateInput').val(`${year}-${mStr}-${String(lastDay).padStart(2, '0')}T23:59`);
+        } else if (preset === 'last_month') {
+            const prevMonthDate = new Date(year, month - 1, 1);
+            const pYear = prevMonthDate.getFullYear();
+            const pMonth = prevMonthDate.getMonth();
+            const pmStr = String(pMonth + 1).padStart(2, '0');
+            const lastDay = new Date(pYear, pMonth + 1, 0).getDate();
+            $('.startDateInput').val(`${pYear}-${pmStr}-01T00:00`);
+            $('.endDateInput').val(`${pYear}-${pmStr}-${String(lastDay).padStart(2, '0')}T23:59`);
+        } else if (preset === 'today') {
+            const todayStr = now.toISOString().split('T')[0];
+            $('.startDateInput').val(`${todayStr}T00:00`);
+            $('.endDateInput').val(`${todayStr}T23:59`);
+        }
+
+        fetchReport();
+    });
+
     $('.btnSearchTrigger').click(fetchReport);
 
     $('.btnResetTrigger').on('click', function() {
-        $('.startDateInput').val('{{ date("Y-m-d\T00:00") }}');
+        $('.startDateInput').val('{{ date("Y-m-01\T00:00") }}');
         $('.endDateInput').val('{{ date("Y-m-d\T23:59") }}');
         $('.categorySelect, .customerSelect, .productSelect').val('all').trigger('change');
         fetchReport();

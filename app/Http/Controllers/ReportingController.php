@@ -1394,19 +1394,29 @@ class ReportingController extends Controller
 
     public function fetchProfitLoss(Request $request)
     {
-        $start = $request->start_date ?: now()->startOfDay()->toDateTimeString();
-        $end = $request->end_date ?: now()->endOfDay()->toDateTimeString();
+        $start = $request->filled('start_date') ? $request->start_date : null;
+        $end = $request->filled('end_date') ? $request->end_date : null;
 
-        if (strlen($start) === 10) {
-            $start .= ' 00:00:00';
-        } elseif (strlen($start) === 16) {
-            $start .= ':00';
+        // Default to current month if dates are not provided at all (initial load)
+        if (!$request->has('start_date') && !$request->has('end_date')) {
+            $start = now()->startOfMonth()->startOfDay()->toDateTimeString();
+            $end = now()->endOfDay()->toDateTimeString();
         }
 
-        if (strlen($end) === 10) {
-            $end .= ' 23:59:59';
-        } elseif (strlen($end) === 16) {
-            $end .= ':59';
+        if ($start) {
+            if (strlen($start) === 10) {
+                $start .= ' 00:00:00';
+            } elseif (strlen($start) === 16) {
+                $start .= ':00';
+            }
+        }
+
+        if ($end) {
+            if (strlen($end) === 10) {
+                $end .= ' 23:59:59';
+            } elseif (strlen($end) === 16) {
+                $end .= ':59';
+            }
         }
 
         $productId = $request->product_id;
@@ -1466,10 +1476,15 @@ class ReportingController extends Controller
                 // Fetch all sales and returns for this product to distribute
                 $saleQuery = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                    ->where('sale_items.product_id', $product->id);
+                    ->where('sale_items.product_id', $product->id)
+                    ->where('sales.sale_status', '!=', 'cancelled');
                 
                 if ($start && $end) {
                     $saleQuery->whereBetween('sales.created_at', [$start, $end]);
+                } elseif ($start) {
+                    $saleQuery->where('sales.created_at', '>=', $start);
+                } elseif ($end) {
+                    $saleQuery->where('sales.created_at', '<=', $end);
                 }
                 if ($customerId && $customerId !== 'all') {
                     $saleQuery->where('sales.customer_id', $customerId);
@@ -1586,8 +1601,10 @@ class ReportingController extends Controller
                     $soldAmount = 0;
                     foreach ($salesList as $sItem) {
                         if ($this->matchSaleItemToVariant($sItem, $v)) {
-                            $soldQty += (float) $sItem->qty;
-                            $soldQtyPieces += (float) $sItem->total_pieces;
+                            $itemQty = (float) $sItem->qty;
+                            $itemPieces = (float) ($sItem->total_pieces > 0 ? $sItem->total_pieces : $sItem->qty);
+                            $soldQty += $itemQty;
+                            $soldQtyPieces += $itemPieces;
                             
                             $itemNet = (float) $sItem->total;
                             if ($sItem->total_bill_amount > 0 && $sItem->total_extradiscount > 0) {
@@ -1611,18 +1628,23 @@ class ReportingController extends Controller
                             'color' => $rColor
                         ];
                         if ($this->matchSaleItemToVariant($rItemCopy, $v)) {
-                            $returnedQtyPieces += (float) $rItem->qty;
+                            $retQty = (float) $rItem->qty;
+                            $returnedQtyPieces += $retQty;
                             $returnedAmount += (float) $rItem->line_total;
                         }
                     }
 
-                    $vAveragePrice = (float) ($v['purch_price'] ?? $productPurchPrice);
+                    $vAveragePrice = (float) ($v['purch_price'] ?? 0);
+                    if ($vAveragePrice <= 0) {
+                        $vAveragePrice = (float) ($productPurchPrice > 0 ? $productPurchPrice : $averagePrice);
+                    }
+
                     $netSoldAmount = $soldAmount - $returnedAmount;
                     $netQtyPieces = $soldQtyPieces - $returnedQtyPieces;
                     $costOfGoodsSold = $netQtyPieces * $vAveragePrice;
                     $grossProfit = $netSoldAmount - $costOfGoodsSold;
 
-                    if ($soldQtyPieces > 0 || $returnedQtyPieces > 0) {
+                    if ($soldQtyPieces > 0 || $soldQty > 0 || $returnedQtyPieces > 0) {
                         // Format Sold Qty Display
                         if (in_array($product->size_mode, ['by_cartons', 'by_bandal'])) {
                             $cartonPpb = $vConv > 1 ? $vConv : $ppb;
@@ -1701,10 +1723,15 @@ class ReportingController extends Controller
                 // Product has no variants: original logic
                 $saleQuery = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                    ->where('sale_items.product_id', $product->id);
+                    ->where('sale_items.product_id', $product->id)
+                    ->where('sales.sale_status', '!=', 'cancelled');
                 
                 if ($start && $end) {
                     $saleQuery->whereBetween('sales.created_at', [$start, $end]);
+                } elseif ($start) {
+                    $saleQuery->where('sales.created_at', '>=', $start);
+                } elseif ($end) {
+                    $saleQuery->where('sales.created_at', '<=', $end);
                 }
 
                 if ($customerId && $customerId !== 'all') {
@@ -1723,8 +1750,10 @@ class ReportingController extends Controller
                 $soldQtyPieces = 0;
                 $soldAmount = 0;
                 foreach ($salesList as $sItem) {
-                    $soldQty += (float) $sItem->qty;
-                    $soldQtyPieces += (float) $sItem->total_pieces;
+                    $itemQty = (float) $sItem->qty;
+                    $itemPieces = (float) ($sItem->total_pieces > 0 ? $sItem->total_pieces : $sItem->qty);
+                    $soldQty += $itemQty;
+                    $soldQtyPieces += $itemPieces;
                     
                     $itemNet = (float) $sItem->total;
                     if ($sItem->total_bill_amount > 0 && $sItem->total_extradiscount > 0) {
@@ -1740,6 +1769,10 @@ class ReportingController extends Controller
                 
                 if ($start && $end) {
                     $returnQuery->whereBetween('sr.created_at', [$start, $end]);
+                } elseif ($start) {
+                    $returnQuery->where('sr.created_at', '>=', $start);
+                } elseif ($end) {
+                    $returnQuery->where('sr.created_at', '<=', $end);
                 }
                 $returnsList = $returnQuery->select('sri.qty', 'sri.line_total')->get();
 
@@ -1750,12 +1783,16 @@ class ReportingController extends Controller
                     $returnedAmount += (float) $rItem->line_total;
                 }
 
+                if ($averagePrice <= 0) {
+                    $averagePrice = (float) ($product->purchase_price_per_piece ?: ($productPurchPrice ?: 0));
+                }
+
                 $netSoldAmount = $soldAmount - $returnedAmount;
                 $netQtyPieces = $soldQtyPieces - $returnedQtyPieces;
                 $costOfGoodsSold = $netQtyPieces * $averagePrice;
                 $grossProfit = $netSoldAmount - $costOfGoodsSold;
 
-                if ($soldQtyPieces > 0 || $returnedQtyPieces > 0) {
+                if ($soldQtyPieces > 0 || $soldQty > 0 || $returnedQtyPieces > 0) {
                     $ppb = (float)($product->pieces_per_box ?? 1);
                     if ($ppb <= 0) $ppb = 1;
 
@@ -1928,8 +1965,18 @@ class ReportingController extends Controller
         $expenseQueryV2 = DB::table('voucher_masters')->where('voucher_type', 'expense');
 
         if ($start && $end) {
-            $expenseQueryV1->whereBetween('entry_date', [$start, $end]);
-            $expenseQueryV2->whereBetween('date', [$start, $end]);
+            $startDateOnly = substr($start, 0, 10);
+            $endDateOnly = substr($end, 0, 10);
+            $expenseQueryV1->whereBetween('entry_date', [$startDateOnly, $endDateOnly]);
+            $expenseQueryV2->whereBetween('date', [$startDateOnly, $endDateOnly]);
+        } elseif ($start) {
+            $startDateOnly = substr($start, 0, 10);
+            $expenseQueryV1->where('entry_date', '>=', $startDateOnly);
+            $expenseQueryV2->where('date', '>=', $startDateOnly);
+        } elseif ($end) {
+            $endDateOnly = substr($end, 0, 10);
+            $expenseQueryV1->where('entry_date', '<=', $endDateOnly);
+            $expenseQueryV2->where('date', '<=', $endDateOnly);
         }
 
         $totalExpenses = $expenseQueryV1->sum('total_amount') + $expenseQueryV2->sum('total_amount');
@@ -1942,10 +1989,15 @@ class ReportingController extends Controller
         foreach ($allCustomers as $customer) {
             $custSaleQuery = DB::table('sale_items')
                 ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                ->where('sales.customer_id', $customer->id);
+                ->where('sales.customer_id', $customer->id)
+                ->where('sales.sale_status', '!=', 'cancelled');
 
             if ($start && $end) {
                 $custSaleQuery->whereBetween('sales.created_at', [$start, $end]);
+            } elseif ($start) {
+                $custSaleQuery->where('sales.created_at', '>=', $start);
+            } elseif ($end) {
+                $custSaleQuery->where('sales.created_at', '<=', $end);
             }
 
             $custSaleItems = $custSaleQuery->select(
@@ -2925,9 +2977,25 @@ class ReportingController extends Controller
         $balanceService = app(\App\Services\BalanceService::class);
 
         // 1. Current Assets
-        // Cash in Hand (head_id = 1)
-        // Cash at Bank (Usually head_id = 1, we can split them if we can identify them, but we'll show all assets)
-        $assetAccounts = DB::table('accounts')->whereIn('head_id', [1, 2])->get();
+        // Dynamic detection of cash & bank accounts (by head or account title)
+        $cashBankHeadIds = DB::table('account_heads')
+            ->where(function($q) {
+                $q->where('name', 'like', '%bank%')
+                  ->orWhere('name', 'like', '%cash%')
+                  ->orWhere('name', 'like', '%liquid%');
+            })->pluck('id')->toArray();
+
+        $assetAccounts = DB::table('accounts')
+            ->where(function($q) use ($cashBankHeadIds) {
+                if (!empty($cashBankHeadIds)) {
+                    $q->whereIn('head_id', $cashBankHeadIds);
+                } else {
+                    $q->whereIn('head_id', [1, 2]);
+                }
+                $q->orWhere('title', 'like', '%cash%')
+                  ->orWhere('title', 'like', '%bank%');
+            })->get();
+
         $cashAccounts = [];
         $totalCashBank = 0;
 
@@ -2951,59 +3019,76 @@ class ReportingController extends Controller
 
         // Account Receivables
         $custQuery = DB::table('customers');
-            if ($request->province && $request->province !== 'all') $custQuery->where('province', $request->province);
-            if ($request->city && $request->city !== 'all') $custQuery->where('city', $request->city);
-            if ($request->area && $request->area !== 'all') $custQuery->where('area', $request->area);
-            $customers = $custQuery->get();
+        if ($request->province && $request->province !== 'all') $custQuery->where('province', $request->province);
+        if ($request->city && $request->city !== 'all') $custQuery->where('city', $request->city);
+        if ($request->area && $request->area !== 'all') $custQuery->where('area', $request->area);
+        $customers = $custQuery->get();
         $totalReceivables = 0;
         foreach ($customers as $c) {
             $bal = $balanceService->getCustomerBalanceBeforeDate($c->id, $dateEnd);
-            $totalReceivables += $bal;
+            if ($bal > 0) {
+                $totalReceivables += $bal;
+            }
         }
 
-        // Stock in Trade
-        // Current Stock = Initial + Purchased - Sold
+        // Stock in Trade / Inventory Valuation
         $products = DB::table('products')->get();
         $totalInventory = 0;
         foreach ($products as $p) {
-            // Initial
-            $initial = (float) DB::table('stock_movements')
+            // Check direct warehouse stock count first
+            $stockQty = (float) DB::table('warehouse_stocks')
                 ->where('product_id', $p->id)
-                ->whereIn('ref_type', ['INIT', 'OPENING_STOCK'])
-                ->where('created_at', '<=', $dateEnd)
-                ->sum('qty');
+                ->sum('total_pieces');
 
-            // Purchased
-            [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($p->id, ['before' => $dateEnd]);
+            // If warehouse stock not populated, compute from movements/purchases/sales
+            if ($stockQty <= 0) {
+                $initial = (float) DB::table('stock_movements')
+                    ->where('product_id', $p->id)
+                    ->whereIn('ref_type', ['INIT', 'OPENING_STOCK'])
+                    ->where('created_at', '<=', $dateEnd)
+                    ->sum('qty');
 
-            // Sold
-            $saleStats = DB::table('sale_items')
-                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                ->where('sale_items.product_id', $p->id)
-                ->where('sales.created_at', '<=', $dateEnd)
-                ->selectRaw('COALESCE(SUM(sale_items.qty),0) as total_qty')
-                ->first();
+                [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($p->id, ['before' => $dateEnd]);
 
-            $sold = (float) $saleStats->total_qty;
+                $saleStats = DB::table('sale_items')
+                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                    ->where('sale_items.product_id', $p->id)
+                    ->where('sales.created_at', '<=', $dateEnd)
+                    ->where('sales.sale_status', '!=', 'cancelled')
+                    ->selectRaw('COALESCE(SUM(CASE WHEN COALESCE(sale_items.total_pieces, 0) > 0 THEN sale_items.total_pieces ELSE sale_items.qty END), 0) as total_qty')
+                    ->first();
 
-            $balance = $initial + $purchased - $sold;
+                $sold = (float) ($saleStats ? $saleStats->total_qty : 0);
 
-            // Average Cost
+                $returnQty = (float) DB::table('sale_return_items')
+                    ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                    ->where('sale_return_items.product_id', $p->id)
+                    ->where('sale_returns.created_at', '<=', $dateEnd)
+                    ->sum('sale_return_items.qty');
+
+                $stockQty = max(0, $initial + $purchased - ($sold - $returnQty));
+            }
+
+            if ($stockQty <= 0) {
+                $stockQty = (float) ($p->total_stock_qty ?? 0);
+            }
+
+            // Valuation price
             $productPurchPrice = 0;
             if ($p->size_mode === 'by_size') {
-                $m2PerPiece = (float) ($p->pieces_per_m2 ?? 0);
+                $m2PerPiece = (float) ($p->pieces_per_m2 ?? 1);
                 $purchPerM2 = (float) ($p->purchase_price_per_m2 ?? 0);
                 $productPurchPrice = $m2PerPiece * $purchPerM2;
             } else {
                 $productPurchPrice = (float) ($p->purchase_price_per_piece ?? 0);
             }
 
-            $initialAmount = $initial * $productPurchPrice;
-            $totalQtyIn = $initial + $purchased;
-            $avgCost = $totalQtyIn > 0 ? ($initialAmount + $purchaseAmount) / $totalQtyIn : $productPurchPrice;
+            if ($productPurchPrice <= 0 && !empty($p->pieces_per_box) && $p->pieces_per_box > 0) {
+                $productPurchPrice = ((float) ($p->purchase_price_per_box ?? 0)) / $p->pieces_per_box;
+            }
 
-            if ($balance > 0) {
-                $totalInventory += ($balance * $avgCost);
+            if ($stockQty > 0 && $productPurchPrice > 0) {
+                $totalInventory += ($stockQty * $productPurchPrice);
             }
         }
 
@@ -3013,14 +3098,16 @@ class ReportingController extends Controller
 
         // 2. Liabilities
         $vendQuery = DB::table('vendors');
-            if ($request->province && $request->province !== 'all') $vendQuery->where('province', $request->province);
-            if ($request->city && $request->city !== 'all') $vendQuery->where('city', $request->city);
-            if ($request->area && $request->area !== 'all') $vendQuery->where('area', $request->area);
-            $vendors = $vendQuery->get();
+        if ($request->province && $request->province !== 'all') $vendQuery->where('province', $request->province);
+        if ($request->city && $request->city !== 'all') $vendQuery->where('city', $request->city);
+        if ($request->area && $request->area !== 'all') $vendQuery->where('area', $request->area);
+        $vendors = $vendQuery->get();
         $totalPayables = 0;
         foreach ($vendors as $v) {
             $bal = $balanceService->getVendorBalanceBeforeDate($v->id, $dateEnd);
-            $totalPayables += $bal; // Vendor Balance (Cr is positive from BalanceService view)
+            if ($bal > 0) {
+                $totalPayables += $bal; // Vendor Balance (Cr is positive from BalanceService view)
+            }
         }
         $currentLiabilitiesTotal = $totalPayables;
 
@@ -3032,18 +3119,18 @@ class ReportingController extends Controller
             'date' => date('d-M-Y', strtotime($date)),
             'assets' => [
                 'cash_bank' => $cashAccounts,
-                'total_cash_bank' => $totalCashBank,
-                'receivables' => $totalReceivables,
-                'inventory' => $totalInventory,
-                'current_total' => $currentAssetsTotal,
-                'fixed_total' => $fixedAssetsTotal,
-                'total' => $totalAssets
+                'total_cash_bank' => round($totalCashBank, 2),
+                'receivables' => round($totalReceivables, 2),
+                'inventory' => round($totalInventory, 2),
+                'current_total' => round($currentAssetsTotal, 2),
+                'fixed_total' => round($fixedAssetsTotal, 2),
+                'total' => round($totalAssets, 2)
             ],
             'liabilities' => [
-                'payables' => $totalPayables,
-                'current_total' => $currentLiabilitiesTotal,
-                'equity' => $equityTotal,
-                'total' => $totalLiabilitiesAndEquity
+                'payables' => round($totalPayables, 2),
+                'current_total' => round($currentLiabilitiesTotal, 2),
+                'equity' => round($equityTotal, 2),
+                'total' => round($totalLiabilitiesAndEquity, 2)
             ]
         ]);
     }

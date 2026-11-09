@@ -196,11 +196,17 @@
                         </span>
                     </div>
 
-                    {{-- Mid Date Input --}}
-                    <div class="d-flex align-items-center me-auto flex-wrap" style="gap: 16px !important;">
+                    {{-- Mid Date Input & Presets --}}
+                    <div class="d-flex align-items-center me-auto flex-wrap" style="gap: 12px !important;">
                         <div class="d-flex align-items-center gap-1">
                             <label for="bs_date_desk" class="sale-filter-label mb-0 ms-1 me-1">As-of Date:</label>
                             <input type="date" id="bs_date_desk" class="form-control form-control-sm fw-bold bsDateInput" value="{{ date('Y-m-d') }}" style="height: 32px; width: 145px; font-size: .78rem; border-radius: 6px;">
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-bs-preset" data-preset="today" style="font-size: 11px; height: 28px;">Today</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-bs-preset" data-preset="this_month" style="font-size: 11px; height: 28px;">This Month End</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-bs-preset" data-preset="last_month" style="font-size: 11px; height: 28px;">Last Month End</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-bs-preset" data-preset="year_end" style="font-size: 11px; height: 28px;">Year End</button>
                         </div>
                     </div>
 
@@ -483,6 +489,30 @@
         // Sync Date Inputs between Desktop & Mobile
         $('.bsDateInput').on('change', function() {
             $('.bsDateInput').val($(this).val());
+        });
+
+        $('.btn-bs-preset').on('click', function() {
+            const preset = $(this).data('preset');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+
+            if (preset === 'today') {
+                $('.bsDateInput').val(now.toISOString().split('T')[0]);
+            } else if (preset === 'this_month') {
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                const mStr = String(month + 1).padStart(2, '0');
+                $('.bsDateInput').val(`${year}-${mStr}-${String(lastDay).padStart(2, '0')}`);
+            } else if (preset === 'last_month') {
+                const prevMonth = new Date(year, month, 0);
+                const pYear = prevMonth.getFullYear();
+                const pMonth = prevMonth.getMonth() + 1;
+                const pLastDay = prevMonth.getDate();
+                $('.bsDateInput').val(`${pYear}-${String(pMonth).padStart(2, '0')}-${String(pLastDay).padStart(2, '0')}`);
+            } else if (preset === 'year_end') {
+                $('.bsDateInput').val(`${year}-12-31`);
+            }
+            loadData();
         });
 
         function fmt(n) {

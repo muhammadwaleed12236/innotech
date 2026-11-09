@@ -127,9 +127,14 @@ class BalanceService
      */
     public function getCustomerBalanceBeforeDate(int $customerId, string $date): float
     {
+        $customer = Customer::find($customerId);
+        if ($customer) {
+            $this->ensureCustomerOpeningBalance($customer);
+        }
+
         $journalBalance = JournalEntry::where('party_type', Customer::class)
             ->where('party_id', $customerId)
-            ->where('entry_date', '<', $date)
+            ->where('entry_date', '<=', $date)
             ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as balance')
             ->value('balance') ?? 0;
 

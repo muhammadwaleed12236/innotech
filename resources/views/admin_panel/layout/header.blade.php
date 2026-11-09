@@ -377,6 +377,7 @@
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.customer.ledger') }}"><i class="fa-solid fa-book mr-2"></i><span>Customer Ledger</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.vendor.ledger') }}"><i class="fa-solid fa-truck mr-2"></i><span>Vendor Ledger</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.profit_loss') }}"><i class="fa-solid fa-chart-line mr-2"></i><span>Profit & Loss</span></a></li>
+                                    <li class="nav-item"><a class="nav-link" href="{{ route('report.discount_reconciliation') }}"><i class="fa-solid fa-tags mr-2 text-success"></i><span>Discount &amp; Profit Reconciliation</span></a></li>
                                 </ul>
                             </div>
                         </li>
