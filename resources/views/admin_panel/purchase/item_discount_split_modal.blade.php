@@ -1,3 +1,12 @@
+@php
+    $dbCustomDiscountHeads = \App\Models\Setting::get('custom_discount_heads', []);
+    if (is_string($dbCustomDiscountHeads)) {
+        $dbCustomDiscountHeads = json_decode($dbCustomDiscountHeads, true) ?: [];
+    }
+    if (!is_array($dbCustomDiscountHeads)) {
+        $dbCustomDiscountHeads = [];
+    }
+@endphp
 {{-- Item Discount Split Modal & JavaScript Logic --}}
 <div class="modal fade" id="itemDiscountSplitModal" tabindex="-1" aria-labelledby="itemDiscountSplitModalLabel" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -390,8 +399,8 @@
         $(this).closest('.our-subhead-row').remove();
     });
 
-    // Pre-defined Static Standard Discount Heads
-    const STATIC_DISCOUNT_HEADS = [
+    // Pre-defined Base Static Standard Discount Heads
+    const BASE_STATIC_DISCOUNT_HEADS = [
         "Del Norm Discount",
         "Del Discount on Return expiry",
         "Del Display Discount",
@@ -411,7 +420,76 @@
         "Del Progressive Rebate and ROI"
     ];
 
-    // Render Custom Heads Table (Populates all 17 Static Heads + any extra custom heads)
+    // Load saved custom heads from DB and localStorage
+    let savedCustomHeadsList = @json($dbCustomDiscountHeads ?? []);
+    try {
+        const localList = JSON.parse(localStorage.getItem('innotech_custom_discount_heads') || '[]');
+        if (Array.isArray(localList)) {
+            localList.forEach(lh => {
+                if (lh && typeof lh === 'string' && !savedCustomHeadsList.some(sh => sh.toLowerCase() === lh.toLowerCase())) {
+                    savedCustomHeadsList.push(lh.trim());
+                }
+            });
+        }
+    } catch(e) {}
+
+    function getAllAvailableHeads() {
+        let heads = [...BASE_STATIC_DISCOUNT_HEADS];
+        savedCustomHeadsList.forEach(ch => {
+            if (ch && !heads.some(h => h.toLowerCase() === ch.toLowerCase())) {
+                heads.push(ch);
+            }
+        });
+        return heads;
+    }
+
+    function persistNewCustomHead(headName) {
+        headName = (headName || '').trim();
+        if (!headName) return;
+
+        const alreadyInBase = BASE_STATIC_DISCOUNT_HEADS.some(h => h.toLowerCase() === headName.toLowerCase());
+        const alreadyInSaved = savedCustomHeadsList.some(h => h.toLowerCase() === headName.toLowerCase());
+
+        if (!alreadyInBase && !alreadyInSaved) {
+            savedCustomHeadsList.push(headName);
+            try {
+                localStorage.setItem('innotech_custom_discount_heads', JSON.stringify(savedCustomHeadsList));
+            } catch(e) {}
+
+            $.ajax({
+                url: "{{ route('report.discount_reconciliation.save_custom_head') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    head: headName
+                },
+                success: function(res) {
+                    if (res && res.heads) {
+                        savedCustomHeadsList = res.heads;
+                    }
+                }
+            });
+        }
+    }
+
+    function deletePersistedCustomHead(headName) {
+        headName = (headName || '').trim();
+        savedCustomHeadsList = savedCustomHeadsList.filter(h => h.toLowerCase() !== headName.toLowerCase());
+        try {
+            localStorage.setItem('innotech_custom_discount_heads', JSON.stringify(savedCustomHeadsList));
+        } catch(e) {}
+
+        $.ajax({
+            url: "{{ route('report.discount_reconciliation.delete_custom_head') }}",
+            type: "POST",
+            data: {
+                _token: "{{ csrf_token() }}",
+                head: headName
+            }
+        });
+    }
+
+    // Render Custom Heads Table (Populates all 17 Static Heads + saved custom heads + any item-specific heads)
     function renderCustomHeads(heads) {
         heads = heads || [];
         const existingMap = {};
@@ -424,36 +502,51 @@
         const $tbody = $('#splitCustomHeadsBody');
         $tbody.empty();
 
-        // 1. Render all 17 Static Heads
-        STATIC_DISCOUNT_HEADS.forEach((headName, idx) => {
+        const allAvailable = getAllAvailableHeads();
+
+        allAvailable.forEach((headName, idx) => {
             const key = headName.trim().toLowerCase();
             const existing = existingMap[key];
             const pct = existing ? (parseFloat(existing.percent) || 0) : 0;
             const amt = existing ? (parseFloat(existing.amount) || 0) : 0;
+            const isBase = BASE_STATIC_DISCOUNT_HEADS.some(bh => bh.toLowerCase() === key);
 
-            appendStaticHeadRow(headName, pct, amt, idx + 1);
+            appendHeadRow(headName, pct, amt, idx + 1, isBase);
             if (existing) {
                 delete existingMap[key];
             }
         });
 
-        // 2. Render any remaining non-static custom heads
+        // Any heads present in this item's data that weren't in allAvailable yet
         Object.values(existingMap).forEach(h => {
-            appendCustomHeadRow(h.head || '', h.percent || 0, h.amount || 0);
+            if (h && h.head) {
+                persistNewCustomHead(h.head);
+                appendHeadRow(h.head, h.percent || 0, h.amount || 0, $('#splitCustomHeadsBody tr').length + 1, false);
+            }
         });
 
         updateActiveHeadsCount();
     }
 
-    function appendStaticHeadRow(headName, pct, amt, rowNum) {
+    function appendHeadRow(headName, pct, amt, rowNum, isBase) {
         const isActive = (pct > 0 || amt > 0);
         const rowBg = isActive ? 'table-warning bg-opacity-25' : '';
+        const customBadge = !isBase ? '<span class="badge bg-info-subtle text-info border border-info-subtle px-1 py-0 ms-1" style="font-size: 8.5px;">Custom</span>' : '';
+        const deleteBtn = !isBase ? `
+            <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1 btn-delete-custom-head-permanent" data-head="${headName}" title="Delete this custom head permanently" style="font-size: 9.5px;">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        ` : '';
+
         const html = `
-            <tr class="custom-head-row static-head-row ${rowBg}" data-head="${headName.toLowerCase()}">
+            <tr class="custom-head-row ${isBase ? 'static-head-row' : 'persisted-custom-row'} ${rowBg}" data-head="${headName.toLowerCase()}">
                 <td class="text-center text-muted small fw-semibold py-1 row-idx">${rowNum}</td>
                 <td class="py-1">
                     <div class="d-flex align-items-center justify-content-between">
-                        <span class="fw-semibold text-dark head-label" style="font-size: 11.5px;">${headName}</span>
+                        <div>
+                            <span class="fw-semibold text-dark head-label" style="font-size: 11.5px;">${headName}</span>
+                            ${customBadge}
+                        </div>
                         ${isActive ? '<span class="badge bg-warning text-dark px-1 py-0 active-mark" style="font-size: 9px;"><i class="fas fa-check"></i></span>' : ''}
                     </div>
                     <input type="hidden" class="custom-head-name" value="${headName}">
@@ -478,38 +571,8 @@
                         <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-1 btn-clear-head-row" title="Clear this head" style="font-size: 9.5px;">
                             <i class="fas fa-times"></i>
                         </button>
+                        ${deleteBtn}
                     </div>
-                </td>
-            </tr>
-        `;
-        $('#splitCustomHeadsBody').append(html);
-    }
-
-    function appendCustomHeadRow(headName, pct, amt) {
-        const isActive = (pct > 0 || amt > 0);
-        const rowBg = isActive ? 'table-warning bg-opacity-25' : '';
-        const html = `
-            <tr class="custom-head-row extra-custom-head-row ${rowBg}" data-head="${(headName || '').toLowerCase()}">
-                <td class="text-center text-primary small fw-semibold py-1 row-idx"><i class="fas fa-tag"></i></td>
-                <td class="py-1">
-                    <input type="text" class="form-control form-control-sm custom-head-name fw-semibold py-0" placeholder="Custom Head Name" value="${headName}" style="font-size: 11.5px;">
-                </td>
-                <td class="py-1">
-                    <div class="input-group input-group-sm">
-                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-pct font-monospace fw-bold text-dark py-0" placeholder="0.00" value="${pct > 0 ? pct : ''}" style="font-size: 11.5px;">
-                        <span class="input-group-text py-0 px-1 fw-bold small">%</span>
-                    </div>
-                </td>
-                <td class="py-1">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text py-0 px-1 small">Rs</span>
-                        <input type="number" step="0.01" min="0" class="form-control text-end custom-head-amt font-monospace fw-bold text-dark py-0" placeholder="0.00" value="${amt > 0 ? amt : ''}" style="font-size: 11.5px;">
-                    </div>
-                </td>
-                <td class="text-center py-1">
-                    <button type="button" class="btn btn-outline-danger btn-xs py-0 px-1 btn-remove-custom-head" title="Remove" style="font-size: 9.5px;">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
                 </td>
             </tr>
         `;
@@ -535,14 +598,67 @@
         $('#splitActiveHeadsBadge').text(count + ' Active');
     }
 
-    // Add extra custom head
+    // Add extra custom head with prompt & permanent persistence
     $('#btnAddCustomHead').on('click', function() {
-        appendCustomHeadRow('Custom Allowance', 0, 0);
-        recalcModalSplits();
-        updateActiveHeadsCount();
-        // Scroll to bottom
-        const cont = document.querySelector('#splitCustomHeadsTable').parentElement;
-        if (cont) cont.scrollTop = cont.scrollHeight;
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Add New Custom Discount Head',
+                input: 'text',
+                inputLabel: 'Enter Head Name (e.g. Special Festival Rebate)',
+                inputPlaceholder: 'Head name...',
+                showCancelButton: true,
+                confirmButtonText: 'Add & Save Head',
+                cancelButtonText: 'Cancel',
+                inputValidator: (value) => {
+                    if (!value || !value.trim()) {
+                        return 'Please enter a head name!';
+                    }
+                    const val = value.trim().toLowerCase();
+                    const allExisting = getAllAvailableHeads().map(h => h.toLowerCase());
+                    if (allExisting.includes(val)) {
+                        return 'This head name already exists!';
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    const newHeadName = result.value.trim();
+                    persistNewCustomHead(newHeadName);
+                    const rowIdx = $('#splitCustomHeadsBody tr').length + 1;
+                    appendHeadRow(newHeadName, 0, 0, rowIdx, false);
+                    recalcModalSplits();
+                    updateActiveHeadsCount();
+                    // Scroll to newly added row and focus its rate input
+                    setTimeout(function() {
+                        const $newRow = $('#splitCustomHeadsBody tr').last();
+                        if ($newRow.length) {
+                            $newRow[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            $newRow.find('.custom-head-pct').focus();
+                        }
+                    }, 100);
+                }
+            });
+        } else {
+            const newHeadName = prompt('Enter new discount head name:');
+            if (newHeadName && newHeadName.trim()) {
+                persistNewCustomHead(newHeadName.trim());
+                const rowIdx = $('#splitCustomHeadsBody tr').length + 1;
+                appendHeadRow(newHeadName.trim(), 0, 0, rowIdx, false);
+                recalcModalSplits();
+                updateActiveHeadsCount();
+            }
+        }
+    });
+
+    // Delete custom head permanently
+    $(document).on('click', '.btn-delete-custom-head-permanent', function() {
+        const headName = $(this).data('head');
+        const $row = $(this).closest('tr');
+        if (confirm('Are you sure you want to delete "' + headName + '" from permanently saved heads list?')) {
+            deletePersistedCustomHead(headName);
+            $row.remove();
+            recalcModalSplits();
+            updateActiveHeadsCount();
+        }
     });
 
     // Fill remaining unallocated discount into this specific head
@@ -758,6 +874,7 @@
                 const hAmt = parseFloat($(this).find('.custom-head-amt').val()) || 0;
                 if (hName !== '' && (hPct > 0 || hAmt > 0)) {
                     customHeads.push({ head: hName, percent: hPct, amount: hAmt });
+                    persistNewCustomHead(hName);
                 }
             });
 

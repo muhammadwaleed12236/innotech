@@ -602,6 +602,8 @@ Route::middleware('auth')->group(function () {
     Route::get('report/discount-reconciliation/fetch', [\App\Http\Controllers\DiscountReconciliationController::class, 'fetchData'])->name('report.discount_reconciliation.fetch');
     Route::post('report/discount-reconciliation/update-split', [\App\Http\Controllers\DiscountReconciliationController::class, 'updateSplit'])->name('report.discount_reconciliation.update_split');
     Route::post('report/discount-reconciliation/update-item-split', [\App\Http\Controllers\DiscountReconciliationController::class, 'updateItemSplit'])->name('report.discount_reconciliation.update_item_split');
+    Route::post('report/discount-reconciliation/save-custom-head', [\App\Http\Controllers\DiscountReconciliationController::class, 'saveCustomHead'])->name('report.discount_reconciliation.save_custom_head');
+    Route::post('report/discount-reconciliation/delete-custom-head', [\App\Http\Controllers\DiscountReconciliationController::class, 'deleteCustomHead'])->name('report.discount_reconciliation.delete_custom_head');
     Route::get('report/discount-reconciliation/export', [\App\Http\Controllers\DiscountReconciliationController::class, 'exportCsv'])->name('report.discount_reconciliation.export');
 
     // Return modules list for permission dropdowns (AJAX)

@@ -1164,6 +1164,8 @@ class PurchaseController extends Controller
                 'net_amount' => $netAmount,
                 'due_amount' => $netAmount,
             ]);
+
+            self::syncCustomDiscountHeads($invCustomBreakdown);
             // Check if payment was submitted (array or scalar)
             $paymentAccountIds = (array) ($request->input('payment_account_id') ?? []);
             $paymentAmounts = (array) ($request->input('payment_amount') ?? []);
@@ -2120,6 +2122,8 @@ class PurchaseController extends Controller
                 'due_amount' => $dueAmount,
             ]);
 
+            self::syncCustomDiscountHeads($invCustomBreakdown);
+
             // Stock movements & Warehouse stock updates
             $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
 
@@ -2981,5 +2985,37 @@ class PurchaseController extends Controller
                 'purchase_gst_percent' => $percent,
             ]
         ]);
+    }
+
+    protected static function syncCustomDiscountHeads($breakdown)
+    {
+        if (empty($breakdown) || !is_array($breakdown)) return;
+        $existing = \App\Models\Setting::get('custom_discount_heads', []);
+        if (is_string($existing)) {
+            $existing = json_decode($existing, true) ?: [];
+        }
+        if (!is_array($existing)) $existing = [];
+
+        $updated = false;
+        foreach ($breakdown as $item) {
+            $head = isset($item['head']) ? trim($item['head']) : '';
+            if ($head !== '') {
+                $exists = false;
+                foreach ($existing as $ex) {
+                    if (strcasecmp($ex, $head) === 0) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $existing[] = $head;
+                    $updated = true;
+                }
+            }
+        }
+
+        if ($updated) {
+            \App\Models\Setting::set('custom_discount_heads', json_encode(array_values($existing)), 'accounting', 'Custom Discount Heads', 'json');
+        }
     }
 }

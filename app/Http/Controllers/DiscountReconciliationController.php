@@ -9,6 +9,7 @@ use App\Models\SaleItem;
 use App\Models\Vendor;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Setting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -413,6 +414,7 @@ class DiscountReconciliationController extends Controller
         if ($request->has('custom_disc_breakdown')) {
             $cb = $request->input('custom_disc_breakdown');
             $purchase->custom_disc_breakdown = is_string($cb) ? (json_decode($cb, true) ?: []) : $cb;
+            $this->syncHeads($purchase->custom_disc_breakdown);
         }
 
         if ($request->has('our_disc_breakdown')) {
@@ -501,6 +503,8 @@ class DiscountReconciliationController extends Controller
         }
         $item->save();
 
+        $this->syncHeads($customBreakdown);
+
         // Re-aggregate parent purchase totals
         $purchase->load('items');
         $aggOurAmt = (float)$purchase->items->sum('our_disc_amount');
@@ -550,6 +554,80 @@ class DiscountReconciliationController extends Controller
             'ok' => true,
             'msg' => 'Item discount split updated successfully and purchase totals recalculated!',
         ]);
+    }
+
+    public function saveCustomHead(Request $request)
+    {
+        $head = trim($request->input('head', ''));
+        if ($head === '') {
+            return response()->json(['ok' => false, 'message' => 'Head name is required'], 422);
+        }
+
+        $existing = Setting::get('custom_discount_heads', []);
+        if (is_string($existing)) {
+            $existing = json_decode($existing, true) ?: [];
+        }
+        if (!is_array($existing)) {
+            $existing = [];
+        }
+
+        $exists = false;
+        foreach ($existing as $h) {
+            if (strcasecmp($h, $head) === 0) {
+                $exists = true;
+                break;
+            }
+        }
+
+        if (!$exists) {
+            $existing[] = $head;
+            Setting::set('custom_discount_heads', json_encode(array_values($existing)), 'accounting', 'Custom Discount Heads', 'json');
+        }
+
+        return response()->json(['ok' => true, 'head' => $head, 'heads' => $existing]);
+    }
+
+    public function deleteCustomHead(Request $request)
+    {
+        $head = trim($request->input('head', ''));
+        $existing = Setting::get('custom_discount_heads', []);
+        if (is_string($existing)) {
+            $existing = json_decode($existing, true) ?: [];
+        }
+        if (!is_array($existing)) {
+            $existing = [];
+        }
+
+        $filtered = array_values(array_filter($existing, function($h) use ($head) {
+            return strcasecmp($h, $head) !== 0;
+        }));
+
+        Setting::set('custom_discount_heads', json_encode($filtered), 'accounting', 'Custom Discount Heads', 'json');
+
+        return response()->json(['ok' => true, 'heads' => $filtered]);
+    }
+
+    private function syncHeads($customBreakdown)
+    {
+        if (empty($customBreakdown)) return;
+        if (is_string($customBreakdown)) $customBreakdown = json_decode($customBreakdown, true) ?: [];
+        if (!is_array($customBreakdown)) return;
+
+        $existing = Setting::get('custom_discount_heads', []);
+        if (is_string($existing)) $existing = json_decode($existing, true) ?: [];
+        if (!is_array($existing)) $existing = [];
+
+        $dirty = false;
+        foreach ($customBreakdown as $ch) {
+            $name = isset($ch['head']) ? trim($ch['head']) : '';
+            if ($name !== '' && !in_array(strtolower($name), array_map('strtolower', $existing))) {
+                $existing[] = $name;
+                $dirty = true;
+            }
+        }
+        if ($dirty) {
+            Setting::set('custom_discount_heads', json_encode(array_values($existing)), 'accounting', 'Custom Discount Heads', 'json');
+        }
     }
 
     public function exportCsv(Request $request)
