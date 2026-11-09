@@ -1847,21 +1847,50 @@
                 }
             });
 
+            // Auto-select on focus for faster editing
+            $('#purchaseTableBody').on('focus', '.item-retail-value, .item-trade-value, .main-qty-input, .item-disc-percent, .item-disc-amt', function() {
+                $(this).select();
+            });
+
             // Grid Inputs -> Recalculate
             $('#purchaseTableBody').on('input', '.main-qty-input, .price, .trade-price-input, .retail-price-input, .item-gst-percent', function() {
-                recalcRow($(this).closest('tr'));
+                recalcRow($(this).closest('tr'), 'qty');
+                recalcAll();
+            });
+
+            $('#purchaseTableBody').on('input', '.item-retail-value', function() {
+                recalcRow($(this).closest('tr'), 'retail_val');
+                recalcAll();
+            });
+
+            $('#purchaseTableBody').on('blur change', '.item-retail-value', function() {
+                const val = parseFloat($(this).val()) || 0;
+                $(this).val(val.toFixed(2));
+                recalcRow($(this).closest('tr'), 'retail_val');
+                recalcAll();
+            });
+
+            $('#purchaseTableBody').on('input', '.item-trade-value', function() {
+                recalcRow($(this).closest('tr'), 'trade_val');
+                recalcAll();
+            });
+
+            $('#purchaseTableBody').on('blur change', '.item-trade-value', function() {
+                const val = parseFloat($(this).val()) || 0;
+                $(this).val(val.toFixed(2));
+                recalcRow($(this).closest('tr'), 'trade_val');
                 recalcAll();
             });
 
             $('#purchaseTableBody').on('input', '.item-disc-percent', function() {
                 $(this).closest('tr').data('last_disc_input', 'pct');
-                recalcRow($(this).closest('tr'));
+                recalcRow($(this).closest('tr'), 'disc_pct');
                 recalcAll();
             });
 
             $('#purchaseTableBody').on('input', '.item-disc-amt', function() {
                 $(this).closest('tr').data('last_disc_input', 'amt');
-                recalcRow($(this).closest('tr'));
+                recalcRow($(this).closest('tr'), 'disc_amt');
                 recalcAll();
             });
 
@@ -1928,12 +1957,13 @@
                 }
             });
 
-            function recalcRow($row) {
+            function recalcRow($row, source = null) {
                 const qtyStr = $row.find('.main-qty-input').val() || '0';
                 const qty = parseFloat(qtyStr) || 0;
-                const tradePrice = parseFloat($row.find('.trade-price-input').val()) || 0;
-                const retailPrice = parseFloat($row.find('.retail-price-input').val()) || 0;
-                const discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
+                let tradePrice = parseFloat($row.find('.trade-price-input').val()) || 0;
+                let retailPrice = parseFloat($row.find('.retail-price-input').val()) || 0;
+                let discPct = parseFloat($row.find('.item-disc-percent').val()) || 0;
+                let discAmt = parseFloat($row.find('.item-disc-amt').val()) || 0;
                 const gstPct = parseFloat($row.find('.item-gst-percent').val()) || 0;
                 const isThirdSchedule = $row.find('.hidden-is-third-schedule').val() === '1';
 
@@ -1947,23 +1977,22 @@
                 const isPiece = (unitVal === 'pcs' || unitVal === 'piece' || unitVal === 'pieces');
                 const isCarton = (unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || (!isPiece && ['by_cartons', 'by_bandal'].includes(sizeMode)));
 
+                let boxes = 0;
+                let loose = 0;
+                let effectiveQty = qty;
+
                 if (sizeMode === 'by_size') {
-                    tradeVal = (pieces_per_m2 || 1) * qty * tradePrice;
-                    retailVal = (pieces_per_m2 || 1) * qty * retailPrice;
+                    effectiveQty = (pieces_per_m2 || 1) * qty;
                 } else if (unitVal === 'gm' || unitVal === 'g') {
-                    tradeVal = (qty / 1000.0) * tradePrice;
-                    retailVal = (qty / 1000.0) * retailPrice;
+                    effectiveQty = qty / 1000.0;
                 } else if (isPiece) {
-                    tradeVal = qty * tradePrice;
-                    retailVal = qty * retailPrice;
+                    effectiveQty = qty;
                     const bQty = ppb > 1 ? Math.floor(qty / ppb) : 0;
                     $row.find('.hidden-boxes-qty').val(bQty);
                     $row.find('.hidden-loose-qty').val(qty);
                 } else if (isCarton) {
                     let s = qtyStr.trim();
                     if (s.startsWith('.')) s = '0' + s;
-                    let boxes = 0;
-                    let loose = 0;
                     if (s.includes('.')) {
                         const parts = s.split('.');
                         boxes = parseInt(parts[0]) || 0;
@@ -1973,17 +2002,54 @@
                     }
                     $row.find('.hidden-boxes-qty').val(boxes);
                     $row.find('.hidden-loose-qty').val(loose);
-
-                    const pieceTrade = ppb > 0 ? (tradePrice / ppb) : tradePrice;
-                    const pieceRetail = ppb > 0 ? (retailPrice / ppb) : retailPrice;
-                    tradeVal = (boxes * tradePrice) + (loose * pieceTrade);
-                    retailVal = (boxes * retailPrice) + (loose * pieceRetail);
-                } else {
-                    tradeVal = qty * tradePrice;
-                    retailVal = qty * retailPrice;
+                    effectiveQty = boxes + (ppb > 0 ? (loose / ppb) : 0);
+                    if (effectiveQty <= 0 && qty > 0) effectiveQty = qty;
                 }
 
-                const discAmt = tradeVal * (discPct / 100);
+                // Retail Value Handling (Support manual override)
+                if (source === 'retail_val') {
+                    retailVal = parseFloat($row.find('.item-retail-value').val()) || 0;
+                    if (effectiveQty > 0) {
+                        retailPrice = retailVal / effectiveQty;
+                        $row.find('.retail-price-input').val(retailPrice.toFixed(2));
+                    }
+                } else {
+                    if (isCarton && ppb > 0) {
+                        const pieceRetail = (retailPrice / ppb);
+                        retailVal = (boxes * retailPrice) + (loose * pieceRetail);
+                    } else {
+                        retailVal = effectiveQty * retailPrice;
+                    }
+                    $row.find('.item-retail-value').val(retailVal.toFixed(2));
+                }
+
+                // Trade Value Handling (Support manual override)
+                if (source === 'trade_val') {
+                    tradeVal = parseFloat($row.find('.item-trade-value').val()) || 0;
+                    if (effectiveQty > 0) {
+                        tradePrice = tradeVal / effectiveQty;
+                        $row.find('.trade-price-input').val(tradePrice.toFixed(2));
+                    }
+                } else {
+                    if (isCarton && ppb > 0) {
+                        const pieceTrade = (tradePrice / ppb);
+                        tradeVal = (boxes * tradePrice) + (loose * pieceTrade);
+                    } else {
+                        tradeVal = effectiveQty * tradePrice;
+                    }
+                    $row.find('.item-trade-value').val(tradeVal.toFixed(2));
+                }
+
+                // Discount Handling
+                if (source === 'disc_amt') {
+                    discAmt = parseFloat($row.find('.item-disc-amt').val()) || 0;
+                    discPct = tradeVal > 0 ? ((discAmt / tradeVal) * 100) : 0;
+                    $row.find('.item-disc-percent').val(discPct.toFixed(2));
+                } else {
+                    discAmt = tradeVal * (discPct / 100);
+                    $row.find('.item-disc-amt').val(discAmt.toFixed(2));
+                }
+
                 const valAfterDisc = Math.max(0, tradeVal - discAmt);
 
                 let stRetail = 0;
@@ -2000,9 +2066,6 @@
                 const totalGst = stRetail + stTrade;
                 const lineTotal = valAfterDisc + totalGst;
 
-                $row.find('.item-trade-value').val(tradeVal.toFixed(2));
-                $row.find('.item-retail-value').val(retailVal.toFixed(2));
-                $row.find('.item-disc-amt').val(discAmt.toFixed(2));
                 $row.find('.item-val-after-disc').val(valAfterDisc.toFixed(2));
                 $row.find('.item-st-retail').val(stRetail.toFixed(2));
                 $row.find('.item-st-trade').val(stTrade.toFixed(2));

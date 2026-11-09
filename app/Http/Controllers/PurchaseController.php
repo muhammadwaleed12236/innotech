@@ -914,6 +914,14 @@ class PurchaseController extends Controller
                     $retailValue = $qty * $retailPrice;
                 }
 
+                // Allow manual override from user input if explicitly provided
+                if (isset($request->retail_value[$i]) && is_numeric($request->retail_value[$i]) && (float)$request->retail_value[$i] > 0) {
+                    $retailValue = (float)$request->retail_value[$i];
+                }
+                if (isset($request->trade_value[$i]) && is_numeric($request->trade_value[$i]) && (float)$request->trade_value[$i] > 0) {
+                    $tradeValue = (float)$request->trade_value[$i];
+                }
+
                 $discPercent = isset($itemDiscPercents[$i]) && is_numeric($itemDiscPercents[$i])
                     ? (float) $itemDiscPercents[$i]
                     : 0;
@@ -1721,6 +1729,14 @@ class PurchaseController extends Controller
                 } else {
                     $tradeValue = $qty * $tradePrice;
                     $retailValue = $qty * $retailPrice;
+                }
+
+                // Allow manual override from user input if explicitly provided
+                if (isset($request->retail_value[$i]) && is_numeric($request->retail_value[$i]) && (float)$request->retail_value[$i] > 0) {
+                    $retailValue = (float)$request->retail_value[$i];
+                }
+                if (isset($request->trade_value[$i]) && is_numeric($request->trade_value[$i]) && (float)$request->trade_value[$i] > 0) {
+                    $tradeValue = (float)$request->trade_value[$i];
                 }
 
                 $discPercent = isset($itemDiscPercents[$i]) && is_numeric($itemDiscPercents[$i])
