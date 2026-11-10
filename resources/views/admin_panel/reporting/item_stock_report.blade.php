@@ -573,7 +573,7 @@ $(document).ready(function() {
                 currentReportData = res.data || [];
 
                 // Update KPIs
-                $('#kpiGrandStockValue').text('Rs ' + (res.grand_total || 0).toLocaleString(undefined, {minimumFractionDigits: 2}));
+                $('#kpiGrandStockValue').text('Rs ' + (res.grand_total || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
                 
                 let totalStock = res.total_current_stock || 0;
                 $('#kpiTotalStock').text(totalStock.toLocaleString() + ' Units');

@@ -1065,7 +1065,7 @@ class ReportingController extends Controller
 
         return response()->json([
             'data'                  => $rows,
-            'grand_total'           => $grandTotalValue,
+            'grand_total'           => round($grandTotalValue, 2),
             'total_current_stock'   => $totalCurrentStock,
             'total_adjustments_qty' => $totalAdjustments,
             'total_sold_amount'     => $totalSoldAmount,
@@ -3068,66 +3068,15 @@ class ReportingController extends Controller
             }
         }
 
-        // Stock in Trade / Inventory Valuation
-        $products = DB::table('products')->get();
-        $totalInventory = 0;
-        foreach ($products as $p) {
-            // Check direct warehouse stock count first
-            $stockQty = (float) DB::table('warehouse_stocks')
-                ->where('product_id', $p->id)
-                ->sum('total_pieces');
-
-            // If warehouse stock not populated, compute from movements/purchases/sales
-            if ($stockQty <= 0) {
-                $initial = (float) DB::table('stock_movements')
-                    ->where('product_id', $p->id)
-                    ->whereIn('ref_type', ['INIT', 'OPENING_STOCK'])
-                    ->where('created_at', '<=', $dateEnd)
-                    ->sum('qty');
-
-                [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($p->id, ['before' => $dateEnd]);
-
-                $saleStats = DB::table('sale_items')
-                    ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-                    ->where('sale_items.product_id', $p->id)
-                    ->where('sales.created_at', '<=', $dateEnd)
-                    ->where('sales.sale_status', '!=', 'cancelled')
-                    ->selectRaw('COALESCE(SUM(CASE WHEN COALESCE(sale_items.total_pieces, 0) > 0 THEN sale_items.total_pieces ELSE sale_items.qty END), 0) as total_qty')
-                    ->first();
-
-                $sold = (float) ($saleStats ? $saleStats->total_qty : 0);
-
-                $returnQty = (float) DB::table('sale_return_items')
-                    ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
-                    ->where('sale_return_items.product_id', $p->id)
-                    ->where('sale_returns.created_at', '<=', $dateEnd)
-                    ->sum('sale_return_items.qty');
-
-                $stockQty = max(0, $initial + $purchased - ($sold - $returnQty));
-            }
-
-            if ($stockQty <= 0) {
-                $stockQty = (float) ($p->total_stock_qty ?? 0);
-            }
-
-            // Valuation price
-            $productPurchPrice = 0;
-            if ($p->size_mode === 'by_size') {
-                $m2PerPiece = (float) ($p->pieces_per_m2 ?? 1);
-                $purchPerM2 = (float) ($p->purchase_price_per_m2 ?? 0);
-                $productPurchPrice = $m2PerPiece * $purchPerM2;
-            } else {
-                $productPurchPrice = (float) ($p->purchase_price_per_piece ?? 0);
-            }
-
-            if ($productPurchPrice <= 0 && !empty($p->pieces_per_box) && $p->pieces_per_box > 0) {
-                $productPurchPrice = ((float) ($p->purchase_price_per_box ?? 0)) / $p->pieces_per_box;
-            }
-
-            if ($stockQty > 0 && $productPurchPrice > 0) {
-                $totalInventory += ($stockQty * $productPurchPrice);
-            }
-        }
+        // Stock in Trade / Inventory Valuation (Accurate weighted average stock valuation matching Item Stock Report)
+        $stockReq = new Request([
+            'warehouse_id' => 'all',
+            'date_to' => $date,
+            'report_mode' => 'summary'
+        ]);
+        $stockRes = $this->fetchItemStock($stockReq);
+        $stockData = $stockRes->getData(true);
+        $totalInventory = (float) ($stockData['grand_total'] ?? 0);
 
         $currentAssetsTotal = $totalCashBank + $totalReceivables + $totalInventory;
         $fixedAssetsTotal = 0; // if you have fixed assets head, you can add here
