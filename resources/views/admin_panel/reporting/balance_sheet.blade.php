@@ -139,6 +139,38 @@
         padding: 8px 10px !important;
     }
 
+    /* Clickable Interactive Balance Sheet Rows */
+    .bs-clickable-row {
+        cursor: pointer;
+        transition: background-color 0.15s ease, transform 0.1s ease;
+    }
+    .bs-clickable-row:hover {
+        background-color: #f1f5f9 !important;
+    }
+    .bs-clickable-row:hover .bs-sub-row {
+        color: #0284c7 !important;
+        font-weight: 600;
+    }
+    .bs-link-icon {
+        opacity: 0;
+        font-size: 9px;
+        margin-left: 6px;
+        color: #94a3b8;
+        transition: opacity 0.15s ease, color 0.15s ease;
+    }
+    .bs-clickable-row:hover .bs-link-icon {
+        opacity: 1;
+        color: #0284c7;
+    }
+    .bs-clickable-pill {
+        cursor: pointer;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .bs-clickable-pill:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+    }
+
     .statement-footer-banner {
         padding: 12px 16px;
         background: #1e293b;
@@ -272,18 +304,18 @@
         <div class="card-body p-2">
             <div class="summary-pill-bar">
                 
-                <div class="stat-pill" style="background: #f0f9ff; border-color: #bae6fd;">
+                <div class="stat-pill bs-clickable-pill" onclick="$('html, body').animate({scrollTop: $('#lblAssetsGrandTotal').offset().top - 200}, 300)" title="Scroll to Assets" style="background: #f0f9ff; border-color: #bae6fd;">
                     <div class="stat-label text-info"><i class="fa-solid fa-building-columns me-1"></i>Total Assets</div>
                     <div class="stat-val text-primary" id="pillAssets">Rs 0.00</div>
                 </div>
 
-                <div class="stat-pill" style="background: #fef2f2; border-color: #fca5a5;">
+                <div class="stat-pill bs-clickable-pill" onclick="$('html, body').animate({scrollTop: $('#lblLiabTotal').offset().top - 200}, 300)" title="Scroll to Liabilities" style="background: #fef2f2; border-color: #fca5a5;">
                     <div class="stat-label text-danger"><i class="fa-solid fa-hand-holding-dollar me-1"></i>Total Liabilities</div>
                     <div class="stat-val text-danger" id="pillLiabilities">Rs 0.00</div>
                 </div>
 
-                <div class="stat-pill" style="background: #f0fdf4; border-color: #86efac;">
-                    <div class="stat-label text-success"><i class="fa-solid fa-chart-pie me-1"></i>Owner's Equity</div>
+                <div class="stat-pill bs-clickable-pill" onclick="window.open('{{ route('report.profit_loss') }}', '_blank')" title="Click to view Profit & Loss Report" style="background: #f0fdf4; border-color: #86efac;">
+                    <div class="stat-label text-success"><i class="fa-solid fa-chart-pie me-1"></i>Owner's Equity <i class="fas fa-arrow-up-right-from-square" style="font-size: 8px;"></i></div>
                     <div class="stat-val text-success" id="pillEquity">Rs 0.00</div>
                 </div>
 
@@ -370,12 +402,12 @@
                                 {{-- Dynamically Loaded Cash & Bank Accounts --}}
                             </tbody>
                             <tbody>
-                                <tr>
-                                    <td class="bs-sub-row"><i class="fas fa-users-line text-info me-2"></i>Accounts Receivable</td>
+                                <tr class="bs-clickable-row" onclick="window.open('{{ route('report.parties_balance') }}?report_type=RECEIVABLE', '_blank')" title="Click to view Customer Receivables Report">
+                                    <td class="bs-sub-row"><i class="fas fa-users-line text-info me-2"></i>Accounts Receivable <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
                                     <td class="bs-amount text-primary" id="lblReceivables">Rs 0.00</td>
                                 </tr>
-                                <tr>
-                                    <td class="bs-sub-row"><i class="fas fa-boxes-stacked text-warning me-2"></i>Inventory on Hand</td>
+                                <tr class="bs-clickable-row" onclick="window.open('{{ route('report.item_stock') }}', '_blank')" title="Click to view Item Stock Report">
+                                    <td class="bs-sub-row"><i class="fas fa-boxes-stacked text-warning me-2"></i>Inventory on Hand <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
                                     <td class="bs-amount text-dark" id="lblInventory">Rs 0.00</td>
                                 </tr>
                                 <tr class="bs-subtotal-row">
@@ -435,8 +467,8 @@
 
                         <table class="bs-table">
                             <tbody>
-                                <tr>
-                                    <td class="bs-sub-row"><i class="fas fa-truck-field text-danger me-2"></i>Accounts Payable (Vendors)</td>
+                                <tr class="bs-clickable-row" onclick="window.open('{{ route('report.payable') }}', '_blank')" title="Click to view Vendor Payables Report">
+                                    <td class="bs-sub-row"><i class="fas fa-truck-field text-danger me-2"></i>Accounts Payable (Vendors) <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
                                     <td class="bs-amount text-danger" id="lblPayables">Rs 0.00</td>
                                 </tr>
                                 <tr class="bs-subtotal-row">
@@ -454,8 +486,8 @@
 
                         <table class="bs-table">
                             <tbody>
-                                <tr>
-                                    <td class="bs-sub-row"><i class="fas fa-user-shield text-success me-2"></i>Owner's Capital & Retained Earnings</td>
+                                <tr class="bs-clickable-row" onclick="window.open('{{ route('report.profit_loss') }}', '_blank')" title="Click to view Profit & Loss Report">
+                                    <td class="bs-sub-row"><i class="fas fa-user-shield text-success me-2"></i>Owner's Capital & Retained Earnings <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
                                     <td class="bs-amount text-success" id="lblEquity">Rs 0.00</td>
                                 </tr>
                                 <tr class="bs-subtotal-row">
@@ -539,8 +571,9 @@
                 if (res.assets && res.assets.cash_bank && res.assets.cash_bank.length > 0) {
                     res.assets.cash_bank.forEach(a => {
                         let icon = a.name.toLowerCase().includes('bank') ? 'fa-building-columns text-primary' : 'fa-money-bill-1 text-success';
-                        cbHtml += `<tr>
-                            <td class="bs-sub-row"><i class="fa-solid ${icon} me-2"></i>${a.name}</td>
+                        let url = a.id ? `{{ url('/accounts') }}/${a.id}/ledger` : `{{ route('view_all') }}`;
+                        cbHtml += `<tr class="bs-clickable-row" onclick="window.open('${url}', '_blank')" title="Click to view Account Ledger">
+                            <td class="bs-sub-row"><i class="fa-solid ${icon} me-2"></i>${a.name} <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
                             <td class="bs-amount text-dark">${fmt(a.balance)}</td>
                         </tr>`;
                     });

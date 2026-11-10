@@ -3047,6 +3047,7 @@ class ReportingController extends Controller
             $computed_balance = $acc->opening_balance + $balance;
             if ($computed_balance != 0) {
                 $cashAccounts[] = [
+                    'id' => $acc->id,
                     'name' => $acc->title,
                     'balance' => $computed_balance
                 ];
