@@ -1109,6 +1109,11 @@
                 $sumSalesTax = 0;
                 $sumFurtherTax = 0;
                 $sumNetTotal = 0;
+
+                $totalCartonsCount = 0;
+                $totalLooseCount = 0;
+                $totalPiecesCount = 0;
+                $hasCartonItems = false;
             @endphp
 
             <tbody>
@@ -1132,6 +1137,37 @@
                         $batchNo = $item['batch_no'] ?? '';
                         $packing = (float)($item['pieces_per_box'] ?? 1);
                         if ($packing <= 0) $packing = 1;
+
+                        $totalPieces = (float)($item['total_pieces'] ?? 0);
+                        $totalPiecesCount += $totalPieces;
+
+                        $sizeMode = $item['size_mode'] ?? 'std';
+                        $variantUnit = strtolower($item['variant_unit'] ?? ($item['unit'] ?? ''));
+                        $isCartonMode = (in_array($sizeMode, ['by_cartons', 'by_bandal']) || in_array($variantUnit, ['carton', 'ctn', 'bundal', 'bndl']) || $sizeMode === 'by_size' || $packing > 1);
+
+                        if ($isCartonMode && $packing > 1) {
+                            $hasCartonItems = true;
+                            $boxes = (int) floor($totalPieces / $packing);
+                            $loose = (int) round($totalPieces - ($boxes * $packing));
+                            $totalCartonsCount += $boxes;
+                            $totalLooseCount += $loose;
+
+                            if ($boxes > 0 && $loose > 0) {
+                                $displayQty = "$boxes.$loose";
+                            } elseif ($boxes > 0) {
+                                $displayQty = (string)$boxes;
+                            } elseif ($loose > 0) {
+                                $displayQty = "0.$loose";
+                            } else {
+                                $displayQty = "0";
+                            }
+                        } elseif (in_array($sizeMode, ['by_kg', 'by_gm', 'by_feet', 'by_meter'])) {
+                            $rawQty = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces);
+                            $displayQty = ($rawQty == (int)$rawQty ? (int)$rawQty : number_format($rawQty, 2));
+                        } else {
+                            $rawQty = (float)($item['qty_box'] ?? $item['qty'] ?? $totalPieces ?? 0);
+                            $displayQty = ($rawQty == (int)$rawQty ? (int)$rawQty : number_format($rawQty, 2));
+                        }
 
                         $itemQty = (float)($item['qty_box'] ?? $item['qty'] ?? $item['total_pieces'] ?? 0);
                         $itemPrice = (float)($item['price'] ?? 0);
@@ -1217,7 +1253,7 @@
                         </td>
 
                         <td class="text-center fw-bold">
-                            {{ $itemQty == (int)$itemQty ? (int)$itemQty : number_format($itemQty, 2) }}
+                            {{ $displayQty }}
                         </td>
 
                         <td class="text-end">
@@ -1259,8 +1295,19 @@
                         TOTAL:
                     </td>
 
+                    @php
+                        if ($hasCartonItems && ($totalCartonsCount > 0 || $totalLooseCount > 0)) {
+                            if ($totalLooseCount > 0) {
+                                $footerQtyDisplay = "{$totalCartonsCount}.{$totalLooseCount}";
+                            } else {
+                                $footerQtyDisplay = (string)$totalCartonsCount;
+                            }
+                        } else {
+                            $footerQtyDisplay = ($sumTotQty == (int)$sumTotQty ? (int)$sumTotQty : number_format($sumTotQty, 2));
+                        }
+                    @endphp
                     <td class="text-center fw-bold">
-                        {{ $sumTotQty == (int)$sumTotQty ? (int)$sumTotQty : number_format($sumTotQty, 2) }}
+                        {{ $footerQtyDisplay }}
                     </td>
 
                     <td class="text-end fw-bold"></td>

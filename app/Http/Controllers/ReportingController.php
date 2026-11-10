@@ -255,22 +255,24 @@ class ReportingController extends Controller
 
                 if ($vBatchStock !== null) {
                     $balance = max(0, $vBatchStock);
-                } elseif (count($parsedVariants) === 1) {
-                    $balance = max(0, $whPieces);
+                    $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
                 } else {
-                    $totalVRawStock = 0;
-                    foreach ($parsedVariants as $pv) {
-                        $totalVRawStock += (float) ($pv['stock'] ?? 0);
-                    }
-                    $vRaw = (float) ($v['stock'] ?? 0);
-                    if ($totalVRawStock > 0 && $whPieces > 0) {
-                        $balance = max(0, round(($vRaw / $totalVRawStock) * $whPieces, 2));
+                    $vRawStock = (string) ($v['stock'] ?? '0');
+                    if ($isCartonMode && $ppb >= 1) {
+                        if (strpos($vRawStock, '.') !== false) {
+                            $parts = explode('.', $vRawStock);
+                            $boxes = (int) ($parts[0] ?? 0);
+                            $looseP = (int) ($parts[1] ?? 0);
+                            $initial = ($boxes * $ppb) + $looseP;
+                        } else {
+                            $initial = (float) $vRawStock * $ppb;
+                        }
                     } else {
-                        $balance = ($warehouseId && $warehouseId !== 'all') ? 0 : max(0, $whPieces);
+                        $initial = (float) $vRawStock;
                     }
+
+                    $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
                 }
-                
-                $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
             }
             
             $results[] = [
@@ -844,24 +846,24 @@ class ReportingController extends Controller
 
                         if ($vBatchStock !== null) {
                             $balance = max(0, $vBatchStock);
-                        } elseif (count($parsedVariants) === 1) {
-                            $balance = max(0, $whPieces);
+                            $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
                         } else {
-                            $totalVRawStock = 0;
-                            foreach ($parsedVariants as $pv) {
-                                $totalVRawStock += (float) ($pv['stock'] ?? 0);
-                            }
-                            $vRaw = (float) ($v['stock'] ?? 0);
-                            if ($totalVRawStock > 0 && $whPieces > 0) {
-                                $balance = max(0, round(($vRaw / $totalVRawStock) * $whPieces, 2));
+                            $vRawStock = (string) ($v['stock'] ?? '0');
+                            if ($isCartonMode && $ppb >= 1) {
+                                if (strpos($vRawStock, '.') !== false) {
+                                    $parts = explode('.', $vRawStock);
+                                    $boxes = (int) ($parts[0] ?? 0);
+                                    $looseP = (int) ($parts[1] ?? 0);
+                                    $initial = ($boxes * $ppb) + $looseP;
+                                } else {
+                                    $initial = (float) $vRawStock * $ppb;
+                                }
                             } else {
-                                $balance = ($warehouseId && $warehouseId !== 'all') ? 0 : max(0, $whPieces);
+                                $initial = (float) $vRawStock;
                             }
-                        }
 
-                        // Initial Stock for this warehouse context:
-                        // Initial = Balance - Purchased + Sold - Returned + Purchased Returned - Adjustments
-                        $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
+                            $balance = max(0, $initial + $purchased - $sold + $returnedQty - $pReturned + $adjustments);
+                        }
                     }
 
                     // Weighted Average Purchase Price
