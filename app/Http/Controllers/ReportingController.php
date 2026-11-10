@@ -451,6 +451,30 @@ class ReportingController extends Controller
         return view('admin_panel.reporting.item_stock_report', compact('categories', 'warehouses', 'units'));
     }
 
+    /**
+     * Helper to format carton + loose pieces string
+     */
+    public static function formatCartonQty($pieces, $ppb, $ctnLbl = 'Ctn')
+    {
+        $ppb = (float)$ppb > 0 ? (float)$ppb : 1;
+        $pieces = (float)$pieces;
+        $isNegative = $pieces < 0;
+        $abs = abs($pieces);
+
+        $cartons = (int) floor($abs / $ppb);
+        $loose   = (int) round($abs - ($cartons * $ppb));
+
+        if ($cartons > 0 && $loose > 0) {
+            $text = "{$cartons} {$ctnLbl} + {$loose} Pcs";
+        } elseif ($cartons > 0) {
+            $text = "{$cartons} {$ctnLbl}";
+        } else {
+            $text = "{$loose} Pcs";
+        }
+
+        return ($isNegative ? '-' : '') . $text;
+    }
+
     // AJAX endpoint to fetch report rows
     public function fetchItemStock(Request $request)
     {
@@ -458,7 +482,7 @@ class ReportingController extends Controller
         $variantKey  = $request->variant_key;
         $categoryId  = $request->category_id;
         $warehouseId = $request->warehouse_id;
-        $unitType    = $request->unit_type; // 'all', 'cartons_pcs', 'weight_kg', 'area_m2'
+        $unitType    = $request->unit_type; // 'all', 'cartons', 'cartons_pcs', 'weight_kg', 'area_m2'
         $reportMode  = $request->report_mode ?: 'summary'; // 'summary' vs 'ledger'
         $dateFrom    = $request->date_from;
         $dateTo      = $request->date_to;
@@ -478,8 +502,16 @@ class ReportingController extends Controller
                 $productsQuery->whereIn('size_mode', ['by_kg', 'by_gm', 'by_ton']);
             } elseif ($unitType === 'area_m2') {
                 $productsQuery->whereIn('size_mode', ['by_size', 'by_m2']);
+            } elseif ($unitType === 'cartons') {
+                $productsQuery->where(function($q) {
+                    $q->whereIn('size_mode', ['by_cartons', 'by_bandal'])
+                      ->orWhereHas('unit', function($qu) {
+                          $qu->whereIn(DB::raw('LOWER(name)'), ['carton', 'ctn', 'box', 'bundal', 'bndl']);
+                      })
+                      ->orWhere('pieces_per_box', '>', 1);
+                });
             } elseif ($unitType === 'cartons_pcs') {
-                $productsQuery->whereIn('size_mode', ['by_cartons', 'by_pieces', 'std']);
+                $productsQuery->whereIn('size_mode', ['by_cartons', 'by_pieces', 'std', 'by_bandal']);
             }
         }
 
@@ -500,6 +532,9 @@ class ReportingController extends Controller
                 $productPurchPrice  = $m2PerPiece * $purchPerM2;
             } else {
                 $productPurchPrice = (float) ($product->purchase_price_per_piece ?? 0);
+                if ($productPurchPrice <= 0 && (float)($product->purchase_price_per_box ?? 0) > 0 && (float)($product->pieces_per_box ?? 0) > 0) {
+                    $productPurchPrice = (float)$product->purchase_price_per_box / (float)$product->pieces_per_box;
+                }
             }
 
             // Determine size mode & unit display label
