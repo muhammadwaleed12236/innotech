@@ -795,7 +795,7 @@ class PurchaseController extends Controller
             );
             $userDefaultWhId = (int) ($user?->warehouse_id ?: 1);
 
-            $branchId = (int) ($validated['branch_id'] ?? 1);
+            $branchId = (int) ($validated['branch_id'] ?? (auth()->check() && auth()->user()->branch_id ? auth()->user()->branch_id : 1));
             $headerWhId = $canSelectWarehouse
                 ? (int) ($request->header_warehouse_id ?: (is_numeric($request->warehouse_id) ? $request->warehouse_id : (is_array($request->warehouse_id) ? ($request->warehouse_id[0] ?? $userDefaultWhId) : $userDefaultWhId)))
                 : $userDefaultWhId;

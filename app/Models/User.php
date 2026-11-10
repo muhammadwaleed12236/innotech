@@ -47,6 +47,15 @@ class User extends Authenticatable
     ];
 
     /**
+     * Get the branch this user belongs to.
+     * Super Admins have branch_id = NULL and can see all branches.
+     */
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    /**
      * Get the employee profile associated with this user
      */
     public function employee()

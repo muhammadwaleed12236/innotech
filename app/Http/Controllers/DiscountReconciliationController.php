@@ -156,7 +156,7 @@ class DiscountReconciliationController extends Controller
 
                 $itemsList[] = [
                     'id' => $item->id,
-                    'product_name' => $item->product ? $item->product->name : ('Product #' . $item->product_id),
+                    'product_name' => $item->product ? ($item->product->item_name ?? $item->product->name ?? ('Product #' . $item->product_id)) : ('Product #' . $item->product_id),
                     'product_code' => $item->product ? $item->product->code : '',
                     'batch_no' => $item->batch_no ?: '—',
                     'qty' => (float)$item->qty,
@@ -173,7 +173,7 @@ class DiscountReconciliationController extends Controller
                     'our_disc_notes' => $item->our_disc_notes ?: '',
                 ];
 
-                $prodName = $item->product ? $item->product->name : ('Product #' . $item->product_id);
+                $prodName = $item->product ? ($item->product->item_name ?? $item->product->name ?? ('Product #' . $item->product_id)) : ('Product #' . $item->product_id);
                 $invNo = $p->invoice_no ?: ('PUR-' . $p->id);
                 $invDate = $p->purchase_date ? Carbon::parse($p->purchase_date)->format('d-M-Y') : 'N/A';
                 $vName = $p->vendor ? $p->vendor->name : 'N/A';
@@ -776,7 +776,7 @@ class DiscountReconciliationController extends Controller
                     $vName = $p->vendor ? $p->vendor->name : '';
 
                     foreach ($p->items as $item) {
-                        $prodName = $item->product ? $item->product->name : ('Product #' . $item->product_id);
+                        $prodName = $item->product ? ($item->product->item_name ?? $item->product->name ?? ('Product #' . $item->product_id)) : ('Product #' . $item->product_id);
                         $batchStr = $item->batch_no ?: '—';
                         $tVal = (float)($item->trade_value > 0 ? $item->trade_value : ($item->subtotal > 0 ? $item->subtotal : $item->net_amount));
                         $iOurAmt = (float)$item->our_disc_amount;

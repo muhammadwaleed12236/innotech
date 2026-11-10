@@ -3,10 +3,29 @@
 // app/Models/Sale.php
 namespace App\Models;
 
+use App\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Model;
 
 class Sale extends Model
 {
+    /**
+     * Apply branch-level isolation automatically.
+     * Super Admins see all branches; branch users see only their own branch.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new BranchScope);
+
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) \Illuminate\Support\Str::uuid();
+            }
+            if (!isset($model->is_synced)) {
+                $model->is_synced = 0;
+            }
+        });
+    }
+
     protected $casts = ['selected_terms' => 'array'];
     protected $fillable = [
         'customer_id', 'sales_officer_id', 'reference', 'po_no', 'po_date', 'total_amount_Words', 'total_bill_amount',
@@ -16,7 +35,7 @@ class Sale extends Model
         'total_gross', 'total_exclusive_gst', 'total_sales_tax', 'total_further_tax', 'total_bonus_qty',
         'total_trade_activity', 'total_mrp_tax', 'total_adv_tax',
         'total_reg_discount', 'total_sp_discount',
-        'source'
+        'source', 'branch_id',
     ];
 
     public function salesOfficer()
@@ -37,6 +56,11 @@ class Sale extends Model
     public function product_relation()
     {
         return $this->belongsTo(Product::class, 'product', 'id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function getIsWalkinAttribute()
@@ -67,18 +91,5 @@ class Sale extends Model
     public function returns()
     {
         return $this->hasMany(SaleReturn::class, 'sale_id');
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($model) {
-            if (empty($model->uuid)) {
-                $model->uuid = (string) \Illuminate\Support\Str::uuid();
-            }
-            if (!isset($model->is_synced)) {
-                $model->is_synced = 0;
-            }
-        });
     }
 }

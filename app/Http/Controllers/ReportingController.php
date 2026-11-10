@@ -4342,4 +4342,112 @@ class ReportingController extends Controller
         ]);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // BRANCH SUMMARY REPORT  (Super Admin only)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Show the branch summary report page.
+     */
+    public function branch_summary_report()
+    {
+        $branches = \App\Models\Branch::orderBy('name')->get();
+        return view('admin_panel.reports.branch_summary', compact('branches'));
+    }
+
+    /**
+     * Fetch aggregated financial data per branch (or all branches).
+     * Super Admin only – branch-scoped users will get a 403 from the route middleware.
+     */
+    public function fetchBranchSummary(Request $request)
+    {
+        $start     = $request->filled('start_date') ? $request->start_date . ' 00:00:00' : null;
+        $end       = $request->filled('end_date')   ? $request->end_date   . ' 23:59:59' : null;
+        $branchId  = $request->filled('branch_id')  ? $request->branch_id  : null;
+
+        // Default to current month
+        if (!$start && !$end) {
+            $start = now()->startOfMonth()->startOfDay()->toDateTimeString();
+            $end   = now()->endOfDay()->toDateTimeString();
+        }
+
+        $branchQuery = \App\Models\Branch::orderBy('name');
+        if ($branchId) {
+            $branchQuery->where('id', $branchId);
+        }
+        $branches = $branchQuery->get();
+
+        $summary = [];
+
+        foreach ($branches as $branch) {
+            // ── Purchases ──────────────────────────────────────────────────
+            $purchaseQuery = DB::table('purchases')
+                ->where('branch_id', $branch->id)
+                ->whereNull('deleted_at');
+
+            if ($start && $end) {
+                $purchaseQuery->whereBetween('created_at', [$start, $end]);
+            }
+
+            $totalPurchases    = (float) $purchaseQuery->sum('net_amount');
+            $totalPurchaseCount = (int)   $purchaseQuery->count();
+
+            // ── Sales ───────────────────────────────────────────────────────
+            // sales table may not have branch_id yet; guard with column check
+            $salesQuery = DB::table('sales');
+            if (DB::getSchemaBuilder()->hasColumn('sales', 'branch_id')) {
+                $salesQuery->where('branch_id', $branch->id);
+            } else {
+                // Fallback: join through user if branch_id not on sales
+                $salesQuery->whereRaw('1=0'); // no data until column added
+            }
+            if ($start && $end) {
+                $salesQuery->whereBetween('created_at', [$start, $end]);
+            }
+
+            $totalSales     = (float) $salesQuery->sum('total_net');
+            $totalSaleCount = (int)   $salesQuery->count();
+
+            // ── Expenses ───────────────────────────────────────────────────
+            $expenseQuery = DB::table('expense_vouchers');
+            if (DB::getSchemaBuilder()->hasColumn('expense_vouchers', 'branch_id')) {
+                $expenseQuery->where('branch_id', $branch->id);
+            } else {
+                $expenseQuery->whereRaw('1=0');
+            }
+            if ($start && $end) {
+                $expenseQuery->whereBetween('created_at', [$start, $end]);
+            }
+            $totalExpenses = (float) $expenseQuery->sum('total_amount');
+
+            // ── Net Profit (simple) ────────────────────────────────────────
+            $netProfit = $totalSales - $totalPurchases - $totalExpenses;
+
+            $summary[] = [
+                'branch_id'          => $branch->id,
+                'branch_name'        => $branch->name,
+                'branch_address'     => $branch->address,
+                'total_purchases'    => $totalPurchases,
+                'purchase_count'     => $totalPurchaseCount,
+                'total_sales'        => $totalSales,
+                'sale_count'         => $totalSaleCount,
+                'total_expenses'     => $totalExpenses,
+                'net_profit'         => $netProfit,
+            ];
+        }
+
+        $grandTotals = [
+            'total_purchases' => array_sum(array_column($summary, 'total_purchases')),
+            'total_sales'     => array_sum(array_column($summary, 'total_sales')),
+            'total_expenses'  => array_sum(array_column($summary, 'total_expenses')),
+            'net_profit'      => array_sum(array_column($summary, 'net_profit')),
+        ];
+
+        return response()->json([
+            'summary'      => $summary,
+            'grand_totals' => $grandTotals,
+            'period'       => ['start' => $start, 'end' => $end],
+        ]);
+    }
+
 }

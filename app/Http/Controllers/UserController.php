@@ -16,16 +16,23 @@ class UserController extends Controller
         $isSuperAdmin = $currentUser ? $currentUser->isSuperAdmin() : false;
 
         if ($isSuperAdmin) {
-            $users = User::all();
+            $users = User::with('branch')->get();
             $allRoles = Role::orderBy('name', 'asc')->get();
         } else {
             $myPermNames = $currentUser ? $currentUser->getAllPermissions()->pluck('name')->toArray() : [];
 
-            $users = User::where('id', '!=', $currentUser ? $currentUser->id : 0)
+            $usersQuery = User::where('id', '!=', $currentUser ? $currentUser->id : 0)
                 ->where('email', '!=', 'superadmin@example.com')
                 ->whereDoesntHave('roles', function ($q) {
                     $q->whereIn('name', ['superadmin', 'Super Admin', 'superAdmin', 'admin']);
-                })
+                });
+
+            // Branch users can only view users belonging to their own branch
+            if ($currentUser && $currentUser->branch_id) {
+                $usersQuery->where('branch_id', $currentUser->branch_id);
+            }
+
+            $users = $usersQuery
                 ->get()
                 ->filter(function ($u) use ($myPermNames) {
                     // Only show users whose permissions do not exceed the current user's scope
@@ -51,6 +58,7 @@ class UserController extends Controller
             'password' => $passwordRule,
             'roles' => 'nullable|array',
             'roles.*' => 'string|exists:roles,name',
+            'branch_id' => 'nullable|exists:branches,id',
         ]);
 
         if ($validator->fails()) {
@@ -102,6 +110,15 @@ class UserController extends Controller
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
+
+        // Branch assignment logic
+        if ($currentUser && $currentUser->isSuperAdmin()) {
+            $user->branch_id = $request->branch_id ?: null;
+        } elseif ($currentUser && $currentUser->branch_id) {
+            // Child users created by branch users strictly inherit the parent's branch
+            $user->branch_id = $currentUser->branch_id;
+        }
+
         $user->save();
 
         if ($currentUser && $currentUser->isSuperAdmin()) {

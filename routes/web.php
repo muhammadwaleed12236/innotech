@@ -614,6 +614,10 @@ Route::middleware('auth')->group(function () {
     Route::get('report/principal-delivery-statement/fetch', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'fetchData'])->name('report.principal_delivery_statement.fetch');
     Route::get('report/principal-delivery-statement/export', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'exportCsv'])->name('report.principal_delivery_statement.export');
 
+    // Branch Summary Report (Super Admin only)
+    Route::get('report/branch-summary', [ReportingController::class, 'branch_summary_report'])->middleware('branch.access')->name('report.branch_summary');
+    Route::get('report/branch-summary/fetch', [ReportingController::class, 'fetchBranchSummary'])->middleware('branch.access')->name('report.branch_summary.fetch');
+
     // Return modules list for permission dropdowns (AJAX)
     Route::get('/modules/list', function () {
         return response()->json(\Illuminate\Support\Facades\DB::table('modules')->pluck('name'));

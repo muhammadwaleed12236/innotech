@@ -111,14 +111,14 @@
         /* Desktop Mega Menu Positioning */
         @media (min-width: 992px) {
             .rt_nav_header.horizontal-layout .nav-bottom .page-navigation > .nav-item.mega-menu {
-                position: static !important;
+                position: relative !important;
             }
 
             .mega-menu .submenu {
                 position: absolute !important;
-                top: 100% !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
+                top: calc(100% + 4px) !important;
+                left: 0 !important;
+                transform: none !important;
                 width: max-content !important;
                 max-width: 98vw !important;
                 right: auto !important;
@@ -126,6 +126,15 @@
                 border-radius: 10px !important;
                 box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
                 border: 1px solid #eef2f6 !important;
+            }
+
+            .mega-menu .submenu::before {
+                content: '';
+                position: absolute;
+                top: -8px;
+                left: 0;
+                right: 0;
+                height: 8px;
             }
 
             .mega-menu .col-group-wrapper {

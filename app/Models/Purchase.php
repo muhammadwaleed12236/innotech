@@ -2,12 +2,22 @@
 
 namespace App\Models;
 
+use App\Scopes\BranchScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Purchase extends Model
 {
     use SoftDeletes;
+
+    /**
+     * Apply branch-level isolation automatically.
+     * Super Admins see all branches; branch users see only their own branch.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new BranchScope);
+    }
 
     protected $guarded = [];
 

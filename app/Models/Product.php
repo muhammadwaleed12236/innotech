@@ -102,6 +102,16 @@ class Product extends Model
         return $this->hasMany(ProductWebImage::class)->orderBy('sort_order', 'asc');
     }
 
+        public function getNameAttribute()
+    {
+        return $this->item_name;
+    }
+
+    public function getCodeAttribute()
+    {
+        return $this->item_code;
+    }
+
     protected static function booted()
     {
         static::saved(function ($product) {

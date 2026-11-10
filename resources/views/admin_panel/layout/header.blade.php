@@ -338,19 +338,24 @@
                                 </div>
                             </div>
                         </li>
-                        @if (auth()->user()->email === 'admin@admin.com')
+                        @if (auth()->user()->can('users.view') || auth()->user()->can('roles.view') || auth()->user()->isSuperAdmin())
                             <li class="nav-item">
                                 <a href="#" class="nav-link"><i
                                         class="menu_icon feather ft-clipboard"></i><span class="menu-title">User
                                         Managment</span><i class="menu-arrow"></i></a>
                                 <div class="submenu">
                                     <ul class="submenu-item">
+                                        @can('users.view')
                                         <li class="nav-item"><a class="nav-link"
                                                 href="{{ route('users.index') }}"><i
                                                     class="fa-solid fa-users mr-2"></i><span>Users</span></a></li>
+                                        @endcan
+                                        @can('roles.view')
                                         <li class="nav-item"><a class="nav-link"
                                                 href="{{ route('roles.index') }}"><i
                                                     class="fa-solid fa-user-lock mr-2"></i><span>Roles</span></a></li>
+                                        @endcan
+                                        @if(auth()->user()->isSuperAdmin())
                                         <li class="nav-item"><a class="nav-link"
                                                 href="{{ route('permissions.index') }}"><i
                                                     class="fa-solid fa-user-lock mr-2"></i><span>Permissions</span></a>
@@ -359,6 +364,7 @@
                                                 href="{{ route('branch.index') }}"><i
                                                     class="fa-solid fa-code-branch mr-2"></i><span>Branches</span></a>
                                         </li>
+                                        @endif
                                     </ul>
                                 </div>
                             </li>
@@ -380,6 +386,9 @@
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.discount_reconciliation') }}"><i class="fa-solid fa-tags mr-2 text-success"></i><span>Discount &amp; Profit Reconciliation</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.principal_delivery_statement') }}"><i class="fa-solid fa-file-invoice mr-2 text-info"></i><span>Principal Delivery Statement (SAP)</span></a></li>
                                     <li class="nav-item"><a class="nav-link" href="{{ route('report.discount_heads') }}"><i class="fa-solid fa-layer-group mr-2 text-warning"></i><span>Discount Madd-wise Report</span></a></li>
+                                    @if(auth()->user()->isSuperAdmin())
+                                    <li class="nav-item"><a class="nav-link" href="{{ route('report.branch_summary') }}"><i class="fa-solid fa-code-branch mr-2 text-primary"></i><span>Branch Summary</span></a></li>
+                                    @endif
                                 </ul>
                             </div>
                         </li>

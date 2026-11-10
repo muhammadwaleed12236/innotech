@@ -579,7 +579,8 @@
                         @forelse($users as $user)
                             <div class="user-card" data-user-id="{{ $user->id }}"
                                 data-name="{{ strtolower($user->name) }}" data-email="{{ strtolower($user->email) }}"
-                                data-roles="{{ json_encode($user->getRoleNames()) }}">
+                                data-roles="{{ json_encode($user->getRoleNames()) }}"
+                                data-branch-id="{{ $user->branch_id ?? '' }}">
                                 <div class="user-card-header">
                                     <div class="d-flex align-items-center">
                                         <div class="user-avatar">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
@@ -587,7 +588,9 @@
                                             <h4 class="user-name">{{ $user->name }}</h4>
                                             <div class="user-email">{{ $user->email }}</div>
                                             <div class="user-meta">ID: {{ $user->id }} • Joined
-                                                {{ $user->created_at?->diffForHumans() ?? 'N/A' }}</div>
+                                                {{ $user->created_at?->diffForHumans() ?? 'N/A' }}
+                                                @if($user->branch_id)<br><span class="badge badge-info" style="font-size:.65rem;"><i class="fa-solid fa-code-branch mr-1"></i>{{ $user->branch?->name ?? 'Branch #'.$user->branch_id }}</span>@else<br><span class="badge badge-secondary" style="font-size:.65rem;">All Branches</span>@endif
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="user-actions">
@@ -680,6 +683,22 @@
                                     </div>
                                 </div>
                             </div>
+                            @if(auth()->user()->isSuperAdmin())
+                            <div class="col-md-12">
+                                <div class="form-group-modern">
+                                    <label class="form-label">
+                                        <i class="fa-solid fa-code-branch"></i> Assign Branch
+                                        <small class="text-muted">(leave blank = all-branch / Super Admin access)</small>
+                                    </label>
+                                    <select name="branch_id" id="userBranchId" class="form-control">
+                                        <option value="">— No Branch (all-access) —</option>
+                                        @foreach(\App\Models\Branch::orderBy('name')->get() as $br)
+                                            <option value="{{ $br->id }}">{{ $br->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            @endif
                             <div class="col-md-12">
                                 <div class="form-group-modern">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -788,6 +807,7 @@
                 $('#userName').val('');
                 $('#userEmail').val('');
                 $('#userPassword').val('');
+                if ($('#userBranchId').length) { $('#userBranchId').val(''); }
                 $('#userModalTitle').html('<i class="fa fa-user-plus"></i><span>Add New User</span>');
                 $('#userSaveText').text('Create User');
                 buildRolesCheckboxes('#rolesContainer', []);
@@ -807,6 +827,7 @@
                 $('#userName').val(name);
                 $('#userEmail').val(email);
                 $('#userPassword').val('');
+                if ($('#userBranchId').length) { $('#userBranchId').val(card.data('branch-id') || ''); }
                 $('#userModalTitle').html('<i class="fa fa-pen"></i><span>Edit User</span>');
                 $('#userSaveText').text('Save Changes');
                 buildRolesCheckboxes('#rolesContainer', roles);

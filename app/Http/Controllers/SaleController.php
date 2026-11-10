@@ -1176,6 +1176,10 @@ class SaleController extends Controller
 
             // 2. Prepare Header Data
             $isNew = ! $sale->exists;
+            // Auto-assign branch_id
+            if ($isNew) {
+                $sale->branch_id = $request->branch_id ?? (auth()->check() ? auth()->user()->branch_id : null);
+            }
             $sale->customer_id = $request->customer;
             $sale->sales_officer_id = $request->filled('sales_officer_id') ? $request->sales_officer_id : null;
             $sale->po_no = $request->filled('po_no') ? trim($request->po_no) : null;
