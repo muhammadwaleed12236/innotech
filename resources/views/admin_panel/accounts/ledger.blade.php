@@ -125,10 +125,44 @@
                                             $runningBalance = $runningBalance + $debit - $credit;
 
                                             $voucherNo = '-';
+                                            $invoiceUrl = null;
+                                            $editUrl = null;
+
                                             if ($entry->source && $entry->source->voucher_no) {
                                                 $voucherNo = $entry->source->voucher_no;
                                             } elseif ($entry->source && $entry->source->invoice_no) {
                                                 $voucherNo = $entry->source->invoice_no;
+                                            }
+
+                                            // Check Purchase link
+                                            if ($entry->source_type === 'App\\Models\\Purchase' || ($entry->source && $entry->source instanceof \App\Models\Purchase)) {
+                                                $pId = $entry->source_id ?? $entry->source->id;
+                                                $invoiceUrl = route('purchase.invoice', $pId);
+                                                $editUrl = route('purchase.edit', $pId);
+                                                if ($voucherNo === '-' && $entry->source && $entry->source->invoice_no) {
+                                                    $voucherNo = $entry->source->invoice_no;
+                                                }
+                                            } elseif ($entry->source_type === 'App\\Models\\Sale' || ($entry->source && $entry->source instanceof \App\Models\Sale)) {
+                                                $sId = $entry->source_id ?? $entry->source->id;
+                                                $invoiceUrl = url('/sale/invoice/' . $sId);
+                                                $editUrl = url('/sale/' . $sId . '/edit');
+                                            }
+
+                                            // Fallback from description / remarks if linked to a purchase
+                                            if (!$invoiceUrl && !empty($entry->description)) {
+                                                if (preg_match('/(?:Purchase|PUR)[\s#\-]*([A-Za-z0-9\-_]+)/i', $entry->description, $matches)) {
+                                                    $cleanCode = trim($matches[1]);
+                                                    $pur = \App\Models\Purchase::where('invoice_no', $cleanCode)
+                                                        ->orWhere('invoice_no', 'like', "%{$cleanCode}%")
+                                                        ->first();
+                                                    if ($pur) {
+                                                        $invoiceUrl = route('purchase.invoice', $pur->id);
+                                                        $editUrl = route('purchase.edit', $pur->id);
+                                                        if ($voucherNo === '-') {
+                                                            $voucherNo = $pur->invoice_no;
+                                                        }
+                                                    }
+                                                }
                                             }
 
                                             // Resolve party name and type
@@ -153,8 +187,24 @@
                                         @endphp
                                         <tr>
                                             <td class="text-center">{{ $entry->entry_date->format('d/m/Y') }}</td>
-                                            <td class="text-center">
-                                                <span class="badge bg-light text-dark border">{{ $voucherNo }}</span>
+                                            <td class="text-center" style="white-space: nowrap;">
+                                                @if ($invoiceUrl)
+                                                    <div>
+                                                        <a href="{{ $invoiceUrl }}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none py-1 px-2 fw-bold d-inline-flex align-items-center gap-1 shadow-xs" title="Click to View & Print Invoice">
+                                                            <i class="fas fa-file-invoice"></i> {{ $voucherNo }} <i class="fas fa-arrow-up-right-from-square" style="font-size: 8px;"></i>
+                                                        </a>
+                                                    </div>
+                                                @else
+                                                    <span class="badge bg-light text-dark border">{{ $voucherNo }}</span>
+                                                @endif
+
+                                                @if ($editUrl)
+                                                    <div class="mt-1">
+                                                        <a href="{{ $editUrl }}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark d-inline-flex align-items-center gap-1 shadow-xs" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </a>
+                                                    </div>
+                                                @endif
                                             </td>
                                             <td>{{ $entry->description }}</td>
                                             <td>

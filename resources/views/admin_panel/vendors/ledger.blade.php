@@ -360,11 +360,43 @@
                         </tr>
                     @else
                         @foreach ($transactions as $txn)
+                            @php
+                                $isPurchase = in_array($txn['source_type'] ?? '', ['Purchase', 'App\\Models\\Purchase']);
+                                $pId = $isPurchase ? ($txn['source_id'] ?? null) : null;
+                                $invUrl = $pId ? route('purchase.invoice', $pId) : null;
+                                $editUrl = $pId ? route('purchase.edit', $pId) : null;
+                                if (!$pId && !empty($txn['description'])) {
+                                    if (preg_match('/(?:Purchase|PUR)[\s#\-]*([A-Za-z0-9\-_]+)/i', $txn['description'], $matches)) {
+                                        $cleanCode = trim($matches[1]);
+                                        $pur = \App\Models\Purchase::where('invoice_no', $cleanCode)->orWhere('invoice_no', 'like', "%{$cleanCode}%")->first();
+                                        if ($pur) {
+                                            $invUrl = route('purchase.invoice', $pur->id);
+                                            $editUrl = route('purchase.edit', $pur->id);
+                                        }
+                                    }
+                                }
+                            @endphp
                             <tr>
                                 <td class="ps-4 fw-semibold text-dark">
                                     {{ \Carbon\Carbon::parse($txn['date'])->format('d/m/Y') }}
                                 </td>
-                                <td class="text-secondary small">{{ $txn['description'] }}</td>
+                                <td class="text-secondary small">
+                                    <div>{{ $txn['description'] }}</div>
+                                    @if ($invUrl || $editUrl)
+                                        <div class="d-flex align-items-center gap-1 mt-1">
+                                            @if ($invUrl)
+                                                <a href="{{ $invUrl }}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none py-1 px-2 fw-bold d-inline-flex align-items-center gap-1 shadow-xs" title="Click to View & Print Invoice">
+                                                    <i class="fas fa-file-invoice"></i> {{ $txn['invoice_no'] ?? 'Invoice' }} <i class="fas fa-arrow-up-right-from-square" style="font-size: 8px;"></i>
+                                                </a>
+                                            @endif
+                                            @if ($editUrl)
+                                                <a href="{{ $editUrl }}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark d-inline-flex align-items-center gap-1 shadow-xs" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </td>
                                 <td class="text-end font-monospace text-dark">
                                     {{ $txn['debit'] > 0 ? number_format((float)$txn['debit'], 2) : '—' }}
                                 </td>
@@ -413,10 +445,26 @@
                 <div class="text-center py-4 text-muted">No transactions found in this period.</div>
             @else
                 @foreach ($transactions as $txn)
+                    @php
+                        $isPurchase = in_array($txn['source_type'] ?? '', ['Purchase', 'App\\Models\\Purchase']);
+                        $pId = $isPurchase ? ($txn['source_id'] ?? null) : null;
+                        $invUrl = $pId ? route('purchase.invoice', $pId) : null;
+                        $editUrl = $pId ? route('purchase.edit', $pId) : null;
+                        if (!$pId && !empty($txn['description'])) {
+                            if (preg_match('/(?:Purchase|PUR)[\s#\-]*([A-Za-z0-9\-_]+)/i', $txn['description'], $matches)) {
+                                $cleanCode = trim($matches[1]);
+                                $pur = \App\Models\Purchase::where('invoice_no', $cleanCode)->orWhere('invoice_no', 'like', "%{$cleanCode}%")->first();
+                                if ($pur) {
+                                    $invUrl = route('purchase.invoice', $pur->id);
+                                    $editUrl = route('purchase.edit', $pur->id);
+                                }
+                            }
+                        }
+                    @endphp
                     <div class="vdetail-mcard">
                         <div class="vdetail-mcard-hdr">
                             <span class="fw-bold text-dark"><i class="far fa-calendar-alt me-1 text-primary"></i> {{ \Carbon\Carbon::parse($txn['date'])->format('d/m/Y') }}</span>
-                            @if ($txn['source_type'] === 'App\\Models\\Purchase')
+                            @if ($txn['source_type'] === 'App\\Models\\Purchase' || $txn['source_type'] === 'Purchase')
                                 <span class="badge bg-primary-subtle text-primary border rounded-pill px-2">Purchase</span>
                             @elseif($txn['source_type'] === 'App\\Models\\VoucherMaster')
                                 @if ($txn['debit'] > 0)
@@ -431,7 +479,23 @@
                             @endif
                         </div>
 
-                        <div class="text-secondary small mb-2">{{ $txn['description'] }}</div>
+                        <div class="text-secondary small mb-2">
+                            <div>{{ $txn['description'] }}</div>
+                            @if ($invUrl || $editUrl)
+                                <div class="d-flex align-items-center gap-1 mt-1">
+                                    @if ($invUrl)
+                                        <a href="{{ $invUrl }}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none py-1 px-2 fw-bold d-inline-flex align-items-center gap-1 shadow-xs" title="Click to View & Print Invoice">
+                                            <i class="fas fa-file-invoice"></i> {{ $txn['invoice_no'] ?? 'Invoice' }} <i class="fas fa-arrow-up-right-from-square" style="font-size: 8px;"></i>
+                                        </a>
+                                    @endif
+                                    @if ($editUrl)
+                                        <a href="{{ $editUrl }}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark d-inline-flex align-items-center gap-1 shadow-xs" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
 
                         <div class="d-flex justify-content-between align-items-center pt-2 border-top small">
                             <div>

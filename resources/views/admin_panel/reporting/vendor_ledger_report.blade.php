@@ -589,15 +589,23 @@
                             ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none py-1 px-2 shadow-sm" title="View & Print Invoice" style="cursor: pointer;"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
                             : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span>`;
 
+                        let editBtn = t.edit_url 
+                            ? `<div class="mt-1"><a href="${t.edit_url}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark shadow-xs" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice"><i class="fas fa-edit me-1"></i>Edit</a></div>` 
+                            : '';
+
                         let mobInvoiceBadge = t.invoice_url 
                             ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none" title="View & Print Invoice"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
                             : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? 'REF'}</span>`;
+
+                        let mobEditBtn = t.edit_url 
+                            ? `<a href="${t.edit_url}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark ms-1" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice"><i class="fas fa-edit"></i> Edit</a>` 
+                            : '';
 
                         // Desktop Row
                         html += `
                             <tr>
                                 <td class="text-center small text-nowrap">${t.date}</td>
-                                <td class="text-center">${invoiceBadge}</td>
+                                <td class="text-center">${invoiceBadge}${editBtn}</td>
                                 <td class="fw-bold text-dark">${vendName}</td>
                                 <td class="text-start">${t.description}</td>
                                 <td class="text-end text-success fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
@@ -613,7 +621,7 @@
                         mobHtml += `
                             <div class="mob-card p-2.5 p-2 mb-2">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    ${mobInvoiceBadge}
+                                    <div class="d-flex align-items-center gap-1">${mobInvoiceBadge}${mobEditBtn}</div>
                                     <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
                                 </div>
                                 <div class="mb-1">
@@ -920,14 +928,22 @@
                         ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none py-1 px-2 shadow-sm" title="View & Print Invoice" style="cursor: pointer;"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
                         : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? '-'}</span>`;
 
+                    let editBtn = t.edit_url 
+                        ? `<div class="mt-1"><a href="${t.edit_url}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark shadow-xs" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice"><i class="fas fa-edit me-1"></i>Edit</a></div>` 
+                        : '';
+
                     let mobInvoiceBadge = t.invoice_url 
                         ? `<a href="${t.invoice_url}" target="_blank" class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace text-decoration-none" title="View & Print Invoice"><i class="fas fa-file-invoice me-1"></i>${t.invoice} <i class="fas fa-external-link-alt ms-1" style="font-size: 8.5px;"></i></a>`
                         : `<span class="badge bg-light text-primary border font-monospace">${t.invoice ?? 'REF'}</span>`;
 
+                    let mobEditBtn = t.edit_url 
+                        ? `<a href="${t.edit_url}" target="_blank" class="btn btn-outline-warning btn-xs py-0 px-2 fw-semibold text-dark ms-1" style="font-size: 10px; border-radius: 4px;" title="Click to Edit Invoice"><i class="fas fa-edit"></i> Edit</a>` 
+                        : '';
+
                     html += `
                         <tr>
                             <td class="text-center small text-nowrap">${t.date}</td>
-                            <td class="text-center">${invoiceBadge}</td>
+                            <td class="text-center">${invoiceBadge}${editBtn}</td>
                             <td class="fw-bold text-dark">${vendName}</td>
                             <td class="text-start">${t.description}</td>
                             <td class="text-end text-danger fw-semibold">${debit > 0 ? 'Rs ' + debit.toLocaleString(undefined, {minimumFractionDigits: 2}) : '-'}</td>
@@ -942,7 +958,7 @@
                     mobHtml += `
                         <div class="mob-card p-2.5 p-2 mb-2">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                ${mobInvoiceBadge}
+                                <div class="d-flex align-items-center gap-1">${mobInvoiceBadge}${mobEditBtn}</div>
                                 <small class="text-muted" style="font-size: 10.5px;">${t.date}</small>
                             </div>
                             <div class="mb-1">

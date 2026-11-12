@@ -2888,15 +2888,18 @@ class ReportingController extends Controller
                     }
 
                     $invoiceUrl = null;
+                    $editUrl = null;
                     if (($row['source_type'] ?? '') === \App\Models\Purchase::class || ($row['source_type'] ?? '') === 'Purchase') {
                         if (!empty($row['source_id'])) {
                             $invoiceUrl = route('purchase.invoice', $row['source_id']);
+                            $editUrl = route('purchase.edit', $row['source_id']);
                         }
                     }
                     if (!$invoiceUrl && $ref !== '-') {
-                        $purchaseId = \App\Models\Purchase::where('invoice_no', $ref)->orWhere('id', $ref)->value('id');
-                        if ($purchaseId) {
-                            $invoiceUrl = route('purchase.invoice', $purchaseId);
+                        $purchase = \App\Models\Purchase::where('invoice_no', $ref)->orWhere('id', $ref)->first();
+                        if ($purchase) {
+                            $invoiceUrl = route('purchase.invoice', $purchase->id);
+                            $editUrl = route('purchase.edit', $purchase->id);
                         }
                     }
 
@@ -2906,6 +2909,7 @@ class ReportingController extends Controller
                         'invoice'           => $ref,
                         'invoice_no'        => $row['invoice_no'] ?? ($ref !== '-' ? $ref : null),
                         'invoice_url'       => $invoiceUrl,
+                        'edit_url'          => $editUrl,
                         'vendor_invoice_no' => $row['vendor_invoice_no'] ?? null,
                         'source_type'       => $row['source_type'] ?? null,
                         'description'       => $desc,
@@ -2969,15 +2973,18 @@ class ReportingController extends Controller
             }
 
             $invoiceUrl = null;
+            $editUrl = null;
             if (($row['source_type'] ?? '') === \App\Models\Purchase::class || ($row['source_type'] ?? '') === 'Purchase') {
                 if (!empty($row['source_id'])) {
                     $invoiceUrl = route('purchase.invoice', $row['source_id']);
+                    $editUrl = route('purchase.edit', $row['source_id']);
                 }
             }
             if (!$invoiceUrl && $ref !== '-') {
-                $purchaseId = \App\Models\Purchase::where('invoice_no', $ref)->orWhere('id', $ref)->value('id');
-                if ($purchaseId) {
-                    $invoiceUrl = route('purchase.invoice', $purchaseId);
+                $purchase = \App\Models\Purchase::where('invoice_no', $ref)->orWhere('id', $ref)->first();
+                if ($purchase) {
+                    $invoiceUrl = route('purchase.invoice', $purchase->id);
+                    $editUrl = route('purchase.edit', $purchase->id);
                 }
             }
 
@@ -2993,6 +3000,7 @@ class ReportingController extends Controller
                 'invoice'           => $ref,
                 'invoice_no'        => $row['invoice_no'] ?? ($ref !== '-' ? $ref : null),
                 'invoice_url'       => $invoiceUrl,
+                'edit_url'          => $editUrl,
                 'vendor_invoice_no' => $row['vendor_invoice_no'] ?? null,
                 'source_type'       => $row['source_type'] ?? null,
                 'description'       => $desc,

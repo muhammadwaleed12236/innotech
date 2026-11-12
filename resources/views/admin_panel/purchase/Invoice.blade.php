@@ -272,6 +272,9 @@
                 @endif
             </div>
             <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('purchase.edit', $purchase->id) }}" class="btn btn-warning btn-sm px-3 fw-bold shadow-sm d-flex align-items-center gap-1 text-dark" style="border-radius: 8px; font-size: 0.8rem; white-space: nowrap;">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
                 <button onclick="window.print()" class="btn btn-primary btn-sm px-3 fw-bold shadow-sm d-flex align-items-center gap-1" style="border-radius: 8px; font-size: 0.8rem; white-space: nowrap;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-printer-fill" viewBox="0 0 16 16">
                         <path d="M0 9a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V9zm4-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H4V3z" />
@@ -1030,6 +1033,23 @@
                         </tr>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        {{-- Bottom Actions (no-print) --}}
+        <div class="mt-4 pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2 no-print">
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('purchase.edit', $purchase->id) }}" class="btn btn-warning px-4 py-2 fw-bold shadow-sm text-dark d-inline-flex align-items-center gap-2" style="border-radius: 8px; font-size: 0.92rem;">
+                    <i class="fas fa-edit"></i> Edit Purchase Invoice
+                </a>
+                <button onclick="window.print()" class="btn btn-primary px-4 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-2" style="border-radius: 8px; font-size: 0.92rem;">
+                    <i class="fas fa-print"></i> Print Invoice
+                </button>
+            </div>
+            <div>
+                <a href="{{ route('Purchase.home') }}" class="btn btn-outline-secondary px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2" style="border-radius: 8px; font-size: 0.92rem;">
+                    <i class="fas fa-arrow-left"></i> Back to Purchases List
+                </a>
             </div>
         </div>
 
