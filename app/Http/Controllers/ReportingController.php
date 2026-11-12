@@ -3119,7 +3119,118 @@ class ReportingController extends Controller
                 $totalPayables += $bal; // Vendor Balance (Cr is positive from BalanceService view)
             }
         }
-        $currentLiabilitiesTotal = $totalPayables;
+
+        // Discounts & Company Claims Breakdown up to $dateEnd
+        $itemDiscs = DB::table('purchase_items')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->whereIn('purchases.status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
+            ->where('purchases.purchase_date', '<=', $dateEnd)
+            ->selectRaw('
+                COALESCE(SUM(purchase_items.item_discount), 0) as total_item_disc,
+                COALESCE(SUM(purchase_items.our_disc_amount), 0) as total_our_disc,
+                COALESCE(SUM(purchase_items.customer_disc_amount), 0) as total_cust_disc
+            ')->first();
+
+        $purchDiscs = DB::table('purchases')
+            ->whereIn('status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
+            ->where('purchase_date', '<=', $dateEnd)
+            ->selectRaw('
+                COALESCE(SUM(total_trade_value), 0) as total_trade,
+                COALESCE(SUM(discount), 0) as total_bill_disc,
+                COALESCE(SUM(company_disc_amount), 0) as total_comp_disc,
+                COALESCE(SUM(our_disc_amount), 0) as total_our_disc,
+                COALESCE(SUM(customer_disc_amount), 0) as total_cust_disc
+            ')->first();
+
+        $ourDiscTotal = (float)($itemDiscs->total_our_disc > 0 ? $itemDiscs->total_our_disc : ($purchDiscs->total_our_disc ?? 0));
+        $companyCustDiscTotal = (float)($itemDiscs->total_cust_disc > 0 ? $itemDiscs->total_cust_disc : ($purchDiscs->total_cust_disc ?? 0));
+        $totalPurchDisc = (float)($itemDiscs->total_item_disc > 0 ? $itemDiscs->total_item_disc : (($purchDiscs->total_comp_disc ?? 0) ?: ($purchDiscs->total_bill_disc ?? 0)));
+
+        if ($ourDiscTotal <= 0 && $totalPurchDisc > 0) {
+            if ($companyCustDiscTotal > 0) {
+                $ourDiscTotal = max(0, $totalPurchDisc - $companyCustDiscTotal);
+            } else {
+                $ourDiscTotal = $totalPurchDisc;
+            }
+        }
+        if ($companyCustDiscTotal <= 0 && $totalPurchDisc > $ourDiscTotal) {
+            $companyCustDiscTotal = max(0, $totalPurchDisc - $ourDiscTotal);
+        }
+
+        // Sales Discounts Given to Customers up to $dateEnd
+        $saleItemDiscs = DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->whereIn('sales.sale_status', ['posted', 'returned'])
+            ->where('sales.created_at', '<=', $dateEnd)
+            ->selectRaw('
+                COALESCE(SUM(sale_items.discount_amount), 0) as total_disc,
+                COALESCE(SUM(sale_items.reg_disc_amount), 0) as total_reg_disc,
+                COALESCE(SUM(sale_items.sp_disc_amount), 0) as total_sp_disc
+            ')->first();
+
+        $saleDiscs = DB::table('sales')
+            ->whereIn('sale_status', ['posted', 'returned'])
+            ->where('sales.created_at', '<=', $dateEnd)
+            ->selectRaw('
+                COALESCE(SUM(total_extradiscount), 0) as total_extra_disc,
+                COALESCE(SUM(total_reg_discount), 0) as total_reg_disc,
+                COALESCE(SUM(total_sp_discount), 0) as total_sp_disc
+            ')->first();
+
+        $customerSalesDiscTotal = (float)($saleItemDiscs && $saleItemDiscs->total_disc > 0
+            ? ($saleItemDiscs->total_disc + (float)($saleDiscs->total_extra_disc ?? 0))
+            : ((float)($saleDiscs->total_reg_disc ?? 0) + (float)($saleDiscs->total_sp_disc ?? 0) + (float)($saleDiscs->total_extra_disc ?? 0)));
+
+        // Company Discount Account Ledger Balance
+        $compDiscAccount = DB::table('accounts')
+            ->where('account_code', 'COMP-DISC')
+            ->orWhere('title', 'like', '%Company Discount%')
+            ->first();
+
+        $compDiscLedgerBalance = 0;
+        $compDiscAccountId = null;
+        if ($compDiscAccount) {
+            $compDiscAccountId = $compDiscAccount->id;
+            $je = DB::table('journal_entries')
+                ->where('account_id', $compDiscAccount->id)
+                ->where('entry_date', '<=', $dateEnd)
+                ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as net_balance')
+                ->first();
+            $compDiscLedgerBalance = (float)($compDiscAccount->opening_balance ?? 0) + (float)($je->net_balance ?? 0);
+        } else {
+            $compDiscLedgerBalance = $companyCustDiscTotal;
+        }
+
+        // List of purchases with discount details
+        $purchasesWithDiscounts = DB::table('purchases')
+            ->leftJoin('vendors', 'vendors.id', '=', 'purchases.vendor_id')
+            ->whereIn('purchases.status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
+            ->where('purchases.purchase_date', '<=', $dateEnd)
+            ->where(function($q) {
+                $q->where('purchases.company_disc_amount', '>', 0)
+                  ->orWhere('purchases.our_disc_amount', '>', 0)
+                  ->orWhere('purchases.customer_disc_amount', '>', 0)
+                  ->orWhere('purchases.discount', '>', 0);
+            })
+            ->select(
+                'purchases.id',
+                'purchases.invoice_no',
+                'purchases.purchase_date',
+                'vendors.name as vendor_name',
+                'purchases.total_trade_value',
+                'purchases.discount',
+                'purchases.company_disc_amount',
+                'purchases.our_disc_amount',
+                'purchases.customer_disc_amount',
+                'purchases.total_gst',
+                'purchases.wht_amount',
+                'purchases.net_amount'
+            )
+            ->orderBy('purchases.purchase_date', 'desc')
+            ->limit(20)
+            ->get();
+
+        $currentLiabilitiesTotal = $totalPayables + $compDiscLedgerBalance;
 
         // 3. Owner's Equity (Equity = Assets - Liabilities)
         $equityTotal = $totalAssets - $currentLiabilitiesTotal;
@@ -3138,9 +3249,20 @@ class ReportingController extends Controller
             ],
             'liabilities' => [
                 'payables' => round($totalPayables, 2),
+                'company_discount' => round($compDiscLedgerBalance, 2),
+                'company_discount_account_id' => $compDiscAccountId,
                 'current_total' => round($currentLiabilitiesTotal, 2),
                 'equity' => round($equityTotal, 2),
                 'total' => round($totalLiabilitiesAndEquity, 2)
+            ],
+            'discounts_summary' => [
+                'our_discount' => round($ourDiscTotal, 2),
+                'company_discount_customers' => round($companyCustDiscTotal, 2),
+                'total_purchase_discount' => round($totalPurchDisc, 2),
+                'customer_sales_discount' => round($customerSalesDiscTotal, 2),
+                'company_claims_balance' => round($compDiscLedgerBalance, 2),
+                'company_discount_account_id' => $compDiscAccountId,
+                'purchases_with_discounts' => $purchasesWithDiscounts
             ]
         ]);
     }

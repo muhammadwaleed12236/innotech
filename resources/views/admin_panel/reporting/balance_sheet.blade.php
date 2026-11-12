@@ -319,6 +319,16 @@
                     <div class="stat-val text-success" id="pillEquity">Rs 0.00</div>
                 </div>
 
+                <div class="stat-pill bs-clickable-pill" onclick="$('html, body').animate({scrollTop: $('#secDiscountsAnalysis').offset().top - 100}, 300)" title="Click to view Discounts Analysis" style="background: #faf5ff; border-color: #e9d5ff;">
+                    <div class="stat-label" style="color: #7e22ce;"><i class="fa-solid fa-tags me-1"></i>ہمارا ڈسکاؤنٹ</div>
+                    <div class="stat-val" style="color: #6b21a8;" id="pillOurDiscount">Rs 0.00</div>
+                </div>
+
+                <div class="stat-pill bs-clickable-pill" onclick="openCompDiscLedger()" title="Click to view Company Discount Ledger" style="background: #fffbeb; border-color: #fde68a;">
+                    <div class="stat-label" style="color: #b45309;"><i class="fa-solid fa-handshake-angle me-1"></i>کمپنی ڈسکاؤنٹ (Customers) <i class="fas fa-arrow-up-right-from-square" style="font-size: 8px;"></i></div>
+                    <div class="stat-val" style="color: #b45309;" id="pillCompanyDiscount">Rs 0.00</div>
+                </div>
+
                 <div class="stat-pill" style="background: #f8fafc; border-color: #cbd5e1;">
                     <div class="stat-label text-secondary"><i class="fa-solid fa-check-double me-1"></i>Balance Status</div>
                     <div class="stat-val text-dark" id="pillStatus" style="font-size: .80rem;"><span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fas fa-check-circle me-1"></i>Balanced</span></div>
@@ -346,6 +356,18 @@
             <div class="mob-metric-card" style="background: #f0fdf4; border-color: #86efac;">
                 <span class="mob-metric-label text-success"><i class="fas fa-chart-pie text-success me-1"></i>Owner's Equity</span>
                 <div class="mob-metric-val text-success mt-1" id="mobPillEquity">Rs 0.00</div>
+            </div>
+        </div>
+        <div class="col-6 mb-1">
+            <div class="mob-metric-card" style="background: #faf5ff; border-color: #e9d5ff;">
+                <span class="mob-metric-label" style="color: #7e22ce;"><i class="fas fa-tags me-1"></i>ہمارا ڈسکاؤنٹ</span>
+                <div class="mob-metric-val mt-1" style="color: #6b21a8;" id="mobPillOurDiscount">Rs 0.00</div>
+            </div>
+        </div>
+        <div class="col-6 mb-1">
+            <div class="mob-metric-card" onclick="openCompDiscLedger()" style="background: #fffbeb; border-color: #fde68a;">
+                <span class="mob-metric-label" style="color: #b45309;"><i class="fas fa-handshake-angle me-1"></i>کمپنی ڈسکاؤنٹ</span>
+                <div class="mob-metric-val mt-1" style="color: #b45309;" id="mobPillCompanyDiscount">Rs 0.00</div>
             </div>
         </div>
         <div class="col-6 mb-1">
@@ -471,8 +493,12 @@
                                     <td class="bs-sub-row"><i class="fas fa-truck-field text-danger me-2"></i>Accounts Payable (Vendors) <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
                                     <td class="bs-amount text-danger" id="lblPayables">Rs 0.00</td>
                                 </tr>
+                                <tr class="bs-clickable-row" id="rowCompanyDiscount" onclick="openCompDiscLedger()" title="Click to view Company Discount & Claims Ledger" style="display: none;">
+                                    <td class="bs-sub-row"><i class="fas fa-handshake-angle text-warning me-2"></i>Company Discount & Claims (برائے کسٹمرز) <i class="fas fa-arrow-up-right-from-square bs-link-icon"></i></td>
+                                    <td class="bs-amount text-warning" id="lblCompanyDiscount">Rs 0.00</td>
+                                </tr>
                                 <tr class="bs-subtotal-row">
-                                    <td class="fw-bold text-dark">Total Current Liabilities</td>
+                                    <td class="fw-bold text-dark">Total Current Liabilities & Claims</td>
                                     <td class="bs-amount text-danger fs-6" id="lblLiabTotal">Rs 0.00</td>
                                 </tr>
                             </tbody>
@@ -509,6 +535,114 @@
 
         </div>
 
+        {{-- DISCOUNTS & COMPANY CLAIMS ANALYSIS SECTION --}}
+        <div class="card border-0 shadow-sm mt-3" id="secDiscountsAnalysis" style="border-radius: 12px; border: 1px solid #e2e8f0; background: #ffffff;">
+            <div class="statement-header" style="background: #1e293b; border-bottom: 3px solid #8b5cf6;">
+                <div class="d-flex align-items-center">
+                    <i class="fa-solid fa-tags fs-5 me-2" style="color: #c084fc;"></i>
+                    <h6 class="text-white mb-0 fw-bold">Discounts & Company Claims Analysis (ڈسکاؤنٹ اور کمپنی کلیمز کی تفصیل)</h6>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-light btn-xs px-2 py-1" onclick="openCompDiscLedger()" title="Open Company Discount Ledger in new tab" style="font-size: 11px; border-radius: 6px;">
+                        <i class="fas fa-book-open me-1"></i> کمپنی لیجر کھولیں <i class="fas fa-arrow-up-right-from-square ms-1" style="font-size: 9px;"></i>
+                    </button>
+                    <span class="badge" style="background: rgba(192, 132, 252, 0.2); color: #c084fc; border: 1px solid rgba(192, 132, 252, 0.4);">
+                        Trade & Margin Tracking
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-body p-3">
+                <div class="row g-2 mb-3">
+                    {{-- 1. Humara Discount --}}
+                    <div class="col-12 col-md-3">
+                        <div class="p-3 rounded-3 border h-100" style="background: #faf5ff; border-color: #e9d5ff !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold text-uppercase" style="font-size: 11px; color: #7e22ce;">ہمارا ڈسکاؤنٹ (Our Margin)</span>
+                                <i class="fas fa-tag fs-6" style="color: #a855f7;"></i>
+                            </div>
+                            <div class="fs-5 fw-bold font-monospace" style="color: #6b21a8;" id="cardOurDiscount">Rs 0.00</div>
+                            <div class="text-muted small mt-1" style="font-size: 10.5px;">
+                                <i class="fas fa-check-circle text-success me-1"></i>پرچیز میں ملا ہوا ہمارا خالص مارجن / ڈسکاؤنٹ
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 2. Company Discount for Customers --}}
+                    <div class="col-12 col-md-3">
+                        <div class="p-3 rounded-3 border h-100 bs-clickable-pill" onclick="openCompDiscLedger()" style="background: #fffbeb; border-color: #fde68a !important;" title="Click to view Company Discount Ledger">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold text-uppercase" style="font-size: 11px; color: #b45309;">کمپنی ڈسکاؤنٹ برائے کسٹمرز</span>
+                                <i class="fas fa-handshake fs-6" style="color: #f59e0b;"></i>
+                            </div>
+                            <div class="fs-5 fw-bold font-monospace" style="color: #b45309;" id="cardCompCustDiscount">Rs 0.00</div>
+                            <div class="text-muted small mt-1" style="font-size: 10.5px;">
+                                <i class="fas fa-building text-warning me-1"></i>کمپنی کی طرف سے کسٹمرز کے لیے دیا گیا فنڈ <i class="fas fa-arrow-up-right-from-square text-primary ms-1" style="font-size: 9px;"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 3. Sales Discount Given to Customers --}}
+                    <div class="col-12 col-md-3">
+                        <div class="p-3 rounded-3 border h-100 bs-clickable-pill" onclick="window.open('{{ route('report.sale') }}', '_blank')" style="background: #f0fdf4; border-color: #bbf7d0 !important;" title="Click to view Sales Report">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold text-uppercase" style="font-size: 11px; color: #15803d;">کسٹمرز کو دیا گیا سیلز ڈسکاؤنٹ</span>
+                                <i class="fas fa-cart-shopping fs-6" style="color: #22c55e;"></i>
+                            </div>
+                            <div class="fs-5 fw-bold font-monospace" style="color: #166534;" id="cardCustSalesDiscount">Rs 0.00</div>
+                            <div class="text-muted small mt-1" style="font-size: 10.5px;">
+                                <i class="fas fa-receipt text-success me-1"></i>سیلز انوائسز پر کسٹمرز کو پاس کیا گیا ڈسکاؤنٹ
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- 4. Company Discount Ledger Balance --}}
+                    <div class="col-12 col-md-3">
+                        <div class="p-3 rounded-3 border h-100 bs-clickable-pill" onclick="openCompDiscLedger()" style="background: #f8fafc; border-color: #cbd5e1 !important;" title="Click to view Company Discount Account Ledger">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold text-uppercase" style="font-size: 11px; color: #334155;">کمپنی کلیمز لیجر بیلنس</span>
+                                <i class="fas fa-scale-balanced fs-6" style="color: #64748b;"></i>
+                            </div>
+                            <div class="fs-5 fw-bold font-monospace text-primary" id="cardCompanyLedgerBal">Rs 0.00</div>
+                            <div class="text-muted small mt-1" style="font-size: 10.5px;">
+                                <i class="fas fa-book text-primary me-1"></i>لیجر اکاؤنٹ کا نیٹ بیلنس (اکاؤنٹ #<span id="txtCompAccId">6</span>) <i class="fas fa-arrow-up-right-from-square text-primary ms-1" style="font-size: 9px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Purchases with Discounts Breakdown Table --}}
+                <div class="border rounded-3 overflow-hidden">
+                    <div class="d-flex align-items-center justify-content-between p-2 px-3 bg-light border-bottom">
+                        <span class="fw-bold text-dark small">
+                            <i class="fas fa-list-check text-primary me-1"></i>پرچیز انوائسز بریک ڈاؤن (ہمارا حصہ بمقابلہ کمپنی کسٹمر ڈسکاؤنٹ)
+                        </span>
+                        <a href="{{ route('Purchase.home') }}" target="_blank" class="text-primary text-decoration-none small fw-semibold">
+                            تمام پرچیز انوائسز دیکھیں <i class="fas fa-arrow-up-right-from-square ms-1" style="font-size: 9.5px;"></i>
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 12px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3" style="width: 14%;">Invoice #</th>
+                                    <th style="width: 11%;">Date</th>
+                                    <th style="width: 20%;">Vendor</th>
+                                    <th class="text-end" style="width: 13%;">Trade Value</th>
+                                    <th class="text-end" style="color: #7e22ce; width: 14%;">ہمارا ڈسکاؤنٹ</th>
+                                    <th class="text-end" style="color: #b45309; width: 14%;">کمپنی ڈسکاؤنٹ (Customers)</th>
+                                    <th class="text-end text-primary pe-3" style="width: 14%;">ہماری پڑت (Landed)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchasesDiscountsTableBody">
+                                {{-- Dynamically Loaded Purchases --}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
 </div>
@@ -516,6 +650,12 @@
 
 @section('js')
 <script>
+    let currentCompDiscAccId = 6;
+    function openCompDiscLedger() {
+        let url = currentCompDiscAccId ? `{{ url('/accounts') }}/${currentCompDiscAccId}/ledger` : `{{ route('view_all') }}`;
+        window.open(url, '_blank');
+    }
+
     $(document).ready(function() {
         
         // Sync Date Inputs between Desktop & Mobile
@@ -596,11 +736,19 @@
 
                 // 2. Liabilities & Equity Calculation & Render
                 let payables = res.liabilities ? (res.liabilities.payables || 0) : 0;
+                let compDisc = res.liabilities ? (res.liabilities.company_discount || 0) : 0;
                 let liabTotal = res.liabilities ? (res.liabilities.current_total || 0) : 0;
                 let equity = res.liabilities ? (res.liabilities.equity || 0) : 0;
                 let liabEquityTotal = res.liabilities ? (res.liabilities.total || 0) : 0;
 
                 $("#lblPayables").text(fmt(payables));
+                if (compDisc > 0) {
+                    $("#rowCompanyDiscount").show();
+                    $("#lblCompanyDiscount").text(fmt(compDisc));
+                } else {
+                    $("#rowCompanyDiscount").hide();
+                }
+
                 $("#lblLiabTotal").text(fmt(liabTotal));
                 $("#lblEquity").text(fmt(equity));
                 $("#lblEquityTotal").text(fmt(equity));
@@ -610,6 +758,56 @@
                 $("#pillAssets, #mobPillAssets").text(fmt(assetsTotal));
                 $("#pillLiabilities, #mobPillLiabilities").text(fmt(liabTotal));
                 $("#pillEquity, #mobPillEquity").text(fmt(equity));
+
+                // 4. Discounts & Company Claims Summary Update
+                if (res.discounts_summary) {
+                    let ds = res.discounts_summary;
+                    currentCompDiscAccId = ds.company_discount_account_id || 6;
+                    $("#txtCompAccId").text(currentCompDiscAccId);
+
+                    $("#pillOurDiscount, #cardOurDiscount, #mobPillOurDiscount").text(fmt(ds.our_discount));
+                    $("#pillCompanyDiscount, #cardCompCustDiscount, #mobPillCompanyDiscount").text(fmt(ds.company_discount_customers));
+                    $("#cardCustSalesDiscount").text(fmt(ds.customer_sales_discount));
+                    $("#cardCompanyLedgerBal").text(fmt(ds.company_claims_balance));
+
+                    // Populate purchases breakdown table
+                    let pRows = '';
+                    if (ds.purchases_with_discounts && ds.purchases_with_discounts.length > 0) {
+                        ds.purchases_with_discounts.forEach(p => {
+                            let invUrl = `{{ url('/purchase/invoice') }}/${p.id}`;
+                            let tVal = parseFloat(p.total_trade_value || 0);
+                            let ourD = parseFloat(p.our_disc_amount || 0);
+                            let custD = parseFloat(p.customer_disc_amount || 0);
+                            let billD = parseFloat(p.discount || 0);
+                            if (ourD <= 0 && billD > 0) {
+                                ourD = custD > 0 ? Math.max(0, billD - custD) : billD;
+                            }
+                            if (custD <= 0 && billD > ourD) {
+                                custD = Math.max(0, billD - ourD);
+                            }
+                            let gst = parseFloat(p.total_gst || 0);
+                            let wht = parseFloat(p.wht_amount || 0);
+                            let landing = Math.max(0, tVal - ourD) + gst + wht;
+
+                            pRows += `<tr class="bs-clickable-row" onclick="window.open('${invUrl}', '_blank')" title="Click to view Purchase Invoice #${p.invoice_no}">
+                                <td class="ps-3 font-monospace">
+                                    <span class="fw-bold text-primary">
+                                        ${p.invoice_no || ('#' + p.id)} <i class="fas fa-arrow-up-right-from-square" style="font-size: 8.5px;"></i>
+                                    </span>
+                                </td>
+                                <td>${p.purchase_date ? p.purchase_date.split('T')[0] : '—'}</td>
+                                <td class="fw-semibold text-dark">${p.vendor_name || '—'}</td>
+                                <td class="text-end font-monospace">${fmt(tVal)}</td>
+                                <td class="text-end font-monospace fw-bold" style="color: #7e22ce;">${ourD > 0 ? fmt(ourD) : '—'}</td>
+                                <td class="text-end font-monospace fw-bold" style="color: #b45309;">${custD > 0 ? fmt(custD) : '—'}</td>
+                                <td class="text-end font-monospace fw-bold text-primary pe-3">${fmt(landing)}</td>
+                            </tr>`;
+                        });
+                    } else {
+                        pRows = `<tr><td colspan="7" class="text-center py-3 text-muted">اس تاریخ تک کوئی ڈسکاؤنٹ پرچیز نہیں ملی۔</td></tr>`;
+                    }
+                    $("#purchasesDiscountsTableBody").html(pRows);
+                }
 
                 // Equation Status Check (Assets = Liabilities + Equity)
                 let diff = Math.abs(assetsTotal - liabEquityTotal);
