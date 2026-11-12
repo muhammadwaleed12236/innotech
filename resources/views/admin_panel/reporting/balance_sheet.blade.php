@@ -650,9 +650,9 @@
 
 @section('js')
 <script>
-    let currentCompDiscAccId = 6;
+    let currentCompDiscAccId = 'company-discount';
     function openCompDiscLedger() {
-        let url = currentCompDiscAccId ? `{{ url('/accounts') }}/${currentCompDiscAccId}/ledger` : `{{ route('view_all') }}`;
+        let url = currentCompDiscAccId ? `{{ url('/accounts') }}/${currentCompDiscAccId}/ledger` : `{{ url('/accounts/company-discount/ledger') }}`;
         window.open(url, '_blank');
     }
 

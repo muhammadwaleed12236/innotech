@@ -3182,22 +3182,24 @@ class ReportingController extends Controller
             : ((float)($saleDiscs->total_reg_disc ?? 0) + (float)($saleDiscs->total_sp_disc ?? 0) + (float)($saleDiscs->total_extra_disc ?? 0)));
 
         // Company Discount Account Ledger Balance
-        $compDiscAccount = DB::table('accounts')
-            ->where('account_code', 'COMP-DISC')
-            ->orWhere('title', 'like', '%Company Discount%')
-            ->first();
+        $compDiscAccount = \App\Models\Account::firstOrCreate(
+            ['account_code' => 'COMP-DISC'],
+            [
+                'title' => 'Company Discount & Claims',
+                'type' => 'Credit',
+                'opening_balance' => 0,
+                'status' => 1
+            ]
+        );
 
-        $compDiscLedgerBalance = 0;
-        $compDiscAccountId = null;
-        if ($compDiscAccount) {
-            $compDiscAccountId = $compDiscAccount->id;
-            $je = DB::table('journal_entries')
-                ->where('account_id', $compDiscAccount->id)
-                ->where('entry_date', '<=', $dateEnd)
-                ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as net_balance')
-                ->first();
-            $compDiscLedgerBalance = (float)($compDiscAccount->opening_balance ?? 0) + (float)($je->net_balance ?? 0);
-        } else {
+        $compDiscAccountId = $compDiscAccount->id;
+        $je = DB::table('journal_entries')
+            ->where('account_id', $compDiscAccount->id)
+            ->where('entry_date', '<=', $dateEnd)
+            ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as net_balance')
+            ->first();
+        $compDiscLedgerBalance = (float)($compDiscAccount->opening_balance ?? 0) + (float)($je->net_balance ?? 0);
+        if ($compDiscLedgerBalance <= 0 && $companyCustDiscTotal > 0) {
             $compDiscLedgerBalance = $companyCustDiscTotal;
         }
 

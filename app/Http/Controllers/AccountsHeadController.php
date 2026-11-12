@@ -135,9 +135,38 @@ class AccountsHeadController extends Controller
 
     public function showLedger($id, Request $request)
     {
-        $account = Account::findOrFail($id);
+        if ($id === 'company-discount' || $id === 'COMP-DISC') {
+            $account = Account::firstOrCreate(
+                ['account_code' => 'COMP-DISC'],
+                [
+                    'title' => 'Company Discount & Claims',
+                    'type' => 'Credit',
+                    'opening_balance' => 0,
+                    'status' => 1
+                ]
+            );
+        } else {
+            $account = Account::find($id);
+            if (!$account) {
+                // If ID is not found, check if it's looking for Company Discount account
+                $account = Account::where('account_code', 'COMP-DISC')
+                    ->orWhere('title', 'like', '%Company Discount%')
+                    ->first();
+                if (!$account) {
+                    $account = Account::firstOrCreate(
+                        ['account_code' => 'COMP-DISC'],
+                        [
+                            'title' => 'Company Discount & Claims',
+                            'type' => 'Credit',
+                            'opening_balance' => 0,
+                            'status' => 1
+                        ]
+                    );
+                }
+            }
+        }
 
-        $query = JournalEntry::where('account_id', $id)
+        $query = JournalEntry::where('account_id', $account->id)
             ->with('party')
             ->orderBy('entry_date', 'asc')
             ->orderBy('id', 'asc');
