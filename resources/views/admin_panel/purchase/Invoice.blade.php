@@ -427,7 +427,7 @@
                         <th class="text-end" style="width: 9%">After Disc</th>
                         <th class="text-end" style="width: 9%">Sales Tax</th>
                         <th class="text-end" style="width: 15%; background-color: #eff6ff; color: #1e40af; border-left: 2px solid #3b82f6;">
-                            Actual Net Cost<br><span style="font-size:9.5px; font-weight:600; text-transform:none;">(Final Parhi / Unit)</span>
+                            Hamari Parhi<br><span style="font-size:9.5px; font-weight:600; text-transform:none;">(Cost / Parhi per Unit)</span>
                         </th>
                     </tr>
                 </thead>
@@ -548,9 +548,27 @@
                                 $retailRatePerPc = (float) ($item->retail_price ?: ($item->product->retail_price ?? 0));
                             }
 
-                            // Actual Final Cost (Net Parhi)
-                            $finalCostPerCtn = $numCartons > 0 ? ($lineTotal / $numCartons) : 0;
-                            $finalCostPerPc = $totalPieces > 0 ? ($lineTotal / $totalPieces) : ($lineTotal / max(1, (float)$item->qty));
+                            // Actual Final Cost (Hamari Parhi: Trade Value - Humara Discount + GST + WHT)
+                            $ourDiscAmt = (float)($item->our_disc_amount ?? 0);
+                            $custDiscAmt = (float)($item->customer_disc_amount ?? 0);
+                            if ($ourDiscAmt <= 0 && $discAmt > 0) {
+                                if ($custDiscAmt > 0) {
+                                    $ourDiscAmt = max(0, $discAmt - $custDiscAmt);
+                                } else {
+                                    $ourDiscAmt = $discAmt;
+                                }
+                            }
+                            $companyDiscAmt = max(0, $discAmt - $ourDiscAmt);
+
+                            $totalBeforeWht = (float)($purchase->total_value_after_discount ?? 0) + (float)($purchase->total_gst ?? 0);
+                            $itemWht = 0;
+                            if ((float)($purchase->wht_amount ?? 0) > 0 && $totalBeforeWht > 0) {
+                                $itemWht = ($lineTotal / $totalBeforeWht) * (float)$purchase->wht_amount;
+                            }
+
+                            $hamariParhiTotal = max(0, $tVal - $ourDiscAmt) + $taxAmt + $itemWht;
+                            $finalCostPerCtn = $numCartons > 0 ? ($hamariParhiTotal / $numCartons) : 0;
+                            $finalCostPerPc = $totalPieces > 0 ? ($hamariParhiTotal / $totalPieces) : ($hamariParhiTotal / max(1, (float)$item->qty));
                         @endphp
                         <tr>
                             <td class="text-center font-monospace" style="vertical-align: middle;">
@@ -615,6 +633,9 @@
                                 @if($discAmt > 0)
                                     <div class="text-danger fw-semibold">-Rs. {{ number_format($discAmt, 2) }}</div>
                                     <div class="text-muted" style="font-size: 10px;">({{ number_format($discPct, 2) }}%)</div>
+                                    @if($companyDiscAmt > 0)
+                                        <div class="badge bg-light text-secondary border mt-1" style="font-size: 9px;" title="Company Share Discount (Company Ledger)">Comp: -Rs. {{ number_format($companyDiscAmt, 2) }}</div>
+                                    @endif
                                 @else
                                     <span class="text-muted">—</span>
                                 @endif
@@ -637,18 +658,18 @@
                                 @endif
                             </td>
 
-                            {{-- Actual Net Cost / Final Parhi --}}
+                            {{-- Hamari Parhi (Trade Value - Humara Disc + GST + WHT) --}}
                             <td class="text-end font-monospace" style="vertical-align: middle; background-color: #f8fafc; border-left: 2px solid #3b82f6;">
-                                <div class="fw-bold text-primary" style="font-size: 13.5px;">
-                                    Rs. {{ number_format($lineTotal, 2) }}
+                                <div class="fw-bold text-primary" style="font-size: 13.5px;" title="Hamari Parhi: Trade - Our Disc + GST + WHT">
+                                    Rs. {{ number_format($hamariParhiTotal, 2) }}
                                 </div>
                                 <div class="mt-1 d-flex flex-column align-items-end gap-1">
                                     @if($numCartons > 0)
-                                        <span class="badge bg-primary text-white font-monospace px-2 py-1" style="font-size: 11px;" title="Net Final Cost Per Carton">
+                                        <span class="badge bg-primary text-white font-monospace px-2 py-1" style="font-size: 11px;" title="Hamari Parhi Per Carton">
                                             Rs. {{ number_format($finalCostPerCtn, 2) }} / Ctn
                                         </span>
                                     @endif
-                                    <span class="badge bg-dark text-white font-monospace px-2 py-1" style="font-size: 11px;" title="Net Final Cost Per Piece">
+                                    <span class="badge bg-dark text-white font-monospace px-2 py-1" style="font-size: 11px;" title="Hamari Parhi Per Piece">
                                         Rs. {{ number_format($finalCostPerPc, 2) }} / Pc
                                     </span>
                                 </div>
@@ -659,13 +680,33 @@
                 <tfoot>
                     @php
                         $sumRetailVal = $purchase->items->sum('retail_value');
-                        $sumTradeVal = $purchase->items->sum('trade_value') ?: $purchase->subtotal;
+                        $sumTradeVal = (float)$purchase->items->sum(function($it) { return (float)($it->trade_value ?: ($it->price * (float)$it->qty)); }) ?: $purchase->subtotal;
                         $sumInlineDisc = $purchase->items->sum('item_discount');
                         $sumValAfterDisc = $purchase->items->sum('value_after_discount') ?: max(0, $sumTradeVal - $sumInlineDisc);
                         $sumSt = ($purchase->items->sum('sales_tax_on_retail') ?: 0) + ($purchase->items->sum('sales_tax_on_trade') ?: 0);
                         if ($sumSt <= 0) $sumSt = (float)($purchase->total_gst ?? 0);
-                        $avgFinalCostPerCtn = $sumCartons > 0 ? ($purchase->subtotal / $sumCartons) : 0;
-                        $avgFinalCostPerPc = $sumTotalPieces > 0 ? ($purchase->subtotal / $sumTotalPieces) : 0;
+
+                        $sumHamariParhi = 0;
+                        $sumCompDiscAmt = 0;
+                        foreach ($purchase->items as $it) {
+                            $itTVal = (float)($it->trade_value ?: ($it->price * (float)$it->qty));
+                            $itDisc = (float)($it->item_discount ?? 0);
+                            $itOur = (float)($it->our_disc_amount ?? 0);
+                            $itCust = (float)($it->customer_disc_amount ?? 0);
+                            if ($itOur <= 0 && $itDisc > 0) {
+                                $itOur = $itCust > 0 ? max(0, $itDisc - $itCust) : $itDisc;
+                            }
+                            $itComp = max(0, $itDisc - $itOur);
+                            $sumCompDiscAmt += $itComp;
+                            $itTax = (float)($it->sales_tax_on_retail > 0 ? $it->sales_tax_on_retail : ($it->sales_tax_on_trade ?: ($it->gst_amount ?? 0)));
+                            $itWht = 0;
+                            if ((float)($purchase->wht_amount ?? 0) > 0 && ((float)($purchase->total_value_after_discount ?? 0) + (float)($purchase->total_gst ?? 0)) > 0) {
+                                $itWht = ((float)$it->line_total / ((float)$purchase->total_value_after_discount + (float)$purchase->total_gst)) * (float)$purchase->wht_amount;
+                            }
+                            $sumHamariParhi += max(0, $itTVal - $itOur) + $itTax + $itWht;
+                        }
+                        $avgFinalCostPerCtn = $sumCartons > 0 ? ($sumHamariParhi / $sumCartons) : 0;
+                        $avgFinalCostPerPc = $sumTotalPieces > 0 ? ($sumHamariParhi / $sumTotalPieces) : 0;
                     @endphp
                     <tr style="background-color: #f1f5f9; font-weight: 800; border-top: 2px solid var(--border-color); font-size:11.5px;">
                         <td colspan="2" class="text-end text-uppercase" style="padding: 10px 8px;">Total:</td>
@@ -676,7 +717,7 @@
                         <td class="text-end font-monospace">Rs. {{ number_format($sumValAfterDisc, 2) }}</td>
                         <td class="text-end font-monospace text-success">+Rs. {{ number_format($sumSt, 2) }}</td>
                         <td class="text-end text-primary font-monospace" style="background-color: #eff6ff; border-left: 2px solid #3b82f6;">
-                            <div style="font-size: 13.5px;">Rs. {{ number_format($purchase->subtotal, 2) }}</div>
+                            <div style="font-size: 13.5px;" title="Hamari Parhi: Trade - Our Disc + GST + WHT">Rs. {{ number_format($sumHamariParhi, 2) }}</div>
                             @if($sumCartons > 0)
                                 <div class="text-muted fw-normal" style="font-size: 10.5px;">Avg: Rs. {{ number_format($avgFinalCostPerCtn, 2) }}/Ctn</div>
                             @endif
@@ -774,8 +815,23 @@
                     }
 
                     $lineTotal = (float) $item->line_total;
-                    $finalCostPerCtn = $numCartons > 0 ? ($lineTotal / $numCartons) : 0;
-                    $finalCostPerPc = $totalPieces > 0 ? ($lineTotal / $totalPieces) : ($lineTotal / max(1, (float)$item->qty));
+                    $ourDiscAmt = (float)($item->our_disc_amount ?? 0);
+                    $custDiscAmt = (float)($item->customer_disc_amount ?? 0);
+                    $discAmt = (float)($item->item_discount ?? 0);
+                    if ($ourDiscAmt <= 0 && $discAmt > 0) {
+                        $ourDiscAmt = $custDiscAmt > 0 ? max(0, $discAmt - $custDiscAmt) : $discAmt;
+                    }
+                    $companyDiscAmt = max(0, $discAmt - $ourDiscAmt);
+                    $tVal = (float)($item->trade_value ?: ($item->price * (float)$item->qty));
+                    $taxAmt = (float)($item->sales_tax_on_retail > 0 ? $item->sales_tax_on_retail : ($item->sales_tax_on_trade ?: ($item->gst_amount ?? 0)));
+                    $totalBeforeWht = (float)($purchase->total_value_after_discount ?? 0) + (float)($purchase->total_gst ?? 0);
+                    $itemWht = 0;
+                    if ((float)($purchase->wht_amount ?? 0) > 0 && $totalBeforeWht > 0) {
+                        $itemWht = ($lineTotal / $totalBeforeWht) * (float)$purchase->wht_amount;
+                    }
+                    $hamariParhiTotal = max(0, $tVal - $ourDiscAmt) + $taxAmt + $itemWht;
+                    $finalCostPerCtn = $numCartons > 0 ? ($hamariParhiTotal / $numCartons) : 0;
+                    $finalCostPerPc = $totalPieces > 0 ? ($hamariParhiTotal / $totalPieces) : ($hamariParhiTotal / max(1, (float)$item->qty));
                 @endphp
                 <div class="mob-item-card">
                     <div class="mob-item-hdr">
@@ -792,14 +848,17 @@
                         <div class="text-end">
                             @if ($item->item_discount > 0)
                                 <div class="text-danger small" style="font-size: 0.72rem;">Disc: -Rs. {{ number_format($item->item_discount, 2) }}</div>
+                                @if($companyDiscAmt > 0)
+                                    <div class="text-muted small" style="font-size: 0.68rem;">Comp Disc: -Rs. {{ number_format($companyDiscAmt, 2) }}</div>
+                                @endif
                             @endif
-                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Line Total: Rs. {{ number_format($item->line_total, 2) }}</div>
+                            <div class="fw-bold text-primary" style="font-size: 0.95rem;">Hamari Parhi: Rs. {{ number_format($hamariParhiTotal, 2) }}</div>
                         </div>
                     </div>
 
-                    {{-- Actual Final Cost Badges for Mobile --}}
+                    {{-- Hamari Parhi Badges for Mobile --}}
                     <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
-                        <span class="text-primary fw-bold" style="font-size: 0.8rem;">Actual Final Cost:</span>
+                        <span class="text-primary fw-bold" style="font-size: 0.8rem;">Hamari Parhi:</span>
                         <div class="d-flex gap-1">
                             @if($numCartons > 0)
                                 <span class="badge bg-primary text-white font-monospace" style="font-size: 0.75rem;">
@@ -910,23 +969,41 @@
                                 <td class="text-end font-monospace text-primary fw-bold">+Rs. {{ number_format($whtAmt, 2) }}</td>
                             </tr>
                         @endif
+                        @php
+                            $sumHamariParhiTotal = $sumHamariParhi ?? 0;
+                            if ($sumHamariParhiTotal <= 0) {
+                                $sumHamariParhiTotal = (float)$purchase->net_amount + ($sumCompDiscAmt ?? 0);
+                            }
+                        @endphp
+                        @if(($sumCompDiscAmt ?? 0) > 0)
+                        <tr>
+                            <td class="text-secondary fw-semibold">Company Discount (Claim Ledger)</td>
+                            <td class="text-end text-secondary font-monospace">-Rs. {{ number_format($sumCompDiscAmt, 2) }}</td>
+                        </tr>
+                        @endif
                         <tr class="total-row" style="background-color: #f8fafc;">
-                            <td>Total Net</td>
+                            <td>Payable to Vendor (Net Bill)</td>
                             <td class="text-end font-monospace">Rs. {{ number_format($purchase->net_amount, 2) }}</td>
                         </tr>
 
                         {{-- Final Landed Parhi (Actual Final Cost per Unit) --}}
                         @if($sumCartons > 0 || $sumTotalPieces > 0)
                         <tr style="background-color: #eff6ff; border-top: 1.5px dashed #3b82f6;">
-                            <td class="text-primary fw-bold" style="font-size: 11.5px;">Actual Net Parhi / Carton</td>
-                            <td class="text-end font-monospace fw-bold text-primary" style="font-size: 12px;">
-                                Rs. {{ number_format($sumCartons > 0 ? ($purchase->net_amount / $sumCartons) : 0, 2) }} / Ctn
+                            <td class="text-primary fw-bold" style="font-size: 11.5px;">Hamari Parhi (Landed Cost)</td>
+                            <td class="text-end font-monospace fw-bold text-primary" style="font-size: 12.5px;">
+                                Rs. {{ number_format($sumHamariParhiTotal, 2) }}
                             </td>
                         </tr>
                         <tr style="background-color: #eff6ff;">
-                            <td class="text-dark fw-bold" style="font-size: 11.5px;">Actual Net Parhi / Piece</td>
+                            <td class="text-primary fw-bold" style="font-size: 11.5px;">Hamari Parhi / Carton</td>
+                            <td class="text-end font-monospace fw-bold text-primary" style="font-size: 12px;">
+                                Rs. {{ number_format($sumCartons > 0 ? ($sumHamariParhiTotal / $sumCartons) : 0, 2) }} / Ctn
+                            </td>
+                        </tr>
+                        <tr style="background-color: #eff6ff;">
+                            <td class="text-dark fw-bold" style="font-size: 11.5px;">Hamari Parhi / Piece</td>
                             <td class="text-end font-monospace fw-bold text-dark" style="font-size: 12px;">
-                                Rs. {{ number_format($sumTotalPieces > 0 ? ($purchase->net_amount / $sumTotalPieces) : 0, 2) }} / Pc
+                                Rs. {{ number_format($sumTotalPieces > 0 ? ($sumHamariParhiTotal / $sumTotalPieces) : 0, 2) }} / Pc
                             </td>
                         </tr>
                         @endif

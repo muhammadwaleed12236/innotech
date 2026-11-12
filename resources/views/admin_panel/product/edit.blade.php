@@ -226,11 +226,8 @@
                                             <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required value="{{ $product->item_name }}" placeholder="e.g. Steller Series 2D 4K System">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label-pro">Barcode Auto-Gen</label>
-                                            <div class="d-flex">
-                                                <input type="text" class="form-control-pro" id="barcodeInput" name="barcode_path" value="{{ $product->barcode_path }}" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
-                                                <button type="button" class="btn btn-light border" id="generateBarcodeBtn" style="border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md);"><i class="las la-magic"></i></button>
-                                            </div>
+                                            <label class="form-label-pro"><i class="las la-hashtag text-primary"></i> HS Code</label>
+                                            <input type="text" class="form-control-pro font-monospace" name="hs_code" id="masterHsCode" placeholder="e.g. 2103.9000" value="{{ old('hs_code', $product->hs_code) }}">
                                         </div>
 
                                         <div class="col-md-12">
@@ -301,11 +298,7 @@
                                                 <option value="by_ton" {{ $product->size_mode == 'by_ton' ? 'selected' : '' }}>Ton</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label-pro">HS Code</label>
-                                            <input type="text" class="form-control-pro font-monospace" name="hs_code" placeholder="e.g. 2103.9000" value="{{ old('hs_code', $product->hs_code) }}">
-                                        </div>
-                                        <div class="col-md-8 d-flex align-items-center pt-2">
+                                        <div class="col-md-12 d-flex align-items-center pt-2">
                                             <div class="form-check form-switch p-2 rounded bg-light border w-100">
                                                 <input class="form-check-input ms-0 me-2" type="checkbox" name="is_third_schedule" id="is_third_schedule" value="1" {{ $product->is_third_schedule ? 'checked' : '' }}>
                                                 <label class="form-check-label fw-bold text-dark" for="is_third_schedule">
@@ -362,7 +355,7 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 100px; font-size: 10px;">Barcode</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 110px; font-size: 10px;">HS Code</th>
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 50px; font-size: 10px;">Action</th>
                                                     </tr>
                                                 </thead>
@@ -701,7 +694,8 @@
                 const saleDiscVal = (v && v.sale_discount_percent !== undefined && v.sale_discount_percent !== null && v.sale_discount_percent !== '') ? v.sale_discount_percent : '0';
                 const purchDiscVal = (v && v.purchase_discount_percent !== undefined && v.purchase_discount_percent !== null && v.purchase_discount_percent !== '') ? v.purchase_discount_percent : '0';
                 const alertVal = (v && v.alert !== undefined && v.alert !== null) ? v.alert : '0';
-                const barcodeVal = (v && v.barcode !== undefined && v.barcode !== null && v.barcode !== '') ? v.barcode : generateRandomBarcode();
+                const masterHsVal = document.getElementById('masterHsCode')?.value || '';
+                const barcodeVal = (v && (v.hs_code || v.barcode)) ? (v.hs_code || v.barcode) : masterHsVal;
                 
                 const uNorm = (unitVal || '').toLowerCase();
                 
@@ -751,7 +745,7 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" value="${escapeHtml(saleDiscVal)}" placeholder="0" title="Sale Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" value="${escapeHtml(purchDiscVal)}" placeholder="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0"></td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${escapeHtml(barcodeVal)}"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm font-monospace var-hscode-input" name="variant_barcode[]" value="${escapeHtml(barcodeVal)}" placeholder="HS Code"></td>
                     <td class="p-1 text-center">
                         <span class="badge bg-primary px-2 py-1">Base</span>
                     </td>
@@ -893,7 +887,8 @@
                 const saleDiscVal = (v && v.sale_discount_percent !== undefined && v.sale_discount_percent !== null && v.sale_discount_percent !== '') ? v.sale_discount_percent : '0';
                 const purchDiscVal = (v && v.purchase_discount_percent !== undefined && v.purchase_discount_percent !== null && v.purchase_discount_percent !== '') ? v.purchase_discount_percent : '0';
                 const alertVal = (v && v.alert !== undefined && v.alert !== null) ? v.alert : '0';
-                const barcodeVal = (v && v.barcode !== undefined && v.barcode !== null && v.barcode !== '') ? v.barcode : generateRandomBarcode();
+                const masterHsVal = document.getElementById('masterHsCode')?.value || '';
+                const barcodeVal = (v && (v.hs_code || v.barcode)) ? (v.hs_code || v.barcode) : masterHsVal;
                 
                 const uNorm = (unitVal || '').toLowerCase();
 
@@ -943,7 +938,7 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" value="${escapeHtml(saleDiscVal)}" placeholder="0" title="Sale Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" value="${escapeHtml(purchDiscVal)}" placeholder="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0"></td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${escapeHtml(barcodeVal)}"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm font-monospace var-hscode-input" name="variant_barcode[]" value="${escapeHtml(barcodeVal)}" placeholder="HS Code"></td>
                     <td class="p-1 text-center">
                         <button type="button" class="btn btn-sm btn-outline-danger remove-var-btn p-1 px-2" title="Remove"><i class="fas fa-trash"></i></button>
                     </td>
@@ -1198,12 +1193,18 @@
                 }
             });
 
-            // Barcode auto-gen
-            const barIn = document.getElementById('barcodeInput');
-            const barBtn = document.getElementById('generateBarcodeBtn');
-            const barcodeUrl = '{{ route('generate-barcode-image') }}';
-            if (barBtn && barIn) {
-                barBtn.addEventListener('click', () => fetch(barcodeUrl).then(r => r.json()).then(d => barIn.value = d.barcode_number));
+            // HS Code sync to variant rows
+            const masterHsInput = document.getElementById('masterHsCode');
+            if (masterHsInput) {
+                masterHsInput.addEventListener('input', function() {
+                    const val = this.value;
+                    document.querySelectorAll('.var-hscode-input').forEach(inp => {
+                        if (!inp.value || inp.dataset.synced === 'true') {
+                            inp.value = val;
+                            inp.dataset.synced = 'true';
+                        }
+                    });
+                });
             }
 
             // Unit change listener
@@ -1308,7 +1309,7 @@
                         } else {
                             row.querySelectorAll('input:not([type="hidden"])').forEach(inp => inp.value = '');
                             const bc = row.querySelector('input[name="variant_barcode[]"]');
-                            if (bc) bc.value = generateRandomBarcode();
+                            if (bc) bc.value = document.getElementById('masterHsCode')?.value || '';
                         }
                     } else if (genBtn) {
                         const input = genBtn.closest('td').querySelector('input');
@@ -1604,8 +1605,8 @@
                             <input type="number" class="mob-input mob-sync" data-field="variant_alert_qty[]" value="${escapeHtml(alertVal)}" placeholder="0" step="any">
                         </div>
                         <div class="mob-field-group">
-                            <div class="mob-label">Barcode</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_barcode[]" value="${escapeHtml(barcodeVal)}" placeholder="Scan or type...">
+                            <div class="mob-label">HS Code</div>
+                            <input type="text" class="mob-input mob-sync font-monospace" data-field="variant_barcode[]" value="${escapeHtml(barcodeVal)}" placeholder="HS Code">
                         </div>
                     </div>
 

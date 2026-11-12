@@ -122,6 +122,7 @@ class ProductController extends Controller
             $query->where(function ($q) use ($term) {
                 $q->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
+                    ->orWhere('hs_code', 'like', "%{$term}%")
                     ->orWhere('barcode_path', 'like', "%{$term}%");
             });
         }
@@ -433,6 +434,7 @@ class ProductController extends Controller
             ->when($term, function ($query) use ($term) {
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
+                    ->orWhere('hs_code', 'like', "%{$term}%")
                     ->orWhereHas('category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('sub_category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('brand', fn ($q) => $q->where('name', 'like', "%{$term}%"));
@@ -489,7 +491,9 @@ class ProductController extends Controller
             $s = $request->search;
             $query->where(function ($q) use ($s) {
                 $q->where('item_name', 'like', "%$s%")
-                  ->orWhere('item_code', 'like', "%$s%");
+                  ->orWhere('item_code', 'like', "%$s%")
+                  ->orWhere('hs_code', 'like', "%$s%")
+                  ->orWhere('barcode_path', 'like', "%$s%");
             });
         }
 
@@ -836,7 +840,8 @@ class ProductController extends Controller
                             'sale_discount_percent' => (float)($sale_discounts[$i] ?? 0),
                             'purchase_discount_percent' => (float)($purch_discounts[$i] ?? 0),
                             'alert' => $alerts[$i] ?? 0,
-                            'barcode' => $barcodes[$i] ?? '',
+                            'barcode' => $barcodes[$i] ?? $request->hs_code ?? '',
+                            'hs_code' => $barcodes[$i] ?? $request->hs_code ?? '',
                             'conv_factor' => $vConvFactor,
                             'is_base_variant' => $is_bases[$i] ?? 0,
                             'unit' => $units[$i] ?? 'Pcs',
@@ -880,7 +885,7 @@ class ProductController extends Controller
                 'item_code' => $nextCode,
                 'item_name' => $request->product_name,
                 'tracking_type' => $request->tracking_type ?? 'simple',
-                'barcode_path' => $request->barcode_path ?? rand(100000000000, 999999999999),
+                'barcode_path' => $request->hs_code ?? $request->barcode_path ?? rand(100000000000, 999999999999),
                 'unit_id' => $request->unit,
                 'brand_id' => $request->brand_id,
                 'model' => is_array($request->model) ? json_encode(array_values(array_filter($request->model))) : $request->model,
@@ -1270,7 +1275,8 @@ class ProductController extends Controller
                             'sale_discount_percent' => (float)($sale_discounts[$i] ?? 0),
                             'purchase_discount_percent' => (float)($purch_discounts[$i] ?? 0),
                             'alert' => $alerts[$i] ?? 0,
-                            'barcode' => $barcodes[$i] ?? '',
+                            'barcode' => $barcodes[$i] ?? $request->hs_code ?? '',
+                            'hs_code' => $barcodes[$i] ?? $request->hs_code ?? '',
                             'conv_factor' => $vConvFactor,
                             'is_base_variant' => $is_bases[$i] ?? 0,
                             'unit' => $units[$i] ?? 'Pcs',
@@ -1317,7 +1323,7 @@ class ProductController extends Controller
                 'sub_category_id' => $request->sub_category_id,
                 'item_code' => $request->item_code ?? Product::where('id', $id)->value('item_code'),
                 'item_name' => $request->product_name,
-                'barcode_path' => $request->barcode_path ?? rand(100000000000, 999999999999),
+                'barcode_path' => $request->hs_code ?? $request->barcode_path ?? rand(100000000000, 999999999999),
                 'unit_id' => $request->unit,
                 'brand_id' => $request->brand_id,
                 'model' => is_array($request->model) ? json_encode(array_values(array_filter($request->model))) : $request->model,
@@ -1795,8 +1801,8 @@ class ProductController extends Controller
         }
 
         // 1. Compare barcodes if present on both sides
-        $vBarcode = trim($variant['barcode'] ?? '');
-        $itemBarcode = trim($itemVariant['barcode'] ?? '');
+        $vBarcode = trim($variant['barcode'] ?? $variant['hs_code'] ?? '');
+        $itemBarcode = trim($itemVariant['barcode'] ?? $itemVariant['hs_code'] ?? '');
         if (!empty($vBarcode) && !empty($itemBarcode)) {
             return $vBarcode === $itemBarcode;
         }

@@ -121,16 +121,20 @@
                 <div class="modal-body pt-3 pb-2">
                     {{-- Basic fields --}}
                     <div class="row g-2 mb-2">
-                        <div class="col-12 col-md-8">
+                        <div class="col-12 col-md-5">
                             <label class="form-label">Product Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" name="product_name" required placeholder="Enter product name">
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3">
                             <label class="form-label">Unit <span class="text-danger">*</span></label>
                             <select class="form-select fw-bold" name="size_mode" id="qbUnit">
                                 <option value="by_pieces" selected>Pcs</option>
                                 <option value="by_cartons">Carton</option>
                             </select>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">HS Code</label>
+                            <input type="text" class="form-control font-monospace" name="hs_code" id="qbHsCode" placeholder="e.g. 2103.9000">
                         </div>
                     </div>
 
@@ -177,7 +181,7 @@
                     </div>
 
                     <div class="text-muted mt-1" style="font-size:11px;">
-                        <i class="fas fa-barcode me-1"></i>Barcode is auto-generated automatically, same as the Create Product page.
+                        <i class="fas fa-hashtag me-1"></i>HS Code is configured and mapped automatically with variants.
                     </div>
 
                     {{-- Hidden mode fields for backend compatibility --}}
@@ -254,7 +258,7 @@
                 '<input type="hidden" name="variant_unit[]" class="qb-vunit" value="' + qbUnitLabel() + '">' +
                 '<input type="hidden" name="variant_wholesale_price[]" value="0">' +
                 '<input type="hidden" name="variant_alert_qty[]" value="0">' +
-                '<input type="hidden" name="variant_barcode[]" class="qb-barcode" value="' + qbBarcode() + '">' +
+                '<input type="hidden" name="variant_barcode[]" class="qb-barcode" value="' + ($('#qbHsCode').val() || '') + '">' +
                 '<input type="hidden" name="variant_weight_per_piece[]" value="0">' +
                 '<input type="hidden" name="variant_is_base[]" class="qb-isbase" value="' + (isBase ? 1 : 0) + '">'
             );

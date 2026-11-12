@@ -675,7 +675,12 @@ class ReportingController extends Controller
                     }
                     if ($dateFrom) $purchasesQuery->whereDate('pur.created_at', '>=', $dateFrom);
                     if ($dateTo)   $purchasesQuery->whereDate('pur.created_at', '<=', $dateTo);
-                    $purchasesList = $purchasesQuery->select('pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color')->get();
+                    $purchasesList = $purchasesQuery->select(
+                        'pi.qty', 'pi.unit', 'pi.pieces_per_box', 'pi.boxes_qty', 'pi.loose_qty', 'pi.line_total', 'pi.color',
+                        'pi.trade_value', 'pi.price', 'pi.item_discount', 'pi.our_disc_amount', 'pi.customer_disc_amount', 'pi.company_disc_amount',
+                        'pi.gst_amount', 'pi.sales_tax_on_retail', 'pi.sales_tax_on_trade',
+                        'pur.wht_amount', 'pur.total_value_after_discount', 'pur.total_gst'
+                    )->get();
 
                     // Fetch all purchase returns
                     $pReturnsQuery = DB::table('purchase_return_items as pri')->where('pri.product_id', $product->id);
@@ -771,8 +776,26 @@ class ReportingController extends Controller
                                     $pPieces = (float) $pItem->qty;
                                 }
 
+                                $pTrade = (float)($pItem->trade_value ?: (($pItem->price ?? 0) * (float)$pItem->qty));
+                                $pDisc = (float)($pItem->item_discount ?? 0);
+                                $pOurDisc = (float)($pItem->our_disc_amount ?? 0);
+                                if ($pOurDisc <= 0 && $pDisc > 0) {
+                                    if ((float)($pItem->customer_disc_amount ?? 0) > 0) {
+                                        $pOurDisc = max(0, $pDisc - (float)$pItem->customer_disc_amount);
+                                    } else {
+                                        $pOurDisc = $pDisc;
+                                    }
+                                }
+                                $pGst = (float)($pItem->sales_tax_on_retail > 0 ? $pItem->sales_tax_on_retail : ($pItem->sales_tax_on_trade ?: ($pItem->gst_amount ?? 0)));
+                                $purBeforeWht = (float)($pItem->total_value_after_discount ?? 0) + (float)($pItem->total_gst ?? 0);
+                                $pWht = 0;
+                                if ((float)($pItem->wht_amount ?? 0) > 0 && $purBeforeWht > 0) {
+                                    $pWht = ((float)$pItem->line_total / $purBeforeWht) * (float)$pItem->wht_amount;
+                                }
+                                $pLandingCost = max(0, $pTrade - $pOurDisc) + $pGst + $pWht;
+
                                 $purchased += $pPieces;
-                                $purchaseAmount += (float) $pItem->line_total;
+                                $purchaseAmount += $pLandingCost;
                             }
                         }
 
@@ -3773,11 +3796,19 @@ class ReportingController extends Controller
                 END
             ), 0) as total_qty,
             COALESCE(SUM(
-                CASE
-                    WHEN COALESCE(purchases.subtotal, 0) > 0
-                    THEN purchase_items.line_total / purchases.subtotal * purchases.net_amount
-                    ELSE purchase_items.line_total
-                END
+                GREATEST(0, COALESCE(NULLIF(purchase_items.trade_value, 0), purchase_items.price * purchase_items.qty)
+                    - COALESCE(NULLIF(purchase_items.our_disc_amount, 0),
+                        CASE
+                            WHEN COALESCE(purchase_items.customer_disc_amount, 0) > 0
+                            THEN GREATEST(0, COALESCE(purchase_items.item_discount, 0) - purchase_items.customer_disc_amount)
+                            ELSE COALESCE(purchase_items.item_discount, 0)
+                        END, 0))
+                + COALESCE(NULLIF(purchase_items.sales_tax_on_retail, 0), NULLIF(purchase_items.sales_tax_on_trade, 0), purchase_items.gst_amount, 0)
+                + CASE
+                    WHEN COALESCE(purchases.wht_amount, 0) > 0 AND (COALESCE(purchases.total_value_after_discount, 0) + COALESCE(purchases.total_gst, 0)) > 0
+                    THEN (purchase_items.line_total / (purchases.total_value_after_discount + purchases.total_gst)) * purchases.wht_amount
+                    ELSE 0
+                  END
             ), 0) as total_net_amount
         "))->first();
 

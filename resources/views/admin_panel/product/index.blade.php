@@ -525,7 +525,7 @@
                         <div class="search-wrap">
                             <i class="fas fa-search search-icon"></i>
                             <input type="text" name="search" value="{{ request('search') }}"
-                                class="erp-finput" placeholder="Item name, code, barcode…">
+                                class="erp-finput" placeholder="Item name, code, HS code…">
                         </div>
                     </div>
 
@@ -675,6 +675,11 @@
                                         @if($product->brand)
                                             <span class="meta-chip"><i class="fas fa-trademark" style="font-size:.6rem;"></i> {{ $product->brand->name }}</span>
                                         @endif
+                                        @if(!empty($product->hs_code))
+                                            <span class="meta-chip" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;" title="HS Code">
+                                                <i class="fas fa-hashtag" style="font-size:.6rem;"></i> {{ $product->hs_code }}
+                                            </span>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>
@@ -705,10 +710,7 @@
                                                 <i class="fas fa-pencil-alt"></i> Edit
                                             </a>
                                         @endif
-                                        <a href="{{ route('generate-barcode-image', $product->id) }}"
-                                            class="btn-act btn-act-barcode" title="Generate Barcode">
-                                            <i class="fas fa-barcode"></i>
-                                        </a>
+
                                         @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
                                             <button type="button"
                                                 class="btn-act {{ $product->is_active ? 'btn-act-deact' : 'btn-act-act' }} toggle-active-btn"
@@ -803,9 +805,7 @@
                                 <i class="fas fa-pencil-alt"></i> Edit
                             </a>
                         @endif
-                        <a href="{{ route('generate-barcode-image', $product->id) }}" class="btn-act btn-act-barcode">
-                            <i class="fas fa-barcode"></i> Barcode
-                        </a>
+
                         @if (auth()->user()->can('products.edit') || auth()->user()->email === 'admin@admin.com')
                             <button type="button"
                                 class="btn-act {{ $product->is_active ? 'btn-act-deact' : 'btn-act-act' }} toggle-active-btn"
@@ -933,7 +933,7 @@
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Sale Price</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Purch Price</th>
                                 <th style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Alert</th>
-                                <th class="text-end pe-4" style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">Barcode</th>
+                                <th class="text-end pe-4" style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#475569;">HS Code</th>
                             </tr>
                         </thead>
                         <tbody id="variantTableBody"></tbody>
@@ -1052,7 +1052,7 @@ $(document).ready(function () {
                         let vSale     = (v.sale_price !== undefined && v.sale_price !== null && v.sale_price !== '') ? v.sale_price : (v.variant_sale_price ?? 0);
                         let vPurch    = (v.purch_price !== undefined && v.purch_price !== null && v.purch_price !== '') ? v.purch_price : (v.purchase_price ?? v.variant_purchase_price ?? 0);
                         let vAlert    = (v.alert !== undefined && v.alert !== null && v.alert !== '') ? v.alert : (v.variant_alert_qty ?? 0);
-                        let vBarcode  = v.barcode || v.variant_barcode || (product.barcode_path ?? product.item_code);
+                        let vBarcode  = v.hs_code || v.barcode || v.variant_barcode || (product.hs_code ?? product.barcode_path ?? product.item_code);
                         let vUnit     = v.unit || v.variant_unit || (product.unit ? product.unit.name : 'Pcs');
 
                         let colorBadge = (vColorVal && vColorVal !== '-') ? `<span style="background:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:.72rem;">${vColorVal}</span>` : '<span style="color:#94a3b8;">—</span>';
@@ -1074,7 +1074,7 @@ $(document).ready(function () {
                     });
                 } else {
                     colorList.forEach((color, index) => {
-                        let barcode   = (product.barcode_path ?? product.item_code ?? '') + (index > 0 ? '-' + String(index+1).padStart(2,'0') : '');
+                        let barcode   = (product.hs_code ?? product.barcode_path ?? product.item_code ?? '') + (index > 0 ? '-' + String(index+1).padStart(2,'0') : '');
                         let colorBadge = (color && color !== '-') ? `<span style="background:#e2e8f0;border-radius:4px;padding:2px 6px;font-size:.72rem;">${color}</span>` : '<span style="color:#94a3b8;">—</span>';
                         tbody.append(`<tr>
                             <td class="text-start ps-4 fw-semibold">${product.item_name}</td>

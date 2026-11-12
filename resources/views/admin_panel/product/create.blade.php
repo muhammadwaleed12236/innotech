@@ -556,9 +556,13 @@
                                 {{-- Sub-grid for left content, image on the right --}}
                                 <div class="col-md-9">
                                     <div class="row g-3">
-                                        <div class="col-md-12">
+                                        <div class="col-md-8">
                                             <label class="form-label-pro">Product Name <span class="text-danger">*</span></label>
                                             <input type="text" class="form-control-pro fs-6 fw-bold" name="product_name" required placeholder="e.g. Steller Series 2D 4K System">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label-pro"><i class="fas fa-hashtag text-primary me-1"></i>HS Code</label>
+                                            <input type="text" class="form-control-pro font-monospace" name="hs_code" id="masterHsCode" placeholder="e.g. 2103.9000" value="{{ old('hs_code') }}">
                                         </div>
 
                                         <div class="col-md-12">
@@ -614,11 +618,7 @@
                                                 <option value="by_ton">Ton</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-4">
-                                            <label class="form-label-pro">HS Code</label>
-                                            <input type="text" class="form-control-pro font-monospace" name="hs_code" placeholder="e.g. 2103.9000" value="{{ old('hs_code') }}">
-                                        </div>
-                                        <div class="col-md-8 d-flex align-items-center pt-2">
+                                        <div class="col-md-12 d-flex align-items-center pt-2">
                                             <div class="form-check form-switch p-2 rounded bg-light border w-100">
                                                 <input class="form-check-input ms-0 me-2" type="checkbox" name="is_third_schedule" id="is_third_schedule" value="1">
                                                 <label class="form-check-label fw-bold text-dark" for="is_third_schedule">
@@ -710,7 +710,7 @@
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Sale Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 75px; font-size: 10px;">Purch Disc (%)</th>
                                                         <th class="text-uppercase text-muted p-1" style="width: 55px; font-size: 10px;">Alert</th>
-                                                        <th class="text-uppercase text-muted p-1" style="width: 100px; font-size: 10px;">Barcode</th>
+                                                        <th class="text-uppercase text-muted p-1" style="width: 110px; font-size: 10px;">HS Code</th>
                                                         <th class="text-uppercase text-muted p-1 text-center" style="width: 50px; font-size: 10px;">Action</th>
                                                     </tr>
                                                 </thead>
@@ -1085,6 +1085,16 @@
                 return Math.floor(100000 + Math.random() * 900000).toString();
             }
 
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
             // Sync base variant name with product name
             const productNameInput = document.querySelector('input[name="product_name"]');
             if (productNameInput) {
@@ -1096,9 +1106,23 @@
                 });
             }
 
+            // Sync HS Code with variants
+            const masterHsInput = document.getElementById('masterHsCode');
+            if (masterHsInput) {
+                masterHsInput.addEventListener('input', function() {
+                    const val = this.value;
+                    document.querySelectorAll('.var-hscode-input').forEach(inp => {
+                        if (!inp.value || inp.dataset.synced === 'true') {
+                            inp.value = val;
+                            inp.dataset.synced = 'true';
+                        }
+                    });
+                });
+            }
+
             function addBaseVariantRow() {
                 const tr = document.createElement('tr');
-                const productName = productNameInput.value || '';
+                const productName = productNameInput ? (productNameInput.value || '') : '';
                 const baseUnitName = unitDropdown ? unitDropdown.options[unitDropdown.selectedIndex].text : 'Kg';
                 const isCartonMode = unitDropdown && unitDropdown.value === 'by_cartons';
                 const vid = 'base_' + Date.now();
@@ -1148,7 +1172,7 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" placeholder="0" value="0" title="Sale Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" placeholder="0" value="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="0" placeholder="0"></td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${generateRandomBarcode()}"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm font-monospace var-hscode-input" name="variant_barcode[]" value="${escapeHtml(document.getElementById('masterHsCode')?.value || '')}" placeholder="HS Code"></td>
                     <td class="p-1 text-center">
                         <span class="badge bg-primary px-2 py-1">Base</span>
                     </td>
@@ -1247,7 +1271,7 @@
                 
                 const isCartonMode = unitDropdown && unitDropdown.value === 'by_cartons';
                 let factor = 1;
-                let suggestedName = productNameInput.value || '';
+                let suggestedName = productNameInput ? (productNameInput.value || '') : '';
                 if (weightGrams) {
                     factor = parseFloat(weightGrams) > 10 ? parseFloat((weightGrams / 1000).toFixed(6)) : parseFloat(weightGrams);
                     suggestedName += ` - ${weightGrams}g`;
@@ -1322,7 +1346,7 @@
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_sale_discount[]" step="0.01" placeholder="0" value="0" title="Sale Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_purchase_discount[]" step="0.01" placeholder="0" value="0" title="Purchase Discount %"></td>
                     <td class="p-1"><input type="number" class="form-control-pro form-control-sm" name="variant_alert_qty[]" value="0" placeholder="0"></td>
-                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm" name="variant_barcode[]" value="${randBarcode}"></td>
+                    <td class="p-1"><input type="text" class="form-control-pro form-control-sm font-monospace var-hscode-input" name="variant_barcode[]" value="${escapeHtml(document.getElementById('masterHsCode')?.value || '')}" placeholder="HS Code"></td>
                     <td class="p-1 text-center">
                         <button type="button" class="btn btn-sm btn-outline-danger remove-var-btn p-1 px-2" title="Remove"><i class="fas fa-trash"></i></button>
                     </td>
@@ -1537,7 +1561,7 @@
                         // If it's the last row, clear inputs instead of removing
                         row.querySelectorAll('input:not([type="hidden"])').forEach(inp => inp.value = '');
                         const bc = row.querySelector('input[name="variant_barcode[]"]');
-                        if (bc) bc.value = generateRandomBarcode();
+                        if (bc) bc.value = document.getElementById('masterHsCode')?.value || '';
                     }
                 } else if (genBtn) {
                     const input = genBtn.closest('td').querySelector('input');
@@ -1729,8 +1753,8 @@
                             <input type="number" class="mob-input mob-sync" data-field="variant_alert_qty[]" value="${alertVal}" placeholder="0" step="any">
                         </div>
                         <div class="mob-field-group">
-                            <div class="mob-label">Barcode</div>
-                            <input type="text" class="mob-input mob-sync" data-field="variant_barcode[]" value="${barcodeVal}" placeholder="Scan or type...">
+                            <div class="mob-label">HS Code</div>
+                            <input type="text" class="mob-input mob-sync font-monospace" data-field="variant_barcode[]" value="${barcodeVal}" placeholder="HS Code">
                         </div>
                     </div>
 
