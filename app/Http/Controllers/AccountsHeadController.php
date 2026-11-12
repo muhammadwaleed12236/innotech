@@ -166,8 +166,13 @@ class AccountsHeadController extends Controller
             }
         }
 
+        // Auto-sync historical and existing purchase company discounts into this ledger
+        if ($account->account_code === 'COMP-DISC' || stripos($account->title, 'Company Discount') !== false) {
+            $this->syncCompanyDiscountLedger($account);
+        }
+
         $query = JournalEntry::where('account_id', $account->id)
-            ->with('party')
+            ->with(['party', 'source'])
             ->orderBy('entry_date', 'asc')
             ->orderBy('id', 'asc');
 
@@ -178,6 +183,72 @@ class AccountsHeadController extends Controller
         $entries = $query->get();
 
         return view('admin_panel.accounts.ledger', compact('account', 'entries'));
+    }
+
+    /**
+     * Sync historical and existing purchase company discounts into the Company Discount Ledger
+     */
+    private function syncCompanyDiscountLedger(Account $account): void
+    {
+        try {
+            $purchases = \App\Models\Purchase::with('vendor')
+                ->whereIn('status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
+                ->get();
+
+            foreach ($purchases as $purchase) {
+                $compDiscAmt = (float)($purchase->customer_disc_amount ?? 0);
+                if ($compDiscAmt <= 0) {
+                    $itemCompDisc = (float)\DB::table('purchase_items')
+                        ->where('purchase_id', $purchase->id)
+                        ->sum('customer_disc_amount');
+                    if ($itemCompDisc > 0) {
+                        $compDiscAmt = $itemCompDisc;
+                    } else {
+                        $totalDisc = (float)($purchase->discount ?: $purchase->company_disc_amount ?: 0);
+                        $ourDisc = (float)($purchase->our_disc_amount ?? 0);
+                        if ($totalDisc > $ourDisc && $ourDisc > 0) {
+                            $compDiscAmt = round($totalDisc - $ourDisc, 2);
+                        }
+                    }
+                }
+
+                if ($compDiscAmt <= 0) {
+                    continue;
+                }
+
+                // Check if entry already exists in JournalEntry
+                $exists = JournalEntry::where('account_id', $account->id)
+                    ->where(function($q) use ($purchase) {
+                        $q->where(function($sub) use ($purchase) {
+                            $sub->where('source_type', \App\Models\Purchase::class)
+                                ->where('source_id', $purchase->id);
+                        })->orWhere('description', 'like', "%Purchase #{$purchase->invoice_no}%");
+                    })->exists();
+
+                if (!$exists) {
+                    JournalEntry::create([
+                        'account_id' => $account->id,
+                        'source_type' => \App\Models\Purchase::class,
+                        'source_id' => $purchase->id,
+                        'entry_date' => $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d'),
+                        'debit' => 0,
+                        'credit' => $compDiscAmt,
+                        'party_type' => \App\Models\Vendor::class,
+                        'party_id' => $purchase->vendor_id,
+                        'description' => "Company Discount for Customers - Purchase #{$purchase->invoice_no}" . ($purchase->vendor ? " (" . $purchase->vendor->name . ")" : ""),
+                    ]);
+                }
+            }
+
+            // Update Account current_balance
+            $netCr = (float)JournalEntry::where('account_id', $account->id)
+                ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as net')
+                ->value('net');
+            $account->current_balance = -$netCr; // Negative is Cr
+            $account->save();
+        } catch (\Throwable $e) {
+            \Log::error("Failed to sync Company Discount Ledger: " . $e->getMessage());
+        }
     }
 
     public function toggleStatus($id)
