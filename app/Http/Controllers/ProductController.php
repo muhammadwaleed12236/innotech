@@ -34,28 +34,37 @@ class ProductController extends Controller
             return response()->json(['retail_price' => 0]);
         }
 
-        // Determine price based on mode
         $price = 0;
-        if ($product->size_mode === 'by_size') {
+        if ($variantData && isset($variantData['sale_price']) && (float)$variantData['sale_price'] > 0) {
+            $price = (float)$variantData['sale_price'];
+        } elseif ($product->size_mode === 'by_size') {
             $price = $product->price_per_m2;
         } else {
             // For by_cartons or by_pieces, use the box/piece price
             $price = $product->sale_price_per_box;
         }
 
+        $tradePrice = $variantData && isset($variantData['purch_price']) && (float)$variantData['purch_price'] > 0
+            ? (float)$variantData['purch_price']
+            : (float)($product->trade_price ?? $product->purchase_price_per_piece ?? 0);
+
+        $wholesalePrice = $variantData && isset($variantData['wholesale_price']) && (float)$variantData['wholesale_price'] > 0
+            ? (float)$variantData['wholesale_price']
+            : (float)($product->wholesale_price ?? 0);
+
         $saleDisc = $variantData && isset($variantData['sale_discount_percent']) ? (float)$variantData['sale_discount_percent'] : ($product->sale_discount_percent ?? 0);
         $purchDisc = $variantData && isset($variantData['purchase_discount_percent']) ? (float)$variantData['purchase_discount_percent'] : ($product->purchase_discount_percent ?? 0);
 
         return response()->json([
             'retail_price'          => $price,
-            'wholesale_price'       => (float)($product->wholesale_price ?? 0),
+            'wholesale_price'       => $wholesalePrice,
             'weight_per_piece'      => (float)($product->weight_per_piece ?? 0),
             'size_mode'             => $product->size_mode,
             'pieces_per_box'        => $product->pieces_per_box,
             'price_per_m2'          => $product->price_per_m2,
             'sale_price_per_box'    => $product->sale_price_per_box,
             'sale_price_per_piece'  => $product->sale_price_per_piece,
-            'trade_price'           => (float)($product->trade_price ?? $product->purchase_price_per_piece ?? 0),
+            'trade_price'           => $tradePrice,
             'height'                => $product->height,
             'width'                 => $product->width,
             'item_code'             => $product->item_code,
@@ -113,23 +122,43 @@ class ProductController extends Controller
         }
 
         $query = Product::query()
-            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code', 'tax_type_id')
+            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code', 'tax_type_id', 'model')
             ->with(['unit', 'taxType'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
             ->where('is_active', true); /* Only active products */
 
         if ($term !== '') {
-            $query->where(function ($q) use ($term) {
-                $q->where('item_name', 'like', "%{$term}%")
-                    ->orWhere('item_code', 'like', "%{$term}%")
-                    ->orWhere('hs_code', 'like', "%{$term}%")
-                    ->orWhere('barcode_path', 'like', "%{$term}%");
+            $termTrimmed = trim($term);
+            $words = array_values(array_filter(explode(' ', $termTrimmed)));
+
+            $query->where(function ($q) use ($termTrimmed, $words) {
+                $q->where('item_name', 'like', "%{$termTrimmed}%")
+                    ->orWhere('item_code', 'like', "%{$termTrimmed}%")
+                    ->orWhere('hs_code', 'like', "%{$termTrimmed}%")
+                    ->orWhere('barcode_path', 'like', "%{$termTrimmed}%")
+                    ->orWhere('color', 'like', "%{$termTrimmed}%")
+                    ->orWhere('model', 'like', "%{$termTrimmed}%");
+
+                if (count($words) > 1) {
+                    $q->orWhere(function ($subQ) use ($words) {
+                        foreach ($words as $w) {
+                            $subQ->where(function ($wordQ) use ($w) {
+                                $wordQ->where('item_name', 'like', "%{$w}%")
+                                    ->orWhere('item_code', 'like', "%{$w}%")
+                                    ->orWhere('hs_code', 'like', "%{$w}%")
+                                    ->orWhere('barcode_path', 'like', "%{$w}%")
+                                    ->orWhere('color', 'like', "%{$w}%")
+                                    ->orWhere('model', 'like', "%{$w}%");
+                            });
+                        }
+                    });
+                }
             });
         }
 
         $products = $query->paginate(30); // 30 per page for fast response
 
-        $results = $products->getCollection()->flatMap(function ($p) {
+        $results = $products->getCollection()->flatMap(function ($p) use ($term) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
 
@@ -163,7 +192,7 @@ class ProductController extends Controller
 
             if (count($variants) > 0) {
                 $cacheKey = 'prod_var_search_' . $p->id . '_' . ((int)$stockPieces);
-                return \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb) {
+                $allExpanded = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb) {
                 // Fetch all sales and returns for this product to distribute
                 $salesList = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -229,7 +258,17 @@ class ProductController extends Controller
                 foreach ($variants as $v) {
                     $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
                     $color = (isset($v['color']) && $v['color'] !== '-') ? " ({$v['color']})" : '';
-                    $vName = ($v['name'] ?? $p->item_name) . $size . $color;
+                    $rawVName = trim($v['name'] ?? '');
+                    if (!empty($rawVName)) {
+                        if (stripos($rawVName, $p->item_name) !== false) {
+                            $vName = $rawVName;
+                        } else {
+                            $vName = $p->item_name . ' ' . $rawVName;
+                        }
+                    } else {
+                        $vName = $p->item_name;
+                    }
+                    $vName = trim($vName . $size . $color);
                     
                     $vUnitName = $v['unit'] ?? $unitName;
                     $isCartonMode = (in_array($p->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
@@ -358,10 +397,14 @@ class ProductController extends Controller
                     $v['current_stock'] = $vStockDisplay;
                     $variantJson = json_encode($v);
 
+                    $vBarcode = $v['barcode'] ?? $v['hs_code'] ?? $p->barcode_path ?? '';
+                    $vHsCode = $v['barcode'] ?? $v['hs_code'] ?? $p->hs_code ?? '';
+
                     $expanded[] = [
                         'id' => $p->id . '|variant|' . base64_encode($variantJson),
                         'text' => $vName." (SKU: {$p->item_code})",
                         'sku' => $p->item_code ?? '',
+                        'barcode' => $vBarcode,
                         'stock' => $vStockDisplay,
                         'stock_pieces' => $vBalance,
                         'name' => $vName,
@@ -370,7 +413,20 @@ class ProductController extends Controller
                         'pieces_per_box' => $vPpb,
                         'ppb' => $vPpb,
                         'trade_price' => $v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0,
-                        'retail_price' => $v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0, 'retail_price_per_box' => (($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb), 'trade_price_per_box' => (($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)), 'tax_type_id' => $p->tax_type_id, 'tax_type_code' => $p->taxType->code ?? '', 'tax_type_title' => $p->taxType->title ?? '', 'tax_purchase_gst' => $p->taxType ? $p->taxType->getPurchaseGstRate() : ($p->is_third_schedule ? 18.0 : 18.0), 'tax_purchase_adv' => $p->taxType ? $p->taxType->getPurchaseAdvTaxRate() : 0.10, 'tax_sale_gst' => $p->taxType ? $p->taxType->getSaleGstRate() : ($p->sales_tax ?? 18.0), 'tax_sale_adv_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_filer_rate : 0.50, 'tax_sale_adv_non_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_non_filer_rate : 2.50, 'tax_applied_on' => $p->taxType->tax_applied_on ?? ($p->is_third_schedule ? 'retail_value' : 'trade_value'),
+                        'retail_price' => $v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0,
+                        'retail_price_per_box' => (($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb),
+                        'trade_price_per_box' => (($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb),
+                        'hs_code' => $vHsCode,
+                        'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)),
+                        'tax_type_id' => $p->tax_type_id,
+                        'tax_type_code' => $p->taxType->code ?? '',
+                        'tax_type_title' => $p->taxType->title ?? '',
+                        'tax_purchase_gst' => $p->taxType ? $p->taxType->getPurchaseGstRate() : ($p->is_third_schedule ? 18.0 : 18.0),
+                        'tax_purchase_adv' => $p->taxType ? $p->taxType->getPurchaseAdvTaxRate() : 0.10,
+                        'tax_sale_gst' => $p->taxType ? $p->taxType->getSaleGstRate() : ($p->sales_tax ?? 18.0),
+                        'tax_sale_adv_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_filer_rate : 0.50,
+                        'tax_sale_adv_non_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_non_filer_rate : 2.50,
+                        'tax_applied_on' => $p->taxType->tax_applied_on ?? ($p->is_third_schedule ? 'retail_value' : 'trade_value'),
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
                         'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
                         'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
@@ -384,12 +440,78 @@ class ProductController extends Controller
                 }
                 return $expanded;
                 });
+
+                if ($term !== '') {
+                    $cleanTerm = strtolower(trim($term));
+                    $words = array_values(array_filter(explode(' ', $cleanTerm)));
+
+                    return collect($allExpanded)->filter(function ($item) use ($cleanTerm, $words, $p) {
+                        $variantName = $item['name'] ?? '';
+                        $productName = $p->item_name ?? '';
+                        $sku = $item['sku'] ?? $p->item_code ?? '';
+                        $barcode = $item['barcode'] ?? $item['hs_code'] ?? $p->barcode_path ?? '';
+                        $text = $item['text'] ?? '';
+                        $variantExtra = '';
+                        if (!empty($item['variant_data'])) {
+                            try {
+                                $vd = json_decode(base64_decode($item['variant_data']), true);
+                                if (is_array($vd)) {
+                                    $variantExtra = ($vd['name'] ?? '') . ' ' . ($vd['size'] ?? '') . ' ' . ($vd['color'] ?? '') . ' ' . ($vd['barcode'] ?? '') . ' ' . ($vd['model'] ?? '');
+                                }
+                            } catch (\Exception $e) {}
+                        }
+
+                        $combined = strtolower("{$productName} {$variantName} {$text} {$sku} {$barcode} {$variantExtra}");
+
+                        if (str_contains($combined, $cleanTerm)) {
+                            return true;
+                        }
+
+                        if (count($words) > 1) {
+                            foreach ($words as $w) {
+                                if (!str_contains($combined, $w)) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }
+
+                        return false;
+                    })->values()->all();
+                }
+
+                return $allExpanded;
+            }
+
+            // Simple product (no variants)
+            if ($term !== '') {
+                $cleanTerm = strtolower(trim($term));
+                $words = array_values(array_filter(explode(' ', $cleanTerm)));
+
+                $combined = strtolower(($p->item_name ?? '') . ' ' . ($p->item_code ?? '') . ' ' . ($p->hs_code ?? '') . ' ' . ($p->barcode_path ?? '') . ' ' . ($p->model ?? ''));
+
+                $match = str_contains($combined, $cleanTerm);
+                if (!$match && count($words) > 1) {
+                    $allWords = true;
+                    foreach ($words as $w) {
+                        if (!str_contains($combined, $w)) {
+                            $allWords = false;
+                            break;
+                        }
+                    }
+                    $match = $allWords;
+                }
+
+                if (!$match) {
+                    return [];
+                }
             }
 
             return [[
                 'id' => $p->id,
                 'text' => $p->item_name." (SKU: {$p->item_code})",
                 'sku' => $p->item_code ?? '',
+                'barcode' => $p->barcode_path ?? $p->hs_code ?? '',
                 'stock' => $stockDisplay,
                 'stock_pieces' => $stockPieces,
                 'name' => $p->item_name,
@@ -435,6 +557,9 @@ class ProductController extends Controller
                 $query->where('item_name', 'like', "%{$term}%")
                     ->orWhere('item_code', 'like', "%{$term}%")
                     ->orWhere('hs_code', 'like', "%{$term}%")
+                    ->orWhere('barcode_path', 'like', "%{$term}%")
+                    ->orWhere('color', 'like', "%{$term}%")
+                    ->orWhere('model', 'like', "%{$term}%")
                     ->orWhereHas('category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('sub_category_relation', fn ($q) => $q->where('name', 'like', "%{$term}%"))
                     ->orWhereHas('brand', fn ($q) => $q->where('name', 'like', "%{$term}%"));

@@ -299,6 +299,13 @@
         }
 
         let skuText = sku ? ('SKU: ' + sku) : 'N/A';
+        let barcode = repo.barcode || repo.hs_code || '';
+        if (repo.element) {
+            barcode = $(repo.element).data('barcode') || barcode;
+        }
+        if (barcode && barcode !== sku) {
+            skuText += ' &bull; Barcode: ' + barcode;
+        }
         let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
 
         return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="color: #0f172a;">' +
@@ -2651,6 +2658,7 @@
         // --- Sidebar Direct Add Product ---
         $(document).on('click', '.add-product-direct-btn', function() {
             const prodId = $(this).data('id');
+            const variantData = $(this).attr('data-variant-data') || '';
             if (!prodId) return;
 
             let $targetRow = $('#salesTableBody tr:last');
@@ -2664,11 +2672,26 @@
             const $select = $targetRow.find('.product');
             const prodName = $(this).closest('.pos-product-card').find('.pos-product-name').text();
             if ($select.find(`option[value="${prodId}"]`).length === 0) {
-                $select.append(new Option(prodName, prodId, true, true));
+                const opt = new Option(prodName, prodId, true, true);
+                if (variantData) {
+                    $(opt).data('variant_data', variantData);
+                }
+                $select.append(opt);
             } else {
                 $select.val(prodId).trigger('change.select2');
             }
             $select.trigger('change');
+            $select.trigger({
+                type: 'select2:select',
+                params: {
+                    data: {
+                        id: prodId,
+                        text: prodName,
+                        name: prodName,
+                        variant_data: variantData
+                    }
+                }
+            });
         });
 
         // --- Sidebar Live Search ---
@@ -2694,7 +2717,7 @@
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="pos-product-price">${priceText}<br><small class="text-muted fs-7">PCS</small></div>
-                                    <button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="${p.id}" title="Add to Grid"><i class="fas fa-plus"></i></button>
+                                    <button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="${p.id}" data-variant-data="${p.variant_data || ''}" title="Add to Grid"><i class="fas fa-plus"></i></button>
                                 </div>
                             </div>`;
                     });

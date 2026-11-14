@@ -164,7 +164,7 @@ class SaleController extends Controller
 
     public function searchpname(Request $request)
     {
-        $q = $request->get('q');
+        $q = trim((string)$request->get('q', ''));
         $warehouseId = $request->get('warehouse_id', 1);
 
         $products = Product::with(['brand', 'taxType'])
@@ -176,7 +176,10 @@ class SaleController extends Controller
             ->where(function ($query) use ($q) {
                 $query->where('products.item_name', 'like', "%{$q}%")
                     ->orWhere('products.item_code', 'like', "%{$q}%")
-                    ->orWhere('products.barcode_path', 'like', "%{$q}%");
+                    ->orWhere('products.barcode_path', 'like', "%{$q}%")
+                    ->orWhere('products.color', 'like', "%{$q}%")
+                    ->orWhere('products.model', 'like', "%{$q}%")
+                    ->orWhere('products.hs_code', 'like', "%{$q}%");
             })
             ->select(
                 'products.*',
@@ -184,27 +187,74 @@ class SaleController extends Controller
                 'warehouse_stocks.quantity as wh_box_qty'
             )
             ->limit(50)
-            ->get()
-            ->map(function ($product) {
-                $taxType = $product->taxType;
-                $isThird = $taxType ? $taxType->isThirdSchedule() : (bool) $product->is_third_schedule;
-                $saleGst = $taxType ? $taxType->getSaleGstRate() : (float) ($product->sales_tax ?? 18);
-                $purchaseGst = $taxType ? $taxType->getPurchaseGstRate() : 18.0;
+            ->get();
 
-                $product->is_third_schedule = $isThird ? 1 : 0;
-                $product->tax_type_id = $product->tax_type_id;
-                $product->tax_type_code = $taxType->code ?? null;
-                $product->tax_type_title = $taxType->title ?? null;
-                $product->tax_applied_on = $taxType->tax_applied_on ?? ($isThird ? 'retail_value' : 'trade_value');
-                $product->tax_sale_gst = $saleGst;
-                $product->tax_purchase_gst = $purchaseGst;
-                $product->tax_sale_adv_filer = $taxType ? (float)$taxType->adv_tax_sale_filer_rate : 0.5;
-                $product->tax_sale_adv_non_filer = $taxType ? (float)$taxType->adv_tax_sale_non_filer_rate : 2.5;
-                return $product;
-            });
+        $results = [];
+        foreach ($products as $product) {
+            $taxType = $product->taxType;
+            $isThird = $taxType ? $taxType->isThirdSchedule() : (bool) $product->is_third_schedule;
+            $saleGst = $taxType ? $taxType->getSaleGstRate() : (float) ($product->sales_tax ?? 18);
+            $purchaseGst = $taxType ? $taxType->getPurchaseGstRate() : 18.0;
 
+            $product->is_third_schedule = $isThird ? 1 : 0;
+            $product->tax_type_id = $product->tax_type_id;
+            $product->tax_type_code = $taxType->code ?? null;
+            $product->tax_type_title = $taxType->title ?? null;
+            $product->tax_applied_on = $taxType->tax_applied_on ?? ($isThird ? 'retail_value' : 'trade_value');
+            $product->tax_sale_gst = $saleGst;
+            $product->tax_purchase_gst = $purchaseGst;
+            $product->tax_sale_adv_filer = $taxType ? (float)$taxType->adv_tax_sale_filer_rate : 0.5;
+            $product->tax_sale_adv_non_filer = $taxType ? (float)$taxType->adv_tax_sale_non_filer_rate : 2.5;
 
-        return response()->json($products);
+            $variants = [];
+            if ($product->color) {
+                try {
+                    $parsed = is_string($product->color) ? json_decode($product->color, true) : $product->color;
+                    if (is_array($parsed) && count($parsed) > 0 && isset($parsed[0]['name'])) {
+                        $variants = $parsed;
+                    }
+                } catch (\Exception $e) {}
+            }
+
+            if (count($variants) > 0) {
+                foreach ($variants as $v) {
+                    $rawVName = trim($v['name'] ?? '');
+                    if (!empty($rawVName)) {
+                        if (stripos($rawVName, $product->item_name) !== false) {
+                            $vName = $rawVName;
+                        } else {
+                            $vName = $product->item_name . ' ' . $rawVName;
+                        }
+                    } else {
+                        $vName = $product->item_name;
+                    }
+                    $size = (isset($v['size']) && $v['size'] !== '-') ? " {$v['size']}" : '';
+                    $color = (isset($v['color']) && $v['color'] !== '-') ? " ({$v['color']})" : '';
+                    $vName = trim($vName . $size . $color);
+
+                    // If searching, check if this variant matches
+                    if ($q !== '') {
+                        $combined = strtolower($product->item_name . ' ' . $vName . ' ' . $product->item_code . ' ' . ($v['barcode'] ?? '') . ' ' . ($v['hs_code'] ?? ''));
+                        if (!str_contains($combined, strtolower($q))) {
+                            continue;
+                        }
+                    }
+
+                    $vClone = clone $product;
+                    $vClone->id = $product->id . '|variant|' . base64_encode(json_encode($v));
+                    $vClone->item_name = $vName;
+                    $vClone->retail_price = (float)($v['sale_price'] ?? $product->retail_price ?? 0);
+                    $vClone->wholesale_price = (float)($v['wholesale_price'] ?? $product->wholesale_price ?? 0);
+                    $vClone->trade_price = (float)($v['purch_price'] ?? $product->trade_price ?? 0);
+                    $vClone->variant_data = base64_encode(json_encode($v));
+                    $results[] = $vClone;
+                }
+            } else {
+                $results[] = $product;
+            }
+        }
+
+        return response()->json($results);
     }
 
     public function store(Request $request)
