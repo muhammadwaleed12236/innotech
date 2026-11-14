@@ -618,13 +618,27 @@
                                                 <option value="by_ton">Ton</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-12 d-flex align-items-center pt-2">
-                                            <div class="form-check form-switch p-2 rounded bg-light border w-100">
-                                                <input class="form-check-input ms-0 me-2" type="checkbox" name="is_third_schedule" id="is_third_schedule" value="1">
-                                                <label class="form-check-label fw-bold text-dark" for="is_third_schedule">
-                                                    Third Schedule Item (Sales Tax on Retail Price)
-                                                    <small class="text-muted d-block" style="font-size:11px;">Enable agar is item per GST Retail Price / MRP per calculate hona hai.</small>
+                                        <div class="col-md-12 pt-2">
+                                            <div class="p-2.5 rounded bg-light border">
+                                                <label class="form-label-pro fw-bold text-dark d-flex justify-content-between align-items-center mb-1">
+                                                    <span><i class="fas fa-file-invoice-dollar text-primary me-1"></i> Taxation / Tax Schedule</span>
+                                                    <a href="{{ route('tax-types.create') }}" target="_blank" class="small text-primary text-decoration-none fw-semibold" style="font-size: 11px;">+ New Tax Type</a>
                                                 </label>
+                                                <select name="tax_type_id" id="tax_type_id" class="form-select form-select-sm fw-bold text-dark mb-2">
+                                                    <option value="">-- Standard / Default --</option>
+                                                    @foreach($taxTypes ?? [] as $tt)
+                                                        <option value="{{ $tt->id }}" data-is-third="{{ $tt->isThirdSchedule() ? '1' : '0' }}" data-gst="{{ $tt->getPurchaseGstRate() }}" data-applied="{{ $tt->tax_applied_on }}" {{ ($tt->is_default ?? false) ? 'selected' : '' }}>
+                                                            [{{ $tt->code }}] {{ $tt->title }} - {{ $tt->isThirdSchedule() ? 'Retail MRP (3rd Sched)' : 'Trade Val' }} (GST {{ $tt->getPurchaseGstRate() }}%)
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="is_third_schedule" id="is_third_schedule" value="1">
+                                                    <label class="form-check-label fw-bold text-dark" for="is_third_schedule" style="font-size: 12px;">
+                                                        Third Schedule Item (Sales Tax on Retail Price)
+                                                        <small class="text-muted d-block" style="font-size:11px;">GST Retail Price / MRP per calculate hoga.</small>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -219,7 +219,8 @@ class PurchaseController extends Controller
         $purchaseGstEnabled = (bool) \App\Models\Setting::get('purchase_gst_enabled', '1');
         $defaultGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
 
-        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent'));
+        $taxTypes = \App\Models\TaxType::active()->orderBy('is_default', 'desc')->orderBy('code')->get();
+        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent', 'taxTypes'));
     }
     public function quickCreate()
     {
@@ -813,6 +814,7 @@ class PurchaseController extends Controller
                 'branch_id' => $branchId,
                 'warehouse_id' => $warehouseId,
                 'vendor_id' => $validated['vendor_id'] ?? null,
+                'tax_type_id' => $request->tax_type_id ?? null,
                 'purchase_date' => $validated['purchase_date'] ?? now(),
                 'invoice_no' => $validated['invoice_no'] ?? $nextInvoice,
                 'purchase_order_no' => $validated['purchase_order_no'] ?? null,
@@ -1075,6 +1077,7 @@ class PurchaseController extends Controller
                     'custom_disc_breakdown' => $rowCustomBreakdown,
                     'our_disc_breakdown' => $rowOurBreakdown,
                     'value_after_discount' => $valueAfterDiscount,
+                    'tax_type_id' => ($request->item_tax_type_id[$i] ?? null) ?: ($request->tax_type_id ?? null),
                     'is_third_schedule' => $isThird ? 1 : 0,
                     'gst_percent' => $gstPercent,
                     'gst_amount' => $gstAmount,
@@ -1647,7 +1650,8 @@ class PurchaseController extends Controller
         $purchaseGstEnabled = (bool) \App\Models\Setting::get('purchase_gst_enabled', '1');
         $defaultGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
 
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent'));
+        $taxTypes = \App\Models\TaxType::active()->orderBy('is_default', 'desc')->orderBy('code')->get();
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent', 'taxTypes'));
     }
 
     public function update(Request $request, $id)
@@ -2002,6 +2006,7 @@ class PurchaseController extends Controller
                     'custom_disc_breakdown' => $rowCustomBreakdown,
                     'our_disc_breakdown' => $rowOurBreakdown,
                     'value_after_discount' => $valueAfterDiscount,
+                    'tax_type_id' => ($request->item_tax_type_id[$i] ?? null) ?: ($request->tax_type_id ?? null),
                     'is_third_schedule' => $isThird ? 1 : 0,
                     'gst_percent' => $gstPercent,
                     'gst_amount' => $gstAmount,
@@ -2089,6 +2094,7 @@ class PurchaseController extends Controller
             // Header update
             $purchase->update([
                 'vendor_id' => $validated['vendor_id'] ?? $purchase->vendor_id,
+                'tax_type_id' => $request->tax_type_id ?? $purchase->tax_type_id,
                 'branch_id' => $branchId,
                 'warehouse_id' => $warehouseId,
                 'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,

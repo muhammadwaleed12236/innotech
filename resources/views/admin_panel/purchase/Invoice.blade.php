@@ -588,7 +588,12 @@
                                     @if(!empty($item->product->hs_code))
                                         <span class="badge bg-light text-secondary border font-monospace">HS: {{ $item->product->hs_code }}</span>
                                     @endif
-                                    @if($item->is_third_schedule)
+                                    @php
+                                        $rowTax = $item->taxType ?? ($item->product->taxType ?? null);
+                                    @endphp
+                                    @if($rowTax)
+                                        <span class="badge {{ $item->is_third_schedule ? 'bg-warning text-dark' : 'bg-primary-subtle text-primary' }} border" style="font-size: 9.5px;">[{{ $rowTax->code }}] {{ $rowTax->title }}</span>
+                                    @elseif($item->is_third_schedule)
                                         <span class="badge bg-warning text-dark border" style="font-size: 9.5px;">3rd Schedule</span>
                                     @endif
                                     @if($retailRatePerPc > 0)

@@ -18,6 +18,11 @@ class Product extends Model
     //     'wholesale_price', 'retail_price', 'initial_stock', 'alert_quantity'
     // ];
     // app/Models/Product.php
+    public function taxType()
+    {
+        return $this->belongsTo(TaxType::class, 'tax_type_id');
+    }
+
     public function warehouses()
     {
         return $this->belongsToMany(Warehouse::class, 'warehouse_stocks', 'product_id', 'warehouse_id')

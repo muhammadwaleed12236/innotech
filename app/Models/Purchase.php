@@ -50,6 +50,7 @@ class Purchase extends Model
         'due_amount'                 => 'decimal:2',
     ];
 
+    public function taxType()  { return $this->belongsTo(TaxType::class, 'tax_type_id'); }
     public function branch()   { return $this->belongsTo(Branch::class); }
     public function warehouse(){ return $this->belongsTo(Warehouse::class); }
     public function vendor()   { return $this->belongsTo(Vendor::class, 'vendor_id'); }

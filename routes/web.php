@@ -38,6 +38,7 @@ use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WarehouseStockController;
 use App\Http\Controllers\ZoneController;
 use App\Http\Controllers\ProvinceController;
+use App\Http\Controllers\TaxTypeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -190,6 +191,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/toggle-status/{id}', [DiscountController::class, 'toggleStatus'])->middleware('permission:discount.products.edit')->name('discount.toggleStatus');
         Route::get('/barcode/{id}', [DiscountController::class, 'barcode'])->middleware('permission:discount.products.view')->name('discount.barcode');
     });
+
+    // Tax Types / Taxation System
+    Route::get('/tax-types/api-list', [TaxTypeController::class, 'apiList'])->name('tax-types.api');
+    Route::post('/tax-types/{taxType}/toggle-status', [TaxTypeController::class, 'toggleStatus'])->name('tax-types.toggle-status');
+    Route::resource('tax-types', TaxTypeController::class);
 
     // routes/web.php
 

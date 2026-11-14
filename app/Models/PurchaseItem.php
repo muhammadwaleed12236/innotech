@@ -34,6 +34,7 @@ class PurchaseItem extends Model
     ];
 
     public function purchase()  { return $this->belongsTo(Purchase::class); }
+    public function taxType()   { return $this->belongsTo(TaxType::class, 'tax_type_id'); }
     public function product()   { return $this->belongsTo(Product::class); }
     public function warehouse() { return $this->belongsTo(Warehouse::class); }
 }

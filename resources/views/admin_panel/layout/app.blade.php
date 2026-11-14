@@ -1010,6 +1010,7 @@
                                                                 Brands</a></li>
                                                     @endcan
 
+                                                    <li><a href="{{ route('tax-types.index') }}"><i class="fas fa-file-invoice-dollar"></i> Taxation & Tax Types</a></li>
                                                     @can('units.view')
                                                         <li><a href="{{ route('Unit.home') }}"><i
                                                                     class="fas fa-balance-scale"></i> Units</a></li>

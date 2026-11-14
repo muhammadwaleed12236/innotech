@@ -832,6 +832,9 @@
         const isStEnabled = cfg.flags && cfg.flags.sales_tax !== undefined ? cfg.flags.sales_tax : true;
         const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
 
+        const isThirdSchedule = !!$row.data('is_third_schedule') || $row.find('.hidden-is-third-schedule').val() === '1';
+        const stTaxBase = (isThirdSchedule && mrpAmount > 0) ? mrpAmount : exclusiveGst;
+
         let stVal = toNum($row.find('.sales-tax-value').val());
         let stType = $row.find('.st-toggle').data('type') || 'percent';
         let salesTaxPct = 0;
@@ -843,27 +846,28 @@
             $row.find('.sales-tax-percent').val(0);
         } else if (stType === 'percent') {
             salesTaxPct = stVal;
-            salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+            salesTaxAmt = stTaxBase > 0 ? (stTaxBase * salesTaxPct) / 100 : 0;
             $row.find('.sales-tax-percent').val(salesTaxPct);
         } else {
             salesTaxAmt = stVal;
-            salesTaxPct = exclusiveGst > 0 ? ((salesTaxAmt / exclusiveGst) * 100) : 0;
+            salesTaxPct = stTaxBase > 0 ? ((salesTaxAmt / stTaxBase) * 100) : 0;
             $row.find('.sales-tax-percent').val(salesTaxPct.toFixed(2));
         }
 
         $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
         $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
 
-        // 8. URC Tax (Further Tax for Unregistered Customer)
+        // 8. URC Tax (Further Tax for Unregistered Customer) - 3rd schedule items are exempt
         let urcVal = toNum($row.find('.urc-tax-value').val());
         let urcType = $row.find('.urc-toggle').data('type') || 'percent';
         let furtherTaxPct = 0;
         let furtherTaxAmt = 0;
 
-        if (!isFtEnabled) {
+        if (!isFtEnabled || isThirdSchedule) {
             furtherTaxPct = 0;
             furtherTaxAmt = 0;
             $row.find('.further-tax-percent').val(0);
+            $row.find('.urc-tax-value').val(0);
         } else if (urcType === 'percent') {
             furtherTaxPct = urcVal;
             furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
@@ -1680,6 +1684,19 @@
             $row.data('pieces_per_box', data.pieces_per_box || 1);
             $row.data('is_third_schedule', !!data.is_third_schedule);
             $row.find('.hidden-is-third-schedule').val(data.is_third_schedule ? '1' : '0');
+
+            // Apply Product-Specific Tax Type
+            let stGst = (data.tax_sale_gst !== undefined && data.tax_sale_gst !== null) ? parseFloat(data.tax_sale_gst) : 18;
+            if (data.tax_type_code === '0001') {
+                stGst = 0;
+            }
+            $row.find('.sales-tax-value').val(stGst);
+            $row.find('.sales-tax-percent').val(stGst);
+
+            if (data.is_third_schedule) {
+                $row.find('.urc-tax-value').val(0);
+                $row.find('.further-tax-percent').val(0);
+            }
             
             setupRowQtyToggle($row, data.size_mode);
 

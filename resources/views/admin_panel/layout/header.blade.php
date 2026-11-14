@@ -333,6 +333,10 @@
                                                     href="{{ route('Purchase.home') }}"><i
                                                         class="menu_icon icon-basket"></i><span>Purchase</span></a>
                                             </li>
+                                            <li class="nav-item"><a class="nav-link"
+                                                    href="{{ route('tax-types.index') }}"><i
+                                                        class="menu_icon icon-wallet"></i><span>Tax Types</span></a>
+                                            </li>
                                         </ul>
                                     </div>
                                 </div>

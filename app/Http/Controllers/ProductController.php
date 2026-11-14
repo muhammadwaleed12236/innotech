@@ -113,8 +113,8 @@ class ProductController extends Controller
         }
 
         $query = Product::query()
-            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code')
-            ->with(['unit'])
+            ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code', 'tax_type_id')
+            ->with(['unit', 'taxType'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
             ->where('is_active', true); /* Only active products */
 
@@ -370,7 +370,7 @@ class ProductController extends Controller
                         'pieces_per_box' => $vPpb,
                         'ppb' => $vPpb,
                         'trade_price' => $v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0,
-                        'retail_price' => $v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0, 'retail_price_per_box' => (($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb), 'trade_price_per_box' => (($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->is_third_schedule ?? false),
+                        'retail_price' => $v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0, 'retail_price_per_box' => (($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb), 'trade_price_per_box' => (($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)), 'tax_type_id' => $p->tax_type_id, 'tax_type_code' => $p->taxType->code ?? '', 'tax_type_title' => $p->taxType->title ?? '', 'tax_purchase_gst' => $p->taxType ? $p->taxType->getPurchaseGstRate() : ($p->is_third_schedule ? 18.0 : 18.0), 'tax_purchase_adv' => $p->taxType ? $p->taxType->getPurchaseAdvTaxRate() : 0.10, 'tax_sale_gst' => $p->taxType ? $p->taxType->getSaleGstRate() : ($p->sales_tax ?? 18.0), 'tax_sale_adv_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_filer_rate : 0.50, 'tax_sale_adv_non_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_non_filer_rate : 2.50, 'tax_applied_on' => $p->taxType->tax_applied_on ?? ($p->is_third_schedule ? 'retail_value' : 'trade_value'),
                         'wholesale_price' => $v['wholesale_price'] ?? $p->wholesale_price ?? 0,
                         'weight_per_piece' => $v['weight_per_piece'] ?? $p->weight_per_piece ?? 0,
                         'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
@@ -398,7 +398,7 @@ class ProductController extends Controller
                 'pieces_per_box' => $ppb,
                 'ppb' => $ppb,
                 'trade_price' => $p->trade_price ?: ($p->purchase_price_per_piece ?? 0),
-                'retail_price' => $p->retail_price ?: ($p->sale_price_per_piece ?? 0), 'retail_price_per_box' => $p->sale_price_per_box ?: (($p->retail_price ?: $p->sale_price_per_piece ?: 0) * $ppb), 'trade_price_per_box' => $p->purchase_price_per_box ?: (($p->trade_price ?: $p->purchase_price_per_piece ?: 0) * $ppb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->is_third_schedule ?? false),
+                'retail_price' => $p->retail_price ?: ($p->sale_price_per_piece ?? 0), 'retail_price_per_box' => $p->sale_price_per_box ?: (($p->retail_price ?: $p->sale_price_per_piece ?: 0) * $ppb), 'trade_price_per_box' => $p->purchase_price_per_box ?: (($p->trade_price ?: $p->purchase_price_per_piece ?: 0) * $ppb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)), 'tax_type_id' => $p->tax_type_id, 'tax_type_code' => $p->taxType->code ?? '', 'tax_type_title' => $p->taxType->title ?? '', 'tax_purchase_gst' => $p->taxType ? $p->taxType->getPurchaseGstRate() : ($p->is_third_schedule ? 18.0 : 18.0), 'tax_purchase_adv' => $p->taxType ? $p->taxType->getPurchaseAdvTaxRate() : 0.10, 'tax_sale_gst' => $p->taxType ? $p->taxType->getSaleGstRate() : ($p->sales_tax ?? 18.0), 'tax_sale_adv_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_filer_rate : 0.50, 'tax_sale_adv_non_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_non_filer_rate : 2.50, 'tax_applied_on' => $p->taxType->tax_applied_on ?? ($p->is_third_schedule ? 'retail_value' : 'trade_value'),
                 'wholesale_price' => $p->wholesale_price ?? 0,
                 'weight_per_piece' => $p->weight_per_piece ?? 0,
                 'purchase_price_per_piece' => $p->purchase_price_per_piece ?? 0,
@@ -484,6 +484,7 @@ class ProductController extends Controller
             'sub_category_relation',
             'unit',
             'brand',
+            'taxType',
         ])->withSum('warehouseStocks', 'total_pieces');
 
         // ── Filters ──
@@ -565,8 +566,9 @@ class ProductController extends Controller
         $categories = Category::select('id', 'name')->get();
         $units = Unit::select('id', 'name')->get();
         $brands = Brand::select('id', 'name')->get();
+        $taxTypes = \App\Models\TaxType::active()->orderBy('code')->get();
 
-        return view('admin_panel.product.create', compact('categories', 'units', 'brands'));
+        return view('admin_panel.product.create', compact('categories', 'units', 'brands', 'taxTypes'));
     }
 
     // ===== Dependent subcategories =====
@@ -918,7 +920,8 @@ class ProductController extends Controller
                 'hs_code' => $request->hs_code,
                 'retail_price' => $request->filled('retail_price') ? (float)$request->retail_price : $salePricePerPiece,
                 'trade_price' => $request->filled('trade_price') ? (float)$request->trade_price : $purchasePricePerPiece,
-                'is_third_schedule' => $request->has('is_third_schedule') && ($request->is_third_schedule == '1' || $request->is_third_schedule === true || $request->is_third_schedule === 'on') ? 1 : 0,
+                'tax_type_id' => $request->tax_type_id ?: null,
+                'is_third_schedule' => ($request->tax_type_id && ($tt = \App\Models\TaxType::find($request->tax_type_id)) && $tt->isThirdSchedule()) ? 1 : ($request->has('is_third_schedule') && in_array($request->is_third_schedule, ['1', 1, true, 'on']) ? 1 : 0),
 
                 'is_part' => 0,
                 'is_assembled' => 0,
@@ -1360,7 +1363,8 @@ class ProductController extends Controller
                 'hs_code' => $request->hs_code,
                 'retail_price' => $request->filled('retail_price') ? (float)$request->retail_price : $salePricePerPiece,
                 'trade_price' => $request->filled('trade_price') ? (float)$request->trade_price : $purchasePricePerPiece,
-                'is_third_schedule' => $request->has('is_third_schedule') && ($request->is_third_schedule == '1' || $request->is_third_schedule === true || $request->is_third_schedule === 'on') ? 1 : 0,
+                'tax_type_id' => $request->tax_type_id ?: null,
+                'is_third_schedule' => ($request->tax_type_id && ($tt = \App\Models\TaxType::find($request->tax_type_id)) && $tt->isThirdSchedule()) ? 1 : ($request->has('is_third_schedule') && in_array($request->is_third_schedule, ['1', 1, true, 'on']) ? 1 : 0),
 
                 // 'total_price' => $totalPrice, // Removed: Not in DB
                 // 'total_purchase_price' => $totalPurchasePrice, // Removed: Not in DB
@@ -1564,6 +1568,7 @@ class ProductController extends Controller
         $categories = Category::all();
         $subcategories = SubCategory::all();
         $brands = Brand::all();
+        $taxTypes = \App\Models\TaxType::active()->orderBy('code')->get();
 
         // Calculate current stock from WarehouseStock (the real source of truth)
         $totalPieces = $product->warehouseStocks->sum('total_pieces');
@@ -1685,7 +1690,7 @@ class ProductController extends Controller
 
         // Variants prices are stored and edited as per-piece (1 PCS) prices. Carton prices are computed live on page.
 
-        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants'));
+        return view('admin_panel.product.edit', compact('product', 'categories', 'subcategories', 'brands', 'variants', 'taxTypes'));
     }
 
     // ===== Barcode view =====

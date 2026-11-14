@@ -822,7 +822,7 @@
                     @if($canSelectWarehouse)
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 text-nowrap fw-bold"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse:</label>
-                        <select class="form-select form-select-sm fw-bold border-primary shadow-sm" name="warehouse_id" id="warehouseSelect" style="min-width: 170px;">
+                        <select class="form-select form-select-sm fw-bold border-primary shadow-sm" name="warehouse_id" id="warehouseSelect" style="min-width: 150px;">
                             @foreach ($Warehouse as $w)
                                 <option value="{{ $w->id }}" {{ ($userWarehouseId ?? 1) == $w->id ? 'selected' : '' }}>
                                     {{ $w->warehouse_name ?? $w->name ?? ('Warehouse ' . $w->id) }}
@@ -833,6 +833,25 @@
                     @else
                         <input type="hidden" name="warehouse_id" id="warehouseSelect" value="{{ $userWarehouseId ?? 1 }}">
                     @endif
+
+                    {{-- Default Tax Schedule --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 text-nowrap fw-bold"><i class="fas fa-file-invoice-dollar text-success me-1"></i>Tax Type:</label>
+                        <select class="form-select form-select-sm fw-bold border-success shadow-sm" name="tax_type_id" id="defaultTaxTypeSelect" style="min-width: 200px;">
+                            @foreach ($taxTypes ?? [] as $tt)
+                                <option value="{{ $tt->id }}" 
+                                        data-is-third="{{ $tt->isThirdSchedule() ? '1' : '0' }}" 
+                                        data-gst="{{ $tt->getPurchaseGstRate() }}" 
+                                        data-wht="{{ $tt->getPurchaseAdvTaxRate() }}" 
+                                        data-code="{{ $tt->code }}"
+                                        data-title="{{ $tt->title }}"
+                                        data-applied="{{ $tt->tax_applied_on }}" 
+                                        {{ ($tt->is_default ?? false) ? 'selected' : '' }}>
+                                    [{{ $tt->code }}] {{ $tt->title }} ({{ $tt->isThirdSchedule() ? 'Retail MRP' : 'Trade' }} - GST {{ $tt->getPurchaseGstRate() }}%)
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
                     {{-- Previous Balance --}}
                     <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-2 ms-auto">
@@ -1379,6 +1398,81 @@
 
     <script>
         $(document).ready(function() {
+            // ==================== TAX SCHEDULE SELECTOR LOGIC ====================
+            let $activeTaxRow = null;
+
+            $(document).on('click', '.row-tax-badge', function(e) {
+                e.preventDefault();
+                $activeTaxRow = $(this).closest('tr');
+                const curTaxId = $activeTaxRow.find('.hidden-tax-type-id').val();
+                if (curTaxId) {
+                    $(`#tax_opt_${curTaxId}`).prop('checked', true);
+                } else {
+                    const defVal = $('#defaultTaxTypeSelect').val();
+                    if (defVal) $(`#tax_opt_${defVal}`).prop('checked', true);
+                }
+                $('#modalSelectTaxType').modal('show');
+            });
+
+            $('#btnApplyTaxToRow').click(function() {
+                if (!$activeTaxRow) return;
+                const $selected = $('input[name="selected_modal_tax_type"]:checked');
+                if (!$selected.length) return;
+
+                applyTaxTypeToRow($activeTaxRow, $selected);
+                $('#modalSelectTaxType').modal('hide');
+            });
+
+            $('#btnApplyTaxToAllRows').click(function() {
+                const $selected = $('input[name="selected_modal_tax_type"]:checked');
+                if (!$selected.length) return;
+
+                $('#purchaseTableBody tr').each(function() {
+                    applyTaxTypeToRow($(this), $selected);
+                });
+                $('#modalSelectTaxType').modal('hide');
+            });
+
+            function applyTaxTypeToRow($row, $taxOpt) {
+                const taxId = $taxOpt.val();
+                const isThird = $taxOpt.data('is-third') === '1' || $taxOpt.data('is-third') === 1;
+                const gstRate = parseFloat($taxOpt.data('gst')) || 0;
+                const taxCode = $taxOpt.data('code') || '';
+                const taxTitle = $taxOpt.data('title') || '';
+
+                $row.find('.hidden-tax-type-id').val(taxId);
+                $row.find('.hidden-is-third-schedule').val(isThird ? '1' : '0');
+                $row.find('.item-gst-percent').val(gstRate.toFixed(2));
+
+                let badgeClass = isThird ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : (gstRate === 0 ? 'bg-secondary-subtle text-muted' : 'bg-info-subtle text-info border-info-subtle');
+                let badgeText = taxCode ? `[${taxCode}] ${taxTitle ? taxTitle.substring(0, 16) : ''}` : (isThird ? '3rd Sched' : 'Standard');
+                $row.find('.row-tax-badge').attr('class', `badge border row-tax-badge me-1 ${badgeClass}`).html(`<i class="fas fa-file-invoice-dollar me-1"></i><span class="tax-badge-text">${badgeText}</span>`);
+
+                recalcRow($row);
+                recalcAll();
+            }
+
+            $('#defaultTaxTypeSelect').on('change', function() {
+                const $opt = $(this).find('option:selected');
+                const rowCount = $('#purchaseTableBody tr').length;
+                if (rowCount > 0 && typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Update existing rows?',
+                        text: `Apply [${$opt.data('code')}] ${$opt.data('title')} to all rows in this purchase?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, update all rows',
+                        cancelButtonText: 'No, apply only to new items'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $('#purchaseTableBody tr').each(function() {
+                                applyTaxTypeToRow($(this), $opt);
+                            });
+                        }
+                    });
+                }
+            });
+
             // Init Select2 for static inputs
             $('.select2').select2({
                 width: '100%',
@@ -1782,8 +1876,11 @@
                         <input type="hidden" class="exp-date-hidden" name="exp_date[]" value="">
                         <input type="hidden" class="serials-hidden" name="serials[]" value="">
                         <input type="hidden" class="tracking-type-hidden" name="tracking_type[]" value="">
+                        <input type="hidden" class="hidden-tax-type-id" name="item_tax_type_id[]" value="">
                         <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
-                        <div class="row-tracking-badges d-flex flex-wrap gap-1 px-1 py-0"></div>
+                        <div class="row-tracking-badges d-flex flex-wrap align-items-center gap-1 px-1 py-0">
+                            <span class="badge bg-light text-muted border row-tax-badge me-1" style="cursor:pointer; font-size:0.68rem;" title="Click to change Tax Schedule"><i class="fas fa-file-invoice-dollar me-1"></i><span class="tax-badge-text">Tax: Auto</span></span>
+                        </div>
                     </td>
                     <td class="text-center align-middle">
                         <button type="button" class="btn btn-sm btn-outline-info fw-bold unit-toggle-btn w-100" data-unit="Carton" style="height:30px; border:none; border-radius:0; font-size:11px;" title="Click to toggle (Carton / Pcs)">Carton</button>
@@ -1977,13 +2074,33 @@
                         $row.find('.hs-badge').addClass('d-none');
                     }
 
-                    const isThird = !!data.is_third_schedule;
-                    $row.find('.hidden-is-third-schedule').val(isThird ? '1' : '0');
-                    if (isThird) {
-                        $row.find('.toggle-third-schedule-btn').removeClass('btn-outline-secondary').addClass('btn-warning text-dark fw-bold').find('.sched-text').text('3rd Sched (Tax on Retail)');
-                    } else {
-                        $row.find('.toggle-third-schedule-btn').removeClass('btn-warning text-dark fw-bold').addClass('btn-outline-secondary').find('.sched-text').text('Standard');
+                    // Tax Type & Third Schedule Handling
+                    let itemTaxId = data.tax_type_id;
+                    let isThird = !!data.is_third_schedule;
+                    let gstRate = data.tax_purchase_gst !== undefined ? parseFloat(data.tax_purchase_gst) : null;
+                    let taxCode = data.tax_type_code || '';
+                    let taxTitle = data.tax_type_title || '';
+
+                    if (!itemTaxId) {
+                        const $defTax = $('#defaultTaxTypeSelect option:selected');
+                        if ($defTax.length && $defTax.val()) {
+                            itemTaxId = $defTax.val();
+                            isThird = $defTax.data('is-third') === '1' || $defTax.data('is-third') === 1;
+                            gstRate = parseFloat($defTax.data('gst')) || 0;
+                            taxCode = $defTax.data('code') || '';
+                            taxTitle = $defTax.data('title') || '';
+                        }
                     }
+
+                    $row.find('.hidden-tax-type-id').val(itemTaxId || '');
+                    $row.find('.hidden-is-third-schedule').val(isThird ? '1' : '0');
+                    if (gstRate !== null) {
+                        $row.find('.item-gst-percent').val(gstRate.toFixed(2));
+                    }
+
+                    let badgeClass = isThird ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : (gstRate === 0 ? 'bg-secondary-subtle text-muted' : 'bg-info-subtle text-info border-info-subtle');
+                    let badgeText = taxCode ? `[${taxCode}] ${taxTitle ? taxTitle.substring(0, 16) : ''}` : (isThird ? '3rd Sched' : 'Standard');
+                    $row.find('.row-tax-badge').attr('class', `badge border row-tax-badge me-1 ${badgeClass}`).html(`<i class="fas fa-file-invoice-dollar me-1"></i><span class="tax-badge-text">${badgeText}</span>`);
 
                     // Snapshot Data Population
                     $row.find('.hidden-size-mode').val(data.size_mode || '');
@@ -2764,6 +2881,7 @@
             });
         });
     </script>
+@include('admin_panel.purchase.partials.tax_type_selector_modal')
 @include('admin_panel.purchase.item_discount_split_modal')
 @include('admin_panel.partials.location_selector_script')
 @endsection

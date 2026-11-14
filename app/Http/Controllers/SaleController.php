@@ -167,7 +167,7 @@ class SaleController extends Controller
         $q = $request->get('q');
         $warehouseId = $request->get('warehouse_id', 1);
 
-        $products = Product::with(['brand'])
+        $products = Product::with(['brand', 'taxType'])
             ->leftJoin('warehouse_stocks', function ($join) use ($warehouseId) {
                 $join->on('products.id', '=', 'warehouse_stocks.product_id')
                     ->where('warehouse_stocks.warehouse_id', $warehouseId);
@@ -186,6 +186,20 @@ class SaleController extends Controller
             ->limit(50)
             ->get()
             ->map(function ($product) {
+                $taxType = $product->taxType;
+                $isThird = $taxType ? $taxType->isThirdSchedule() : (bool) $product->is_third_schedule;
+                $saleGst = $taxType ? $taxType->getSaleGstRate() : (float) ($product->sales_tax ?? 18);
+                $purchaseGst = $taxType ? $taxType->getPurchaseGstRate() : 18.0;
+
+                $product->is_third_schedule = $isThird ? 1 : 0;
+                $product->tax_type_id = $product->tax_type_id;
+                $product->tax_type_code = $taxType->code ?? null;
+                $product->tax_type_title = $taxType->title ?? null;
+                $product->tax_applied_on = $taxType->tax_applied_on ?? ($isThird ? 'retail_value' : 'trade_value');
+                $product->tax_sale_gst = $saleGst;
+                $product->tax_purchase_gst = $purchaseGst;
+                $product->tax_sale_adv_filer = $taxType ? (float)$taxType->adv_tax_sale_filer_rate : 0.5;
+                $product->tax_sale_adv_non_filer = $taxType ? (float)$taxType->adv_tax_sale_non_filer_rate : 2.5;
                 return $product;
             });
 
@@ -1483,7 +1497,17 @@ class SaleController extends Controller
                 $calcDiscountPercent = $lineGrossAfterActivity > 0 ? round(($calcDiscountAmount / $lineGrossAfterActivity) * 100, 2) : 0;
 
                 $calcExclusiveGst = max(0, round($lineGrossAfterActivity - $calcDiscountAmount, 2));
-                // Dynamic Tax Controls
+                // Dynamic Tax Controls & 3rd Schedule / Tax Type detection
+                $itemTaxType = $product ? $product->taxType : null;
+                $isItemThirdSchedule = $itemTaxType ? $itemTaxType->isThirdSchedule() : (!empty($request->is_third_schedule[$index]) && in_array($request->is_third_schedule[$index], ['1', 1, true]));
+                $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
+                if ($isItemThirdSchedule && $mrpAmount <= 0) {
+                    $rp = (float) ($request->retail_price[$index] ?? $product->retail_price ?? 0);
+                    $mrpAmount = round($rp * $totalPieces, 2);
+                }
+
+                $gstBase = ($isItemThirdSchedule && $mrpAmount > 0) ? $mrpAmount : $calcExclusiveGst;
+
                 $isStEnabled = \App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true);
                 $isFtEnabled = \App\Models\SaleFieldConfiguration::isEnabled('further_tax', true);
                 $strnExemptEnabled = \App\Models\SaleFieldConfiguration::isEnabled('strn_exemption', true);
@@ -1493,17 +1517,17 @@ class SaleController extends Controller
                 if ($isStEnabled) {
                     if ($stType === 'pkr' && $postedStAmt !== null) {
                         $salesTaxAmt = round($postedStAmt, 2);
-                        $salesTaxPct = $calcExclusiveGst > 0 ? round(($salesTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
+                        $salesTaxPct = $gstBase > 0 ? round(($salesTaxAmt / $gstBase) * 100, 2) : 0;
                     } else {
-                        $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? 0);
-                        $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
+                        $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? ($itemTaxType ? $itemTaxType->getSaleGstRate() : 0));
+                        $salesTaxAmt = round($gstBase * ($salesTaxPct / 100), 2);
                     }
                 } else {
                     $salesTaxPct = 0;
                     $salesTaxAmt = 0;
                 }
 
-                if ($isFtEnabled) {
+                if ($isFtEnabled && !$isItemThirdSchedule) {
                     $postedFtPct = isset($request->further_tax_percent[$index]) && $request->further_tax_percent[$index] !== '' ? (float)$request->further_tax_percent[$index] : null;
                     $postedFtAmt = isset($request->further_tax_amount[$index]) && $request->further_tax_amount[$index] !== '' ? (float)$request->further_tax_amount[$index] : null;
                     $ftType = $request->further_tax_type[$index] ?? 'percent';

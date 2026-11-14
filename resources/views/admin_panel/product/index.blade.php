@@ -680,6 +680,19 @@
                                                 <i class="fas fa-hashtag" style="font-size:.6rem;"></i> {{ $product->hs_code }}
                                             </span>
                                         @endif
+                                        @if($product->taxType)
+                                            @php
+                                                $is3rd = $product->taxType->isThirdSchedule();
+                                                $ttColor = $is3rd ? 'background:#fef3c7; color:#92400e; border-color:#fde68a;' : ($product->taxType->getPurchaseGstRate() == 0 ? 'background:#f1f5f9; color:#475569; border-color:#cbd5e1;' : 'background:#ecfdf5; color:#065f46; border-color:#a7f3d0;');
+                                            @endphp
+                                            <span class="meta-chip" style="{{ $ttColor }}" title="{{ $product->taxType->title }}">
+                                                <i class="fas fa-file-invoice-dollar" style="font-size:.6rem;"></i> [{{ $product->taxType->code }}] {{ \Illuminate\Support\Str::limit($product->taxType->title, 16) }}
+                                            </span>
+                                        @elseif($product->is_third_schedule)
+                                            <span class="meta-chip" style="background:#fef3c7; color:#92400e; border-color:#fde68a;">
+                                                <i class="fas fa-file-invoice-dollar" style="font-size:.6rem;"></i> 3rd Sched
+                                            </span>
+                                        @endif
                                     </div>
                                 </td>
                                 <td>
@@ -779,6 +792,11 @@
                                 @endif
                                 @if($product->brand)
                                     <span class="meta-chip"><i class="fas fa-trademark"></i> {{ $product->brand->name }}</span>
+                                @endif
+                                @if($product->taxType)
+                                    <span class="meta-chip" style="{{ $product->taxType->isThirdSchedule() ? 'background:#fef3c7; color:#92400e;' : 'background:#ecfdf5; color:#065f46;' }}">
+                                        <i class="fas fa-file-invoice-dollar"></i> [{{ $product->taxType->code }}]
+                                    </span>
                                 @endif
                             </div>
                         </div>
