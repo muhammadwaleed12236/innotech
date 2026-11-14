@@ -814,7 +814,7 @@ class PurchaseController extends Controller
                 'branch_id' => $branchId,
                 'warehouse_id' => $warehouseId,
                 'vendor_id' => $validated['vendor_id'] ?? null,
-                'tax_type_id' => $request->tax_type_id ?? null,
+                'tax_type_id' => $request->tax_type_id ?? (!empty($request->item_tax_type_id) ? collect($request->item_tax_type_id)->filter()->first() : null),
                 'purchase_date' => $validated['purchase_date'] ?? now(),
                 'invoice_no' => $validated['invoice_no'] ?? $nextInvoice,
                 'purchase_order_no' => $validated['purchase_order_no'] ?? null,
@@ -2094,7 +2094,7 @@ class PurchaseController extends Controller
             // Header update
             $purchase->update([
                 'vendor_id' => $validated['vendor_id'] ?? $purchase->vendor_id,
-                'tax_type_id' => $request->tax_type_id ?? $purchase->tax_type_id,
+                'tax_type_id' => $request->tax_type_id ?? (!empty($request->item_tax_type_id) ? collect($request->item_tax_type_id)->filter()->first() : $purchase->tax_type_id),
                 'branch_id' => $branchId,
                 'warehouse_id' => $warehouseId,
                 'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,

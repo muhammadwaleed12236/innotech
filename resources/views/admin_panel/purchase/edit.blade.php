@@ -670,25 +670,6 @@
                         <input type="hidden" name="warehouse_id" id="warehouseSelect" value="{{ $purchase->warehouse_id ?? $userWarehouseId }}">
                     @endif
 
-                    {{-- Default Tax Schedule --}}
-                    <div class="d-flex align-items-center gap-2">
-                        <label class="field-label mb-0 text-nowrap fw-bold"><i class="fas fa-file-invoice-dollar text-success me-1"></i>Tax Type:</label>
-                        <select class="form-select form-select-sm fw-bold border-success shadow-sm" name="tax_type_id" id="defaultTaxTypeSelect" style="min-width: 200px;">
-                            @foreach ($taxTypes ?? [] as $tt)
-                                <option value="{{ $tt->id }}" 
-                                        data-is-third="{{ $tt->isThirdSchedule() ? '1' : '0' }}" 
-                                        data-gst="{{ $tt->getPurchaseGstRate() }}" 
-                                        data-wht="{{ $tt->getPurchaseAdvTaxRate() }}" 
-                                        data-code="{{ $tt->code }}"
-                                        data-title="{{ $tt->title }}"
-                                        data-applied="{{ $tt->tax_applied_on }}" 
-                                        {{ ($purchase->tax_type_id == $tt->id || (!$purchase->tax_type_id && $tt->is_default)) ? 'selected' : '' }}>
-                                    [{{ $tt->code }}] {{ $tt->title }} ({{ $tt->isThirdSchedule() ? 'Retail MRP' : 'Trade' }} - GST {{ $tt->getPurchaseGstRate() }}%)
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
                     {{-- Previous Balance --}}
                     <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light border rounded-2 ms-auto">
                         <span class="field-label mb-0 text-muted" style="font-size:11px;">Prev Balance:</span>
@@ -1425,8 +1406,7 @@
                 if (curTaxId) {
                     $(`#tax_opt_${curTaxId}`).prop('checked', true);
                 } else {
-                    const defVal = $('#defaultTaxTypeSelect').val();
-                    if (defVal) $(`#tax_opt_${defVal}`).prop('checked', true);
+                    $('input[name="selected_modal_tax_type"]:first').prop('checked', true);
                 }
                 $('#modalSelectTaxType').modal('show');
             });
@@ -1461,34 +1441,13 @@
                 $row.find('.hidden-is-third-schedule').val(isThird ? '1' : '0');
                 $row.find('.item-gst-percent').val(gstRate.toFixed(2));
 
-                let badgeClass = isThird ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : (gstRate === 0 ? 'bg-secondary-subtle text-muted' : 'bg-info-subtle text-info border-info-subtle');
-                let badgeText = taxCode ? `[${taxCode}] ${taxTitle ? taxTitle.substring(0, 16) : ''}` : (isThird ? '3rd Sched' : 'Standard');
+                let badgeClass = isThird ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : (gstRate === 0 ? 'bg-secondary-subtle text-muted' : (gstRate < 18 ? 'bg-primary-subtle text-primary border-primary-subtle' : 'bg-info-subtle text-info border-info-subtle'));
+                let badgeText = taxCode ? `[${taxCode}] ${taxTitle ? taxTitle.substring(0, 16) : ''}` : (isThird ? '3rd Sched' : (gstRate < 18 && gstRate > 0 ? `Reduced (${gstRate}%)` : 'Standard'));
                 $row.find('.row-tax-badge').attr('class', `badge border row-tax-badge me-1 ${badgeClass}`).html(`<i class="fas fa-file-invoice-dollar me-1"></i><span class="tax-badge-text">${badgeText}</span>`);
 
                 recalcRow($row);
                 recalcAll();
             }
-
-            $('#defaultTaxTypeSelect').on('change', function() {
-                const $opt = $(this).find('option:selected');
-                const rowCount = $('#purchaseTableBody tr').length;
-                if (rowCount > 0 && typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Update existing rows?',
-                        text: `Apply [${$opt.data('code')}] ${$opt.data('title')} to all rows in this purchase?`,
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonText: 'Yes, update all rows',
-                        cancelButtonText: 'No, apply only to new items'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            $('#purchaseTableBody tr').each(function() {
-                                applyTaxTypeToRow($(this), $opt);
-                            });
-                        }
-                    });
-                }
-            });
 
             // Init Select2 for static inputs
             $('.select2').select2({
@@ -1851,23 +1810,12 @@
                         $row.find('.hs-badge').addClass('d-none');
                     }
 
-                    // Tax Type & Third Schedule Handling
-                    let itemTaxId = data.tax_type_id;
+                    // Tax Type & Third Schedule Handling (Inherited directly from Product)
+                    let itemTaxId = data.tax_type_id || '';
                     let isThird = !!data.is_third_schedule;
-                    let gstRate = data.tax_purchase_gst !== undefined ? parseFloat(data.tax_purchase_gst) : null;
+                    let gstRate = (data.tax_purchase_gst !== undefined && data.tax_purchase_gst !== null) ? parseFloat(data.tax_purchase_gst) : (isThird ? 18.0 : 18.0);
                     let taxCode = data.tax_type_code || '';
                     let taxTitle = data.tax_type_title || '';
-
-                    if (!itemTaxId) {
-                        const $defTax = $('#defaultTaxTypeSelect option:selected');
-                        if ($defTax.length && $defTax.val()) {
-                            itemTaxId = $defTax.val();
-                            isThird = $defTax.data('is-third') === '1' || $defTax.data('is-third') === 1;
-                            gstRate = parseFloat($defTax.data('gst')) || 0;
-                            taxCode = $defTax.data('code') || '';
-                            taxTitle = $defTax.data('title') || '';
-                        }
-                    }
 
                     $row.find('.hidden-tax-type-id').val(itemTaxId || '');
                     $row.find('.hidden-is-third-schedule').val(isThird ? '1' : '0');
@@ -1875,8 +1823,8 @@
                         $row.find('.item-gst-percent').val(gstRate.toFixed(2));
                     }
 
-                    let badgeClass = isThird ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : (gstRate === 0 ? 'bg-secondary-subtle text-muted' : 'bg-info-subtle text-info border-info-subtle');
-                    let badgeText = taxCode ? `[${taxCode}] ${taxTitle ? taxTitle.substring(0, 16) : ''}` : (isThird ? '3rd Sched' : 'Standard');
+                    let badgeClass = isThird ? 'bg-warning-subtle text-warning-emphasis border-warning-subtle' : (gstRate === 0 ? 'bg-secondary-subtle text-muted' : (gstRate < 18 ? 'bg-primary-subtle text-primary border-primary-subtle' : 'bg-info-subtle text-info border-info-subtle'));
+                    let badgeText = taxCode ? `[${taxCode}] ${taxTitle ? taxTitle.substring(0, 16) : ''}` : (isThird ? '3rd Sched' : (gstRate < 18 && gstRate > 0 ? `Reduced (${gstRate}%)` : 'Standard'));
                     $row.find('.row-tax-badge').attr('class', `badge border row-tax-badge me-1 ${badgeClass}`).html(`<i class="fas fa-file-invoice-dollar me-1"></i><span class="tax-badge-text">${badgeText}</span>`);
 
                     // Snapshot Data Population

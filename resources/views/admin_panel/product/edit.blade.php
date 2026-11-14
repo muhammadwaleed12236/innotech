@@ -1783,6 +1783,27 @@
             if (isMobile()) rebuildMobileCards();
         });
 
+        // Tax Type & 3rd Schedule Auto-Sync
+        $('#tax_type_id').on('change', function() {
+            const $opt = $(this).find('option:selected');
+            const isThird = $opt.data('is-third') === '1' || $opt.data('is-third') === 1;
+            $('#is_third_schedule').prop('checked', isThird);
+        });
+
+        $('#is_third_schedule').on('change', function() {
+            if ($(this).is(':checked')) {
+                const curIsThird = $('#tax_type_id option:selected').data('is-third');
+                if (curIsThird !== '1' && curIsThird !== 1) {
+                    $('#tax_type_id option').each(function() {
+                        if ($(this).data('is-third') === '1' || $(this).data('is-third') === 1) {
+                            $('#tax_type_id').val($(this).val()).trigger('change');
+                            return false;
+                        }
+                    });
+                }
+            }
+        });
+
         // Make functions global
         window.mobileAddVariant = mobileAddVariant;
         window.mobToggleCard = mobToggleCard;

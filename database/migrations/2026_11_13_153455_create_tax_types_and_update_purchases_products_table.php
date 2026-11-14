@@ -187,6 +187,37 @@ return new class extends Migration
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+
+            DB::table('tax_types')->insert([
+                'code' => '0008',
+                'title' => 'REDUCED RATE ITEMS (10% GST)',
+                'st_purchase_active' => true,
+                'st_purchase_rate' => 10.00,
+                'st_sale_active' => true,
+                'st_sale_rate' => 10.00,
+                'mrp_tax_active' => false,
+                'mrp_tax_rate' => 0.00,
+                'unreg_st_active' => true,
+                'unreg_st_rate' => 4.00,
+                'unreg_st_applied_on' => 'sales',
+                'unreg_client_mode' => 'add_unreg',
+                'excise_duty_active' => false,
+                'excise_duty_rate' => 0.00,
+                'adv_tax_purchase_active' => true,
+                'adv_tax_purchase_rate' => 0.10,
+                'adv_tax_sale_active' => true,
+                'adv_tax_sale_filer_rate' => 0.50,
+                'adv_tax_sale_non_filer_rate' => 2.50,
+                'adv_tax_applied_on' => 'net_tp',
+                'applied_from' => '2025-10-01',
+                'include_special_disc' => true,
+                'tax_applied_on' => 'trade_value',
+                'is_default' => false,
+                'status' => true,
+                'notes' => 'Reduced Rate Items under Eighth Schedule (e.g. 10% Sales Tax on Trade Value)',
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
         }
     }
 
