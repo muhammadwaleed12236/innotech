@@ -774,7 +774,7 @@
                     let pRows = '';
                     if (ds.purchases_with_discounts && ds.purchases_with_discounts.length > 0) {
                         ds.purchases_with_discounts.forEach(p => {
-                            let invUrl = `{{ url('/purchase/invoice') }}/${p.id}`;
+                            let invUrl = `{{ url('/purchase') }}/${p.id}/invoice`;
                             let tVal = parseFloat(p.total_trade_value || 0);
                             let ourD = parseFloat(p.our_disc_amount || 0);
                             let custD = parseFloat(p.customer_disc_amount || 0);
