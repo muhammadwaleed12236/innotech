@@ -488,6 +488,7 @@ class ReportingController extends Controller
         $reportMode  = $request->report_mode ?: 'summary'; // 'summary' vs 'ledger'
         $dateFrom    = $request->date_from;
         $dateTo      = $request->date_to;
+        $stockAvailability = $request->stock_availability ?: ($request->has_items ? 'has_items' : 'all'); // 'all', 'has_items', 'out_of_stock'
 
         $productsQuery = Product::with(['warehouseStocks', 'unit', 'category_relation']);
 
@@ -496,6 +497,23 @@ class ReportingController extends Controller
         }
         if ($categoryId && $categoryId !== 'all') {
             $productsQuery->where('category_id', $categoryId);
+        }
+
+        // Fast server-side filter when looking strictly for items with available stock
+        if ($stockAvailability === 'has_items') {
+            $productsQuery->whereHas('warehouseStocks', function($q) use ($warehouseId) {
+                if ($warehouseId && $warehouseId !== 'all') {
+                    $q->where('warehouse_id', $warehouseId);
+                }
+                $q->where('total_pieces', '>', 0);
+            });
+        } elseif ($stockAvailability === 'out_of_stock') {
+            $productsQuery->whereDoesntHave('warehouseStocks', function($q) use ($warehouseId) {
+                if ($warehouseId && $warehouseId !== 'all') {
+                    $q->where('warehouse_id', $warehouseId);
+                }
+                $q->where('total_pieces', '>', 0);
+            });
         }
 
         // Unit Mode Filter
@@ -536,6 +554,9 @@ class ReportingController extends Controller
                 $productPurchPrice = (float) ($product->purchase_price_per_piece ?? 0);
                 if ($productPurchPrice <= 0 && (float)($product->purchase_price_per_box ?? 0) > 0 && (float)($product->pieces_per_box ?? 0) > 0) {
                     $productPurchPrice = (float)$product->purchase_price_per_box / (float)$product->pieces_per_box;
+                }
+                if ($productPurchPrice <= 0 && (float)($product->trade_price ?? 0) > 0) {
+                    $productPurchPrice = (float)$product->trade_price;
                 }
             }
 
@@ -870,6 +891,10 @@ class ReportingController extends Controller
                         if ($vBatchStock !== null) {
                             $balance = max(0, $vBatchStock);
                             $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
+                        } elseif (count($parsedVariants) === 1) {
+                            // Single variant is the product itself: live stock matches warehouse_stocks
+                            $balance = $whPieces;
+                            $initial = max(0, $balance - $purchased + $sold - $returnedQty + $pReturned - $adjustments);
                         } else {
                             $vRawStock = (string) ($v['stock'] ?? '0');
                             if ($isCartonMode && $ppb >= 1) {
@@ -889,14 +914,25 @@ class ReportingController extends Controller
                         }
                     }
 
+                    // Stock Availability Filter for Variants
+                    if (($stockAvailability === 'has_items' || $request->has_items == '1') && $balance <= 0) {
+                        continue;
+                    }
+                    if ($stockAvailability === 'out_of_stock' && $balance > 0) {
+                        continue;
+                    }
+
                     // Weighted Average Purchase Price
                     $vPurchPrice = (float) ($v['purch_price'] ?? $productPurchPrice);
+                    if ($vPurchPrice <= 0 && (float)($product->trade_price ?? 0) > 0) {
+                        $vPurchPrice = (float) $product->trade_price;
+                    }
                     $initialAmount = $initial * $vPurchPrice;
                     $totalQtyIn = $initial + $purchased;
                     $totalAmountIn = $initialAmount + $purchaseAmount;
                     $averagePrice = $totalQtyIn > 0 ? ($totalAmountIn / $totalQtyIn) : $vPurchPrice;
 
-                    $stockValue = $balance * $averagePrice;
+                    $stockValue = $balance > 0 ? ($balance * $averagePrice) : 0;
                     $grandTotalValue += $stockValue;
                     $totalCurrentStock += $balance;
                     $totalAdjustments  += $adjustments;
@@ -904,15 +940,19 @@ class ReportingController extends Controller
 
                     if ($isCartonMode) {
                         $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                        $cartons = (int) floor($balance / $ppb);
-                        $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
-                        $cartonDisplay = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                        $absBal  = abs($balance);
+                        $cartons = (int) floor($absBal / $ppb);
+                        $loose   = (int) round($absBal - ($cartons * $ppb));
+                        $prefix  = ($balance < 0) ? '-' : '';
+                        $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$prefix}{$cartons} {$ctnLbl}";
+                        $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$prefix}{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
-                        $cartons = (int) floor($balance / $ppb);
-                        $loose   = (int) round($balance - ($cartons * $ppb));
-                        $formattedStock = ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
-                        $cartonDisplay = ($loose > 0) ? "{$cartons} Box + {$loose} Pcs" : "{$cartons} Box";
+                        $absBal  = abs($balance);
+                        $cartons = (int) floor($absBal / $ppb);
+                        $loose   = (int) round($absBal - ($cartons * $ppb));
+                        $prefix  = ($balance < 0) ? '-' : '';
+                        $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} Box . {$loose} Pcs" : "{$prefix}{$cartons} Boxes";
+                        $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} Box + {$loose} Pcs" : "{$prefix}{$cartons} Box";
                     } else {
                         $cartons = '-';
                         $loose   = $balance;
@@ -964,6 +1004,14 @@ class ReportingController extends Controller
                     $balance = (float) $product->warehouseStocks->sum('total_pieces');
                 }
 
+                // Stock Availability Filter for Standard Products
+                if (($stockAvailability === 'has_items' || $request->has_items == '1') && $balance <= 0) {
+                    continue;
+                }
+                if ($stockAvailability === 'out_of_stock' && $balance > 0) {
+                    continue;
+                }
+
                 [$purchased, $purchaseAmount] = $this->getPurchasedQtyAndNetAmount($product->id, ['from' => $dateFrom, 'to' => $dateTo], $warehouseId);
 
                 // Sold qty & amount
@@ -978,6 +1026,26 @@ class ReportingController extends Controller
 
                 $sold       = (float) $saleStats->total_qty;
                 $saleAmount = (float) $saleStats->total_amount;
+
+                // Include web sales if available
+                try {
+                    $webSalesQuery = DB::table('ecommerce_order_items as eoi')
+                        ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
+                        ->where('eoi.product_id', $product->id)
+                        ->where('eo.is_stock_deducted', 1);
+
+                    if ($warehouseId && $warehouseId !== 'all' && $warehouseId != 1) {
+                        $webSalesQuery->whereRaw('1 = 0');
+                    }
+                    if ($dateFrom) $webSalesQuery->whereDate('eo.created_at', '>=', $dateFrom);
+                    if ($dateTo)   $webSalesQuery->whereDate('eo.created_at', '<=', $dateTo);
+
+                    $webStats = $webSalesQuery->selectRaw('COALESCE(SUM(eoi.quantity),0) as total_qty, COALESCE(SUM(eoi.total),0) as total_amount')->first();
+                    if ($webStats) {
+                        $sold       += (float) $webStats->total_qty;
+                        $saleAmount += (float) $webStats->total_amount;
+                    }
+                } catch (\Exception $e) {}
 
                 // Returned qty
                 $retQuery = DB::table('stock_movements')
@@ -1024,7 +1092,7 @@ class ReportingController extends Controller
                 $totalAmountIn  = $initialAmount + $purchaseAmount;
                 $averagePrice   = $totalQtyIn > 0 ? ($totalAmountIn / $totalQtyIn) : $productPurchPrice;
 
-                $stockValue        = $balance * $averagePrice;
+                $stockValue        = $balance > 0 ? ($balance * $averagePrice) : 0;
                 $grandTotalValue  += $stockValue;
                 $totalCurrentStock += $balance;
                 $totalAdjustments  += $adjustments;
@@ -1036,15 +1104,19 @@ class ReportingController extends Controller
                 if ($ppb <= 0) $ppb = 1;
                 if ($isCartonMode) {
                     $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
-                    $cartons = (int) floor($balance / $ppb);
-                    $loose   = (int) round($balance - ($cartons * $ppb));
-                    $formattedStock = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$cartons} {$ctnLbl}";
-                    $cartonDisplay = ($loose > 0) ? "{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                    $absBal  = abs($balance);
+                    $cartons = (int) floor($absBal / $ppb);
+                    $loose   = (int) round($absBal - ($cartons * $ppb));
+                    $prefix  = ($balance < 0) ? '-' : '';
+                    $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$prefix}{$cartons} {$ctnLbl}";
+                    $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$prefix}{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
                 } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
-                    $cartons = (int) floor($balance / $ppb);
-                    $loose   = (int) round($balance - ($cartons * $ppb));
-                    $formattedStock = ($loose > 0) ? "{$cartons} Box . {$loose} Pcs" : "{$cartons} Boxes";
-                    $cartonDisplay = ($loose > 0) ? "{$cartons} Box + {$loose} Pcs" : "{$cartons} Box";
+                    $absBal  = abs($balance);
+                    $cartons = (int) floor($absBal / $ppb);
+                    $loose   = (int) round($absBal - ($cartons * $ppb));
+                    $prefix  = ($balance < 0) ? '-' : '';
+                    $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} Box . {$loose} Pcs" : "{$prefix}{$cartons} Boxes";
+                    $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} Box + {$loose} Pcs" : "{$prefix}{$cartons} Box";
                 } else {
                     $cartons = '-';
                     $loose   = $balance;
@@ -1089,9 +1161,10 @@ class ReportingController extends Controller
         return response()->json([
             'data'                  => $rows,
             'grand_total'           => round($grandTotalValue, 2),
-            'total_current_stock'   => $totalCurrentStock,
-            'total_adjustments_qty' => $totalAdjustments,
-            'total_sold_amount'     => $totalSoldAmount,
+            'total_current_stock'   => round($totalCurrentStock, 2),
+            'total_adjustments_qty' => round($totalAdjustments, 2),
+            'total_sold_amount'     => round($totalSoldAmount, 2),
+            'total_count'           => count($rows),
         ]);
     }
 

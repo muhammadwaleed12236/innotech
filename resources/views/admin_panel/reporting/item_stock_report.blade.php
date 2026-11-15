@@ -26,13 +26,25 @@
     .rpt-page { background: var(--rpt-bg); min-height: calc(100vh - 80px); padding: 20px 0; }
 
     /* Report Mode Selector Pills */
-    .mode-pills { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mode-pills { display: flex; gap: 8px; margin-bottom: 0; }
     .mode-pill {
         padding: 8px 18px; border-radius: 20px; border: 1px solid var(--rpt-border);
         background: #fff; font-size: .82rem; font-weight: 700; color: var(--rpt-muted);
         cursor: pointer; transition: all .15s ease; display: inline-flex; align-items: center; gap: 6px;
     }
     .mode-pill.active, .mode-pill:hover { background: var(--rpt-primary); color: #fff; border-color: var(--rpt-primary); box-shadow: 0 4px 12px rgba(79,70,229,.2); }
+
+    /* Stock Availability Pills */
+    .stock-pills { display: inline-flex; gap: 4px; background: #fff; border: 1px solid var(--rpt-border); padding: 4px; border-radius: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+    .stock-pill {
+        padding: 6px 14px; border-radius: 20px; border: none; background: transparent;
+        font-size: .80rem; font-weight: 700; color: var(--rpt-muted); cursor: pointer;
+        transition: all .15s ease; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .stock-pill:hover { background: #f1f5f9; color: var(--rpt-text); }
+    .stock-pill.active[data-stock="all"] { background: #334155; color: #fff !important; box-shadow: 0 2px 6px rgba(51,65,85,.25); }
+    .stock-pill.active[data-stock="has_items"] { background: #059669; color: #fff !important; box-shadow: 0 2px 8px rgba(5,150,105,.25); }
+    .stock-pill.active[data-stock="out_of_stock"] { background: #dc2626; color: #fff !important; box-shadow: 0 2px 8px rgba(220,38,38,.25); }
 
     /* Filter Card */
     .rpt-filter-card {
@@ -103,13 +115,29 @@
             <small class="text-muted">Detailed inventory movements, explicit Stock Adjustments (+/-), and Valuation Summary</small>
         </div>
 
-        {{-- Mode Pills --}}
-        <div class="mode-pills">
-            <div class="mode-pill active" data-mode="summary">
-                <i class="fas fa-chart-pie"></i> Valuation &amp; Stock Summary
+        {{-- Controls: Stock Availability Switcher & Mode Pills --}}
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            {{-- Stock Availability Pills: All / Has Items / Out of Stock --}}
+            <div class="stock-pills" id="stockFilterPills">
+                <button type="button" class="stock-pill active" data-stock="all" id="btnStockAll" title="View all products">
+                    <i class="fas fa-layer-group"></i> All Items (<span id="countAllItems">0</span>)
+                </button>
+                <button type="button" class="stock-pill text-success" data-stock="has_items" id="btnStockHasItems" title="Show only items with available stock > 0">
+                    <i class="fas fa-check-circle"></i> Has Items (<span id="countHasItems">0</span>)
+                </button>
+                <button type="button" class="stock-pill text-danger" data-stock="out_of_stock" id="btnStockOut" title="Show only items with 0 or negative stock">
+                    <i class="fas fa-times-circle"></i> Out of Stock (<span id="countOutItems">0</span>)
+                </button>
             </div>
-            <div class="mode-pill" data-mode="ledger">
-                <i class="fas fa-file-invoice-dollar"></i> Detailed Movement Ledger
+
+            {{-- Mode Pills --}}
+            <div class="mode-pills">
+                <div class="mode-pill active" data-mode="summary">
+                    <i class="fas fa-chart-pie"></i> Valuation Summary
+                </div>
+                <div class="mode-pill" data-mode="ledger">
+                    <i class="fas fa-file-invoice-dollar"></i> Movement Ledger
+                </div>
             </div>
         </div>
     </div>
@@ -153,6 +181,7 @@
     <div class="rpt-filter-card">
         <form id="stockFilterForm" class="row g-2 align-items-end">
             <input type="hidden" name="report_mode" id="report_mode" value="summary">
+            <input type="hidden" name="stock_availability" id="stock_availability" value="all">
 
             {{-- Category --}}
             <div class="col-md-2">
@@ -221,6 +250,17 @@
 
     {{-- Data Table Card --}}
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="card-header bg-white border-bottom py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold text-dark"><i class="fas fa-boxes-stacked text-primary me-1"></i> Inventory Items:</span>
+                <span class="badge bg-primary rounded-pill px-2" id="tableRecordCount">0 Items</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-success fw-bold px-3" id="quickToggleHasItems">
+                    <i class="fas fa-check-circle me-1"></i> <span id="quickToggleLabel">Show Has Items Only</span>
+                </button>
+            </div>
+        </div>
         <div class="card-body p-0">
             
             <div id="loader" style="display:none; text-align:center; padding:30px;">
@@ -422,7 +462,9 @@
 <script>
 $(document).ready(function() {
 
+    let rawReportData = [];
     let currentReportData = [];
+    let activeStockFilter = 'all'; // 'all', 'has_items', 'out_of_stock'
 
     // Custom Tab Switcher inside Modal
     $(document).on('click', '#historyModalTabs a', function (e) {
@@ -566,25 +608,32 @@ $(document).ready(function() {
                 variant_key: $('#variant_key').val(),
                 warehouse_id: $('#warehouse_id').val(),
                 unit_type:   $('#unit_type').val(),
+                stock_availability: $('#stock_availability').val(),
                 report_mode: mode
             },
             success: function (res) {
                 $('#loader').hide();
-                currentReportData = res.data || [];
+                rawReportData = res.data || [];
 
-                // Update KPIs
-                $('#kpiGrandStockValue').text('Rs ' + (res.grand_total || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
-                
-                let totalStock = res.total_current_stock || 0;
-                $('#kpiTotalStock').text(totalStock.toLocaleString() + ' Units');
-                
-                let netAdj = res.total_adjustments_qty || 0;
-                let netAdjStr = (netAdj >= 0 ? '+' : '') + netAdj.toLocaleString() + ' Units';
-                $('#kpiNetAdjustments').text(netAdjStr);
-                
-                $('#kpiSoldAmount').text('Rs ' + (res.total_sold_amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2}));
+                // Count totals dynamically
+                let totalCount = rawReportData.length;
+                let hasItemsCount = 0;
+                let outOfStockCount = 0;
 
-                renderTableBody(res.data, mode);
+                $.each(rawReportData, function (i, r) {
+                    let bal = parseFloat(r.balance) || 0;
+                    if (bal > 0) {
+                        hasItemsCount++;
+                    } else {
+                        outOfStockCount++;
+                    }
+                });
+
+                $('#countAllItems').text(totalCount.toLocaleString());
+                $('#countHasItems').text(hasItemsCount.toLocaleString());
+                $('#countOutItems').text(outOfStockCount.toLocaleString());
+
+                applyStockFilter(activeStockFilter);
             },
             error: function () {
                 $('#loader').hide();
@@ -592,6 +641,72 @@ $(document).ready(function() {
             }
         });
     }
+
+    function applyStockFilter(stockFilter) {
+        activeStockFilter = stockFilter;
+        $('#stock_availability').val(stockFilter);
+
+        // Update pill buttons active state
+        $('.stock-pill').removeClass('active');
+        $(`.stock-pill[data-stock="${stockFilter}"]`).addClass('active');
+
+        if (stockFilter === 'has_items') {
+            currentReportData = rawReportData.filter(function(r) {
+                return (parseFloat(r.balance) || 0) > 0;
+            });
+            $('#quickToggleHasItems').removeClass('btn-outline-success').addClass('btn-success text-white');
+            $('#quickToggleLabel').html('<i class="fas fa-check-circle me-1"></i> Showing Has Items Only');
+        } else if (stockFilter === 'out_of_stock') {
+            currentReportData = rawReportData.filter(function(r) {
+                return (parseFloat(r.balance) || 0) <= 0;
+            });
+            $('#quickToggleHasItems').removeClass('btn-success text-white').addClass('btn-outline-secondary');
+            $('#quickToggleLabel').text('Show Has Items Only');
+        } else {
+            currentReportData = [...rawReportData];
+            $('#quickToggleHasItems').removeClass('btn-success text-white').addClass('btn-outline-success');
+            $('#quickToggleLabel').text('Show Has Items Only');
+        }
+
+        // Recompute KPIs strictly and accurately from currentReportData
+        let grandStockValue  = 0;
+        let totalStockPieces = 0;
+        let netAdjustments   = 0;
+        let totalSoldAmount  = 0;
+
+        $.each(currentReportData, function (i, r) {
+            grandStockValue  += (parseFloat(r.stock_value) || 0);
+            totalStockPieces += (parseFloat(r.balance) || 0);
+            netAdjustments   += (parseFloat(r.adjustments) || 0);
+            totalSoldAmount  += (parseFloat(r.sale_amount) || 0);
+        });
+
+        $('#kpiGrandStockValue').text('Rs ' + grandStockValue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+        $('#kpiTotalStock').text(totalStockPieces.toLocaleString() + ' Units');
+        let netAdjStr = (netAdjustments >= 0 ? '+' : '') + netAdjustments.toLocaleString() + ' Units';
+        $('#kpiNetAdjustments').text(netAdjStr);
+        $('#kpiSoldAmount').text('Rs ' + totalSoldAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+
+        $('#tableRecordCount').text(currentReportData.length.toLocaleString() + ' Items');
+
+        let mode = $('#report_mode').val();
+        renderTableBody(currentReportData, mode);
+    }
+
+    // Stock Filter Pills Click
+    $(document).on('click', '.stock-pill', function () {
+        let filter = $(this).data('stock');
+        applyStockFilter(filter);
+    });
+
+    // Quick Toggle Has Items Button Click
+    $(document).on('click', '#quickToggleHasItems', function () {
+        if (activeStockFilter === 'has_items') {
+            applyStockFilter('all');
+        } else {
+            applyStockFilter('has_items');
+        }
+    });
 
     function renderTableHeader(mode) {
         let thead = $('#tableHeader');
