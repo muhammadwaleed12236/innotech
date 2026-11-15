@@ -250,13 +250,16 @@
                                         @if(count($unhandled) > 0)
                                             <div class="row">
                                                 @foreach ($unhandled as $setting)
+                                                    @php
+                                                        $dispVal = is_array($setting['value']) ? json_encode($setting['value']) : ($setting['value'] ?? '');
+                                                    @endphp
                                                     <div class="col-md-4 col-sm-6 mb-2">
                                                         <div class="form-group mb-2">
                                                             <label class="font-weight-bold mb-1" style="font-size: 12px;">{{ $setting['label'] }}</label>
-                                                            @if ($setting['type'] === 'text')
-                                                                <textarea name="settings[{{ $setting['key'] }}]" class="form-control form-control-sm" rows="2" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $setting['value'] }}</textarea>
+                                                            @if ($setting['type'] === 'text' || $setting['type'] === 'json' || is_array($setting['value']))
+                                                                <textarea name="settings[{{ $setting['key'] }}]" class="form-control form-control-sm" rows="2" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $dispVal }}</textarea>
                                                             @else
-                                                                <input type="text" name="settings[{{ $setting['key'] }}]" class="form-control form-control-sm" value="{{ $setting['value'] }}" {{ !$canEditSettings ? 'disabled' : '' }} style="height: 35px;">
+                                                                <input type="text" name="settings[{{ $setting['key'] }}]" class="form-control form-control-sm" value="{{ $dispVal }}" {{ !$canEditSettings ? 'disabled' : '' }} style="height: 35px;">
                                                             @endif
                                                         </div>
                                                     </div>
@@ -365,10 +368,13 @@
                                 <div class="tab-pane fade" id="inventory" role="tabpanel">
                                     @if (isset($settings['inventory']))
                                         @foreach ($settings['inventory'] as $setting)
+                                            @php
+                                                $dispVal = is_array($setting['value']) ? json_encode($setting['value']) : ($setting['value'] ?? '');
+                                            @endphp
                                             <div class="form-group">
                                                 <label>{{ $setting['label'] }}</label>
                                                 <input type="number" name="settings[{{ $setting['key'] }}]"
-                                                    class="form-control" value="{{ $setting['value'] }}" {{ !$canEditSettings ? 'disabled' : '' }}>
+                                                    class="form-control" value="{{ $dispVal }}" {{ !$canEditSettings ? 'disabled' : '' }}>
                                                 @if ($setting['description'])
                                                     <small
                                                         class="form-text text-muted">{{ $setting['description'] }}</small>
@@ -382,10 +388,17 @@
                                 <div class="tab-pane fade" id="accounting" role="tabpanel">
                                     @if (isset($settings['accounting']))
                                         @foreach ($settings['accounting'] as $setting)
+                                            @php
+                                                $dispVal = is_array($setting['value']) ? json_encode($setting['value']) : ($setting['value'] ?? '');
+                                            @endphp
                                             <div class="form-group">
                                                 <label>{{ $setting['label'] }}</label>
-                                                <input type="text" name="settings[{{ $setting['key'] }}]"
-                                                    class="form-control" value="{{ $setting['value'] }}" {{ !$canEditSettings ? 'disabled' : '' }}>
+                                                @if ($setting['type'] === 'json' || $setting['type'] === 'text' || is_array($setting['value']))
+                                                    <textarea name="settings[{{ $setting['key'] }}]" class="form-control" rows="3" {{ !$canEditSettings ? 'disabled' : '' }}>{{ $dispVal }}</textarea>
+                                                @else
+                                                    <input type="text" name="settings[{{ $setting['key'] }}]"
+                                                        class="form-control" value="{{ $dispVal }}" {{ !$canEditSettings ? 'disabled' : '' }}>
+                                                @endif
                                                 @if ($setting['description'])
                                                     <small
                                                         class="form-text text-muted">{{ $setting['description'] }}</small>

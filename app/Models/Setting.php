@@ -56,9 +56,11 @@ class Setting extends Model
     {
         return self::all()->groupBy('group')->map(function ($settings) {
             return $settings->map(function ($setting) {
+                $val = self::castValue($setting->value, $setting->type);
                 return [
                     'key' => $setting->key,
-                    'value' => self::castValue($setting->value, $setting->type),
+                    'value' => is_array($val) ? json_encode($val) : $val,
+                    'raw_value' => $setting->value,
                     'type' => $setting->type,
                     'label' => $setting->label,
                     'description' => $setting->description,
