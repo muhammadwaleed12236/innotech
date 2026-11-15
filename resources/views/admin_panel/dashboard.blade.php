@@ -880,7 +880,7 @@
                     <div class="conclusion-biz-tag">TOTAL NET BUSINESS VALUE</div>
                     <div class="conclusion-biz-breakdown">
                         Net Liquid Capital <strong>Rs {{ number_format($calcLiquidBalance, 0) }}</strong><br>
-                        + Stock Valuation <strong>Rs {{ number_format($totalStockValue ?? 0, 0) }}</strong>
+                        + Stock Valuation <a href="{{ route('report.item_stock') }}" class="text-white text-decoration-underline ms-1" title="View Detailed Item Stock Report"><strong>Rs {{ number_format($totalStockValue ?? 0, 0) }}</strong></a>
                     </div>
                     <div class="conclusion-total-val">
                         Rs {{ number_format($calcTotalBusinessValue, 0) }}

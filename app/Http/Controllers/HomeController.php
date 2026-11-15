@@ -437,11 +437,31 @@ class HomeController extends Controller
             $totalStockValue = null;
             $lowStockProducts = collect();
 
-            if ($user->can('warehouse.stock.view') || $user->can('stocks.view') || $user->can('inventory.onhand') || $user->can('products.view')) {
-                $totalStockValue = (float) (DB::table('warehouse_stocks')
-                    ->join('products', 'products.id', '=', 'warehouse_stocks.product_id')
-                    ->selectRaw('COALESCE(SUM(warehouse_stocks.total_pieces * (CASE WHEN products.size_mode = "by_size" THEN COALESCE(products.pieces_per_m2, 0) * COALESCE(products.purchase_price_per_m2, 0) ELSE COALESCE(products.purchase_price_per_piece, 0) END)), 0) as total')
-                    ->value('total') ?? 0);
+            if ($user->can('warehouse.stock.view') || $user->can('stocks.view') || $user->can('inventory.onhand') || $user->can('products.view') || $user->can('item.stock.report.view') || $user->hasRole('admin') || $user->hasRole('Super Admin')) {
+                try {
+                    $stockReq = new \Illuminate\Http\Request([
+                        'warehouse_id' => 'all',
+                        'report_mode' => 'summary'
+                    ]);
+                    $reportingCtrl = app(\App\Http\Controllers\ReportingController::class);
+                    $stockRes = $reportingCtrl->fetchItemStock($stockReq);
+                    $stockData = $stockRes->getData(true);
+                    $totalStockValue = (float) ($stockData['grand_total'] ?? 0);
+                } catch (\Exception $e) {
+                    $totalStockValue = (float) (DB::table('warehouse_stocks')
+                        ->join('products', 'products.id', '=', 'warehouse_stocks.product_id')
+                        ->where('warehouse_stocks.total_pieces', '>', 0)
+                        ->selectRaw('COALESCE(SUM(warehouse_stocks.total_pieces * (
+                            CASE 
+                                WHEN products.size_mode IN ("by_size", "by_m2") THEN COALESCE(products.pieces_per_m2, 0) * COALESCE(products.purchase_price_per_m2, 0)
+                                WHEN COALESCE(products.purchase_price_per_piece, 0) > 0 THEN products.purchase_price_per_piece
+                                WHEN COALESCE(products.purchase_price_per_box, 0) > 0 AND COALESCE(products.pieces_per_box, 0) > 0 THEN (products.purchase_price_per_box / products.pieces_per_box)
+                                WHEN COALESCE(products.trade_price, 0) > 0 THEN products.trade_price
+                                ELSE 0
+                            END
+                        )), 0) as total')
+                        ->value('total') ?? 0);
+                }
 
                 $lowStockProducts = \App\Models\Product::withSum('warehouseStocks', 'total_pieces')
                     ->whereNotNull('alert_carton_quantity')

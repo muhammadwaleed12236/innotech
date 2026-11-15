@@ -414,27 +414,29 @@ class POSController extends Controller
             return strtolower(trim($itemColor)) === strtolower(trim($variant['color'] ?? ''));
         }
 
-        // 1. Compare barcodes if present on both sides
-        $vBarcode = trim($variant['barcode'] ?? '');
-        $itemBarcode = trim($itemVariant['barcode'] ?? '');
-        if (!empty($vBarcode) && !empty($itemBarcode)) {
-            return $vBarcode === $itemBarcode;
-        }
-
-        // 2. Compare base variant status if present
-        if (isset($variant['is_base_variant']) && isset($itemVariant['is_base_variant'])) {
-            $vIsBase = (int) $variant['is_base_variant'];
-            $itemIsBase = (int) $itemVariant['is_base_variant'];
-            if ($vIsBase !== $itemIsBase) {
+        // 1. Primary differentiator: Variant Name (if both sides have variant names, they MUST match)
+        $vName = strtolower(trim($variant['name'] ?? ''));
+        $itemVName = strtolower(trim($itemVariant['name'] ?? ''));
+        if ($vName !== '' && $itemVName !== '') {
+            if ($vName !== $itemVName) {
                 return false;
             }
         }
 
-        // 3. Compare conversion factors if present
+        // 2. Compare conversion factors if present (e.g., 1 vs 12 vs 36)
         if (isset($variant['conv_factor']) && isset($itemVariant['conv_factor'])) {
             $vConv = (float) $variant['conv_factor'];
             $itemConv = (float) $itemVariant['conv_factor'];
             if ($vConv > 0 && $itemConv > 0 && abs($vConv - $itemConv) > 0.0001) {
+                return false;
+            }
+        }
+
+        // 3. Compare base variant status if present
+        if (isset($variant['is_base_variant']) && isset($itemVariant['is_base_variant'])) {
+            $vIsBase = (int) $variant['is_base_variant'];
+            $itemIsBase = (int) $itemVariant['is_base_variant'];
+            if ($vIsBase !== $itemIsBase) {
                 return false;
             }
         }
@@ -446,27 +448,29 @@ class POSController extends Controller
             return false;
         }
 
-        // Compare name, color and size
+        // 5. Compare color and size
         $vColor = strtolower(trim($variant['color'] ?? '-'));
         $vSize = strtolower(trim($variant['size'] ?? '-'));
-        $vName = strtolower(trim($variant['name'] ?? ''));
-
         $itemVColor = strtolower(trim($itemVariant['color'] ?? ($itemVariant['color_val'] ?? '-')));
         $itemVSize = strtolower(trim($itemVariant['size'] ?? ($itemVariant['size_val'] ?? '-')));
-        $itemVName = strtolower(trim($itemVariant['name'] ?? ''));
 
         if ($vColor === '') $vColor = '-';
         if ($vSize === '') $vSize = '-';
         if ($itemVColor === '') $itemVColor = '-';
         if ($itemVSize === '') $itemVSize = '-';
 
-        $colorSizeMatch = ($vColor === $itemVColor && $vSize === $itemVSize);
-
-        if ($vName !== '' && $itemVName !== '') {
-            return $colorSizeMatch && ($vName === $itemVName);
+        if ($vColor !== $itemVColor || $vSize !== $itemVSize) {
+            return false;
         }
 
-        return $colorSizeMatch;
+        // 6. Compare unique barcodes if present on both sides and different
+        $vBarcode = trim($variant['barcode'] ?? '');
+        $itemBarcode = trim($itemVariant['barcode'] ?? '');
+        if (!empty($vBarcode) && !empty($itemBarcode) && $vBarcode !== $itemBarcode) {
+            return false;
+        }
+
+        return true;
     }
 
     public function searchInvoice(Request $request)
