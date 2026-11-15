@@ -813,7 +813,7 @@ class ReportingController extends Controller
                                 if ((float)($pItem->wht_amount ?? 0) > 0 && $purBeforeWht > 0) {
                                     $pWht = ((float)$pItem->line_total / $purBeforeWht) * (float)$pItem->wht_amount;
                                 }
-                                $pLandingCost = max(0, $pTrade - $pOurDisc) + $pGst + $pWht;
+                                $pLandingCost = max(0, $pTrade - $pDisc) + $pGst + $pWht;
 
                                 $purchased += $pPieces;
                                 $purchaseAmount += $pLandingCost;
@@ -3280,9 +3280,6 @@ class ReportingController extends Controller
             ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as net_balance')
             ->first();
         $compDiscLedgerBalance = (float)($compDiscAccount->opening_balance ?? 0) + (float)($je->net_balance ?? 0);
-        if ($compDiscLedgerBalance <= 0 && $companyCustDiscTotal > 0) {
-            $compDiscLedgerBalance = $companyCustDiscTotal;
-        }
 
         // List of purchases with discount details
         $purchasesWithDiscounts = DB::table('purchases')
@@ -4002,12 +3999,7 @@ class ReportingController extends Controller
             ), 0) as total_qty,
             COALESCE(SUM(
                 GREATEST(0, COALESCE(NULLIF(purchase_items.trade_value, 0), purchase_items.price * purchase_items.qty)
-                    - COALESCE(NULLIF(purchase_items.our_disc_amount, 0),
-                        CASE
-                            WHEN COALESCE(purchase_items.customer_disc_amount, 0) > 0
-                            THEN GREATEST(0, COALESCE(purchase_items.item_discount, 0) - purchase_items.customer_disc_amount)
-                            ELSE COALESCE(purchase_items.item_discount, 0)
-                        END, 0))
+                    - COALESCE(purchase_items.item_discount, 0))
                 + COALESCE(NULLIF(purchase_items.sales_tax_on_retail, 0), NULLIF(purchase_items.sales_tax_on_trade, 0), purchase_items.gst_amount, 0)
                 + CASE
                     WHEN COALESCE(purchases.wht_amount, 0) > 0 AND (COALESCE(purchases.total_value_after_discount, 0) + COALESCE(purchases.total_gst, 0)) > 0
