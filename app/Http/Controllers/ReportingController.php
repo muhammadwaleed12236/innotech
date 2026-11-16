@@ -3312,8 +3312,7 @@ class ReportingController extends Controller
             ->limit(20)
             ->get();
 
-        $stockClaimDiff = max(0, $totalInventory - $totalPayables);
-        $effectiveCompDisc = $stockClaimDiff > 0 ? $stockClaimDiff : $compDiscLedgerBalance;
+        $effectiveCompDisc = $compDiscLedgerBalance > 0 ? $compDiscLedgerBalance : $companyCustDiscTotal;
 
         $currentLiabilitiesTotal = $totalPayables + $effectiveCompDisc;
 
