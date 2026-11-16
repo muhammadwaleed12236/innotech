@@ -68,26 +68,103 @@
                     </div>
 
                     <div class="card-body">
+                        @if(!empty($isDiscountAccount) && $isDiscountAccount)
+                            {{-- DISCOUNTS & CLAIMS MADD-WISE SUMMARY BANNER --}}
+                            <div class="p-3 mb-4 rounded-3 border shadow-xs" style="background: linear-gradient(135deg, #f8fafc 0%, #ede9fe 100%); border-color: #c4b5fd !important;">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                    <div>
+                                        <h5 class="fw-bold mb-1" style="color: #4c1d95;">
+                                            <i class="fas fa-tags me-2" style="color: #7c3aed;"></i> ڈسکاؤنٹ اور کمپنی کلیمز مَد وائز تفصیل (Discounts & Claims Breakdown)
+                                        </h5>
+                                        <p class="small text-muted mb-0">
+                                            بیلنس شیٹ پر شو ہونے والے ڈسکاؤنٹ کلیمز (Rs {{ number_format($totalDiscountReceived ?? 0, 2) }}) کی مکمل مَد وائز تفصیل اور اندراج
+                                        </p>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="badge px-3 py-2 fs-6 shadow-xs" style="background: #e11d48; color: #fff; border-radius: 8px;" title="Total Discount minus Owner Share = Balance Sheet Liabilities">
+                                            لائیبلٹیز کلیمز (بیلنس شیٹ): Rs {{ number_format(max(0, ($totalDiscountReceived ?? 0) - ($maddSummary['ہمارا شیئر']['amount'] ?? 0)), 2) }}
+                                        </span>
+                                        <span class="badge px-3 py-2 fs-6 shadow-xs" style="background: #7c3aed; color: #fff; border-radius: 8px;" title="Total Discount Received from Suppliers">
+                                            کُل ڈسکاؤنٹ موصولہ: Rs {{ number_format($totalDiscountReceived ?? 0, 2) }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {{-- Madd Cards Grid --}}
+                                @if(!empty($maddSummary) && count($maddSummary) > 0)
+                                    <div class="row g-2">
+                                        @foreach($maddSummary as $mName => $mData)
+                                            @php
+                                                $isCust = str_contains($mName, 'کسٹمر') || str_contains($mName, 'Customer');
+                                                $isOur = str_contains($mName, 'ہمارا') || str_contains($mName, 'Owner');
+                                                $bgCard = $isCust ? '#e0f2fe' : ($isOur ? '#f3e8ff' : '#fef3c7');
+                                                $borderCard = $isCust ? '#bae6fd' : ($isOur ? '#e9d5ff' : '#fde68a');
+                                                $textCard = $isCust ? '#0369a1' : ($isOur ? '#6b21a8' : '#92400e');
+                                                $iconCard = $isCust ? 'fa-users' : ($isOur ? 'fa-user-shield' : 'fa-tag');
+                                            @endphp
+                                            <div class="col-6 col-md-3">
+                                                <div class="p-2 rounded-2 border d-flex align-items-center justify-content-between h-100" style="background: {{ $bgCard }}; border-color: {{ $borderCard }} !important;">
+                                                    <div>
+                                                        <span class="d-block fw-bold" style="font-size: 11px; color: {{ $textCard }};">
+                                                            <i class="fas {{ $iconCard }} me-1"></i> {{ $mName }}
+                                                        </span>
+                                                        <span class="fw-bold fs-6 font-monospace" style="color: #0f172a;">
+                                                            Rs {{ number_format($mData['amount'], 2) }}
+                                                        </span>
+                                                    </div>
+                                                    <span class="badge rounded-pill bg-white text-dark border px-2 py-1 small">
+                                                        {{ $mData['count'] }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                @if(!empty($vendorSummary) && count($vendorSummary) > 0)
+                                    <div class="mt-3 pt-2 border-top d-flex flex-wrap align-items-center gap-2" style="font-size: 11px;">
+                                        <span class="fw-bold text-muted"><i class="fas fa-truck-field me-1"></i> وینڈرز وائز سمری:</span>
+                                        @foreach($vendorSummary as $vName => $vData)
+                                            <span class="badge bg-white text-dark border px-2 py-1 shadow-xs">
+                                                <strong>{{ $vName }}:</strong> Rs {{ number_format($vData['amount'], 2) }} ({{ $vData['count'] }})
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
                         <!-- Filters -->
                         <form method="GET" class="row g-3 mb-4">
                             <div class="col-md-3">
                                 <label class="form-label">From Date</label>
-                                <input type="text" name="from_date" value="{{ request('from_date') }}"
-                                    class="form-control datepicker-custom">
+                                <input type="date" name="from_date" value="{{ request('from_date') }}"
+                                    class="form-control">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">To Date</label>
-                                <input type="text" name="to_date" value="{{ request('to_date') }}" class="form-control datepicker-custom">
+                                <input type="date" name="to_date" value="{{ request('to_date') }}" class="form-control">
                             </div>
+                            @if(!empty($isDiscountAccount) && $isDiscountAccount && !empty($maddSummary))
+                                <div class="col-md-2">
+                                    <label class="form-label">مَد (Head)</label>
+                                    <select name="madd" class="form-select">
+                                        <option value="all">تمام مَدات (All)</option>
+                                        @foreach($maddSummary as $mName => $mData)
+                                            <option value="{{ $mName }}" {{ request('madd') == $mName ? 'selected' : '' }}>{{ $mName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @endif
                             <div class="col-md-2 d-flex align-items-end">
                                 <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i>
                                     Filter</button>
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
+                            <div class="col-md-1 d-flex align-items-end">
                                 <a href="{{ route('accounts.ledger', $account->id) }}"
                                     class="btn btn-outline-secondary w-100">Reset</a>
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
+                            <div class="col-md-1 d-flex align-items-end">
                                 <a href="{{ route('view_all') }}" class="btn btn-secondary w-100"><i
                                         class="bi bi-arrow-left"></i> Back</a>
                             </div>
@@ -100,11 +177,12 @@
                                     <tr>
                                         <th width="10%">Date</th>
                                         <th width="12%">Voucher No</th>
-                                        <th width="25%" class="text-start">Description</th>
-                                        <th width="18%">Party</th>
-                                        <th width="10%">Debit</th>
-                                        <th width="10%">Credit</th>
-                                        <th width="15%">Balance</th>
+                                        <th width="14%">مَد (Head)</th>
+                                        <th width="24%" class="text-start">Description</th>
+                                        <th width="16%">Party</th>
+                                        <th width="8%">Debit</th>
+                                        <th width="8%">Credit</th>
+                                        <th width="8%">Balance</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -114,7 +192,7 @@
 
                                     {{-- Opening Balance Row --}}
                                     <tr class="bg-light">
-                                        <td colspan="6" class="text-end fw-bold">Opening Balance</td>
+                                        <td colspan="7" class="text-end fw-bold">Opening Balance</td>
                                         <td class="text-end fw-bold">{{ number_format($runningBalance, 2) }}</td>
                                     </tr>
 
@@ -134,38 +212,31 @@
                                                 $voucherNo = $entry->source->invoice_no;
                                             }
 
+                                            // Fallback from description
+                                            if ($voucherNo === '-' && preg_match('/(?:Purchase|PUR)[\s#\-]*([A-Za-z0-9\-_]+)/i', $entry->description, $matches)) {
+                                                $voucherNo = trim($matches[1]);
+                                            }
+
                                             // Check Purchase link
-                                            if ($entry->source_type === 'App\\Models\\Purchase' || ($entry->source && $entry->source instanceof \App\Models\Purchase)) {
-                                                $pId = $entry->source_id ?? $entry->source->id;
-                                                $invoiceUrl = route('purchase.invoice', $pId);
-                                                $editUrl = route('purchase.edit', $pId);
-                                                if ($voucherNo === '-' && $entry->source && $entry->source->invoice_no) {
-                                                    $voucherNo = $entry->source->invoice_no;
+                                            if ($entry->source_type === 'App\\Models\\Purchase' || ($entry->source && $entry->source instanceof \App\Models\Purchase) || $entry->source_id) {
+                                                $pId = $entry->source_id ?? ($entry->source ? $entry->source->id : null);
+                                                if (!$pId && $voucherNo !== '-') {
+                                                    $pur = \App\Models\Purchase::where('invoice_no', $voucherNo)->orWhere('invoice_no', 'like', "%{$voucherNo}%")->first();
+                                                    if ($pur) $pId = $pur->id;
+                                                }
+                                                if ($pId) {
+                                                    $invoiceUrl = route('purchase.invoice', $pId);
+                                                    $editUrl = route('purchase.edit', $pId);
                                                 }
                                             } elseif ($entry->source_type === 'App\\Models\\Sale' || ($entry->source && $entry->source instanceof \App\Models\Sale)) {
-                                                $sId = $entry->source_id ?? $entry->source->id;
-                                                $invoiceUrl = url('/sale/invoice/' . $sId);
-                                                $editUrl = url('/sale/' . $sId . '/edit');
-                                            }
-
-                                            // Fallback from description / remarks if linked to a purchase
-                                            if (!$invoiceUrl && !empty($entry->description)) {
-                                                if (preg_match('/(?:Purchase|PUR)[\s#\-]*([A-Za-z0-9\-_]+)/i', $entry->description, $matches)) {
-                                                    $cleanCode = trim($matches[1]);
-                                                    $pur = \App\Models\Purchase::where('invoice_no', $cleanCode)
-                                                        ->orWhere('invoice_no', 'like', "%{$cleanCode}%")
-                                                        ->first();
-                                                    if ($pur) {
-                                                        $invoiceUrl = route('purchase.invoice', $pur->id);
-                                                        $editUrl = route('purchase.edit', $pur->id);
-                                                        if ($voucherNo === '-') {
-                                                            $voucherNo = $pur->invoice_no;
-                                                        }
-                                                    }
+                                                $sId = $entry->source_id ?? ($entry->source ? $entry->source->id : null);
+                                                if ($sId) {
+                                                    $invoiceUrl = url('/sale/invoice/' . $sId);
+                                                    $editUrl = url('/sale/' . $sId . '/edit');
                                                 }
                                             }
 
-                                            // Resolve party name and type
+                                            // Resolve Party name and type
                                             $partyName = '';
                                             $partyType = '';
                                             $partyBadgeClass = 'bg-secondary';
@@ -184,6 +255,25 @@
                                                     $partyBadgeClass = 'bg-info text-dark';
                                                 }
                                             }
+
+                                            // Parse Head (Madd) from description
+                                            $rowMadd = 'جنرل ڈسکاؤنٹ';
+                                            $cleanDesc = $entry->description;
+                                            if (preg_match('/\[مَد:\s*([^\]]+)\]\s*(.*)/u', $entry->description, $m)) {
+                                                $rowMadd = trim($m[1]);
+                                                $cleanDesc = trim($m[2]);
+                                            } elseif (stripos($entry->description, 'Customer') !== false) {
+                                                $rowMadd = 'کسٹمر شیئر';
+                                            } elseif (stripos($entry->description, 'Owner') !== false || stripos($entry->description, 'Humara') !== false) {
+                                                $rowMadd = 'ہمارا شیئر';
+                                            }
+
+                                            $isCustM = str_contains($rowMadd, 'کسٹمر') || str_contains($rowMadd, 'Customer');
+                                            $isOurM = str_contains($rowMadd, 'ہمارا') || str_contains($rowMadd, 'Owner');
+                                            $maddBg = $isCustM ? '#e0f2fe' : ($isOurM ? '#f3e8ff' : '#fef3c7');
+                                            $maddColor = $isCustM ? '#0369a1' : ($isOurM ? '#6b21a8' : '#92400e');
+                                            $maddBorder = $isCustM ? '#bae6fd' : ($isOurM ? '#e9d5ff' : '#fde68a');
+                                            $maddIcon = $isCustM ? 'fa-users' : ($isOurM ? 'fa-user-shield' : 'fa-tag');
                                         @endphp
                                         <tr>
                                             <td class="text-center">{{ $entry->entry_date->format('d/m/Y') }}</td>
@@ -206,7 +296,12 @@
                                                     </div>
                                                 @endif
                                             </td>
-                                            <td>{{ $entry->description }}</td>
+                                            <td class="text-center" style="white-space: nowrap;">
+                                                <span class="badge px-2 py-1 fw-bold" style="background: {{ $maddBg }}; color: {{ $maddColor }}; border: 1px solid {{ $maddBorder }}; font-size: 11px;">
+                                                    <i class="fas {{ $maddIcon }} me-1"></i> {{ $rowMadd }}
+                                                </span>
+                                            </td>
+                                            <td>{{ $cleanDesc }}</td>
                                             <td>
                                                 @if ($partyName)
                                                     <span class="badge {{ $partyBadgeClass }}" style="font-size: 0.7rem;">{{ $partyType }}</span>
@@ -228,10 +323,10 @@
                                 </tbody>
                                 <tfoot>
                                     <tr class="table-dark">
-                                        <td colspan="4" class="text-end">Total Period</td>
-                                        <td class="text-end">{{ number_format($entries->sum('debit'), 2) }}</td>
-                                        <td class="text-end">{{ number_format($entries->sum('credit'), 2) }}</td>
-                                        <td class="text-end">{{ number_format(abs($runningBalance), 2) }}</td>
+                                        <td colspan="5" class="text-end fw-bold">Total Period</td>
+                                        <td class="text-end fw-bold">{{ number_format($entries->sum('debit'), 2) }}</td>
+                                        <td class="text-end fw-bold">{{ number_format($entries->sum('credit'), 2) }}</td>
+                                        <td class="text-end fw-bold">{{ number_format(abs($runningBalance), 2) }} <small>{{ $runningBalance >= 0 ? 'Dr' : 'Cr' }}</small></td>
                                     </tr>
                                 </tfoot>
                             </table>

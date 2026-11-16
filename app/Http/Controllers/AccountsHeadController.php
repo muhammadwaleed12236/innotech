@@ -166,9 +166,17 @@ class AccountsHeadController extends Controller
             }
         }
 
+        $isDiscountAccount = (
+            $account->account_code === 'COMP-DISC' ||
+            stripos($account->title, 'Company Discount') !== false ||
+            stripos($account->title, 'Discount') !== false ||
+            stripos($account->title, 'Claims') !== false ||
+            (int)$account->id === 4
+        );
+
         // Auto-sync historical and existing purchase company discounts into this ledger
-        if ($account->account_code === 'COMP-DISC' || stripos($account->title, 'Company Discount') !== false) {
-            $this->syncCompanyDiscountLedger($account);
+        if ($isDiscountAccount) {
+            self::syncCompanyDiscountLedger($account);
         }
 
         $query = JournalEntry::where('account_id', $account->id)
@@ -176,66 +184,207 @@ class AccountsHeadController extends Controller
             ->orderBy('entry_date', 'asc')
             ->orderBy('id', 'asc');
 
-        if ($request->has('from_date') && $request->has('to_date')) {
-            $query->whereBetween('entry_date', [$request->from_date, $request->to_date]);
+        if ($request->filled('from_date')) {
+            $query->whereDate('entry_date', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('entry_date', '<=', $request->to_date);
+        }
+
+        if ($request->filled('madd') && $request->madd !== 'all') {
+            $query->where('description', 'like', "%[مَد: {$request->madd}]%");
         }
 
         $entries = $query->get();
 
-        return view('admin_panel.accounts.ledger', compact('account', 'entries'));
+        // Calculate Head-wise (Madd-wise) and Vendor-wise summaries
+        $maddSummary = [];
+        $vendorSummary = [];
+        $totalDiscountReceived = 0;
+        $totalAdjustedOrPaid = 0;
+
+        foreach ($entries as $entry) {
+            $cr = (float)($entry->credit ?? 0);
+            $dr = (float)($entry->debit ?? 0);
+            $totalDiscountReceived += $cr;
+            $totalAdjustedOrPaid += $dr;
+
+            $maddName = 'جنرل کمپنی ڈسکاؤنٹ';
+            if (preg_match('/\[مَد:\s*([^\]]+)\]/u', $entry->description, $matches)) {
+                $maddName = trim($matches[1]);
+            } elseif (stripos($entry->description, 'Customer') !== false) {
+                $maddName = 'کسٹمر شیئر';
+            } elseif (stripos($entry->description, 'Owner') !== false || stripos($entry->description, 'Humara') !== false) {
+                $maddName = 'ہمارا شیئر';
+            }
+
+            if (!isset($maddSummary[$maddName])) {
+                $maddSummary[$maddName] = [
+                    'name' => $maddName,
+                    'amount' => 0,
+                    'count' => 0
+                ];
+            }
+            $maddSummary[$maddName]['amount'] += $cr;
+            $maddSummary[$maddName]['count']++;
+
+            $vName = $entry->party ? ($entry->party->name ?? $entry->party->title ?? 'N/A') : 'Other';
+            if (!isset($vendorSummary[$vName])) {
+                $vendorSummary[$vName] = [
+                    'name' => $vName,
+                    'amount' => 0,
+                    'count' => 0
+                ];
+            }
+            $vendorSummary[$vName]['amount'] += $cr;
+            $vendorSummary[$vName]['count']++;
+        }
+
+        return view('admin_panel.accounts.ledger', compact(
+            'account',
+            'entries',
+            'isDiscountAccount',
+            'maddSummary',
+            'vendorSummary',
+            'totalDiscountReceived',
+            'totalAdjustedOrPaid'
+        ));
     }
 
     /**
      * Sync historical and existing purchase company discounts into the Company Discount Ledger
      */
-    private function syncCompanyDiscountLedger(Account $account): void
+    public static function syncCompanyDiscountLedger(Account $account): void
     {
         try {
-            $purchases = \App\Models\Purchase::with('vendor')
+            $purchases = \App\Models\Purchase::with(['vendor'])
                 ->whereIn('status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
                 ->get();
 
             foreach ($purchases as $purchase) {
-                $compDiscAmt = (float)($purchase->customer_disc_amount ?? 0);
-                if ($compDiscAmt <= 0) {
-                    $itemCompDisc = (float)\DB::table('purchase_items')
-                        ->where('purchase_id', $purchase->id)
-                        ->sum('customer_disc_amount');
-                    if ($itemCompDisc > 0) {
-                        $compDiscAmt = $itemCompDisc;
-                    } else {
-                        $totalDisc = (float)($purchase->discount ?: $purchase->company_disc_amount ?: 0);
-                        $ourDisc = (float)($purchase->our_disc_amount ?? 0);
-                        if ($totalDisc > $ourDisc && $ourDisc > 0) {
-                            $compDiscAmt = round($totalDisc - $ourDisc, 2);
+                $items = \DB::table('purchase_items')
+                    ->where('purchase_id', $purchase->id)
+                    ->get();
+
+                $itemTotalDisc = (float)$items->sum('item_discount');
+                $itemCustDisc = (float)$items->sum('customer_disc_amount');
+                $itemOurDisc = (float)$items->sum('our_disc_amount');
+
+                $invTotalDisc = (float)($purchase->company_disc_amount ?: $purchase->discount ?: 0);
+                $invCustDisc = (float)($purchase->customer_disc_amount ?? 0);
+                $invOurDisc = (float)($purchase->our_disc_amount ?? 0);
+
+                // Collect custom heads (prefer invoice-level, or fallback to items)
+                $customHeads = [];
+                $invCustom = is_array($purchase->custom_disc_breakdown) ? $purchase->custom_disc_breakdown : (json_decode($purchase->custom_disc_breakdown ?? '[]', true) ?: []);
+                if (!empty($invCustom) && is_array($invCustom)) {
+                    foreach ($invCustom as $ch) {
+                        $h = trim($ch['head'] ?? '');
+                        $amt = (float)($ch['amount'] ?? 0);
+                        if ($h !== '' && $amt > 0) {
+                            $customHeads[$h] = ($customHeads[$h] ?? 0) + $amt;
+                        }
+                    }
+                } else {
+                    foreach ($items as $item) {
+                        $itemCb = is_array($item->custom_disc_breakdown) ? $item->custom_disc_breakdown : (json_decode($item->custom_disc_breakdown ?? '[]', true) ?: []);
+                        if (is_array($itemCb)) {
+                            foreach ($itemCb as $ch) {
+                                $h = trim($ch['head'] ?? '');
+                                $amt = (float)($ch['amount'] ?? 0);
+                                if ($h !== '' && $amt > 0) {
+                                    $customHeads[$h] = ($customHeads[$h] ?? 0) + $amt;
+                                }
+                            }
                         }
                     }
                 }
 
-                if ($compDiscAmt <= 0) {
+                $custAmt = $invCustDisc > 0 ? $invCustDisc : $itemCustDisc;
+                $ourAmt = $invOurDisc > 0 ? $invOurDisc : $itemOurDisc;
+                $customSum = array_sum($customHeads);
+
+                $totalPurchDisc = max($invTotalDisc, $itemTotalDisc, ($custAmt + $ourAmt + $customSum));
+
+                if ($totalPurchDisc <= 0) {
+                    JournalEntry::where('account_id', $account->id)
+                        ->where('source_type', \App\Models\Purchase::class)
+                        ->where('source_id', $purchase->id)
+                        ->delete();
                     continue;
                 }
 
-                // Check if entry already exists in JournalEntry
-                $exists = JournalEntry::where('account_id', $account->id)
+                // Prepare list of heads for this purchase
+                $headsToRecord = [];
+
+                if ($custAmt <= 0 && $ourAmt <= 0 && empty($customHeads)) {
+                    // General Company Discount
+                    $headsToRecord[] = [
+                        'madd' => 'جنرل کمپنی ڈسکاؤنٹ',
+                        'amount' => $totalPurchDisc,
+                        'label' => 'Company Discount'
+                    ];
+                } else {
+                    if ($custAmt > 0) {
+                        $headsToRecord[] = [
+                            'madd' => 'کسٹمر شیئر',
+                            'amount' => $custAmt,
+                            'label' => 'Customer Share'
+                        ];
+                    }
+                    if ($ourAmt > 0) {
+                        $headsToRecord[] = [
+                            'madd' => 'ہمارا شیئر',
+                            'amount' => $ourAmt,
+                            'label' => 'Owner Share'
+                        ];
+                    }
+                    foreach ($customHeads as $hName => $hAmt) {
+                        if ($hAmt > 0) {
+                            $headsToRecord[] = [
+                                'madd' => $hName,
+                                'amount' => $hAmt,
+                                'label' => $hName
+                            ];
+                        }
+                    }
+
+                    // Check if leftover discount remains
+                    $recordedSum = $custAmt + $ourAmt + $customSum;
+                    $leftover = round($totalPurchDisc - $recordedSum, 2);
+                    if ($leftover > 0) {
+                        $headsToRecord[] = [
+                            'madd' => 'اضافی ڈسکاؤنٹ',
+                            'amount' => $leftover,
+                            'label' => 'Additional Discount'
+                        ];
+                    }
+                }
+
+                // Delete old synced entries for this purchase to ensure clean state
+                JournalEntry::where('account_id', $account->id)
                     ->where(function($q) use ($purchase) {
                         $q->where(function($sub) use ($purchase) {
                             $sub->where('source_type', \App\Models\Purchase::class)
                                 ->where('source_id', $purchase->id);
                         })->orWhere('description', 'like', "%Purchase #{$purchase->invoice_no}%");
-                    })->exists();
+                    })->delete();
 
-                if (!$exists) {
+                $entryDate = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d');
+                $vendorName = $purchase->vendor ? $purchase->vendor->name : 'N/A';
+
+                foreach ($headsToRecord as $h) {
+                    $desc = "[مَد: {$h['madd']}] Purchase #{$purchase->invoice_no} ({$vendorName}) - {$h['label']}";
                     JournalEntry::create([
                         'account_id' => $account->id,
                         'source_type' => \App\Models\Purchase::class,
                         'source_id' => $purchase->id,
-                        'entry_date' => $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : now()->format('Y-m-d'),
+                        'entry_date' => $entryDate,
                         'debit' => 0,
-                        'credit' => $compDiscAmt,
+                        'credit' => $h['amount'],
                         'party_type' => \App\Models\Vendor::class,
                         'party_id' => $purchase->vendor_id,
-                        'description' => "Company Discount for Customers - Purchase #{$purchase->invoice_no}" . ($purchase->vendor ? " (" . $purchase->vendor->name . ")" : ""),
+                        'description' => $desc,
                     ]);
                 }
             }

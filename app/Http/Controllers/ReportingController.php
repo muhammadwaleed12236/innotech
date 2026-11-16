@@ -3274,6 +3274,10 @@ class ReportingController extends Controller
         );
 
         $compDiscAccountId = $compDiscAccount->id;
+
+        // Auto-sync company discount ledger entries
+        \App\Http\Controllers\AccountsHeadController::syncCompanyDiscountLedger($compDiscAccount);
+
         $je = DB::table('journal_entries')
             ->where('account_id', $compDiscAccount->id)
             ->where('entry_date', '<=', $dateEnd)
@@ -3310,9 +3314,13 @@ class ReportingController extends Controller
             ->limit(20)
             ->get();
 
-        $stockClaimDiff = max(0, $totalInventory - $totalPayables);
-        $effectiveCompDisc = max($compDiscLedgerBalance, $stockClaimDiff);
+        // In Liabilities: Deduct Our Discount from Total Discount to show remaining customer claims/discount
+        $remainingDiscount = max(0, $totalPurchDisc - $ourDiscTotal);
+        if ($remainingDiscount <= 0 && $companyCustDiscTotal > 0) {
+            $remainingDiscount = $companyCustDiscTotal;
+        }
 
+        $effectiveCompDisc = $remainingDiscount;
         $currentLiabilitiesTotal = $totalPayables + $effectiveCompDisc;
 
         // 3. Owner's Equity (Equity = Assets - Liabilities)
@@ -3340,7 +3348,7 @@ class ReportingController extends Controller
             ],
             'discounts_summary' => [
                 'our_discount' => round($ourDiscTotal, 2),
-                'company_discount_customers' => round($companyCustDiscTotal, 2),
+                'company_discount_customers' => round($remainingDiscount, 2),
                 'total_purchase_discount' => round($totalPurchDisc, 2),
                 'customer_sales_discount' => round($customerSalesDiscTotal, 2),
                 'company_claims_balance' => round($effectiveCompDisc, 2),
