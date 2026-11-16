@@ -298,6 +298,7 @@
             name = $el.data('name') || name || $el.text();
         }
 
+        let isOutOfStock = (repo.disabled === true || stockVal <= 0);
         let skuText = sku ? ('SKU: ' + sku) : 'N/A';
         let barcode = repo.barcode || repo.hs_code || '';
         if (repo.element) {
@@ -306,15 +307,16 @@
         if (barcode && barcode !== sku) {
             skuText += ' &bull; Barcode: ' + barcode;
         }
-        let badgeClass = stockVal > 0 ? 'bg-success' : 'bg-danger';
+        let badgeClass = !isOutOfStock ? 'bg-success' : 'bg-danger';
+        let stockBadgeText = !isOutOfStock ? ('Stock: ' + stock) : 'Out of Stock (0)';
 
-        return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="color: #0f172a;">' +
+        return '<div class="d-flex align-items-center justify-content-between w-100 py-1" style="' + (isOutOfStock ? 'opacity: 0.45; cursor: not-allowed;' : 'color: #0f172a;') + '">' +
             '<div>' +
-                '<div class="fw-bold" style="color: #0f172a;">' + name + '</div>' +
+                '<div class="fw-bold" style="' + (isOutOfStock ? 'text-decoration: line-through; color: #94a3b8;' : 'color: #0f172a;') + '">' + name + '</div>' +
                 '<small class="text-muted" style="font-size: 11px;">' + skuText + '</small>' +
             '</div>' +
             '<div>' +
-                '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1">Stock: ' + stock + '</span>' +
+                '<span class="badge ' + badgeClass + ' rounded-pill px-2 py-1">' + stockBadgeText + '</span>' +
             '</div>' +
         '</div>';
     }
@@ -560,7 +562,10 @@
             $row.find('.size-h').val(pRes.height || '-');
             $row.find('.size-w').val(pRes.width || '-');
             $row.find('.size-mode-text').val(pRes.size_mode || '-');
-            $row.find('.discount-value').val(pRes.sale_discount_percent || 0);
+            const defDiscVal = parseFloat(pRes.sale_discount_percent || pRes.customer_disc_percent || 0);
+            $row.find('.reg-disc-percent').val(defDiscVal > 0 ? defDiscVal.toFixed(2) : '0.00');
+            $row.find('.sp-disc-percent').val('0.00');
+            $row.find('.discount-value').val(defDiscVal > 0 ? defDiscVal.toFixed(2) : '0.00');
 
             const rPerPiece = parseFloat(pRes.sale_price_per_piece || pRes.retail_price || 0);
             const rPerBox = parseFloat(pRes.sale_price_per_box) || (rPerPiece * ppb);
@@ -627,7 +632,10 @@
              $row.find('.size-mode-text').val(pRes.size_mode || '-');
 
             // Set default discount
-            $row.find('.discount-value').val(pRes.sale_discount_percent || 0);
+            const defDiscVal = parseFloat(pRes.sale_discount_percent || pRes.customer_disc_percent || 0);
+            $row.find('.reg-disc-percent').val(defDiscVal > 0 ? defDiscVal.toFixed(2) : '0.00');
+            $row.find('.sp-disc-percent').val('0.00');
+            $row.find('.discount-value').val(defDiscVal > 0 ? defDiscVal.toFixed(2) : '0.00');
 
             const rPerPiece = parseFloat(pRes.sale_price_per_piece || pRes.retail_price || 0);
             const rPerBox = parseFloat(pRes.sale_price_per_box) || (rPerPiece * ppb);
@@ -1563,6 +1571,32 @@
 
     $(document).ready(function() {
 
+        // Ensure Date Input defaults to today's date
+        if (typeof flatpickr !== 'undefined' && $('#displayDateInput').length) {
+            flatpickr('#displayDateInput', {
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                defaultDate: $('#displayDateInput').val() || new Date(),
+                allowInput: true
+            });
+        }
+
+        // Block Out of Stock Products from being selected in Select2
+        $('#salesTableBody').on('select2:selecting', '.product', function(e) {
+            const data = e.params.args.data;
+            const stockVal = parseFloat(data.stock_pieces !== undefined ? data.stock_pieces : data.stock) || 0;
+            if (data.disabled === true || stockVal <= 0) {
+                e.preventDefault();
+                if (typeof toastr !== 'undefined') {
+                    toastr.warning('This product is Out of Stock and cannot be added to invoice.', 'Out of Stock');
+                } else {
+                    alert('This product is Out of Stock and cannot be added to invoice.');
+                }
+                return false;
+            }
+        });
+
         // Show Pcs/Ctn header on load if any existing row is in carton mode
         if (typeof refreshPcsCtnHeader === 'function') refreshPcsCtnHeader();
 
@@ -1651,10 +1685,12 @@
             $row.find('.item-code-display').val(data.sku || '');
             
             const retailPerPiece = parseFloat(data.retail_price || 0);
+            const tradePerPiece = parseFloat(data.trade_price || 0);
             const ppb = parseFloat(data.pieces_per_box) || 1;
             const retailPerBox = parseFloat(data.retail_price_per_box) || (retailPerPiece * ppb);
+            const tradePerBox = parseFloat(data.trade_price_per_box) || (tradePerPiece * ppb);
 
-            $row.find('.retail-price').val(retailPerPiece || data.trade_price || 0);
+            $row.find('.retail-price').val(retailPerPiece || tradePerPiece);
             $row.data('retail_price', retailPerPiece);
             $row.data('retail_price_box', retailPerBox);
             $row.find('.wholesale-price').val(data.wholesale_price || 0);
@@ -1662,11 +1698,13 @@
             
             let rowMode = $row.find('.price-mode-row-toggle').attr('data-mode') || 'retail';
             let wsPrice = parseFloat(data.wholesale_price) || 0;
-            let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (data.retail_price || data.trade_price || 0);
+            // Standard FMCG / Distribution Selling Rate:
+            // Prefer Trade Price (trade_price), fallback to retail_price
+            let rate = (rowMode === 'wholesale' && wsPrice > 0) ? wsPrice : (tradePerPiece > 0 ? tradePerPiece : (retailPerPiece > 0 ? retailPerPiece : 0));
 
             const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
             if (['by_cartons', 'by_bandal'].includes(data.size_mode)) {
-                let cartonPrice = ppb > 1 ? (rate * ppb) : rate;
+                let cartonPrice = tradePerBox > 0 ? tradePerBox : (ppb > 1 ? (rate * ppb) : rate);
                 $row.find('.visible-price').val(unitMode === 'pcs' ? rate : cartonPrice);
                 $row.find('.price-per-piece').val(unitMode === 'pcs' ? rate : cartonPrice);
             } else {
@@ -1674,10 +1712,10 @@
                 $row.find('.price-per-piece').val(rate);
             }
             
-            // Set MRP Amount directly from retail price
+            // Set MRP Amount directly from retail price (MRP for 3rd Schedule)
             const initialRetailAmount = (['by_cartons', 'by_bandal'].includes(data.size_mode) && unitMode !== 'pcs') ? retailPerBox : retailPerPiece;
-            $row.find('.mrp-amount').val(initialRetailAmount.toFixed(2));
-            $row.find('.visible-mrp').val(initialRetailAmount.toFixed(2));
+            $row.find('.mrp-amount').val((initialRetailAmount > 0 ? initialRetailAmount : rate).toFixed(2));
+            $row.find('.visible-mrp').val((initialRetailAmount > 0 ? initialRetailAmount : rate).toFixed(2));
             $row.data('mrp_manual', false);
             
             $row.find('.pack-qty').val(data.pieces_per_box || 1);
@@ -1685,7 +1723,11 @@
             $row.find('.size-w').val(data.width || '-');
             $row.find('.size-mode-text').val(data.size_mode || '-');
             
-            $row.find('.discount-value').val(data.sale_discount_percent || 0);
+            // Populate Discount: check sale_discount_percent or customer_disc_percent
+            const defaultDiscPct = parseFloat(data.sale_discount_percent || data.customer_disc_percent || 0);
+            $row.find('.reg-disc-percent').val(defaultDiscPct > 0 ? defaultDiscPct.toFixed(2) : '0.00');
+            $row.find('.sp-disc-percent').val('0.00');
+            $row.find('.discount-value').val(defaultDiscPct > 0 ? defaultDiscPct.toFixed(2) : '0.00');
             
             $row.data('size_mode', data.size_mode);
             $row.data('pieces_per_box', data.pieces_per_box || 1);
@@ -2657,6 +2699,7 @@
 
         // --- Sidebar Direct Add Product ---
         $(document).on('click', '.add-product-direct-btn', function() {
+            if ($(this).hasClass('disabled') || $(this).is(':disabled')) return;
             const prodId = $(this).data('id');
             const variantData = $(this).attr('data-variant-data') || '';
             if (!prodId) return;
@@ -2702,22 +2745,27 @@
                 let html = '';
                 if (res && res.length > 0) {
                     res.forEach(p => {
-                        const stockText = p.wh_stock ? `${p.wh_stock} Pcs` : '0 Pcs';
-                        const priceText = p.retail_price ? parseFloat(p.retail_price).toFixed(2) : '0.00';
+                        const stockVal = parseFloat(p.wh_stock || 0);
+                        const isZero = stockVal <= 0 || p.disabled;
+                        const stockText = isZero ? 'Out of Stock' : `${p.wh_stock} Pcs`;
+                        const priceText = p.trade_price ? parseFloat(p.trade_price).toFixed(2) : (p.retail_price ? parseFloat(p.retail_price).toFixed(2) : '0.00');
                         html += `
-                            <div class="pos-product-card">
+                            <div class="pos-product-card ${isZero ? 'opacity-50' : ''}" style="${isZero ? 'filter: grayscale(0.8);' : ''}">
                                 <div class="pos-product-img">
                                     <i class="fas fa-box text-secondary fs-5"></i>
                                 </div>
                                 <div class="pos-product-info">
                                     <div class="pos-product-name" title="${p.item_name}">${p.item_name}</div>
                                     <div class="pos-product-sub">
-                                        <span class="badge-stock-green">${stockText}</span> SKU: ${p.item_code || '-'}
+                                        <span class="${isZero ? 'badge bg-danger rounded-pill' : 'badge-stock-green'}">${stockText}</span> SKU: ${p.item_code || '-'}
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <div class="pos-product-price">${priceText}<br><small class="text-muted fs-7">PCS</small></div>
-                                    <button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="${p.id}" data-variant-data="${p.variant_data || ''}" title="Add to Grid"><i class="fas fa-plus"></i></button>
+                                    <div class="pos-product-price">${priceText}<br><small class="text-muted fs-7">TP</small></div>
+                                    ${isZero ?
+                                        `<button type="button" class="pos-product-add-btn disabled" disabled style="opacity: 0.35; cursor: not-allowed;" title="Out of Stock"><i class="fas fa-ban"></i></button>`
+                                        : `<button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="${p.id}" data-variant-data="${p.variant_data || ''}" title="Add to Grid"><i class="fas fa-plus"></i></button>`
+                                    }
                                 </div>
                             </div>`;
                     });

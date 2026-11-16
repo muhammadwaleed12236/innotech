@@ -158,9 +158,26 @@ class ProductController extends Controller
 
         $products = $query->paginate(30); // 30 per page for fast response
 
-        $results = $products->getCollection()->flatMap(function ($p) use ($term) {
+        $pIds = $products->pluck('id')->toArray();
+        $custDiscounts = [];
+        if (!empty($pIds)) {
+            $custDiscounts = \Illuminate\Support\Facades\DB::table('purchase_items')
+                ->whereIn('product_id', $pIds)
+                ->where('customer_disc_percent', '>', 0)
+                ->groupBy('product_id')
+                ->select('product_id', \Illuminate\Support\Facades\DB::raw('MAX(customer_disc_percent) as cust_disc'))
+                ->pluck('cust_disc', 'product_id')
+                ->toArray();
+        }
+
+        $results = $products->getCollection()->flatMap(function ($p) use ($term, $custDiscounts) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
+            $custDisc = (float)($custDiscounts[$p->id] ?? 0);
+            $saleDisc = (float)($p->sale_discount_percent ?? 0);
+            if ($saleDisc <= 0 && $custDisc > 0) {
+                $saleDisc = $custDisc;
+            }
 
             $unitName = $p->unit->name ?? match($p->size_mode) {
                 'by_kg' => 'Kg',
@@ -192,7 +209,7 @@ class ProductController extends Controller
 
             if (count($variants) > 0) {
                 $cacheKey = 'prod_var_search_' . $p->id . '_' . ((int)$stockPieces);
-                $allExpanded = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb) {
+                $allExpanded = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb, $custDisc) {
                 // Fetch all sales and returns for this product to distribute
                 $salesList = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -400,22 +417,29 @@ class ProductController extends Controller
                     $vBarcode = $v['barcode'] ?? $v['hs_code'] ?? $p->barcode_path ?? '';
                     $vHsCode = $v['barcode'] ?? $v['hs_code'] ?? $p->hs_code ?? '';
 
+                    $vSaleDisc = (float)($v['sale_discount_percent'] ?? 0);
+                    if ($vSaleDisc <= 0 && $custDisc > 0) {
+                        $vSaleDisc = $custDisc;
+                    }
+                    $isVDisabled = ($vBalance <= 0);
+
                     $expanded[] = [
                         'id' => $p->id . '|variant|' . base64_encode($variantJson),
-                        'text' => $vName." (SKU: {$p->item_code})",
+                        'text' => $vName." (SKU: {$p->item_code})" . ($isVDisabled ? ' [OUT OF STOCK]' : ''),
                         'sku' => $p->item_code ?? '',
                         'barcode' => $vBarcode,
                         'stock' => $vStockDisplay,
                         'stock_pieces' => $vBalance,
+                        'disabled' => $isVDisabled,
                         'name' => $vName,
                         'size_mode' => $p->size_mode,
                         'unit_name' => $vUnitName,
                         'pieces_per_box' => $vPpb,
                         'ppb' => $vPpb,
-                        'trade_price' => $v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0,
-                        'retail_price' => $v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0,
-                        'retail_price_per_box' => (($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb),
-                        'trade_price_per_box' => (($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb),
+                        'trade_price' => (float)($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0),
+                        'retail_price' => (float)($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0),
+                        'retail_price_per_box' => ((float)($v['sale_price'] ?? $p->retail_price ?? $p->sale_price_per_piece ?? 0) * $vPpb),
+                        'trade_price_per_box' => ((float)($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb),
                         'hs_code' => $vHsCode,
                         'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)),
                         'tax_type_id' => $p->tax_type_id,
@@ -432,7 +456,8 @@ class ProductController extends Controller
                         'purchase_price_per_piece' => $v['purch_price'] ?? $p->purchase_price_per_piece ?? 0,
                         'purchase_price_per_box' => ($v['purch_price'] ?? $p->purchase_price_per_piece ?? 0) * $vPpb,
                         'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
-                        'sale_discount_percent' => (float)($v['sale_discount_percent'] ?? 0),
+                        'sale_discount_percent' => $vSaleDisc,
+                        'customer_disc_percent' => $custDisc,
                         'purchase_discount_percent' => (float)($v['purchase_discount_percent'] ?? 0),
                         'variant_data' => base64_encode($variantJson),
                         'tracking_type' => $p->tracking_type ?? 'simple'
@@ -507,26 +532,42 @@ class ProductController extends Controller
                 }
             }
 
+            $isSimpleDisabled = ($stockPieces <= 0);
             return [[
                 'id' => $p->id,
-                'text' => $p->item_name." (SKU: {$p->item_code})",
+                'text' => $p->item_name." (SKU: {$p->item_code})" . ($isSimpleDisabled ? ' [OUT OF STOCK]' : ''),
                 'sku' => $p->item_code ?? '',
                 'barcode' => $p->barcode_path ?? $p->hs_code ?? '',
                 'stock' => $stockDisplay,
                 'stock_pieces' => $stockPieces,
+                'disabled' => $isSimpleDisabled,
                 'name' => $p->item_name,
                 'size_mode' => $p->size_mode,
                 'unit_name' => $unitName,
                 'pieces_per_box' => $ppb,
                 'ppb' => $ppb,
-                'trade_price' => $p->trade_price ?: ($p->purchase_price_per_piece ?? 0),
-                'retail_price' => $p->retail_price ?: ($p->sale_price_per_piece ?? 0), 'retail_price_per_box' => $p->sale_price_per_box ?: (($p->retail_price ?: $p->sale_price_per_piece ?: 0) * $ppb), 'trade_price_per_box' => $p->purchase_price_per_box ?: (($p->trade_price ?: $p->purchase_price_per_piece ?: 0) * $ppb), 'hs_code' => $p->hs_code ?? '', 'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)), 'tax_type_id' => $p->tax_type_id, 'tax_type_code' => $p->taxType->code ?? '', 'tax_type_title' => $p->taxType->title ?? '', 'tax_purchase_gst' => $p->taxType ? $p->taxType->getPurchaseGstRate() : ($p->is_third_schedule ? 18.0 : 18.0), 'tax_purchase_adv' => $p->taxType ? $p->taxType->getPurchaseAdvTaxRate() : 0.10, 'tax_sale_gst' => $p->taxType ? $p->taxType->getSaleGstRate() : ($p->sales_tax ?? 18.0), 'tax_sale_adv_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_filer_rate : 0.50, 'tax_sale_adv_non_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_non_filer_rate : 2.50, 'tax_applied_on' => $p->taxType->tax_applied_on ?? ($p->is_third_schedule ? 'retail_value' : 'trade_value'),
+                'trade_price' => (float)($p->trade_price ?: ($p->purchase_price_per_piece ?? 0)),
+                'retail_price' => (float)($p->retail_price ?: ($p->sale_price_per_piece ?? 0)),
+                'retail_price_per_box' => (float)($p->sale_price_per_box ?: (($p->retail_price ?: $p->sale_price_per_piece ?: 0) * $ppb)),
+                'trade_price_per_box' => (float)($p->purchase_price_per_box ?: (($p->trade_price ?: $p->purchase_price_per_piece ?: 0) * $ppb)),
+                'hs_code' => $p->hs_code ?? '',
+                'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)),
+                'tax_type_id' => $p->tax_type_id,
+                'tax_type_code' => $p->taxType->code ?? '',
+                'tax_type_title' => $p->taxType->title ?? '',
+                'tax_purchase_gst' => $p->taxType ? $p->taxType->getPurchaseGstRate() : ($p->is_third_schedule ? 18.0 : 18.0),
+                'tax_purchase_adv' => $p->taxType ? $p->taxType->getPurchaseAdvTaxRate() : 0.10,
+                'tax_sale_gst' => $p->taxType ? $p->taxType->getSaleGstRate() : ($p->sales_tax ?? 18.0),
+                'tax_sale_adv_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_filer_rate : 0.50,
+                'tax_sale_adv_non_filer' => $p->taxType ? (float)$p->taxType->adv_tax_sale_non_filer_rate : 2.50,
+                'tax_applied_on' => $p->taxType->tax_applied_on ?? ($p->is_third_schedule ? 'retail_value' : 'trade_value'),
                 'wholesale_price' => $p->wholesale_price ?? 0,
                 'weight_per_piece' => $p->weight_per_piece ?? 0,
                 'purchase_price_per_piece' => $p->purchase_price_per_piece ?? 0,
                 'purchase_price_per_box' => $p->purchase_price_per_box ?? (($p->purchase_price_per_piece ?? 0) * $ppb),
                 'purchase_price_per_m2' => $p->purchase_price_per_m2 ?? 0,
-                'sale_discount_percent' => $p->sale_discount_percent ?? 0,
+                'sale_discount_percent' => $saleDisc,
+                'customer_disc_percent' => $custDisc,
                 'purchase_discount_percent' => $p->purchase_discount_percent ?? 0,
                 'variant_data' => '',
                 'tracking_type' => $p->tracking_type ?? 'simple'

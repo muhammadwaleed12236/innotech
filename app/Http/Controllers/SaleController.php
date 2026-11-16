@@ -247,9 +247,11 @@ class SaleController extends Controller
                     $vClone->wholesale_price = (float)($v['wholesale_price'] ?? $product->wholesale_price ?? 0);
                     $vClone->trade_price = (float)($v['purch_price'] ?? $product->trade_price ?? 0);
                     $vClone->variant_data = base64_encode(json_encode($v));
+                    $vClone->disabled = ((float)($product->wh_stock ?? 0) <= 0);
                     $results[] = $vClone;
                 }
             } else {
+                $product->disabled = ((float)($product->wh_stock ?? 0) <= 0);
                 $results[] = $product;
             }
         }

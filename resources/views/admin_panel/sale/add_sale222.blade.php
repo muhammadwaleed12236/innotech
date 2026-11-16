@@ -1707,7 +1707,7 @@
                     {{-- Date --}}
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 fw-bold text-secondary" for="displayDateInput">Date:</label>
-                        <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('d/m/Y') }}" style="width: 130px; height: 38px;">
+                        <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ date('Y-m-d') }}" style="width: 130px; height: 38px;">
                     </div>
 
                     {{-- Screen Configuration Button --}}
@@ -2435,19 +2435,31 @@
             <div class="overflow-auto pe-1" id="sidebarProductContainer" style="max-height: calc(100vh - 120px);">
                 @if(isset($recentProducts) && count($recentProducts) > 0)
                     @foreach($recentProducts as $prod)
-                        <div class="pos-product-card">
+                        @php
+                            $prodStock = (float)($prod->total_pieces ?? $prod->warehouse_stocks_sum_total_pieces ?? 0);
+                            $isZeroStock = ($prodStock <= 0);
+                        @endphp
+                        <div class="pos-product-card {{ $isZeroStock ? 'opacity-50' : '' }}" style="{{ $isZeroStock ? 'filter: grayscale(0.8);' : '' }}">
                             <div class="pos-product-img">
                                 <i class="fas fa-box text-secondary fs-5"></i>
                             </div>
                             <div class="pos-product-info">
                                 <div class="pos-product-name" title="{{ $prod->item_name }}">{{ $prod->item_name }}</div>
                                 <div class="pos-product-sub">
-                                    <span class="badge-stock-green">{{ $prod->total_pieces ?? 0 }} Pcs</span> Stock
+                                    @if($isZeroStock)
+                                        <span class="badge bg-danger rounded-pill" style="font-size: 10px;">Out of Stock</span>
+                                    @else
+                                        <span class="badge-stock-green">{{ $prodStock }} Pcs</span> Stock
+                                    @endif
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-2">
-                                <div class="pos-product-price">{{ number_format($prod->retail_price ?? 0, 2) }}</div>
-                                <button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="{{ $prod->id }}" title="Add to Grid"><i class="fas fa-plus"></i></button>
+                                <div class="pos-product-price">{{ number_format($prod->trade_price > 0 ? $prod->trade_price : ($prod->retail_price ?? 0), 2) }}</div>
+                                @if($isZeroStock)
+                                    <button type="button" class="pos-product-add-btn disabled" disabled style="opacity: 0.35; cursor: not-allowed;" title="Out of Stock"><i class="fas fa-ban"></i></button>
+                                @else
+                                    <button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="{{ $prod->id }}" title="Add to Grid"><i class="fas fa-plus"></i></button>
+                                @endif
                             </div>
                         </div>
                     @endforeach
