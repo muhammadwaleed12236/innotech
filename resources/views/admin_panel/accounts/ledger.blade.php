@@ -81,11 +81,8 @@
                                         </p>
                                     </div>
                                     <div class="d-flex flex-wrap align-items-center gap-2">
-                                        <span class="badge px-3 py-2 fs-6 shadow-xs" style="background: #e11d48; color: #fff; border-radius: 8px;" title="Total Discount minus Owner Share = Balance Sheet Liabilities">
-                                            لائیبلٹیز کلیمز (بیلنس شیٹ): Rs {{ number_format(max(0, ($totalDiscountReceived ?? 0) - ($maddSummary['ہمارا شیئر']['amount'] ?? 0)), 2) }}
-                                        </span>
-                                        <span class="badge px-3 py-2 fs-6 shadow-xs" style="background: #7c3aed; color: #fff; border-radius: 8px;" title="Total Discount Received from Suppliers">
-                                            کُل ڈسکاؤنٹ موصولہ: Rs {{ number_format($totalDiscountReceived ?? 0, 2) }}
+                                        <span class="badge px-3 py-2 fs-6 shadow-xs" style="background: #e11d48; color: #fff; border-radius: 8px;" title="Customer Claims and Pass-through Discount">
+                                            کُل کسٹمرز کلیمز ڈسکاؤنٹ: Rs {{ number_format($totalDiscountReceived ?? 0, 2) }}
                                         </span>
                                     </div>
                                 </div>

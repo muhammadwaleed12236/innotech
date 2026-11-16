@@ -314,29 +314,25 @@ class AccountsHeadController extends Controller
                     continue;
                 }
 
-                // Prepare list of heads for this purchase
+                // Prepare list of heads for this purchase (Excluding Our Discount as requested)
                 $headsToRecord = [];
 
-                if ($custAmt <= 0 && $ourAmt <= 0 && empty($customHeads)) {
-                    // General Company Discount
-                    $headsToRecord[] = [
-                        'madd' => 'جنرل کمپنی ڈسکاؤنٹ',
-                        'amount' => $totalPurchDisc,
-                        'label' => 'Company Discount'
-                    ];
+                if ($custAmt <= 0 && empty($customHeads)) {
+                    // If no explicit customer split, take remaining discount after our share
+                    $remAfterOur = max(0, $totalPurchDisc - $ourAmt);
+                    if ($remAfterOur > 0) {
+                        $headsToRecord[] = [
+                            'madd' => 'کسٹمر ڈسکاؤنٹ',
+                            'amount' => $remAfterOur,
+                            'label' => 'Customer Discount / Claims'
+                        ];
+                    }
                 } else {
                     if ($custAmt > 0) {
                         $headsToRecord[] = [
                             'madd' => 'کسٹمر شیئر',
                             'amount' => $custAmt,
                             'label' => 'Customer Share'
-                        ];
-                    }
-                    if ($ourAmt > 0) {
-                        $headsToRecord[] = [
-                            'madd' => 'ہمارا شیئر',
-                            'amount' => $ourAmt,
-                            'label' => 'Owner Share'
                         ];
                     }
                     foreach ($customHeads as $hName => $hAmt) {
@@ -349,14 +345,14 @@ class AccountsHeadController extends Controller
                         }
                     }
 
-                    // Check if leftover discount remains
+                    // Check if leftover discount remains (excluding our share)
                     $recordedSum = $custAmt + $ourAmt + $customSum;
                     $leftover = round($totalPurchDisc - $recordedSum, 2);
                     if ($leftover > 0) {
                         $headsToRecord[] = [
-                            'madd' => 'اضافی ڈسکاؤنٹ',
+                            'madd' => 'اضافی کسٹمر کلیمز',
                             'amount' => $leftover,
-                            'label' => 'Additional Discount'
+                            'label' => 'Additional Customer Claims'
                         ];
                     }
                 }
