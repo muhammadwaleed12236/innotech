@@ -809,14 +809,12 @@ class ReportingController extends Controller
                                 }
                                 $pGst = (float)($pItem->sales_tax_on_retail > 0 ? $pItem->sales_tax_on_retail : ($pItem->sales_tax_on_trade ?: ($pItem->gst_amount ?? 0)));
                                 $beforeWht = max(0, $pTrade - $pOurDisc) + $pGst;
+                                $purBeforeWht = (float)($pItem->total_value_after_discount ?? 0) + (float)($pItem->total_gst ?? 0);
                                 $pWht = 0;
-                                if ((float)($pItem->wht_percent ?? 0) > 0) {
+                                if ((float)($pItem->wht_amount ?? 0) > 0 && $purBeforeWht > 0) {
+                                    $pWht = ((float)$pItem->line_total / $purBeforeWht) * (float)$pItem->wht_amount;
+                                } elseif ((float)($pItem->wht_percent ?? 0) > 0) {
                                     $pWht = $beforeWht * ((float)$pItem->wht_percent / 100.0);
-                                } elseif ((float)($pItem->wht_amount ?? 0) > 0) {
-                                    $purBeforeWht = (float)($pItem->total_value_after_discount ?? 0) + (float)($pItem->total_gst ?? 0);
-                                    if ($purBeforeWht > 0) {
-                                        $pWht = ((float)$pItem->line_total / $purBeforeWht) * (float)$pItem->wht_amount;
-                                    }
                                 }
                                 $pLandingCost = $beforeWht + $pWht;
 
