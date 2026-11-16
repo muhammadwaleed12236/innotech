@@ -278,10 +278,39 @@ class TransactionService
             $expenseAccountId = $balanceService->getPurchaseExpenseId();
             $apAccountId = $balanceService->getAccountsPayableId();
 
-            // Calculate Company Customer Discount & Claims (Total Disc - Our Margin)
-            $totalDisc = (float)($purchase->company_disc_amount ?: $purchase->discount ?: 0);
-            $ourDisc = (float)($purchase->our_disc_amount ?? 0);
-            $companyDiscAmt = max(0, round($totalDisc - $ourDisc, 2));
+            // Calculate Stock Landing Cost and Company Customer Claims
+            $whtPct = (float)($purchase->wht_percent ?? 0);
+            $totalLandingCost = 0;
+            
+            // Calculate exact landing cost across items: (Trade - Our Disc + GST) * (1 + WHT%)
+            $pItems = $purchase->items;
+            if ($pItems && $pItems->count() > 0) {
+                foreach ($pItems as $pi) {
+                    $iTrade = (float)($pi->trade_value ?: (($pi->price ?? 0) * (float)$pi->qty));
+                    $iOurDisc = (float)($pi->our_disc_amount ?? 0);
+                    if ($iOurDisc <= 0 && (float)($pi->item_discount ?? 0) > 0) {
+                        if ((float)($pi->customer_disc_amount ?? 0) > 0) {
+                            $iOurDisc = max(0, (float)$pi->item_discount - (float)$pi->customer_disc_amount);
+                        } else {
+                            $iOurDisc = (float)$pi->item_discount;
+                        }
+                    }
+                    $iGst = (float)($pi->sales_tax_on_retail > 0 ? $pi->sales_tax_on_retail : ($pi->sales_tax_on_trade ?: ($pi->gst_amount ?? 0)));
+                    $iBeforeWht = max(0, $iTrade - $iOurDisc) + $iGst;
+                    $iWht = $iBeforeWht * ($whtPct / 100.0);
+                    $totalLandingCost += ($iBeforeWht + $iWht);
+                }
+            }
+
+            if ($totalLandingCost <= 0) {
+                $totalDisc = (float)($purchase->company_disc_amount ?: $purchase->discount ?: 0);
+                $ourDisc = (float)($purchase->our_disc_amount ?? 0);
+                $companyDiscAmt = max(0, round($totalDisc - $ourDisc, 2));
+                $totalLandingCost = round((float)$purchase->net_amount + $companyDiscAmt, 2);
+            }
+
+            $totalLandingCost = round($totalLandingCost, 2);
+            $companyDiscAmt = max(0, round($totalLandingCost - (float)$purchase->net_amount, 2));
 
             $lines = [];
 
@@ -297,13 +326,10 @@ class TransactionService
                     ]
                 );
 
-                // Stock Landing Cost (Debit) = Net Payable + Company Discount
-                $ourLandingCost = round((float)$purchase->net_amount + $companyDiscAmt, 2);
-
                 // 1. Debit Purchase Expense (Landing Cost: Trade - Our Disc + GST + WHT)
                 $lines[] = [
                     'account_id' => $expenseAccountId,
-                    'debit' => $ourLandingCost,
+                    'debit' => $totalLandingCost,
                     'credit' => 0,
                     'narration' => "Purchase Invoice #{$purchase->invoice_no} (Stock Landing Cost: Trade - Our Disc + GST + WHT)",
                 ];
