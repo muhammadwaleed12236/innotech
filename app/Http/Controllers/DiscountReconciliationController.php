@@ -407,18 +407,29 @@ class DiscountReconciliationController extends Controller
         $totalCustomerDiscountGiven = $totalRegDiscGiven + $totalSpDiscGiven + $totalTradeActivityGiven + $totalExtraDiscGiven;
 
         // 3. Variance & Profit Calculations
-        // Advance Discount Variance: Actual Discount given to customers vs Customer Discount funded by companies
-        $advanceDiscountVariance = $totalCustomerDiscountGiven - $totalCustomerPassThroughAmt;
+        // Total company customer/claims fund = Customer passthrough + Custom heads (expiry/return/etc.)
+        $totalCustomerFunded = $totalCustomerPassThroughAmt + $totalCustomHeadsAmt;
 
-        // Estimated Cost of Goods Sold (Purchases Net Trade Value)
-        $cogs = max(0, $totalPurchaseValue - $totalCompanyDiscAmt);
+        // Advance Discount Variance: Actual Discount given to customers vs Customer Discount funded by companies
+        $advanceDiscountVariance = $totalCustomerDiscountGiven - $totalCustomerFunded;
+
+        // Estimated Cost of Goods Sold for actual sales in this period
+        $salesCogs = 0;
+        if ($sales->count() > 0) {
+            $saleIds = $sales->pluck('id')->toArray();
+            $salesCogs = (float) DB::table('sale_items')
+                ->join('products', 'products.id', '=', 'sale_items.product_id')
+                ->whereIn('sale_items.sale_id', $saleIds)
+                ->sum(DB::raw('sale_items.total_pieces * products.purchase_price_per_piece'));
+        }
+        $cogs = $salesCogs;
         $directTradingMargin = max(0, $totalSalesNet - $cogs);
 
-        // Retained Discount Profit: Our share of company discount that stays with us
-        $retainedDiscountProfit = $totalOurDiscAmt;
+        // Retained Discount Profit: Realized only when goods are sold
+        $retainedDiscountProfit = $totalSalesNet > 0 ? $totalOurDiscAmt : 0;
 
-        // Total Net Profit: Trading Margin + Retained Company Discount Margin - (any extra advance discount given beyond company share)
-        $adjustedNetProfit = ($totalSalesNet - $cogs) + $retainedDiscountProfit;
+        // Total Net Realized Profit: Trading Margin on sales + Retained Company Discount Margin
+        $adjustedNetProfit = $totalSalesNet > 0 ? (($totalSalesNet - $cogs) + $retainedDiscountProfit) : 0;
 
         // Finalize Head Summary Totals
         foreach ($headSummaryTotals as &$hst) {
