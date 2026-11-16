@@ -278,23 +278,68 @@ class TransactionService
             $expenseAccountId = $balanceService->getPurchaseExpenseId();
             $apAccountId = $balanceService->getAccountsPayableId();
 
+            // Calculate Company Customer Discount & Claims (Total Disc - Our Margin)
+            $totalDisc = (float)($purchase->company_disc_amount ?: $purchase->discount ?: 0);
+            $ourDisc = (float)($purchase->our_disc_amount ?? 0);
+            $companyDiscAmt = max(0, round($totalDisc - $ourDisc, 2));
+
             $lines = [];
 
-            // 1. Debit Purchase Expense
-            $lines[] = [
-                'account_id' => $expenseAccountId,
-                'debit' => (float)$purchase->net_amount,
-                'credit' => 0,
-                'narration' => "Purchase Invoice #{$purchase->invoice_no}",
-            ];
+            if ($companyDiscAmt > 0) {
+                // Find or create Company Discount Account
+                $compDiscAccount = \App\Models\Account::firstOrCreate(
+                    ['account_code' => 'COMP-DISC'],
+                    [
+                        'title' => 'Company Discount & Claims',
+                        'type' => 'Credit',
+                        'opening_balance' => 0,
+                        'status' => 1
+                    ]
+                );
 
-            // 2. Credit Accounts Payable (Vendor Liability)
-            $lines[] = [
-                'account_id' => $apAccountId,
-                'debit' => 0,
-                'credit' => (float)$purchase->net_amount,
-                'narration' => "Payable to Vendor " . ($purchase->vendor->name ?? ''),
-            ];
+                // Stock Landing Cost (Debit) = Net Payable + Company Discount
+                $ourLandingCost = round((float)$purchase->net_amount + $companyDiscAmt, 2);
+
+                // 1. Debit Purchase Expense (Landing Cost: Trade - Our Disc + GST + WHT)
+                $lines[] = [
+                    'account_id' => $expenseAccountId,
+                    'debit' => $ourLandingCost,
+                    'credit' => 0,
+                    'narration' => "Purchase Invoice #{$purchase->invoice_no} (Stock Landing Cost: Trade - Our Disc + GST + WHT)",
+                ];
+
+                // 2. Credit Accounts Payable (Payable to Vendor)
+                $lines[] = [
+                    'account_id' => $apAccountId,
+                    'debit' => 0,
+                    'credit' => (float)$purchase->net_amount,
+                    'narration' => "Payable to Vendor " . ($purchase->vendor->name ?? ''),
+                ];
+
+                // 3. Credit Company Discount & Claims (Liability for Customers/Claims)
+                $lines[] = [
+                    'account_id' => $compDiscAccount->id,
+                    'debit' => 0,
+                    'credit' => $companyDiscAmt,
+                    'narration' => "Company Discount for Purchase #{$purchase->invoice_no}",
+                ];
+            } else {
+                // 1. Debit Purchase Expense
+                $lines[] = [
+                    'account_id' => $expenseAccountId,
+                    'debit' => (float)$purchase->net_amount,
+                    'credit' => 0,
+                    'narration' => "Purchase Invoice #{$purchase->invoice_no}",
+                ];
+
+                // 2. Credit Accounts Payable (Vendor Liability)
+                $lines[] = [
+                    'account_id' => $apAccountId,
+                    'debit' => 0,
+                    'credit' => (float)$purchase->net_amount,
+                    'narration' => "Payable to Vendor " . ($purchase->vendor->name ?? ''),
+                ];
+            }
 
             // 3. Voucher Header
             // Using TYPE_PAYMENT so it appears in 'all_Payment_vochers' listing as requested
