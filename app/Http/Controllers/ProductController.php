@@ -113,19 +113,14 @@ class ProductController extends Controller
 
         $page = (int) ($request->get('page') ?? 1);
 
-        if ($term === '') {
-            $cacheKey = 'products_ajax_default_page_' . $page;
-            $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
-            if ($cached) {
-                return response()->json($cached);
-            }
-        }
-
         $query = Product::query()
             ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code', 'tax_type_id', 'model')
             ->with(['unit', 'taxType'])
             ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
-            ->where('is_active', true); /* Only active products */
+            ->where('is_active', true) /* Only active products */
+            ->whereHas('warehouseStocks', function($q) {
+                $q->where('total_pieces', '>', 0);
+            });
 
         if ($term !== '') {
             $termTrimmed = trim($term);
@@ -421,16 +416,20 @@ class ProductController extends Controller
                     if ($vSaleDisc <= 0 && $custDisc > 0) {
                         $vSaleDisc = $custDisc;
                     }
-                    $isVDisabled = ($vBalance <= 0);
+                    
+                    // Completely skip variants that have 0 or negative stock
+                    if ($vBalance <= 0) {
+                        continue;
+                    }
 
                     $expanded[] = [
                         'id' => $p->id . '|variant|' . base64_encode($variantJson),
-                        'text' => $vName." (SKU: {$p->item_code})" . ($isVDisabled ? ' [OUT OF STOCK]' : ''),
+                        'text' => $vName." (SKU: {$p->item_code})",
                         'sku' => $p->item_code ?? '',
                         'barcode' => $vBarcode,
                         'stock' => $vStockDisplay,
                         'stock_pieces' => $vBalance,
-                        'disabled' => $isVDisabled,
+                        'disabled' => false,
                         'name' => $vName,
                         'size_mode' => $p->size_mode,
                         'unit_name' => $vUnitName,
@@ -532,15 +531,19 @@ class ProductController extends Controller
                 }
             }
 
-            $isSimpleDisabled = ($stockPieces <= 0);
+            // Completely skip simple products that have 0 or negative stock
+            if ($stockPieces <= 0) {
+                return [];
+            }
+
             return [[
                 'id' => $p->id,
-                'text' => $p->item_name." (SKU: {$p->item_code})" . ($isSimpleDisabled ? ' [OUT OF STOCK]' : ''),
+                'text' => $p->item_name." (SKU: {$p->item_code})",
                 'sku' => $p->item_code ?? '',
                 'barcode' => $p->barcode_path ?? $p->hs_code ?? '',
                 'stock' => $stockDisplay,
                 'stock_pieces' => $stockPieces,
-                'disabled' => $isSimpleDisabled,
+                'disabled' => false,
                 'name' => $p->item_name,
                 'size_mode' => $p->size_mode,
                 'unit_name' => $unitName,

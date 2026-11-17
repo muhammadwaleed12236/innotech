@@ -134,8 +134,21 @@ class SaleController extends Controller
         $activePrefix = (request('type') === 'quotation') ? 'QUOT' : ($defaultSeries ? $defaultSeries->prefix : 'INV');
         $nextInvoiceNumber = \App\Models\InvoiceSeries::generateNextNo($activePrefix);
 
-        $recentProducts = Product::latest()->take(12)->get();
-        $allProducts = Product::where('is_active', true)->withSum('warehouseStocks', 'total_pieces')->orderBy('item_name')->get();
+        $recentProducts = Product::where('is_active', true)
+            ->whereHas('warehouseStocks', function($q) {
+                $q->where('total_pieces', '>', 0);
+            })
+            ->withSum('warehouseStocks', 'total_pieces')
+            ->latest()
+            ->take(12)
+            ->get();
+        $allProducts = Product::where('is_active', true)
+            ->whereHas('warehouseStocks', function($q) {
+                $q->where('total_pieces', '>', 0);
+            })
+            ->withSum('warehouseStocks', 'total_pieces')
+            ->orderBy('item_name')
+            ->get();
 
         // Filter accounts (Cash/Bank) for Payment Voucher
         $chequeAccount = \App\Models\Account::firstOrCreate(
@@ -173,6 +186,7 @@ class SaleController extends Controller
                     ->where('warehouse_stocks.warehouse_id', $warehouseId);
             })
             ->where('products.is_active', true) /* Only active products */
+            ->where('warehouse_stocks.total_pieces', '>', 0) /* Only products with stock */
             ->where(function ($query) use ($q) {
                 $query->where('products.item_name', 'like', "%{$q}%")
                     ->orWhere('products.item_code', 'like', "%{$q}%")
@@ -1491,6 +1505,20 @@ class SaleController extends Controller
                         }
                     }
 
+                    // Check available stock to strictly block negative stock sales
+                    if (!in_array($request->sale_status, ['draft', 'quotation'])) {
+                        $whId = $request->warehouse_id ?? 1;
+                        $whStock = \App\Models\WarehouseStock::where('product_id', $product->id)
+                            ->where('warehouse_id', $whId)
+                            ->first();
+                        $availPcs = $whStock ? (float)$whStock->total_pieces : 0;
+                        if ($availPcs < $totalPieces) {
+                            $availFmt = $ppb > 1 ? (floor($availPcs / $ppb) . ' ctn ' . ($availPcs % $ppb) . ' pcs (' . $availPcs . ' pcs)') : ($availPcs . ' pcs');
+                            $reqFmt = $ppb > 1 ? (floor($totalPieces / $ppb) . ' ctn ' . ($totalPieces % $ppb) . ' pcs (' . $totalPieces . ' pcs)') : ($totalPieces . ' pcs');
+                            throw new \Exception("Stock negative mein sale nahi ho sakta! Product '{$product->item_name}' ka available stock {$availFmt} hai, jabke entered quantity {$reqFmt} hai.");
+                        }
+                    }
+
                     // Calculate boxes for storage (reverse calculation)
                     $storedQtyBox = $ppb > 0 ? ($totalPieces / $ppb) : $totalPieces;
                     
@@ -2329,14 +2357,26 @@ class SaleController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                // Deduct Batch quantity if specified
+                // Deduct Batch quantity if specified with negative stock check
                 if (!empty($item->batch_id)) {
-                    \App\Models\ProductBatch::where('id', $item->batch_id)->decrement('qty', $qtyPieces);
+                    $bRec = \App\Models\ProductBatch::find($item->batch_id);
+                    if ($bRec && (float)$bRec->qty < $qtyPieces) {
+                        throw new \Exception("Batch {$bRec->batch_no} mein stock insufficient hai! Available: {$bRec->qty}, Requested: {$qtyPieces}");
+                    }
+                    if ($bRec) {
+                        $bRec->decrement('qty', $qtyPieces);
+                    }
                 } elseif (!empty($item->batch_no)) {
-                    \App\Models\ProductBatch::where('product_id', $item->product_id)
+                    $bRec = \App\Models\ProductBatch::where('product_id', $item->product_id)
                         ->where('warehouse_id', $targetWhId)
                         ->where('batch_no', $item->batch_no)
-                        ->decrement('qty', $qtyPieces);
+                        ->first();
+                    if ($bRec && (float)$bRec->qty < $qtyPieces) {
+                        throw new \Exception("Batch {$bRec->batch_no} mein stock insufficient hai! Available: {$bRec->qty}, Requested: {$qtyPieces}");
+                    }
+                    if ($bRec) {
+                        $bRec->decrement('qty', $qtyPieces);
+                    }
                 }
 
                 // Update Serials status to 'sold' if specified

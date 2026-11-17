@@ -788,6 +788,28 @@
         $row.find('.total-pieces').val(totalPieces);
         $row.find('.price-per-piece').val(unitPrice);
 
+        // Negative Stock Protection Check
+        const availStockPieces = parseFloat($row.data('available_stock_pieces'));
+        const batchStockQty = parseFloat($row.data('batch_available_qty'));
+        let maxAllowedPieces = !isNaN(availStockPieces) ? availStockPieces : null;
+        if (!isNaN(batchStockQty) && batchStockQty > 0) {
+            maxAllowedPieces = (maxAllowedPieces !== null && maxAllowedPieces > 0) ? Math.min(maxAllowedPieces, batchStockQty) : batchStockQty;
+        }
+
+        if (maxAllowedPieces !== null && maxAllowedPieces >= 0) {
+            if (totalPieces > maxAllowedPieces) {
+                $row.find('.carton-qty, .loose-pcs-input').addClass('is-invalid text-danger border-danger');
+                $row.addClass('row-stock-exceeded');
+                if ($row.find('.stock-exceed-badge').length === 0) {
+                    $row.find('.col-total-qty').append('<small class="stock-exceed-badge text-danger d-block fw-bold" style="font-size:8.5px; line-height:1; white-space:nowrap;" title="Stock se zyada hai">Stock Kam!</small>');
+                }
+            } else {
+                $row.find('.carton-qty, .loose-pcs-input').removeClass('is-invalid text-danger border-danger');
+                $row.removeClass('row-stock-exceeded');
+                $row.find('.stock-exceed-badge').remove();
+            }
+        }
+
         // 1. Gross
         $row.find('.visible-gross').val(gross.toFixed(2));
         $row.find('.gross-amount').val(gross.toFixed(2));
@@ -1396,6 +1418,27 @@
                 }
                 markInvalid($cartonQtyInput);
             }
+
+            // Negative Stock Check
+            const availStock = parseFloat($row.data('available_stock_pieces'));
+            const batchStock = parseFloat($row.data('batch_available_qty'));
+            let maxStockPieces = !isNaN(availStock) ? availStock : null;
+            if (!isNaN(batchStock) && batchStock > 0) {
+                maxStockPieces = (maxStockPieces !== null && maxStockPieces > 0) ? Math.min(maxStockPieces, batchStock) : batchStock;
+            }
+
+            const totalPiecesVal = parseFloat($row.find('.total-pieces').val()) || qtyVal;
+            if (maxStockPieces !== null && totalPiecesVal > maxStockPieces) {
+                ok = false;
+                if (!firstMessage) {
+                    const prodName = $row.find('.product option:selected').text() || $row.find('.item-code-display').val() || 'Selected Item';
+                    const availDisplay = $row.find('.stock').val() || maxStockPieces;
+                    firstMessage = `Row ${rowIndex + 1} (${prodName}): Stock negative mein sale nahi ho sakta! Available stock: ${availDisplay}, jabke enter kiya gaya: ${totalPiecesVal} pcs hai.`;
+                    firstEl = $cartonQtyInput;
+                }
+                markInvalid($cartonQtyInput);
+                markInvalid($loosePcsInput);
+            }
         });
 
         const chequeAmt = parseFloat($('#sale_cheque_amount').val() || '0') || 0;
@@ -1678,6 +1721,10 @@
             } else {
                 $row.find('.variant-stock-value').val('');
             }
+            
+            // Store available stock pieces on row for instant negative stock validation
+            const availPieces = parseFloat(data.stock_pieces !== undefined ? data.stock_pieces : (variantStock !== null ? variantStock : (data.stock || 0)));
+            $row.data('available_stock_pieces', availPieces);
             
             loadWarehousesForProduct($row, pid);
             
@@ -2121,6 +2168,24 @@
                 updateGrandTotals();
                 refreshPostedState();
             });
+
+        // Realtime warning when quantity exceeds available stock
+        $(document).on('change', '.carton-qty, .loose-pcs-input', function() {
+            const $row = $(this).closest('tr');
+            const availStock = parseFloat($row.data('available_stock_pieces'));
+            const batchStock = parseFloat($row.data('batch_available_qty'));
+            let maxLimit = !isNaN(availStock) ? availStock : null;
+            if (!isNaN(batchStock) && batchStock > 0) {
+                maxLimit = (maxLimit !== null && maxLimit > 0) ? Math.min(maxLimit, batchStock) : batchStock;
+            }
+            const totalPcsVal = parseFloat($row.find('.total-pieces').val()) || 0;
+            if (maxLimit !== null && totalPcsVal > maxLimit) {
+                const availDisplay = $row.find('.stock').val() || maxLimit;
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(`Quantity available stock (${availDisplay}) se zyada hai! Stock negative mein sale nahi ho sakta.`, 'Stock Exceeded');
+                }
+            }
+        });
 
         $(document).on('input', '.discount-amount', function() {
             computeRow($(this).closest('tr'), true);
@@ -2746,26 +2811,23 @@
                 if (res && res.length > 0) {
                     res.forEach(p => {
                         const stockVal = parseFloat(p.wh_stock || 0);
-                        const isZero = stockVal <= 0 || p.disabled;
-                        const stockText = isZero ? 'Out of Stock' : `${p.wh_stock} Pcs`;
+                        if (stockVal <= 0 || p.disabled) return; // Do not show zero-stock products in list
+                        const stockText = `${p.wh_stock} Pcs`;
                         const priceText = p.trade_price ? parseFloat(p.trade_price).toFixed(2) : (p.retail_price ? parseFloat(p.retail_price).toFixed(2) : '0.00');
                         html += `
-                            <div class="pos-product-card ${isZero ? 'opacity-50' : ''}" style="${isZero ? 'filter: grayscale(0.8);' : ''}">
+                            <div class="pos-product-card">
                                 <div class="pos-product-img">
                                     <i class="fas fa-box text-secondary fs-5"></i>
                                 </div>
                                 <div class="pos-product-info">
                                     <div class="pos-product-name" title="${p.item_name}">${p.item_name}</div>
                                     <div class="pos-product-sub">
-                                        <span class="${isZero ? 'badge bg-danger rounded-pill' : 'badge-stock-green'}">${stockText}</span> SKU: ${p.item_code || '-'}
+                                        <span class="badge-stock-green">${stockText}</span> SKU: ${p.item_code || '-'}
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="pos-product-price">${priceText}<br><small class="text-muted fs-7">TP</small></div>
-                                    ${isZero ?
-                                        `<button type="button" class="pos-product-add-btn disabled" disabled style="opacity: 0.35; cursor: not-allowed;" title="Out of Stock"><i class="fas fa-ban"></i></button>`
-                                        : `<button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="${p.id}" data-variant-data="${p.variant_data || ''}" title="Add to Grid"><i class="fas fa-plus"></i></button>`
-                                    }
+                                    <button type="button" class="pos-product-add-btn add-product-direct-btn" data-id="${p.id}" data-variant-data="${p.variant_data || ''}" title="Add to Grid"><i class="fas fa-plus"></i></button>
                                 </div>
                             </div>`;
                     });
@@ -2827,6 +2889,7 @@
                         $row.find('.batch-no-hidden').val(fifo.batch_no);
                         $row.find('.selected-batch-no').val(fifo.batch_no);
                         $row.find('.selected-batch-no').attr('title', 'FIFO Batch: ' + fifo.batch_no + ' (Qty: ' + fifo.qty + ', Exp: ' + (fifo.expiry_date || 'N/A') + ')');
+                        $row.data('batch_available_qty', parseFloat(fifo.qty || 0));
                     }
                 } else {
                     $row.find('.batch-id-hidden').val('');
@@ -2911,6 +2974,7 @@
         $(document).on('click', '.btn-choose-batch', function() {
             const batchId = $(this).data('batch-id');
             const batchNo = $(this).data('batch-no');
+            const batchQty = parseFloat($(this).data('batch-qty') || 0);
             const rowIndex = $('#activeBatchRowIndex').val();
             const $row = $('#salesTableBody tr').eq(rowIndex);
 
@@ -2918,13 +2982,15 @@
                 $row.find('.batch-id-hidden').val(batchId);
                 $row.find('.batch-no-hidden').val(batchNo);
                 $row.find('.selected-batch-no').val(batchNo);
-                $row.find('.selected-batch-no').attr('title', 'Selected Batch: ' + batchNo);
+                $row.find('.selected-batch-no').attr('title', 'Selected Batch: ' + batchNo + ' (Qty: ' + batchQty + ')');
+                $row.data('batch_available_qty', batchQty);
 
                 const whId = $(this).data('warehouse-id');
                 if (whId) {
                     $row.find('.warehouse').val(whId);
                 }
 
+                computeRow($row);
                 $('#modalSelectBatch').modal('hide');
                 $row.find('.carton-qty').focus().select();
             }
