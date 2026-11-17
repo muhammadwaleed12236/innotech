@@ -1561,22 +1561,22 @@ class SaleController extends Controller
                 $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
                 $lineGrossAfterActivity = max(0, $lineGross - $tradeActivity);
 
-                // 1. Regular Discount (Calculated on Gross directly)
+                // 1. Regular Discount
                 $regDiscPct = isset($request->reg_disc_percent[$index]) ? (float)$request->reg_disc_percent[$index] : 0;
                 $regDiscAmt = isset($request->reg_disc_amount[$index]) && $request->reg_disc_amount[$index] !== ''
                     ? (float)$request->reg_disc_amount[$index]
-                    : round(($lineGross * $regDiscPct) / 100, 2);
+                    : round(($lineGrossAfterActivity * $regDiscPct) / 100, 2);
 
-                // 2. Special Discount (Calculated on Gross directly)
+                // 2. Special Discount
                 $spDiscPct = isset($request->sp_disc_percent[$index]) ? (float)$request->sp_disc_percent[$index] : ($discType === 'percent' ? $discount : 0);
                 $spDiscAmt = isset($request->sp_disc_amount[$index]) && $request->sp_disc_amount[$index] !== ''
                     ? (float)$request->sp_disc_amount[$index]
-                    : ($discType === 'pkr' ? min($lineGross, $discount) : round(($lineGross * $spDiscPct) / 100, 2));
+                    : ($discType === 'pkr' ? min($lineGrossAfterActivity, $discount) : round(($lineGrossAfterActivity * $spDiscPct) / 100, 2));
 
                 $calcDiscountAmount  = round($regDiscAmt + $spDiscAmt, 2);
-                $calcDiscountPercent = $lineGross > 0 ? round(($calcDiscountAmount / $lineGross) * 100, 2) : 0;
+                $calcDiscountPercent = $lineGrossAfterActivity > 0 ? round(($calcDiscountAmount / $lineGrossAfterActivity) * 100, 2) : 0;
 
-                $calcExclusiveGst = max(0, round($lineGross - $tradeActivity - $calcDiscountAmount, 2));
+                $calcExclusiveGst = max(0, round($lineGrossAfterActivity - $calcDiscountAmount, 2));
                 // Dynamic Tax Controls & 3rd Schedule / Tax Type detection
                 $itemTaxType = $product ? $product->taxType : null;
                 $isItemThirdSchedule = $itemTaxType ? $itemTaxType->isThirdSchedule() : (!empty($request->is_third_schedule[$index]) && in_array($request->is_third_schedule[$index], ['1', 1, true]));
@@ -1632,11 +1632,6 @@ class SaleController extends Controller
                 }
                 $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
                 $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
-                if ($advTaxAmount <= 0 && !empty($request->adv_tax_percent[$index])) {
-                    $advPct = (float)$request->adv_tax_percent[$index];
-                    $advBase = $calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt;
-                    $advTaxAmount = round(($advBase * $advPct) / 100, 2);
-                }
                 $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt + $advTaxAmount, 2);
                 $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);
                 $mfgDate = $request->mfg_date[$index] ?? null;
@@ -1697,11 +1692,6 @@ class SaleController extends Controller
                 $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
                 $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
                 $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
-                if ($advTaxAmount <= 0 && !empty($request->adv_tax_percent[$index])) {
-                    $advPct = (float)$request->adv_tax_percent[$index];
-                    $advBase = $calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt;
-                    $advTaxAmount = round(($advBase * $advPct) / 100, 2);
-                }
 
                 $saleItem->trade_activity = $tradeActivity;
                 $saleItem->reg_disc_percent = $regDiscPct;
@@ -1709,7 +1699,6 @@ class SaleController extends Controller
                 $saleItem->sp_disc_percent = $spDiscPct;
                 $saleItem->sp_disc_amount = $spDiscAmt;
                 $saleItem->mrp_amount = $mrpAmount;
-                $saleItem->adv_tax_percent = (float)($request->adv_tax_percent[$index] ?? 0);
                 $saleItem->adv_tax_amount = $advTaxAmount;
                 $saleItem->discount_percent = $calcDiscountPercent;
                 $saleItem->discount_amount = $calcDiscountAmount;
