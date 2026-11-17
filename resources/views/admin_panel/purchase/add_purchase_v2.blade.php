@@ -764,7 +764,7 @@
                     {{-- Date --}}
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 fw-bold text-secondary">Date:</label>
-                        <input type="text" name="purchase_date" class="form-control datepicker-custom text-center fw-bold" value="{{ date('d/m/Y') }}" style="width: 130px; height: 38px;">
+                        <input type="text" name="purchase_date" class="form-control datepicker-custom text-center fw-bold" id="purchaseDateInput" value="{{ date('Y-m-d') }}" style="width: 130px; height: 38px;">
                     </div>
                 </div>
             </div>
@@ -1379,6 +1379,17 @@
 
     <script>
         $(document).ready(function() {
+            // Ensure Purchase Date Input defaults to today's date
+            if (typeof flatpickr !== 'undefined' && $('#purchaseDateInput').length) {
+                flatpickr('#purchaseDateInput', {
+                    dateFormat: "Y-m-d",
+                    altInput: true,
+                    altFormat: "d/m/Y",
+                    defaultDate: $('#purchaseDateInput').val() || new Date(),
+                    allowInput: true
+                });
+            }
+
             // ==================== TAX SCHEDULE SELECTOR LOGIC ====================
             let $activeTaxRow = null;
 
