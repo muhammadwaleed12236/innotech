@@ -2878,9 +2878,9 @@
             if (!productId) return;
             warehouseId = warehouseId || $row.find('.warehouse').val() || 1;
 
-            // Fetch Batches & Apply FIFO by Default
-            $.get('{{ route("sale.get_batches") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
-                if (res.success && res.batches && res.batches.length > 0) {
+            // Fetch Batches & Apply FIFO by Default (using root-relative URL to avoid mixed-content issues on HTTPS live server)
+            $.get('{{ route("sale.get_batches", [], false) }}', { product_id: productId, warehouse_id: warehouseId }).done(function(res) {
+                if (res && res.success && res.batches && res.batches.length > 0) {
                     $row.data('available_batches', res.batches);
                     // FIFO: automatically set the first batch (oldest / earliest expiry)
                     const fifo = res.fifo_batch || res.batches[0];
@@ -2899,11 +2899,13 @@
                 }
 
                 // If serial product, check Serials / IMEIs
-                $.get('{{ route("sale.get_serials") }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
-                    if (sRes.success && sRes.is_serial_product) {
+                $.get('{{ route("sale.get_serials", [], false) }}', { product_id: productId, warehouse_id: warehouseId }).done(function(sRes) {
+                    if (sRes && sRes.success && sRes.is_serial_product) {
                         openSerialSelectModal($row, sRes.serials || [], sRes);
                     }
                 });
+            }).fail(function(xhr) {
+                console.warn('Batch fetch request error:', xhr.status, xhr.responseText);
             });
         };
 
@@ -2911,7 +2913,7 @@
         $(document).on('click', '.selected-batch-no, .btn-select-batch', function(e) {
             e.preventDefault();
             const $row = $(this).closest('tr');
-            const pid = $row.find('.product-id-hidden').val();
+            const pid = $row.find('.product-id-hidden').val() || $row.find('.product').val();
             if (!pid) return;
 
             const whId = $row.find('.warehouse').val() || 1;
@@ -2919,9 +2921,11 @@
             if (cachedBatches && cachedBatches.length > 0) {
                 openBatchSelectModal($row, cachedBatches);
             } else {
-                $.get('{{ route("sale.get_batches") }}', { product_id: pid, warehouse_id: whId }).done(function(res) {
+                $.get('{{ route("sale.get_batches", [], false) }}', { product_id: pid, warehouse_id: whId }).done(function(res) {
                     $row.data('available_batches', res.batches || []);
                     openBatchSelectModal($row, res.batches || []);
+                }).fail(function(xhr) {
+                    console.warn('Batch modal fetch error:', xhr.status, xhr.responseText);
                 });
             }
         });

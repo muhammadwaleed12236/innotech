@@ -3286,26 +3286,67 @@ class SaleController extends Controller
      */
     public function getProductBatches(Request $request)
     {
-        $productId = $request->get('product_id');
-        $warehouseId = $request->get('warehouse_id');
+        $rawProductId = $request->get('product_id');
+        $productId = (int) explode('|', (string)$rawProductId)[0];
+        $warehouseId = (int) ($request->get('warehouse_id') ?: 1);
         $strict = $request->boolean('strict_warehouse', false);
 
-        $product = \App\Models\Product::find($productId);
+        if ($productId <= 0) {
+            return response()->json([
+                'success' => true,
+                'is_batch_product' => false,
+                'batches' => [],
+                'fifo_batch' => null
+            ]);
+        }
+
+        // Auto-sync batches from purchase_items if product_batches table is not populated yet
+        $existingBatchesCount = \App\Models\ProductBatch::where('product_id', $productId)->count();
+        if ($existingBatchesCount === 0) {
+            $piBatches = \DB::table('purchase_items')
+                ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+                ->whereIn('purchases.status_purchase', ['approved', 'posted', 'Returned', 'Partial'])
+                ->where('purchase_items.product_id', $productId)
+                ->whereNotNull('purchase_items.batch_no')
+                ->where('purchase_items.batch_no', '!=', '')
+                ->select(
+                    'purchase_items.product_id',
+                    'purchase_items.warehouse_id',
+                    'purchase_items.batch_no',
+                    'purchase_items.mfg_date',
+                    'purchase_items.exp_date',
+                    \DB::raw('SUM(purchase_items.qty) as total_qty')
+                )
+                ->groupBy('purchase_items.product_id', 'purchase_items.warehouse_id', 'purchase_items.batch_no', 'purchase_items.mfg_date', 'purchase_items.exp_date')
+                ->get();
+
+            foreach ($piBatches as $pib) {
+                \App\Models\ProductBatch::firstOrCreate([
+                    'product_id' => $pib->product_id,
+                    'warehouse_id' => (int) ($pib->warehouse_id ?: $warehouseId),
+                    'batch_no' => $pib->batch_no,
+                ], [
+                    'mfg_date' => $pib->mfg_date,
+                    'expiry_date' => $pib->exp_date,
+                    'qty' => (float)$pib->total_qty,
+                ]);
+            }
+        }
 
         $query = \App\Models\ProductBatch::with('warehouse')
             ->where('product_id', $productId)
             ->where('qty', '>', 0);
 
-        if ($warehouseId && $strict) {
+        if ($warehouseId > 0 && $strict) {
             $query->where('warehouse_id', $warehouseId);
         }
 
-        if ($warehouseId) {
-            $query->orderByRaw("CASE WHEN warehouse_id = ? THEN 0 ELSE 1 END", [$warehouseId]);
+        if ($warehouseId > 0) {
+            $query->orderByRaw("CASE WHEN warehouse_id = " . (int)$warehouseId . " THEN 0 ELSE 1 END");
         }
 
-        // Standard FIFO / FEFO Ordering: earliest expiry date first, then earliest created_at / id
-        $batches = $query->orderByRaw("CASE WHEN expiry_date IS NULL OR expiry_date = '' THEN 1 ELSE 0 END ASC")
+        // Standard FIFO / FEFO Ordering: earliest expiry date first, then earliest created_at / id (Strict SQL safe)
+        $batches = $query->orderByRaw("CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END ASC")
             ->orderBy('expiry_date', 'asc')
             ->orderBy('created_at', 'asc')
             ->orderBy('id', 'asc')
