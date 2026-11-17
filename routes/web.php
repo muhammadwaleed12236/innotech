@@ -620,6 +620,11 @@ Route::middleware('auth')->group(function () {
     Route::get('report/principal-delivery-statement/fetch', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'fetchData'])->name('report.principal_delivery_statement.fetch');
     Route::get('report/principal-delivery-statement/export', [\App\Http\Controllers\PrincipalDeliveryReportController::class, 'exportCsv'])->name('report.principal_delivery_statement.export');
 
+    // Trade Discount Report
+    Route::get('report/trade-discount', [\App\Http\Controllers\TradeDiscountReportController::class, 'index'])->name('report.trade_discount');
+    Route::get('report/trade-discount/fetch', [\App\Http\Controllers\TradeDiscountReportController::class, 'fetchData'])->name('report.trade_discount.fetch');
+    Route::get('report/trade-discount/export', [\App\Http\Controllers\TradeDiscountReportController::class, 'exportCsv'])->name('report.trade_discount.export');
+
     // Branch Summary Report (Super Admin only)
     Route::get('report/branch-summary', [ReportingController::class, 'branch_summary_report'])->middleware('branch.access')->name('report.branch_summary');
     Route::get('report/branch-summary/fetch', [ReportingController::class, 'fetchBranchSummary'])->middleware('branch.access')->name('report.branch_summary.fetch');
