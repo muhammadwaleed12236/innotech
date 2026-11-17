@@ -816,27 +816,26 @@
 
         // 2. Trade Activity
         const tradeActivity = toNum($row.find('.trade-activity').val());
-        const grossAfterActivity = Math.max(0, gross - tradeActivity);
 
-        // 3. Regular Discount
+        // 3. Regular Discount (Calculated directly on Gross)
         let regDiscPct = toNum($row.find('.reg-disc-percent').val());
         let regDiscAmt = toNum($row.find('.reg-disc-amount').val());
         if (activeField === 'reg-disc-amount') {
-            regDiscPct = grossAfterActivity > 0 ? ((regDiscAmt / grossAfterActivity) * 100) : 0;
+            regDiscPct = gross > 0 ? ((regDiscAmt / gross) * 100) : 0;
             $row.find('.reg-disc-percent').val(regDiscPct.toFixed(2));
         } else {
-            regDiscAmt = grossAfterActivity > 0 ? ((grossAfterActivity * regDiscPct) / 100) : 0;
+            regDiscAmt = gross > 0 ? ((gross * regDiscPct) / 100) : 0;
             $row.find('.reg-disc-amount').val(regDiscAmt.toFixed(2));
         }
 
-        // 4. Special Discount
+        // 4. Special Discount (Calculated directly on Gross)
         let spDiscPct = toNum($row.find('.sp-disc-percent').val());
         let spDiscAmt = toNum($row.find('.sp-disc-amount').val());
         if (activeField === 'sp-disc-amount') {
-            spDiscPct = grossAfterActivity > 0 ? ((spDiscAmt / grossAfterActivity) * 100) : 0;
+            spDiscPct = gross > 0 ? ((spDiscAmt / gross) * 100) : 0;
             $row.find('.sp-disc-percent').val(spDiscPct.toFixed(2));
         } else {
-            spDiscAmt = grossAfterActivity > 0 ? ((grossAfterActivity * spDiscPct) / 100) : 0;
+            spDiscAmt = gross > 0 ? ((gross * spDiscPct) / 100) : 0;
             $row.find('.sp-disc-amount').val(spDiscAmt.toFixed(2));
         }
 
@@ -844,8 +843,8 @@
         $row.find('.discount-amount').val(totalDam.toFixed(2));
         $row.find('.discount-value').val(spDiscPct.toFixed(2));
 
-        // 5. Value After Discount (Exclusive GST)
-        const exclusiveGst = Math.max(0, grossAfterActivity - totalDam);
+        // 5. Value After Discount (Exclusive GST) = Gross - Trade Activity - Discounts
+        const exclusiveGst = Math.max(0, gross - tradeActivity - totalDam);
         $row.find('.exclusive-gst-amount').val(exclusiveGst.toFixed(2));
 
         // 6. MRP Amount (Retail Amount)
@@ -1770,11 +1769,13 @@
             $row.find('.size-w').val(data.width || '-');
             $row.find('.size-mode-text').val(data.size_mode || '-');
             
-            // Populate Discount: check sale_discount_percent or customer_disc_percent
-            const defaultDiscPct = parseFloat(data.sale_discount_percent || data.customer_disc_percent || 0);
-            $row.find('.reg-disc-percent').val(defaultDiscPct > 0 ? defaultDiscPct.toFixed(2) : '0.00');
+            // Regular and Special discounts default to 0.00 as requested (user will enter manually)
+            $row.find('.reg-disc-percent').val('0.00');
+            $row.find('.reg-disc-amount').val('0.00');
             $row.find('.sp-disc-percent').val('0.00');
-            $row.find('.discount-value').val(defaultDiscPct > 0 ? defaultDiscPct.toFixed(2) : '0.00');
+            $row.find('.sp-disc-amount').val('0.00');
+            $row.find('.discount-value').val('0.00');
+            $row.find('.discount-amount').val('0.00');
             
             $row.data('size_mode', data.size_mode);
             $row.data('pieces_per_box', data.pieces_per_box || 1);

@@ -1561,22 +1561,22 @@ class SaleController extends Controller
                 $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
                 $lineGrossAfterActivity = max(0, $lineGross - $tradeActivity);
 
-                // 1. Regular Discount
+                // 1. Regular Discount (Calculated on Gross directly)
                 $regDiscPct = isset($request->reg_disc_percent[$index]) ? (float)$request->reg_disc_percent[$index] : 0;
                 $regDiscAmt = isset($request->reg_disc_amount[$index]) && $request->reg_disc_amount[$index] !== ''
                     ? (float)$request->reg_disc_amount[$index]
-                    : round(($lineGrossAfterActivity * $regDiscPct) / 100, 2);
+                    : round(($lineGross * $regDiscPct) / 100, 2);
 
-                // 2. Special Discount
+                // 2. Special Discount (Calculated on Gross directly)
                 $spDiscPct = isset($request->sp_disc_percent[$index]) ? (float)$request->sp_disc_percent[$index] : ($discType === 'percent' ? $discount : 0);
                 $spDiscAmt = isset($request->sp_disc_amount[$index]) && $request->sp_disc_amount[$index] !== ''
                     ? (float)$request->sp_disc_amount[$index]
-                    : ($discType === 'pkr' ? min($lineGrossAfterActivity, $discount) : round(($lineGrossAfterActivity * $spDiscPct) / 100, 2));
+                    : ($discType === 'pkr' ? min($lineGross, $discount) : round(($lineGross * $spDiscPct) / 100, 2));
 
                 $calcDiscountAmount  = round($regDiscAmt + $spDiscAmt, 2);
-                $calcDiscountPercent = $lineGrossAfterActivity > 0 ? round(($calcDiscountAmount / $lineGrossAfterActivity) * 100, 2) : 0;
+                $calcDiscountPercent = $lineGross > 0 ? round(($calcDiscountAmount / $lineGross) * 100, 2) : 0;
 
-                $calcExclusiveGst = max(0, round($lineGrossAfterActivity - $calcDiscountAmount, 2));
+                $calcExclusiveGst = max(0, round($lineGross - $tradeActivity - $calcDiscountAmount, 2));
                 // Dynamic Tax Controls & 3rd Schedule / Tax Type detection
                 $itemTaxType = $product ? $product->taxType : null;
                 $isItemThirdSchedule = $itemTaxType ? $itemTaxType->isThirdSchedule() : (!empty($request->is_third_schedule[$index]) && in_array($request->is_third_schedule[$index], ['1', 1, true]));
