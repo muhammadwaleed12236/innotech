@@ -2331,10 +2331,13 @@
                         <i class="fas fa-file-alt me-1"></i> Quotation
                     </button>
                     <button type="button" class="btn btn-outline-primary px-3" id="btnSave">
-                        <i class="fas fa-save me-1"></i> Booking
+                        <i class="fas fa-bookmark me-1"></i> Booking
                     </button>
-                    <button type="button" class="btn btn-primary btn-save-print px-3" id="btnSaveAndComplete">
-                        <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
+                    <button type="button" class="btn btn-success px-3 fw-bold" id="btnSaleAndSave" title="Save and Post Sale without printing">
+                        <i class="fas fa-save me-1"></i> Sale &amp; Save
+                    </button>
+                    <button type="button" class="btn btn-primary btn-save-print px-3 fw-bold" id="btnSaveAndComplete" title="Save, Post Sale, and open Invoice print">
+                        <i class="fas fa-print me-1"></i> Sale &amp; Print Invoice
                     </button>
                 </div>
             </div>
@@ -3210,7 +3213,7 @@
                 'sp_disc_percent' => isset($it->sp_disc_percent) ? (float) $it->sp_disc_percent : (float) ($it->discount_percent ?? 0),
                 'sp_disc_amount' => isset($it->sp_disc_amount) ? (float) $it->sp_disc_amount : (float) ($it->discount_amount ?? 0),
                 'mrp_amount' => isset($it->mrp_amount) && $it->mrp_amount !== '' ? (float) $it->mrp_amount : 0,
-                'is_third_schedule' => (int) ($prod->is_third_schedule ?? 0),
+                'is_third_schedule' => (int) ((($prod && $prod->taxType) ? $prod->taxType->isThirdSchedule() : ($prod->is_third_schedule ?? false)) || (isset($it->mrp_amount) && (float) $it->mrp_amount > 0) ? 1 : 0),
                 'adv_tax_percent' => isset($it->adv_tax_percent) && $it->adv_tax_percent !== '' ? (float) $it->adv_tax_percent : 0,
                 'adv_tax_amount' => isset($it->adv_tax_amount) && $it->adv_tax_amount !== '' ? (float) $it->adv_tax_amount : 0,
             ];
@@ -3345,24 +3348,42 @@
                 if (it.trade_activity !== undefined && it.trade_activity !== null) {
                     $row.find('.trade-activity').val(it.trade_activity);
                 }
-                if (it.mrp_amount !== undefined && it.mrp_amount !== null && parseFloat(it.mrp_amount) > 0) {
-                    $row.find('.mrp-amount').val(it.mrp_amount);
-                    $row.find('.visible-mrp').val(parseFloat(it.mrp_amount).toFixed(2));
-                    $row.data('mrp_manual', true);
-                } else if (it.retail_price !== undefined && it.retail_price !== null && parseFloat(it.retail_price) > 0) {
-                    const totalPcs = parseFloat(it.total_pieces) || 1;
-                    const rAmt = parseFloat(it.retail_price) * totalPcs;
-                    $row.find('.mrp-amount').val(rAmt.toFixed(2));
-                    $row.find('.visible-mrp').val(rAmt.toFixed(2));
+
+                $row.data('retail_price', it.retail_price || 0);
+                const is3rd = Boolean(parseInt(it.is_third_schedule, 10) === 1);
+                $row.data('is_third_schedule', is3rd);
+                $row.find('.hidden-is-third-schedule').val(is3rd ? '1' : '0');
+
+                if (is3rd) {
+                    let mrpVal = (it.mrp_amount !== undefined && it.mrp_amount !== null && parseFloat(it.mrp_amount) > 0) ? parseFloat(it.mrp_amount) : 0;
+                    $row.find('.mrp-amount').val(mrpVal.toFixed(2));
+                    $row.find('.visible-mrp').val(mrpVal.toFixed(2));
+                    $row.data('mrp_manual', mrpVal > 0);
+                    $row.find('.sales-tax-percent').val('0.00');
+                    $row.find('.sales-tax-amount').val('0.00');
+                    $row.find('.visible-st').val('0.00');
+                    $row.data('st_manual', false);
+                } else {
+                    $row.find('.mrp-amount').val('0.00');
+                    $row.find('.visible-mrp').val('0.00');
+                    $row.data('mrp_manual', false);
+                    if (it.sales_tax_amount !== undefined && it.sales_tax_amount !== null) {
+                        $row.find('.sales-tax-amount').val(parseFloat(it.sales_tax_amount).toFixed(2));
+                        $row.find('.visible-st').val(parseFloat(it.sales_tax_amount).toFixed(2));
+                        $row.data('st_manual', true);
+                    }
+                    if (it.sales_tax_percent !== undefined && it.sales_tax_percent !== null) {
+                        $row.find('.sales-tax-percent').val(parseFloat(it.sales_tax_percent).toFixed(2));
+                        $row.data('default_tax_rate', parseFloat(it.sales_tax_percent));
+                    }
                 }
-                if (it.is_third_schedule !== undefined && it.is_third_schedule !== null) {
-                    $row.find('.hidden-is-third-schedule').val(it.is_third_schedule);
-                }
+
                 if (it.adv_tax_percent !== undefined && it.adv_tax_percent !== null) {
                     $row.find('.adv-tax-percent').val(it.adv_tax_percent);
+                    $row.data('adv_rate', parseFloat(it.adv_tax_percent));
                 }
-                if (it.adv_tax_amount !== undefined && it.adv_tax_amount !== null) {
-                    $row.find('.adv-tax-amount').val(it.adv_tax_amount);
+                if (it.adv_tax_amount !== undefined && it.adv_tax_amount !== null && parseFloat(it.adv_tax_amount) > 0) {
+                    $row.find('.adv-tax-amount').val(parseFloat(it.adv_tax_amount).toFixed(2));
                     $row.data('adv_manual', true);
                 }
 
@@ -3383,14 +3404,21 @@
                     var wname = {{ Js::from($sale->walkin_name) }};
                     $('#walkinNameInput').val(wname || 'Walk-in Customer');
                     $('#cc_customer_name').text($('#walkinNameInput').val());
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus(null, false);
+                    }
                 } else {
                     var cid = {{ Js::from($sale->customer_id) }};
                     var ctext = '{{ addslashes(optional($sale->customer_relation)->customer_id) }} — {{ addslashes(optional($sale->customer_relation)->customer_name) }}';
+                    var custRel = @json($sale->customer_relation);
+                    if (typeof window.applyCustomerTaxStatus === 'function' && custRel) {
+                        window.applyCustomerTaxStatus(custRel, false);
+                    }
                     if (cid) {
                         $('#customerSelect').append(new Option(ctext, cid, true, true));
                         $('#customerSelect').trigger({
                             type: 'select2:select',
-                            params: { data: { id: cid, text: ctext } }
+                            params: { data: { id: cid, text: ctext, customer: custRel } }
                         });
                     }
                 }

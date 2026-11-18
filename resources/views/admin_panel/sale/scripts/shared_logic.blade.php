@@ -843,7 +843,7 @@
         // 3. Regular Discount (Calculated directly on Gross)
         let regDiscPct = toNum($row.find('.reg-disc-percent').val());
         let regDiscAmt = toNum($row.find('.reg-disc-amount').val());
-        if (activeField === 'reg-disc-amount') {
+        if (activeField === 'reg-disc-amount' || (regDiscPct <= 0 && regDiscAmt > 0)) {
             regDiscPct = gross > 0 ? ((regDiscAmt / gross) * 100) : 0;
             $row.find('.reg-disc-percent').val(regDiscPct.toFixed(2));
         } else {
@@ -854,7 +854,7 @@
         // 4. Special Discount (Calculated directly on Gross)
         let spDiscPct = toNum($row.find('.sp-disc-percent').val());
         let spDiscAmt = toNum($row.find('.sp-disc-amount').val());
-        if (activeField === 'sp-disc-amount') {
+        if (activeField === 'sp-disc-amount' || (spDiscPct <= 0 && spDiscAmt > 0)) {
             spDiscPct = gross > 0 ? ((spDiscAmt / gross) * 100) : 0;
             $row.find('.sp-disc-percent').val(spDiscPct.toFixed(2));
         } else {
@@ -1272,7 +1272,7 @@
 
     function refreshPostedState() {
         const state = canPost();
-        $('#btnPosted, #btnHeaderPosted').prop('disabled', !state);
+        $('#btnPosted, #btnHeaderPosted, #btnSaveAndComplete, #btnSaleAndPrint, #btnSaleAndSave').prop('disabled', !state);
     }
 
     function ensureSaved() {
@@ -2570,7 +2570,8 @@
             const v = validateFormAll();
             if (!v.ok) {
                 window.isSaveAndPrintAction = false;
-                $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
+                $('#btnSaveAndComplete, #btnSaleAndPrint').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Sale &amp; Print Invoice');
+                $('#btnSaleAndSave, #btnHeaderSaveSale').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Sale &amp; Save');
                 showAlert('warning', v.message);
                 if (v.el && v.el.length) {
                     v.el.focus();
@@ -2588,7 +2589,8 @@
                 // For walk-in, they must pay 100% upfront (with a small floating point tolerance)
                 if (paidNow < (invoiceNet - 0.05)) {
                     window.isSaveAndPrintAction = false;
-                    $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
+                    $('#btnSaveAndComplete, #btnSaleAndPrint').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Sale &amp; Print Invoice');
+                    $('#btnSaleAndSave, #btnHeaderSaveSale').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Sale &amp; Save');
                     Swal.fire({
                         icon: 'error',
                         title: '100% Payment Required',
@@ -2599,7 +2601,6 @@
                 }
             }
 
-            // Credit Limit Check
             // Credit Limit Check
             const rangeBal = toNum($('#rangeBalance').val());
             if (rangeBal > 0) {
@@ -2615,6 +2616,9 @@
 
                 // Validate
                 if (projectedBalance > rangeBal) {
+                    window.isSaveAndPrintAction = false;
+                    $('#btnSaveAndComplete, #btnSaleAndPrint').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Sale &amp; Print Invoice');
+                    $('#btnSaleAndSave, #btnHeaderSaveSale').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Sale &amp; Save');
                     Swal.fire({
                         icon: 'error',
                         title: 'Credit Limit Exceeded',
@@ -2628,7 +2632,8 @@
             if (!canPost()) {
                 showAlert('warning', 'No valid item lines to post.');
                 window.isSaveAndPrintAction = false;
-                $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
+                $('#btnSaveAndComplete, #btnSaleAndPrint').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Sale &amp; Print Invoice');
+                $('#btnSaleAndSave, #btnHeaderSaveSale').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Sale &amp; Save');
                 return;
             }
 
@@ -2649,7 +2654,8 @@
                 setTimeout(() => window.location.href = "{{ route('sale.index') }}", 1500);
             }).catch(function() {
                 window.isSaveAndPrintAction = false;
-                $('#btnSaveAndComplete').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Save &amp; Print Invoice');
+                $('#btnSaveAndComplete, #btnSaleAndPrint').prop('disabled', false).html('<i class="fas fa-print me-1"></i> Sale &amp; Print Invoice');
+                $('#btnSaleAndSave, #btnHeaderSaveSale').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Sale &amp; Save');
             });
         });
 
@@ -2939,8 +2945,8 @@
             });
         });
 
-        // --- Save & Complete (F9) Handler ---
-        $('#btnSaveAndComplete').on('click', function() {
+        // --- Sale & Print Invoice (F9) Handler ---
+        $('#btnSaveAndComplete, #btnSaleAndPrint').on('click', function() {
             window.isSaveAndPrintAction = true;
             const $btn = $(this);
             const origHtml = $btn.html();
@@ -2953,9 +2959,18 @@
             }, 3500);
         });
 
-        $('#btnHeaderSaveSale').on('click', function() {
+        // --- Sale & Save (Without Print) Handler ---
+        $('#btnSaleAndSave, #btnHeaderSaveSale').on('click', function() {
             window.isSaveAndPrintAction = false;
+            const $btn = $(this);
+            const origHtml = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving Sale...');
             $('#btnPosted').trigger('click');
+            setTimeout(() => {
+                if ($btn.prop('disabled')) {
+                    $btn.prop('disabled', false).html(origHtml);
+                }
+            }, 3500);
         });
 
         $(document).on('keydown', function(e) {

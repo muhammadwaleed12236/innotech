@@ -2403,10 +2403,13 @@
                         <i class="fas fa-file-alt me-1"></i> Quotation
                     </button>
                     <button type="button" class="btn btn-outline-primary px-3" id="btnSave">
-                        <i class="fas fa-save me-1"></i> Booking
+                        <i class="fas fa-bookmark me-1"></i> Booking
                     </button>
-                    <button type="button" class="btn btn-primary btn-save-print px-3" id="btnSaveAndComplete">
-                        <i class="fas fa-print me-1"></i> Save &amp; Print Invoice
+                    <button type="button" class="btn btn-success px-3 fw-bold" id="btnSaleAndSave" title="Save and Post Sale without printing">
+                        <i class="fas fa-save me-1"></i> Sale &amp; Save
+                    </button>
+                    <button type="button" class="btn btn-primary btn-save-print px-3 fw-bold" id="btnSaveAndComplete" title="Save, Post Sale, and open Invoice print">
+                        <i class="fas fa-print me-1"></i> Sale &amp; Print Invoice
                     </button>
                 </div>
             </div>
