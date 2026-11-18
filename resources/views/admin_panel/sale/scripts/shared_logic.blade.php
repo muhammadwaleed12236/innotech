@@ -463,16 +463,11 @@
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
-    <!-- SALES TAX % -->
+    <!-- SALES TAX AMT (PKR) -->
     <td class="col-st">
-      <div class="input-group input-group-sm">
-        <input type="number" step="0.01" class="form-control sales-tax-value text-start text-success fw-semibold" value="0.00" placeholder="0" title="Sales Tax (% or PKR)">
-        <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="percent">
-        <button type="button" class="btn btn-outline-success st-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 9.5px; padding: 0 3px !important; min-width: 16px;">%</button>
-      </div>
-      <div class="st-pkr-display text-end text-success fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated Sales Tax Amount">PKR 0.00</div>
+      <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)">
       <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
-      <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
+      <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="pkr">
       <input type="hidden" class="visible-st" value="0">
     </td>
 
@@ -868,9 +863,8 @@
 
         const isThirdSchedule = !!$row.data('is_third_schedule') || $row.find('.hidden-is-third-schedule').val() === '1';
 
-        let stVal = toNum($row.find('.sales-tax-value').val());
-        let stType = $row.find('.sales-tax-type-hidden').val() || $row.find('.st-toggle').attr('data-type') || $row.find('.st-toggle').data('type') || 'percent';
-        let salesTaxPct = 0;
+        const defaultRate = toNum($row.data('default_tax_rate')) || 18.0;
+        let salesTaxPct = defaultRate;
         let salesTaxAmt = 0;
         let mrpTaxAmt = 0;
         let furtherTaxPct = 0;
@@ -882,8 +876,7 @@
             if ($row.data('mrp_manual') || activeField === 'mrp_amount') {
                 mrpTaxAmt = toNum($row.find('.mrp-amount').val() || $row.find('.visible-mrp').val());
             } else {
-                const taxRate = stVal > 0 ? stVal : (toNum($row.data('tax_sale_gst')) || 18);
-                mrpTaxAmt = retailTotal > 0 ? (retailTotal * taxRate) / 100 : 0;
+                mrpTaxAmt = retailTotal > 0 ? (retailTotal * defaultRate) / 100 : 0;
             }
 
             salesTaxPct = 0;
@@ -897,18 +890,16 @@
             }
 
             $row.find('.sales-tax-percent').val(0);
-            $row.find('.sales-tax-amount').val(0);
+            $row.find('.sales-tax-amount').val('0.00');
             $row.find('.visible-st').val(0);
-            $row.find('.st-pkr-display').text('PKR 0.00 (In MRP)');
 
             $row.find('.further-tax-percent').val(0);
             $row.find('.further-tax-amount').val(0);
             $row.find('.urc-tax-value').val(0);
             $row.find('.visible-ft').val(0);
-            $row.find('.urc-pkr-display').text('PKR 0.00 (Exempt)');
         } else {
             // ─── STANDARD (NON-3RD SCHEDULE) ITEMS ──────────────────────────────
-            // MRP Amount column is strictly 0.00! Tax goes into Sales Tax column.
+            // MRP Amount column is strictly 0.00! Sales Tax is shown directly in PKR.
             mrpTaxAmt = 0;
             $row.find('.mrp-amount').val('0.00');
             $row.find('.visible-mrp').val('0.00');
@@ -917,25 +908,19 @@
                 salesTaxPct = 0;
                 salesTaxAmt = 0;
                 $row.find('.sales-tax-percent').val(0);
-            } else if (stType === 'percent') {
-                salesTaxPct = stVal;
-                salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
-                $row.find('.sales-tax-percent').val(salesTaxPct);
-            } else {
-                salesTaxAmt = stVal;
+                $row.find('.sales-tax-amount').val('0.00');
+            } else if ($row.data('st_manual') || activeField === 'sales_tax_amount') {
+                salesTaxAmt = toNum($row.find('.sales-tax-amount').val());
                 salesTaxPct = exclusiveGst > 0 ? ((salesTaxAmt / exclusiveGst) * 100) : 0;
+                $row.find('.sales-tax-percent').val(salesTaxPct.toFixed(2));
+            } else {
+                salesTaxPct = defaultRate;
+                salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+                $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
                 $row.find('.sales-tax-percent').val(salesTaxPct.toFixed(2));
             }
 
-            $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
             $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
-
-            // Live PKR / % display right on the row
-            if (stType === 'percent') {
-                $row.find('.st-pkr-display').text('PKR ' + salesTaxAmt.toFixed(2));
-            } else {
-                $row.find('.st-pkr-display').text(salesTaxPct.toFixed(2) + ' %');
-            }
 
             // 8. URC Tax (Further Tax for Unregistered Customer)
             let urcVal = toNum($row.find('.urc-tax-value').val());
@@ -958,13 +943,6 @@
 
             $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
             $row.find('.visible-ft').val(furtherTaxAmt.toFixed(2));
-
-            // Live PKR / % display right on the row
-            if (urcType === 'percent') {
-                $row.find('.urc-pkr-display').text('PKR ' + furtherTaxAmt.toFixed(2));
-            } else {
-                $row.find('.urc-pkr-display').text(furtherTaxPct.toFixed(2) + ' %');
-            }
         }
 
         // 9. Adv. Tax Amt
@@ -1824,16 +1802,16 @@
             $row.data('is_third_schedule', !!data.is_third_schedule);
             $row.find('.hidden-is-third-schedule').val(data.is_third_schedule ? '1' : '0');
 
-            // Sales Tax starts at 0.00 as requested (no direct 18% applied automatically, user will enter manually or toggle)
-            let stGst = 0.00;
-            $row.find('.sales-tax-value').val('0.00');
-            $row.find('.sales-tax-percent').val('0.00');
-            $row.find('.sales-tax-amount').val('0.00');
-            $row.find('.st-pkr-display').text('PKR 0.00');
+            // Set default tax rate from product (e.g. 18.0%)
+            const defaultSaleGst = (data.tax_sale_gst !== undefined && data.tax_sale_gst !== null) ? parseFloat(data.tax_sale_gst) : 18.0;
+            $row.data('default_tax_rate', defaultSaleGst);
+            $row.find('.sales-tax-percent').val(defaultSaleGst.toFixed(2));
+            $row.data('st_manual', false);
 
             if (data.is_third_schedule) {
                 $row.find('.urc-tax-value').val(0);
                 $row.find('.further-tax-percent').val(0);
+                $row.find('.further-tax-amount').val(0);
             }
             
             setupRowQtyToggle($row, data.size_mode);
@@ -2123,12 +2101,17 @@
             updateGrandTotals();
         });
 
-        $(document).on('input change', '.sales-table .sales-tax-value', function() {
+        $(document).on('input change', '.sales-table .sales-tax-amount, .sales-table .sales-tax-value', function() {
             const $row = $(this).closest('tr');
             $row.data('st_manual', true);
-            computeRow($row, true, 'sales_tax_value');
+            computeRow($row, true, 'sales_tax_amount');
             updateGrandTotals();
             refreshPostedState();
+        });
+
+        $(document).on('blur', '.sales-table .sales-tax-amount', function() {
+            const val = toNum($(this).val());
+            $(this).val(val.toFixed(2));
         });
 
         $(document).on('click', '.st-toggle', function() {

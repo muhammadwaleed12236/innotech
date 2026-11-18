@@ -1784,7 +1784,7 @@
                                 <th class="col-reg-disc-amt-th text-center" style="width: 66px;" title="Regular Discount Amount">Regular<br>Disc. Amt</th>
                                 <th class="col-sp-disc-pct-th text-center" style="width: 46px;" title="Special Discount %">Sp.<br>Disc. %</th>
                                 <th class="col-sp-disc-amt-th text-center" style="width: 66px;" title="Special Discount Amount">Special<br>Disc. Amt</th>
-                                <th class="c-st-th text-center" style="width: 68px;" title="Sales Tax % on Trade">Sales<br>Tax %</th>
+                                <th class="c-st-th text-center" style="width: 68px;" title="Sales Tax Amount (PKR)">Sales<br>Tax Amt</th>
                                 <th class="col-mrp-th text-center" style="width: 66px;" title="MRP Tax (Retail Price 3rd Sched)">MRP<br>Amount</th>
                                 <th class="c-ft-th text-center" style="width: 68px;" title="URC Tax (Further Tax for Unregistered)">URC Tax<br>Amount</th>
                                 <th class="col-adv-tax-th text-center" style="width: 66px;" title="Advance Tax (236G/H)">Adv.<br>Tax Amt</th>
@@ -1907,16 +1907,11 @@
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
-                                <!-- SALES TAX % -->
+                                <!-- SALES TAX AMT (PKR) -->
                                 <td class="col-st">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control sales-tax-value text-start text-success fw-semibold" value="0.00" placeholder="0" title="Sales Tax (% or PKR)">
-                                        <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="percent">
-                                        <button type="button" class="btn btn-outline-success st-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 9.5px; padding: 0 3px !important; min-width: 16px;">%</button>
-                                    </div>
-                                    <div class="st-pkr-display text-end text-success fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated Sales Tax Amount">PKR 0.00</div>
+                                    <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)">
                                     <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
-                                    <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
+                                    <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="pkr">
                                     <input type="hidden" class="visible-st" value="0">
                                 </td>
 
