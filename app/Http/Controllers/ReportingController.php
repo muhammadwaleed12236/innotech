@@ -753,14 +753,12 @@ class ReportingController extends Controller
                     if ($product->size_mode === 'by_bandal' && strtolower($vUnitName) === 'carton') {
                         $vUnitName = 'Bundal';
                     }
-                    $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton');
-
                     // Cartons / Loose / Unit Formatting
                     $ppb = (float) ($product->pieces_per_box ?? 1);
-                    if ($isCartonMode) {
-                        $vConv = (float) ($v['conv_factor'] ?? 0);
-                        if ($vConv > 0) $ppb = $vConv;
-                    }
+                    $vConv = (float) ($v['conv_factor'] ?? 0);
+                    if ($vConv > 0) $ppb = $vConv;
+                    if ($ppb <= 0) $ppb = 1;
+                    $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($vUnitName) === 'carton' || $ppb > 1);
 
                     if ($product->size_mode === 'by_kg') {
                         $factor = isset($v['conv_factor']) ? (float)$v['conv_factor'] : 1.0;
@@ -941,25 +939,40 @@ class ReportingController extends Controller
                     $totalAdjustments  += $adjustments;
                     $totalSoldAmount   += $saleAmount;
 
-                    if ($isCartonMode) {
+                    if ($isCartonMode && $ppb > 1) {
                         $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
                         $absBal  = abs($balance);
                         $cartons = (int) floor($absBal / $ppb);
                         $loose   = (int) round($absBal - ($cartons * $ppb));
                         $prefix  = ($balance < 0) ? '-' : '';
-                        $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$prefix}{$cartons} {$ctnLbl}";
-                        $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$prefix}{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                        $totalPcsFormatted = number_format($balance, 0) . ' Pcs';
+
+                        if ($cartons > 0 && $loose > 0) {
+                            $formattedStock = "{$prefix}{$cartons} {$ctnLbl} / {$loose} Pcs ({$totalPcsFormatted})";
+                            $closingDisplay = "<div class='fw-bold text-primary'>{$prefix}{$cartons} {$ctnLbl} / {$loose} Pcs</div><small class='text-muted' style='font-size:11px;'>({$totalPcsFormatted} &bull; {$ppb}/{$ctnLbl})</small>";
+                            $cartonDisplay = "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                        } elseif ($cartons > 0) {
+                            $formattedStock = "{$prefix}{$cartons} {$ctnLbl} ({$totalPcsFormatted})";
+                            $closingDisplay = "<div class='fw-bold text-primary'>{$prefix}{$cartons} {$ctnLbl}</div><small class='text-muted' style='font-size:11px;'>({$totalPcsFormatted} &bull; {$ppb}/{$ctnLbl})</small>";
+                            $cartonDisplay = "{$prefix}{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                        } else {
+                            $formattedStock = "{$prefix}0 {$ctnLbl} / {$loose} Pcs ({$totalPcsFormatted})";
+                            $closingDisplay = "<div class='fw-bold text-primary'>{$prefix}0 {$ctnLbl} / {$loose} Pcs</div><small class='text-muted' style='font-size:11px;'>({$totalPcsFormatted} &bull; {$ppb}/{$ctnLbl})</small>";
+                            $cartonDisplay = "{$prefix}{$loose} Pcs <span class='text-muted small'>(0 {$ctnLbl})</span>";
+                        }
                     } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                         $absBal  = abs($balance);
                         $cartons = (int) floor($absBal / $ppb);
                         $loose   = (int) round($absBal - ($cartons * $ppb));
                         $prefix  = ($balance < 0) ? '-' : '';
                         $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} Box . {$loose} Pcs" : "{$prefix}{$cartons} Boxes";
+                        $closingDisplay = "<div class='fw-bold text-primary'>{$formattedStock}</div><small class='text-muted' style='font-size:11px;'>({$balance} Pcs)</small>";
                         $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} Box + {$loose} Pcs" : "{$prefix}{$cartons} Box";
                     } else {
                         $cartons = '-';
                         $loose   = $balance;
                         $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$vUnitName}";
+                        $closingDisplay = "<div class='fw-bold text-primary'>{$formattedStock}</div>";
                         $cartonDisplay = '—';
                     }
 
@@ -987,6 +1000,7 @@ class ReportingController extends Controller
                         'adjustments'     => $adjustments,
                         'balance'         => $balance,
                         'formatted_stock' => $formattedStock,
+                        'closing_display' => $closingDisplay,
                         'carton_display'  => $cartonDisplay,
                         'cartons'         => $cartons,
                         'loose'           => $loose,
@@ -1102,28 +1116,44 @@ class ReportingController extends Controller
                 $totalSoldAmount   += $saleAmount;
 
                 // Cartons / Loose
-                $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($unitName) === 'carton');
                 $ppb = (float) ($product->pieces_per_box ?? 1);
                 if ($ppb <= 0) $ppb = 1;
-                if ($isCartonMode) {
+                $isCartonMode = (in_array($product->size_mode, ['by_cartons', 'by_bandal']) || strtolower($unitName) === 'carton' || $ppb > 1);
+
+                if ($isCartonMode && $ppb > 1) {
                     $ctnLbl = ($product->size_mode === 'by_bandal') ? 'Bndl' : 'Ctn';
                     $absBal  = abs($balance);
                     $cartons = (int) floor($absBal / $ppb);
                     $loose   = (int) round($absBal - ($cartons * $ppb));
                     $prefix  = ($balance < 0) ? '-' : '';
-                    $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs" : "{$prefix}{$cartons} {$ctnLbl}";
-                    $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>" : "{$prefix}{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                    $totalPcsFormatted = number_format($balance, 0) . ' Pcs';
+
+                    if ($cartons > 0 && $loose > 0) {
+                        $formattedStock = "{$prefix}{$cartons} {$ctnLbl} / {$loose} Pcs ({$totalPcsFormatted})";
+                        $closingDisplay = "<div class='fw-bold text-primary'>{$prefix}{$cartons} {$ctnLbl} / {$loose} Pcs</div><small class='text-muted' style='font-size:11px;'>({$totalPcsFormatted} &bull; {$ppb}/{$ctnLbl})</small>";
+                        $cartonDisplay = "{$prefix}{$cartons} {$ctnLbl} + {$loose} Pcs <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                    } elseif ($cartons > 0) {
+                        $formattedStock = "{$prefix}{$cartons} {$ctnLbl} ({$totalPcsFormatted})";
+                        $closingDisplay = "<div class='fw-bold text-primary'>{$prefix}{$cartons} {$ctnLbl}</div><small class='text-muted' style='font-size:11px;'>({$totalPcsFormatted} &bull; {$ppb}/{$ctnLbl})</small>";
+                        $cartonDisplay = "{$prefix}{$cartons} {$ctnLbl} <span class='text-muted small'>({$ppb} pcs/" . strtolower($ctnLbl) . ")</span>";
+                    } else {
+                        $formattedStock = "{$prefix}0 {$ctnLbl} / {$loose} Pcs ({$totalPcsFormatted})";
+                        $closingDisplay = "<div class='fw-bold text-primary'>{$prefix}0 {$ctnLbl} / {$loose} Pcs</div><small class='text-muted' style='font-size:11px;'>({$totalPcsFormatted} &bull; {$ppb}/{$ctnLbl})</small>";
+                        $cartonDisplay = "{$prefix}{$loose} Pcs <span class='text-muted small'>(0 {$ctnLbl})</span>";
+                    }
                 } elseif ($ppb > 1 && $product->size_mode === 'by_size') {
                     $absBal  = abs($balance);
                     $cartons = (int) floor($absBal / $ppb);
                     $loose   = (int) round($absBal - ($cartons * $ppb));
                     $prefix  = ($balance < 0) ? '-' : '';
                     $formattedStock = ($loose > 0) ? "{$prefix}{$cartons} Box . {$loose} Pcs" : "{$prefix}{$cartons} Boxes";
+                    $closingDisplay = "<div class='fw-bold text-primary'>{$formattedStock}</div><small class='text-muted' style='font-size:11px;'>({$balance} Pcs)</small>";
                     $cartonDisplay = ($loose > 0) ? "{$prefix}{$cartons} Box + {$loose} Pcs" : "{$prefix}{$cartons} Box";
                 } else {
                     $cartons = '-';
                     $loose   = $balance;
                     $formattedStock = number_format($balance, (in_array($product->size_mode, ['by_kg','by_gm','by_ton','by_meter','by_feet']) ? 2 : 0)) . " {$unitName}";
+                    $closingDisplay = "<div class='fw-bold text-primary'>{$formattedStock}</div>";
                     $cartonDisplay = '—';
                 }
 
@@ -1151,6 +1181,7 @@ class ReportingController extends Controller
                     'adjustments'     => $adjustments,
                     'balance'         => $balance,
                     'formatted_stock' => $formattedStock,
+                    'closing_display' => $closingDisplay,
                     'carton_display'  => $cartonDisplay,
                     'cartons'         => $cartons,
                     'loose'           => $loose,

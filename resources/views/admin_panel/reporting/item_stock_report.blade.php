@@ -103,16 +103,51 @@
         .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
         .mode-pills { flex-wrap: wrap; }
     }
+
+    @media print {
+        @page { size: landscape; margin: 8mm; }
+        body { background: #fff !important; }
+        .rpt-page { padding: 0 !important; background: #fff !important; min-height: auto !important; }
+        .mode-pills, .stock-pills, .rpt-filter-card, .btn, .view-history-btn, #quickToggleHasItems, .card-header, #productHistoryModal {
+            display: none !important;
+        }
+        .kpi-grid { display: none !important; }
+        .print-header { display: block !important; margin-bottom: 12px; }
+        #stockTable { width: 100% !important; font-size: 10px !important; border: 1px solid #ccc !important; }
+        #stockTable th, #stockTable td { padding: 4px 6px !important; border: 1px solid #ddd !important; }
+        .card { border: none !important; box-shadow: none !important; }
+    }
 </style>
 
 <div class="rpt-page">
 <div class="container-fluid px-3">
 
+    {{-- Printable Header for Paper / PDF Export --}}
+    <div class="print-header d-none">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+            <div>
+                <h4 class="fw-bold mb-0 text-dark">Item Stock &amp; Movement Ledger Report</h4>
+                <div class="small text-muted" id="printReportDate">Date: {{ date('d M, Y') }}</div>
+            </div>
+            <div class="text-end">
+                <div class="small text-muted">Print Date: {{ date('d M, Y h:i A') }}</div>
+            </div>
+        </div>
+    </div>
+
     {{-- Page Header & Mode Switcher --}}
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
         <div>
             <h4 class="fw-bold text-dark mb-0"><i class="fas fa-boxes-stacked text-primary me-2"></i>Item Stock &amp; Ledger Report</h4>
-            <small class="text-muted">Detailed inventory movements, explicit Stock Adjustments (+/-), and Valuation Summary</small>
+            <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                <small class="text-muted">Detailed inventory movements, explicit Stock Adjustments (+/-), and Valuation Summary</small>
+                <span class="badge bg-white text-dark border px-2 py-1 shadow-sm" style="font-size: 11.5px;">
+                    <i class="fas fa-calendar-alt text-primary me-1"></i> <span id="headerReportDate">Date: {{ date('d M, Y') }}</span>
+                </span>
+                <span class="badge bg-white text-muted border px-2 py-1 shadow-sm" style="font-size: 11px;">
+                    <i class="fas fa-clock text-secondary me-1"></i> Print Date: {{ date('d M, Y h:i A') }}
+                </span>
+            </div>
         </div>
 
         {{-- Controls: Stock Availability Switcher & Mode Pills --}}
@@ -183,20 +218,9 @@
             <input type="hidden" name="report_mode" id="report_mode" value="summary">
             <input type="hidden" name="stock_availability" id="stock_availability" value="all">
 
-            {{-- Category --}}
-            <div class="col-md-2">
-                <label class="rpt-flabel">Category</label>
-                <select name="category_id" id="category_id" class="rpt-finput">
-                    <option value="all">-- All Categories --</option>
-                    @foreach($categories as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
             {{-- Warehouse --}}
-            <div class="col-md-2">
-                <label class="rpt-flabel">Warehouse</label>
+            <div class="col-md-3 col-sm-6">
+                <label class="rpt-flabel"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse</label>
                 <select name="warehouse_id" id="warehouse_id" class="rpt-finput">
                     @if(isset($warehouses) && count($warehouses) > 0)
                         <option value="all">-- All Warehouses --</option>
@@ -209,9 +233,20 @@
                 </select>
             </div>
 
+            {{-- Category --}}
+            <div class="col-md-3 col-sm-6">
+                <label class="rpt-flabel"><i class="fas fa-tags text-primary me-1"></i>Category</label>
+                <select name="category_id" id="category_id" class="rpt-finput">
+                    <option value="all">-- All Categories --</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- Unit Mode Filter --}}
-            <div class="col-md-2">
-                <label class="rpt-flabel">Unit / Size Type</label>
+            <div class="col-md-3 col-sm-6">
+                <label class="rpt-flabel"><i class="fas fa-balance-scale text-primary me-1"></i>Unit / Size Type</label>
                 <select name="unit_type" id="unit_type" class="rpt-finput">
                     <option value="all">All Units (Pcs / Kg / M²)</option>
                     <option value="cartons_pcs">Pieces &amp; Cartons</option>
@@ -221,28 +256,43 @@
             </div>
 
             {{-- Product --}}
-            <div class="col-md-2">
-                <label class="rpt-flabel">Search Product</label>
+            <div class="col-md-3 col-sm-6">
+                <label class="rpt-flabel"><i class="fas fa-box text-primary me-1"></i>Search Product</label>
                 <select name="product_id" id="product_id" class="form-control select2">
                     <option value="all">-- All Products --</option>
                 </select>
             </div>
 
             {{-- Product Variant --}}
-            <div class="col-md-2">
-                <label class="rpt-flabel">Product Variant</label>
+            <div class="col-md-3 col-sm-6">
+                <label class="rpt-flabel"><i class="fas fa-code-branch text-primary me-1"></i>Product Variant</label>
                 <select name="variant_key" id="variant_key" class="form-control select2" disabled>
                     <option value="all">-- All Variants --</option>
                 </select>
             </div>
 
+            {{-- From Date --}}
+            <div class="col-md-2 col-6">
+                <label class="rpt-flabel"><i class="fas fa-calendar-alt text-primary me-1"></i>From Date</label>
+                <input type="date" class="rpt-finput" name="date_from" id="date_from" value="{{ request('date_from') }}">
+            </div>
+
+            {{-- To Date --}}
+            <div class="col-md-2 col-6">
+                <label class="rpt-flabel"><i class="fas fa-calendar-check text-primary me-1"></i>To Date</label>
+                <input type="date" class="rpt-finput" name="date_to" id="date_to" value="{{ request('date_to', date('Y-m-d')) }}">
+            </div>
+
             {{-- Buttons --}}
-            <div class="col-md-2 text-end d-flex gap-2">
+            <div class="col-md-5 col-12 text-end d-flex gap-2">
                 <button type="button" id="btnSearch" class="btn btn-primary btn-sm flex-fill fw-bold" style="height:38px; border-radius:8px;">
                     <i class="fas fa-search me-1"></i> Apply Filter
                 </button>
-                <button type="button" id="btnExportCsv" class="btn btn-outline-secondary btn-sm fw-bold" style="height:38px; border-radius:8px;">
+                <button type="button" id="btnExportCsv" class="btn btn-outline-secondary btn-sm fw-bold px-3" style="height:38px; border-radius:8px;" title="Export current data to CSV">
                     <i class="fas fa-file-excel me-1"></i> Export
+                </button>
+                <button type="button" id="btnPrint" class="btn btn-outline-primary btn-sm fw-bold px-3" style="height:38px; border-radius:8px;" onclick="window.print();" title="Print this report">
+                    <i class="fas fa-print me-1"></i> Print
                 </button>
             </div>
         </form>
@@ -598,6 +648,21 @@ $(document).ready(function() {
         let mode = $('#report_mode').val();
         renderTableHeader(mode);
 
+        let dFrom = $('#date_from').val();
+        let dTo   = $('#date_to').val();
+        let dateLabel = '';
+        if (dFrom && dTo) {
+            dateLabel = `Date: ${dFrom} to ${dTo}`;
+        } else if (dTo) {
+            dateLabel = `As of Date: ${dTo}`;
+        } else if (dFrom) {
+            dateLabel = `From Date: ${dFrom}`;
+        } else {
+            dateLabel = `Date: {{ date('d M, Y') }}`;
+        }
+        $('#headerReportDate').text(dateLabel);
+        $('#printReportDate').text(dateLabel);
+
         $.ajax({
             url: "{{ route('report.item_stock.fetch') }}",
             type: "POST",
@@ -608,6 +673,8 @@ $(document).ready(function() {
                 variant_key: $('#variant_key').val(),
                 warehouse_id: $('#warehouse_id').val(),
                 unit_type:   $('#unit_type').val(),
+                date_from:   dFrom,
+                date_to:     dTo,
                 stock_availability: $('#stock_availability').val(),
                 report_mode: mode
             },
@@ -787,7 +854,7 @@ $(document).ready(function() {
                     <td class="fw-semibold">${row.item_name}</td>
                     <td>${row.category_name}</td>
                     <td><span class="badge bg-light text-dark border">${row.unit_name}</span></td>
-                    <td class="text-center fw-bold text-primary">${row.formatted_stock}</td>
+                    <td class="text-center">${row.closing_display || row.formatted_stock}</td>
                     <td class="text-center fw-semibold text-secondary">${row.carton_display || '—'}</td>
                     <td class="text-end">Rs ${parseFloat(row.average_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="text-end fw-bold text-dark">Rs ${parseFloat(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
@@ -817,7 +884,7 @@ $(document).ready(function() {
                     <td class="text-end text-success">+${parseFloat(row.returned_qty).toLocaleString()}</td>
                     <td class="text-end text-danger">-${parseFloat(row.purch_returned_qty).toLocaleString()}</td>
                     <td class="text-center" style="background:#fffbeb !important;">${adjBadge}</td>
-                    <td class="text-end fw-bold text-primary" style="background:#eef2ff !important;">${row.formatted_stock}</td>
+                    <td class="text-end" style="background:#eef2ff !important;">${row.closing_display || row.formatted_stock}</td>
                     <td class="text-end fw-bold">Rs ${parseFloat(row.stock_value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="text-center">${historyBtn}</td>
                 </tr>`;
@@ -1037,15 +1104,17 @@ $(document).ready(function() {
             return;
         }
 
-        let csv = 'Item Code,Item Name,Category,Unit,Current Stock,Cartons,Avg Price (Rs),Stock Value (Rs)\n';
+        let csv = 'Item Code,Item Name,Category,Unit,Closing Stock (Ctn / Pcs),Cartons,Avg Price (Rs),Stock Value (Rs)\n';
         $.each(currentReportData, function (i, r) {
-            csv += `"${r.item_code || ''}","${r.item_name}","${r.category_name}","${r.unit_name}","${r.balance}","${r.cartons}","${r.average_price}","${r.stock_value}"\n`;
+            let stockClean = (r.formatted_stock || '').replace(/"/g, '""');
+            csv += `"${r.item_code || ''}","${r.item_name}","${r.category_name}","${r.unit_name}","${stockClean}","${r.cartons}","${r.average_price}","${r.stock_value}"\n`;
         });
 
         let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         let link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "Item_Stock_Report_" + new Date().toISOString().slice(0,10) + ".csv";
+        let datePart = $('#date_to').val() || new Date().toISOString().slice(0,10);
+        link.download = "Item_Stock_Report_" + datePart + ".csv";
         link.click();
     });
 
