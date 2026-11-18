@@ -305,6 +305,16 @@
         <div class="card-body p-2">
             <div class="summary-pill-bar">
                 
+                <div class="stat-pill" style="background: #f8fafc; border-color: #cbd5e1;">
+                    <div class="stat-label text-secondary">Total Revenue</div>
+                    <div class="stat-val text-dark" id="cardRevenue">Rs 0.00</div>
+                </div>
+
+                <div class="stat-pill" style="background: #fff7ed; border-color: #fdba74;">
+                    <div class="stat-label text-warning-emphasis">Cost of Goods (COGS)</div>
+                    <div class="stat-val text-warning-emphasis" id="cardCogs">Rs 0.00</div>
+                </div>
+
                 <div class="stat-pill" style="background: #f0fdf4; border-color: #86efac;">
                     <div class="stat-label text-success">Gross Profit</div>
                     <div class="stat-val text-success" id="cardGrossProfit">Rs 0.00</div>
@@ -324,21 +334,33 @@
         </div>
     </div>
 
-    {{-- MOBILE SUMMARY METRIC GRID (2 Columns + Full-Width Net Profit d-md-none) --}}
+    {{-- MOBILE SUMMARY METRIC GRID (d-md-none) --}}
     <div class="row g-2 mb-3 d-md-none no-print px-1">
         <div class="col-6">
             <div class="mob-metric-card p-2">
-                <span class="mob-metric-label" style="font-size: 11px;"><i class="fas fa-arrow-up text-success me-1"></i>Gross Profit</span>
-                <div class="mob-metric-val text-success mt-1" id="mobCardGrossProfit" style="font-size: 14px;">Rs 0</div>
+                <span class="mob-metric-label" style="font-size: 11px;"><i class="fas fa-coins text-secondary me-1"></i>Revenue</span>
+                <div class="mob-metric-val text-dark mt-1" id="mobCardRevenue" style="font-size: 13px;">Rs 0</div>
             </div>
         </div>
         <div class="col-6">
-            <div class="mob-metric-card p-2">
-                <span class="mob-metric-label" style="font-size: 11px;"><i class="fas fa-arrow-down text-danger me-1"></i>Expenses</span>
-                <div class="mob-metric-val text-danger mt-1" id="mobCardExpenses" style="font-size: 14px;">Rs 0</div>
+            <div class="mob-metric-card p-2" style="background: #fff7ed; border-color: #fdba74;">
+                <span class="mob-metric-label text-warning-emphasis" style="font-size: 11px;"><i class="fas fa-boxes text-warning me-1"></i>COGS</span>
+                <div class="mob-metric-val text-warning-emphasis mt-1" id="mobCardCogs" style="font-size: 13px;">Rs 0</div>
             </div>
         </div>
-        <div class="col-12 mt-2">
+        <div class="col-6">
+            <div class="mob-metric-card p-2" style="background: #f0fdf4; border-color: #86efac;">
+                <span class="mob-metric-label" style="font-size: 11px;"><i class="fas fa-arrow-up text-success me-1"></i>Gross Profit</span>
+                <div class="mob-metric-val text-success mt-1" id="mobCardGrossProfit" style="font-size: 13px;">Rs 0</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="mob-metric-card p-2" style="background: #fef2f2; border-color: #fca5a5;">
+                <span class="mob-metric-label" style="font-size: 11px;"><i class="fas fa-arrow-down text-danger me-1"></i>Expenses</span>
+                <div class="mob-metric-val text-danger mt-1" id="mobCardExpenses" style="font-size: 13px;">Rs 0</div>
+            </div>
+        </div>
+        <div class="col-12 mt-1">
             <div class="mob-metric-card p-2" style="background: #f0f9ff; border-color: #bae6fd;">
                 <span class="mob-metric-label text-primary" style="font-size: 11px;"><i class="fas fa-balance-scale me-1"></i>Net Profit / Loss</span>
                 <div class="mob-metric-val text-primary mt-1" id="mobCardNetProfit" style="font-size: 15px;">Rs 0</div>
@@ -468,11 +490,41 @@ $(document).ready(function() {
         columns: [
             { data: 'item_code' },
             { data: 'item_name' },
-            { data: 'sold_qty', className: 'text-center' },
-            { data: 'returned_qty', className: 'text-center' },
-            { data: 'revenue', className: 'text-end' },
-            { data: 'cogs', className: 'text-end' },
-            { data: 'profit', className: 'text-end' }
+            { 
+                data: 'sold_qty', 
+                className: 'text-center',
+                render: function(data, type, row) {
+                    return (type === 'sort' || type === 'type') ? (row.raw_sold_qty ?? 0) : data;
+                }
+            },
+            { 
+                data: 'returned_qty', 
+                className: 'text-center',
+                render: function(data, type, row) {
+                    return (type === 'sort' || type === 'type') ? (row.raw_returned_qty ?? 0) : data;
+                }
+            },
+            { 
+                data: 'revenue', 
+                className: 'text-end',
+                render: function(data, type, row) {
+                    return (type === 'sort' || type === 'type') ? (row.raw_revenue ?? 0) : data;
+                }
+            },
+            { 
+                data: 'cogs', 
+                className: 'text-end',
+                render: function(data, type, row) {
+                    return (type === 'sort' || type === 'type') ? (row.raw_cogs ?? 0) : data;
+                }
+            },
+            { 
+                data: 'profit', 
+                className: 'text-end',
+                render: function(data, type, row) {
+                    return (type === 'sort' || type === 'type') ? (row.raw_profit ?? 0) : data;
+                }
+            }
         ]
     });
 
@@ -584,7 +636,12 @@ $(document).ready(function() {
                 returned_qty: '<span class="text-danger fw-bold">' + (r.returned_qty || 0) + '</span>',
                 revenue: 'Rs ' + fmt(r.revenue),
                 cogs: 'Rs ' + fmt(r.cogs),
-                profit: '<span style="color:' + profitColor + '; font-weight:700;">Rs ' + fmt(r.profit) + '</span>'
+                profit: '<span style="color:' + profitColor + '; font-weight:700;">Rs ' + fmt(r.profit) + '</span>',
+                raw_sold_qty: parseFloat(r.sold_qty) || 0,
+                raw_returned_qty: parseFloat(r.returned_qty) || 0,
+                raw_revenue: parseFloat(r.revenue) || 0,
+                raw_cogs: parseFloat(r.cogs) || 0,
+                raw_profit: parseFloat(r.profit) || 0
             });
 
             if (chartLabels.length < 5 && parseFloat(r.profit) > 0) {
@@ -618,10 +675,14 @@ $(document).ready(function() {
         $('#mobProfitContainer').html(mobHtml || '<div class="text-center text-muted py-3 small">No item profitability data</div>');
 
         // Cards (Desktop & Mobile)
+        let formattedRev   = 'Rs ' + fmt(data.total_revenue || 0);
+        let formattedCogs  = 'Rs ' + fmt(data.total_cogs || 0);
         let formattedGross = 'Rs ' + fmt(data.total_gross_profit);
         let formattedExp   = 'Rs ' + fmt(data.total_expenses);
         let formattedNet   = 'Rs ' + fmt(data.net_profit);
 
+        $('#cardRevenue, #mobCardRevenue').text(formattedRev);
+        $('#cardCogs, #mobCardCogs').text(formattedCogs);
         $('#cardGrossProfit, #mobCardGrossProfit').text(formattedGross);
         $('#cardExpenses, #mobCardExpenses').text(formattedExp);
         $('#cardNetProfit, #mobCardNetProfit').text(formattedNet);

@@ -1571,6 +1571,7 @@ class ReportingController extends Controller
         }
 
         if ($start) {
+            $start = str_replace('T', ' ', $start);
             if (strlen($start) === 10) {
                 $start .= ' 00:00:00';
             } elseif (strlen($start) === 16) {
@@ -1579,6 +1580,7 @@ class ReportingController extends Controller
         }
 
         if ($end) {
+            $end = str_replace('T', ' ', $end);
             if (strlen($end) === 10) {
                 $end .= ' 23:59:59';
             } elseif (strlen($end) === 16) {
@@ -1593,6 +1595,42 @@ class ReportingController extends Controller
         $productsQuery = Product::query();
         if ($productId && $productId !== 'all') {
             $productsQuery->where('id', $productId);
+        } else {
+            // Performance Optimization: Only load products that have sales, returns, or web orders in the date range
+            $activeSaleProdIds = DB::table('sale_items')
+                ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+                ->whereIn('sales.sale_status', ['posted', 'returned'])
+                ->when($start && $end, fn($q) => $q->whereBetween('sales.created_at', [$start, $end]))
+                ->when($start && !$end, fn($q) => $q->where('sales.created_at', '>=', $start))
+                ->when(!$start && $end, fn($q) => $q->where('sales.created_at', '<=', $end))
+                ->when($customerId && $customerId !== 'all', fn($q) => $q->where('sales.customer_id', $customerId))
+                ->pluck('sale_items.product_id')->filter()->unique()->toArray();
+
+            $activeRetProdIds = DB::table('sale_return_items as sri')
+                ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
+                ->when($start && $end, fn($q) => $q->whereBetween('sr.created_at', [$start, $end]))
+                ->when($start && !$end, fn($q) => $q->where('sr.created_at', '>=', $start))
+                ->when(!$start && $end, fn($q) => $q->where('sr.created_at', '<=', $end))
+                ->when($customerId && $customerId !== 'all', fn($q) => $q->where('sr.customer_id', $customerId))
+                ->pluck('sri.product_id')->filter()->unique()->toArray();
+
+            $activeWebProdIds = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('ecommerce_orders') && \Illuminate\Support\Facades\Schema::hasTable('ecommerce_order_items')) {
+                $activeWebProdIds = DB::table('ecommerce_order_items as eoi')
+                    ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
+                    ->where('eo.is_stock_deducted', 1)
+                    ->when($start && $end, fn($q) => $q->whereBetween('eo.created_at', [$start, $end]))
+                    ->when($start && !$end, fn($q) => $q->where('eo.created_at', '>=', $start))
+                    ->when(!$start && $end, fn($q) => $q->where('eo.created_at', '<=', $end))
+                    ->pluck('eoi.product_id')->filter()->unique()->toArray();
+            }
+
+            $relevantProductIds = array_unique(array_merge($activeSaleProdIds, $activeRetProdIds, $activeWebProdIds));
+            if (empty($relevantProductIds)) {
+                $productsQuery->whereRaw('1 = 0');
+            } else {
+                $productsQuery->whereIn('id', $relevantProductIds);
+            }
         }
         if ($categoryId && $categoryId !== 'all') {
             $productsQuery->where('category_id', $categoryId);
@@ -1601,6 +1639,8 @@ class ReportingController extends Controller
         $products = $productsQuery->get();
         $productStats = [];
         $totalGrossProfit = 0;
+        $totalRevenue = 0;
+        $totalCogs = 0;
         $avgPriceMap = [];
 
         foreach ($products as $product) {
@@ -1644,7 +1684,7 @@ class ReportingController extends Controller
                 $saleQuery = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                     ->where('sale_items.product_id', $product->id)
-                    ->where('sales.sale_status', '!=', 'cancelled');
+                    ->whereIn('sales.sale_status', ['posted', 'returned']);
                 
                 if ($start && $end) {
                     $saleQuery->whereBetween('sales.created_at', [$start, $end]);
@@ -1667,43 +1707,49 @@ class ReportingController extends Controller
                 )->get();
 
                 // Fetch confirmed web sales
-                $webSalesQuery = DB::table('ecommerce_order_items as eoi')
-                    ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
-                    ->where('eoi.product_id', $product->id)
-                    ->where('eo.is_stock_deducted', 1);
+                if (\Illuminate\Support\Facades\Schema::hasTable('ecommerce_orders') && \Illuminate\Support\Facades\Schema::hasTable('ecommerce_order_items')) {
+                    $webSalesQuery = DB::table('ecommerce_order_items as eoi')
+                        ->join('ecommerce_orders as eo', 'eo.id', '=', 'eoi.ecommerce_order_id')
+                        ->where('eoi.product_id', $product->id)
+                        ->where('eo.is_stock_deducted', 1);
 
-                if ($start && $end) {
-                    $webSalesQuery->whereBetween('eo.created_at', [$start, $end]);
-                }
-                if ($customerId && $customerId !== 'all') {
-                    $webSalesQuery->whereRaw('1 = 0');
-                }
+                    if ($start && $end) {
+                        $webSalesQuery->whereBetween('eo.created_at', [$start, $end]);
+                    } elseif ($start) {
+                        $webSalesQuery->where('eo.created_at', '>=', $start);
+                    } elseif ($end) {
+                        $webSalesQuery->where('eo.created_at', '<=', $end);
+                    }
+                    if ($customerId && $customerId !== 'all') {
+                        $webSalesQuery->whereRaw('1 = 0');
+                    }
 
-                $webSalesList = $webSalesQuery->select(
-                    'eoi.quantity as total_pieces',
-                    'eoi.quantity as qty',
-                    'eoi.total',
-                    'eoi.color',
-                    'eoi.size',
-                    'eo.discount as total_extradiscount',
-                    'eo.subtotal as total_bill_amount'
-                )->get();
+                    $webSalesList = $webSalesQuery->select(
+                        'eoi.quantity as total_pieces',
+                        'eoi.quantity as qty',
+                        'eoi.total',
+                        'eoi.color',
+                        'eoi.size',
+                        'eo.discount as total_extradiscount',
+                        'eo.subtotal as total_bill_amount'
+                    )->get();
 
-                $salesListArray = $salesList->toArray();
-                foreach ($webSalesList as $wItem) {
-                    $salesListArray[] = (object) [
-                        'total_pieces' => $wItem->total_pieces,
-                        'qty' => $wItem->qty,
-                        'total' => $wItem->total,
-                        'total_extradiscount' => $wItem->total_extradiscount,
-                        'total_bill_amount' => $wItem->total_bill_amount,
-                        'color' => json_encode([
-                            'color' => $wItem->color ?: '-',
-                            'size' => $wItem->size ?: '-'
-                        ])
-                    ];
+                    $salesListArray = $salesList->toArray();
+                    foreach ($webSalesList as $wItem) {
+                        $salesListArray[] = (object) [
+                            'total_pieces' => $wItem->total_pieces,
+                            'qty' => $wItem->qty,
+                            'total' => $wItem->total,
+                            'total_extradiscount' => $wItem->total_extradiscount,
+                            'total_bill_amount' => $wItem->total_bill_amount,
+                            'color' => json_encode([
+                                'color' => $wItem->color ?: '-',
+                                'size' => $wItem->size ?: '-'
+                            ])
+                        ];
+                    }
+                    $salesList = collect($salesListArray);
                 }
-                $salesList = collect($salesListArray);
 
                 $returnQuery = DB::table('sale_return_items as sri')
                     ->join('sale_returns as sr', 'sr.id', '=', 'sri.sale_return_id')
@@ -1711,6 +1757,13 @@ class ReportingController extends Controller
                 
                 if ($start && $end) {
                     $returnQuery->whereBetween('sr.created_at', [$start, $end]);
+                } elseif ($start) {
+                    $returnQuery->where('sr.created_at', '>=', $start);
+                } elseif ($end) {
+                    $returnQuery->where('sr.created_at', '<=', $end);
+                }
+                if ($customerId && $customerId !== 'all') {
+                    $returnQuery->where('sr.customer_id', $customerId);
                 }
                 $returnsList = $returnQuery->select('sri.qty', 'sri.color', 'sr.sale_id', 'sri.line_total')
                     ->get();
@@ -1884,6 +1937,8 @@ class ReportingController extends Controller
                             'profit' => $grossProfit
                         ];
                         $totalGrossProfit += $grossProfit;
+                        $totalRevenue += $netSoldAmount;
+                        $totalCogs += $costOfGoodsSold;
                     }
                 }
             } else {
@@ -1891,7 +1946,7 @@ class ReportingController extends Controller
                 $saleQuery = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                     ->where('sale_items.product_id', $product->id)
-                    ->where('sales.sale_status', '!=', 'cancelled');
+                    ->whereIn('sales.sale_status', ['posted', 'returned']);
                 
                 if ($start && $end) {
                     $saleQuery->whereBetween('sales.created_at', [$start, $end]);
@@ -1940,6 +1995,9 @@ class ReportingController extends Controller
                     $returnQuery->where('sr.created_at', '>=', $start);
                 } elseif ($end) {
                     $returnQuery->where('sr.created_at', '<=', $end);
+                }
+                if ($customerId && $customerId !== 'all') {
+                    $returnQuery->where('sr.customer_id', $customerId);
                 }
                 $returnsList = $returnQuery->select('sri.qty', 'sri.line_total')->get();
 
@@ -2035,6 +2093,8 @@ class ReportingController extends Controller
                         'profit' => $grossProfit
                     ];
                     $totalGrossProfit += $grossProfit;
+                    $totalRevenue += $netSoldAmount;
+                    $totalCogs += $costOfGoodsSold;
                 }
             }
         }
@@ -2042,10 +2102,15 @@ class ReportingController extends Controller
         // 2b. Manual Products P&L
         $manualSaleQuery = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-            ->where('sale_items.is_manual', 1);
+            ->where('sale_items.is_manual', 1)
+            ->whereIn('sales.sale_status', ['posted', 'returned']);
 
         if ($start && $end) {
             $manualSaleQuery->whereBetween('sales.created_at', [$start, $end]);
+        } elseif ($start) {
+            $manualSaleQuery->where('sales.created_at', '>=', $start);
+        } elseif ($end) {
+            $manualSaleQuery->where('sales.created_at', '<=', $end);
         }
         if ($customerId && $customerId !== 'all') {
             $manualSaleQuery->where('sales.customer_id', $customerId);
@@ -2090,6 +2155,10 @@ class ReportingController extends Controller
 
                 if ($start && $end) {
                     $manualRetQuery->whereBetween('sale_returns.created_at', [$start, $end]);
+                } elseif ($start) {
+                    $manualRetQuery->where('sale_returns.created_at', '>=', $start);
+                } elseif ($end) {
+                    $manualRetQuery->where('sale_returns.created_at', '<=', $end);
                 }
                 if ($customerId && $customerId !== 'all') {
                     $manualRetQuery->where('sale_returns.customer_id', $customerId);
@@ -2123,6 +2192,8 @@ class ReportingController extends Controller
                         'profit' => $grossProfit
                     ];
                     $totalGrossProfit += $grossProfit;
+                    $totalRevenue += $soldAmount;
+                    $totalCogs += $cogs;
                 }
             }
         }
@@ -2146,10 +2217,20 @@ class ReportingController extends Controller
             $expenseQueryV2->where('date', '<=', $endDateOnly);
         }
 
-        $totalExpenses = $expenseQueryV1->sum('total_amount') + $expenseQueryV2->sum('total_amount');
+        $totalExpenses = (float) $expenseQueryV1->sum('total_amount') + (float) $expenseQueryV2->sum('total_amount');
 
         // 4. Top 10 Customers by Profit
-        $allCustomers = DB::table('customers')->get();
+        $activeCustomerIds = DB::table('sales')
+            ->whereIn('sale_status', ['posted', 'returned'])
+            ->when($start && $end, fn($q) => $q->whereBetween('created_at', [$start, $end]))
+            ->when($start && !$end, fn($q) => $q->where('created_at', '>=', $start))
+            ->when(!$start && $end, fn($q) => $q->where('created_at', '<=', $end))
+            ->whereNotNull('customer_id')
+            ->distinct()
+            ->pluck('customer_id')
+            ->toArray();
+
+        $allCustomers = !empty($activeCustomerIds) ? DB::table('customers')->whereIn('id', $activeCustomerIds)->get() : collect();
         $customerProfits = [];
 
         $balanceService = app(\App\Services\BalanceService::class);
@@ -2157,7 +2238,7 @@ class ReportingController extends Controller
             $custSaleQuery = DB::table('sale_items')
                 ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                 ->where('sales.customer_id', $customer->id)
-                ->where('sales.sale_status', '!=', 'cancelled');
+                ->whereIn('sales.sale_status', ['posted', 'returned']);
 
             if ($start && $end) {
                 $custSaleQuery->whereBetween('sales.created_at', [$start, $end]);
@@ -2239,9 +2320,39 @@ class ReportingController extends Controller
                 $custCogs += (float) ($item->total_pieces ?? 0) * $avgPrice;
             }
 
+            // Deduct customer returns
+            $custRetQuery = DB::table('sale_return_items')
+                ->join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                ->where('sale_returns.customer_id', $customer->id);
+
+            if ($start && $end) {
+                $custRetQuery->whereBetween('sale_returns.created_at', [$start, $end]);
+            } elseif ($start) {
+                $custRetQuery->where('sale_returns.created_at', '>=', $start);
+            } elseif ($end) {
+                $custRetQuery->where('sale_returns.created_at', '<=', $end);
+            }
+
+            $custReturns = $custRetQuery->select(
+                'sale_return_items.product_id',
+                'sale_return_items.qty',
+                'sale_return_items.line_total',
+                'sale_return_items.purchase_price',
+                'sale_return_items.is_manual'
+            )->get();
+
+            foreach ($custReturns as $cr) {
+                $custRevenue -= (float) $cr->line_total;
+                $rAvg = (float) ($cr->purchase_price ?? 0);
+                if ($rAvg <= 0 && $cr->product_id) {
+                    $rAvg = $avgPriceMap[$cr->product_id] ?? 0;
+                }
+                $custCogs -= (float) ($cr->qty ?? 0) * $rAvg;
+            }
+
             $custProfit = $custRevenue - $custCogs;
 
-            if ($custRevenue > 0) {
+            if ($custRevenue > 0 || $custProfit != 0) {
                 $customerProfits[] = [
                     'id' => $customer->id,
                     'name' => $customer->customer_name,
@@ -2261,6 +2372,8 @@ class ReportingController extends Controller
 
         return response()->json([
             'products' => $productStats,
+            'total_revenue' => round($totalRevenue, 2),
+            'total_cogs' => round($totalCogs, 2),
             'total_gross_profit' => round($totalGrossProfit, 2),
             'total_expenses' => round($totalExpenses, 2),
             'net_profit' => round($totalGrossProfit - $totalExpenses, 2),
