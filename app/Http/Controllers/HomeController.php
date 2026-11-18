@@ -88,13 +88,21 @@ class HomeController extends Controller
                 }
             } catch (\Throwable $e) {}
 
-            // Date Range Filter (Default: This Month)
-            $filterPeriod = $request->get('period', 'this_month');
+            // Date Range Filter (Default: All Time to match actual modules)
+            $filterPeriod = $request->get('period', 'all');
             $customFrom = $request->get('from_date');
             $customTo = $request->get('to_date');
 
             $today = Carbon::today();
             switch ($filterPeriod) {
+                case 'all':
+                    $filterPeriod = 'all';
+                    $startDate = Carbon::create(2000, 1, 1)->startOfDay();
+                    $endDate = Carbon::now()->addYears(5)->endOfDay();
+                    $prevStartDate = Carbon::create(1990, 1, 1)->startOfDay();
+                    $prevEndDate = Carbon::create(1999, 12, 31)->endOfDay();
+                    $periodLabel = 'All Time';
+                    break;
                 case 'today':
                     $startDate = $today->copy()->startOfDay();
                     $endDate = $today->copy()->endOfDay();
@@ -116,6 +124,13 @@ class HomeController extends Controller
                     $prevStartDate = $today->copy()->subWeek()->startOfWeek();
                     $prevEndDate = $today->copy()->subWeek()->endOfWeek();
                     $periodLabel = 'This Week (' . $startDate->format('d M') . ' - ' . $endDate->format('d M') . ')';
+                    break;
+                case 'this_month':
+                    $startDate = $today->copy()->startOfMonth();
+                    $endDate = $today->copy()->endOfMonth();
+                    $prevStartDate = $today->copy()->subMonth()->startOfMonth();
+                    $prevEndDate = $today->copy()->subMonth()->endOfMonth();
+                    $periodLabel = 'This Month (' . $today->format('F Y') . ')';
                     break;
                 case 'last_month':
                     $lastMonth = $today->copy()->subMonth();
@@ -140,14 +155,13 @@ class HomeController extends Controller
                     $prevStartDate = $prevEndDate->copy()->subDays($diffDays - 1)->startOfDay();
                     $periodLabel = $startDate->format('d M Y') . ' - ' . $endDate->format('d M Y');
                     break;
-                case 'this_month':
                 default:
-                    $filterPeriod = 'this_month';
-                    $startDate = $today->copy()->startOfMonth();
-                    $endDate = $today->copy()->endOfMonth();
-                    $prevStartDate = $today->copy()->subMonth()->startOfMonth();
-                    $prevEndDate = $today->copy()->subMonth()->endOfMonth();
-                    $periodLabel = 'This Month (' . $today->format('F Y') . ')';
+                    $filterPeriod = 'all';
+                    $startDate = Carbon::create(2000, 1, 1)->startOfDay();
+                    $endDate = Carbon::now()->addYears(5)->endOfDay();
+                    $prevStartDate = Carbon::create(1990, 1, 1)->startOfDay();
+                    $prevEndDate = Carbon::create(1999, 12, 31)->endOfDay();
+                    $periodLabel = 'All Time';
                     break;
             }
 
@@ -211,10 +225,12 @@ class HomeController extends Controller
             $recentSales = collect();
 
             if ($user->can('sales.view')) {
-                $salesPeriod = (float) $scopeBranch(DB::table('sales'))
-                    ->whereBetween('created_at', [$startDtStr, $endDtStr])
-                    ->whereNotIn('sale_status', ['cancelled', 'returned'])
-                    ->sum('total_net');
+                $salesQuery = $scopeBranch(DB::table('sales'))
+                    ->whereNotIn('sale_status', ['cancelled', 'returned']);
+                if ($filterPeriod !== 'all') {
+                    $salesQuery->whereBetween('created_at', [$startDtStr, $endDtStr]);
+                }
+                $salesRaw = (float) $salesQuery->sum('total_net');
 
                 $salesPrevPeriod = (float) $scopeBranch(DB::table('sales'))
                     ->whereBetween('created_at', [$prevStartDtStr, $prevEndDtStr])
@@ -237,21 +253,27 @@ class HomeController extends Controller
                     ->sum('total_net');
 
                 // Cash vs Credit Sales
-                $salesCashPeriod = (float) $scopeBranch(DB::table('sales'))
-                    ->whereBetween('created_at', [$startDtStr, $endDtStr])
-                    ->whereNotIn('sale_status', ['cancelled', 'returned'])
-                    ->sum('cash');
-                $salesCreditPeriod = max(0, $salesPeriod - $salesCashPeriod);
+                $salesCashQuery = $scopeBranch(DB::table('sales'))
+                    ->whereNotIn('sale_status', ['cancelled', 'returned']);
+                if ($filterPeriod !== 'all') {
+                    $salesCashQuery->whereBetween('created_at', [$startDtStr, $endDtStr]);
+                }
+                $salesCashPeriod = (float) $salesCashQuery->sum('cash');
+                $salesCreditPeriod = max(0, $salesRaw - $salesCashPeriod);
 
                 if ($user->can('sales.returns.view')) {
-                    $salesReturnsPeriod = (float) DB::table('sale_returns')
-                        ->whereBetween('created_at', [$startDtStr, $endDtStr])
-                        ->sum('net_amount');
+                    $srQuery = DB::table('sale_returns');
+                    if ($filterPeriod !== 'all') {
+                        $srQuery->whereBetween('created_at', [$startDtStr, $endDtStr]);
+                    }
+                    $salesReturnsPeriod = (float) $srQuery->sum('net_amount');
 
                     $salesReturnsPrevPeriod = (float) DB::table('sale_returns')
                         ->whereBetween('created_at', [$prevStartDtStr, $prevEndDtStr])
                         ->sum('net_amount');
                 }
+
+                $salesPeriod = max(0, $salesRaw - $salesReturnsPeriod);
 
                 // Sales vs Purchase Comparative Trajectory (Last 7 Days)
                 $dailyLabels = collect(range(6, 0))->map(fn($i) => Carbon::today()->subDays($i)->format('d M'));
@@ -395,48 +417,65 @@ class HomeController extends Controller
             $topSuppliers = collect();
 
             if ($user->can('purchases.view')) {
-                $purchasesPeriod = (float) $scopeBranch(DB::table('purchases'))
-                    ->whereBetween('purchase_date', [$startDateOnly, $endDateOnly])
-                    ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
-                    ->sum('net_amount');
+                $purchasesQuery = $scopeBranch(DB::table('purchases'))
+                    ->whereNotIn('status_purchase', ['cancelled', 'draft']);
+                if ($filterPeriod !== 'all') {
+                    $purchasesQuery->whereBetween('purchase_date', [$startDateOnly, $endDateOnly]);
+                }
+                $purchasesRaw = (float) $purchasesQuery->sum('net_amount');
 
                 $purchasesPrevPeriod = (float) $scopeBranch(DB::table('purchases'))
                     ->whereBetween('purchase_date', [$prevStartDateOnly, $prevEndDateOnly])
-                    ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                    ->whereNotIn('status_purchase', ['cancelled', 'draft'])
                     ->sum('net_amount');
 
                 $purchasesToday = (float) $scopeBranch(DB::table('purchases'))
                     ->whereDate('purchase_date', $today)
-                    ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                    ->whereNotIn('status_purchase', ['cancelled', 'draft'])
                     ->sum('net_amount');
 
                 $purchasesThisWeek = (float) $scopeBranch(DB::table('purchases'))
                     ->whereBetween('purchase_date', [$today->copy()->startOfWeek()->format('Y-m-d'), $today->copy()->endOfWeek()->format('Y-m-d')])
-                    ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                    ->whereNotIn('status_purchase', ['cancelled', 'draft'])
                     ->sum('net_amount');
 
                 $purchasesThisMonth = (float) $scopeBranch(DB::table('purchases'))
                     ->whereBetween('purchase_date', [$today->copy()->startOfMonth()->format('Y-m-d'), $today->copy()->endOfMonth()->format('Y-m-d')])
-                    ->whereIn('status_purchase', ['approved', 'posted', 'Partial'])
+                    ->whereNotIn('status_purchase', ['cancelled', 'draft'])
                     ->sum('net_amount');
 
                 if ($user->can('purchase.returns.view')) {
-                    $purchasesReturnsPeriod = (float) DB::table('purchase_returns')
-                        ->whereBetween('return_date', [$startDateOnly, $endDateOnly])
-                        ->sum('net_amount');
+                    $prQuery = DB::table('purchase_returns');
+                    if ($filterPeriod !== 'all') {
+                        $prQuery->whereBetween('return_date', [$startDateOnly, $endDateOnly]);
+                    }
+                    $purchasesReturnsPeriod = (float) $prQuery->sum('net_amount');
 
                     $purchasesReturnsPrevPeriod = (float) DB::table('purchase_returns')
                         ->whereBetween('return_date', [$prevStartDateOnly, $prevEndDateOnly])
                         ->sum('net_amount');
                 }
 
+                // Net purchases matching PurchaseController logic
+                $purchasesPeriod = max(0, $purchasesRaw - $purchasesReturnsPeriod);
+
+                // Lifetime totals for reference
+                $purchasesLifetime = (float) $scopeBranch(DB::table('purchases'))
+                    ->whereNotIn('status_purchase', ['cancelled', 'draft'])
+                    ->sum('net_amount');
+                $salesLifetime = (float) $scopeBranch(DB::table('sales'))
+                    ->whereNotIn('sale_status', ['cancelled', 'returned'])
+                    ->sum('total_net');
+
                 // Top Suppliers by Purchases
-                $topSuppliers = DB::table('purchases')
+                $topSuppliersQuery = DB::table('purchases')
                     ->join('vendors', 'purchases.vendor_id', '=', 'vendors.id')
-                    ->whereBetween('purchases.purchase_date', [$startDateOnly, $endDateOnly])
-                    ->whereIn('purchases.status_purchase', ['approved', 'posted', 'Partial'])
-                    ->when($currentBranchId, fn($q) => $q->where('purchases.branch_id', $currentBranchId))
-                    ->select(
+                    ->whereNotIn('purchases.status_purchase', ['cancelled', 'draft'])
+                    ->when($currentBranchId, fn($q) => $q->where('purchases.branch_id', $currentBranchId));
+                if ($filterPeriod !== 'all') {
+                    $topSuppliersQuery->whereBetween('purchases.purchase_date', [$startDateOnly, $endDateOnly]);
+                }
+                $topSuppliers = $topSuppliersQuery->select(
                         'vendors.id',
                         'vendors.name as vendor_name',
                         DB::raw('COUNT(purchases.id) as total_bills'),
@@ -465,16 +504,25 @@ class HomeController extends Controller
                 $expensesTodayV2 = (float) DB::table('voucher_masters')->where('voucher_type', 'expense')->whereDate('date', $today)->sum('total_amount');
                 $expensesToday = $expensesTodayV1 + $expensesTodayV2;
 
-                $expV1Period = (float) DB::table('expense_vouchers')->whereBetween('entry_date', [$startDateOnly, $endDateOnly])->sum('total_amount');
-                $expV2Period = (float) DB::table('voucher_masters')->where('voucher_type', 'expense')->whereBetween('date', [$startDateOnly, $endDateOnly])->sum('total_amount');
+                $expV1Query = DB::table('expense_vouchers');
+                $expV2Query = DB::table('voucher_masters')->where('voucher_type', 'expense');
+                if ($filterPeriod !== 'all') {
+                    $expV1Query->whereBetween('entry_date', [$startDateOnly, $endDateOnly]);
+                    $expV2Query->whereBetween('date', [$startDateOnly, $endDateOnly]);
+                }
+                $expV1Period = (float) $expV1Query->sum('total_amount');
+                $expV2Period = (float) $expV2Query->sum('total_amount');
                 $expensesPeriod = $expV1Period + $expV2Period;
 
                 $expV1Prev = (float) DB::table('expense_vouchers')->whereBetween('entry_date', [$prevStartDateOnly, $prevEndDateOnly])->sum('total_amount');
                 $expV2Prev = (float) DB::table('voucher_masters')->where('voucher_type', 'expense')->whereBetween('date', [$prevStartDateOnly, $prevEndDateOnly])->sum('total_amount');
                 $expensesPrevPeriod = $expV1Prev + $expV2Prev;
 
-                $expenseBreakdown = DB::table('expense_vouchers')
-                    ->whereBetween('entry_date', [$startDateOnly, $endDateOnly])
+                $expenseBreakdownQuery = DB::table('expense_vouchers');
+                if ($filterPeriod !== 'all') {
+                    $expenseBreakdownQuery->whereBetween('entry_date', [$startDateOnly, $endDateOnly]);
+                }
+                $expenseBreakdown = $expenseBreakdownQuery
                     ->select('type as name', DB::raw('SUM(total_amount) as total'))
                     ->groupBy('type')
                     ->orderByDesc('total')
@@ -559,20 +607,43 @@ class HomeController extends Controller
             // 5. RECEIVABLES & PAYABLES
             $totalReceivables = null;
             if ($user->can('recovery.report.view') || $user->can('customer.ledger.view') || $user->can('customers.view')) {
-                $totalReceivables = (float) (DB::table('journal_entries')
-                    ->where('party_type', Customer::class)
-                    ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as total')
-                    ->value('total') ?? 0);
+                $customerIds = DB::table('customers')->pluck('id');
+                $totalReceivables = 0;
+                foreach ($customerIds as $cid) {
+                    $latest = DB::table('customer_ledgers')->where('customer_id', $cid)->latest('id')->first();
+                    if ($latest) {
+                        $totalReceivables += (float)$latest->closing_balance;
+                    } else {
+                        $c = DB::table('customers')->where('id', $cid)->first();
+                        $totalReceivables += (float)($c->opening_balance ?? 0);
+                    }
+                }
+                if ($totalReceivables <= 0) {
+                    $totalReceivables = (float) DB::table('sales')
+                        ->whereNotIn('sale_status', ['cancelled', 'returned'])
+                        ->selectRaw('COALESCE(SUM(total_net - COALESCE(cash, 0)), 0) as due')
+                        ->value('due');
+                }
             }
 
             $totalPayables = null;
             if ($user->can('payable.report.view') || $user->can('vendor.ledger.view') || $user->can('vendors.view')) {
-                $apId = app(\App\Services\BalanceService::class)->getAccountsPayableId();
-                $totalPayables = (float) (DB::table('journal_entries')
-                    ->where('party_type', Vendor::class)
-                    ->where('account_id', $apId)
-                    ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as total')
-                    ->value('total') ?? 0);
+                $vendorIds = DB::table('vendors')->pluck('id');
+                $totalPayables = 0;
+                foreach ($vendorIds as $vid) {
+                    $latest = DB::table('vendor_ledgers')->where('vendor_id', $vid)->latest('id')->first();
+                    if ($latest) {
+                        $totalPayables += (float)$latest->closing_balance;
+                    } else {
+                        $v = DB::table('vendors')->where('id', $vid)->first();
+                        $totalPayables += (float)($v->opening_balance ?? 0);
+                    }
+                }
+                if ($totalPayables <= 0) {
+                    $totalPayables = (float) DB::table('purchases')
+                        ->whereNotIn('status_purchase', ['cancelled', 'draft'])
+                        ->sum('due_amount');
+                }
             }
 
             // 6. CASH & BANK LIQUIDITY
@@ -583,17 +654,19 @@ class HomeController extends Controller
             $totalCashAndBankBalance = null;
 
             if ($user->can('chart.of.accounts.view') || $user->can('balance.sheet.report.view') || $user->can('all.vouchers.view')) {
-                $allLiquidityAccounts = Account::with('head')
-                    ->whereHas('head', function ($query) {
-                        $query->whereIn('name', ['Cash', 'Bank']);
-                    })
-                    ->where('status', 1)
-                    ->get();
-
-                $cashAccounts = $allLiquidityAccounts->filter(fn($a) => strtolower($a->head->name ?? '') === 'cash')->values();
-                $bankAccounts = $allLiquidityAccounts->filter(fn($a) => strtolower($a->head->name ?? '') === 'bank')->values();
-
+                $cashAccounts = Account::where('status', 1)
+                    ->where(function($q) {
+                        $q->where('title', 'like', '%cash%')
+                          ->orWhereHas('head', fn($h) => $h->where('name', 'Cash'));
+                    })->get();
                 $totalCashBalance = (float) $cashAccounts->sum('current_balance');
+
+                $bankAccounts = Account::where('status', 1)
+                    ->where(function($q) {
+                        $q->where('title', 'like', '%bank%')
+                          ->orWhere('title', 'like', '%cheque%')
+                          ->orWhereHas('head', fn($h) => $h->whereIn('name', ['Bank', 'Cheque']));
+                    })->get();
                 $totalBankBalance = (float) $bankAccounts->sum('current_balance');
                 $totalCashAndBankBalance = $totalCashBalance + $totalBankBalance;
             }
@@ -1004,11 +1077,20 @@ class HomeController extends Controller
                     $idx++;
                 }
             } else {
-                $displayTopProducts = collect([
-                    ['name' => 'Sunridge Flour 10kg', 'qty' => '8,200 Pcs', 'pct' => 100, 'color' => '#2563eb', 'icon' => 'fa-wheat-awn'],
-                    ['name' => 'Nestle Milk Pack', 'qty' => '6,400 Pcs', 'pct' => 78, 'color' => '#10b981', 'icon' => 'fa-bottle-droplet'],
-                    ['name' => 'Tapal Tea 500g', 'qty' => '5,200 Pcs', 'pct' => 63, 'color' => '#f97316', 'icon' => 'fa-mug-hot'],
-                ]);
+                // Pull real active products from database catalog
+                $realProds = Product::where('is_active', 1)->take(4)->get();
+                $colors = ['#2563eb', '#10b981', '#f97316', '#8b5cf6'];
+                $idx = 0;
+                foreach ($realProds as $rp) {
+                    $displayTopProducts->push([
+                        'name' => $rp->item_name ?: 'Product #' . $rp->id,
+                        'qty' => '0 Pcs',
+                        'pct' => 10,
+                        'color' => $colors[$idx % count($colors)],
+                        'icon' => 'fa-box',
+                    ]);
+                    $idx++;
+                }
             }
 
             // Stock Status for Donut
@@ -1021,9 +1103,9 @@ class HomeController extends Controller
                 $lowStockPct = round(($lowCount / $totalActiveProd) * 100);
                 $outStockPct = max(0, 100 - $inStockPct - $lowStockPct);
             } else {
-                $inStockPct = 72;
-                $lowStockPct = 18;
-                $outStockPct = 10;
+                $inStockPct = 0;
+                $lowStockPct = 0;
+                $outStockPct = 0;
             }
             $stockStatus = [
                 'in_stock' => $inStockPct,
@@ -1031,34 +1113,62 @@ class HomeController extends Controller
                 'out_of_stock' => $outStockPct,
             ];
 
-            // Business Analytics Ratio
-            $totRev = $salesPeriod > 0 ? $salesPeriod : 45200000;
-            $totExp = $expensesPeriod > 0 ? $expensesPeriod : 12800000;
+            // Business Analytics Ratio (100% dynamic without dummy fallbacks)
+            $totRev = $salesPeriod;
+            $totExp = $expensesPeriod;
             $sumVol = $salesPeriod + $purchasesPeriod;
-            $salesRatio = $sumVol > 0 ? round(($salesPeriod / $sumVol) * 100) : 68;
-            $purchRatio = 100 - $salesRatio;
+            $salesRatio = $sumVol > 0 ? round(($salesPeriod / $sumVol) * 100) : ($salesPeriod > 0 ? 100 : 0);
+            $purchRatio = $sumVol > 0 ? (100 - $salesRatio) : ($purchasesPeriod > 0 ? 100 : 0);
             $businessAnalytics = [
                 'sales_ratio' => $salesRatio,
                 'purchases_ratio' => $purchRatio,
                 'total_revenue' => $totRev,
-                'total_revenue_formatted' => $formatCompactCurrency($totRev),
+                'total_revenue_formatted' => 'Rs. ' . number_format($totRev, 0),
                 'total_expenses' => $totExp,
-                'total_expenses_formatted' => $formatCompactCurrency($totExp),
+                'total_expenses_formatted' => 'Rs. ' . number_format($totExp, 0),
             ];
 
-            // Financial Overview 3-Pill Summary
-            $finIncome = $salesPeriod > 0 ? $salesPeriod : 3640000;
-            $finExpenses = $expensesPeriod > 0 ? $expensesPeriod : 2000000;
-            $finProfit = ($netProfitPeriod !== null && $netProfitPeriod > 0) ? $netProfitPeriod : 1424091;
+            // Financial Overview 3-Pill Summary (100% dynamic without dummy fallbacks)
+            $finIncome = $salesPeriod;
+            $finExpenses = $expensesPeriod;
+            $finProfit = ($netProfitPeriod !== null) ? $netProfitPeriod : ($salesPeriod - $purchasesPeriod - $expensesPeriod);
 
             $financialOverview = [
                 'income' => $finIncome,
-                'income_formatted' => $formatCompactCurrency($finIncome),
+                'income_formatted' => 'Rs. ' . number_format($finIncome, 0),
                 'expenses' => $finExpenses,
-                'expenses_formatted' => $formatCompactCurrency($finExpenses),
+                'expenses_formatted' => 'Rs. ' . number_format($finExpenses, 0),
                 'profit' => $finProfit,
-                'profit_formatted' => $formatCompactCurrency($finProfit),
+                'profit_formatted' => 'Rs. ' . number_format($finProfit, 0),
             ];
+
+            // Dynamic Chart Datasets
+            if ($filterPeriod === 'all' || $filterPeriod === 'this_year') {
+                $chartOverviewLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                $chartOverviewSales = $salesChartStats['monthly']['sales'];
+                $chartOverviewPurchases = $salesChartStats['monthly']['purchases'];
+                $chartFinancialWaveLabels = ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov'];
+                $chartFinancialWaveData = [
+                    (float)($salesChartStats['monthly']['sales'][0] ?? 0),
+                    (float)($salesChartStats['monthly']['sales'][2] ?? 0),
+                    (float)($salesChartStats['monthly']['sales'][4] ?? 0),
+                    (float)($salesChartStats['monthly']['sales'][6] ?? 0),
+                    (float)($salesChartStats['monthly']['sales'][8] ?? 0),
+                    (float)($salesChartStats['monthly']['sales'][10] ?? 0),
+                ];
+            } elseif ($filterPeriod === 'this_month' || $filterPeriod === 'last_month') {
+                $chartOverviewLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                $chartOverviewSales = $salesChartStats['weekly']['sales'];
+                $chartOverviewPurchases = $salesChartStats['weekly']['purchases'];
+                $chartFinancialWaveLabels = ['W1', 'W2', 'W3', 'W4'];
+                $chartFinancialWaveData = $salesChartStats['weekly']['sales'];
+            } else {
+                $chartOverviewLabels = $salesChartStats['daily']['categories'];
+                $chartOverviewSales = $salesChartStats['daily']['sales'];
+                $chartOverviewPurchases = $salesChartStats['daily']['purchases'];
+                $chartFinancialWaveLabels = $salesChartStats['daily']['categories'];
+                $chartFinancialWaveData = $salesChartStats['daily']['sales'];
+            }
 
             // Growth Objects for KPI Cards
             $growth = [
@@ -1100,6 +1210,8 @@ class HomeController extends Controller
                 'purchasesThisWeek',
                 'purchasesThisMonth',
                 'purchasesReturnsPeriod',
+                'purchasesLifetime',
+                'salesLifetime',
                 'expensesPeriod',
                 'expensesToday',
                 'grossProfitPeriod',
@@ -1117,6 +1229,11 @@ class HomeController extends Controller
                 'outOfStockCount',
                 'warehouseStockStats',
                 'salesChartStats',
+                'chartOverviewLabels',
+                'chartOverviewSales',
+                'chartOverviewPurchases',
+                'chartFinancialWaveLabels',
+                'chartFinancialWaveData',
                 'salesByCategory',
                 'topProducts',
                 'topCustomers',

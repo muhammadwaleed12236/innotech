@@ -290,6 +290,63 @@
         box-shadow: 0 16px 32px -4px rgba(168, 85, 247, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.9);
     }
 
+    /* ─── TIER 1.5: EXECUTIVE SECONDARY 3D METRICS BAR ──────────────────────── */
+    .pw-exec-strip {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 1200px) {
+        .pw-exec-strip { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .pw-exec-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .pw-exec-strip { grid-template-columns: 1fr; }
+    }
+    .pw-exec-item {
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(226, 232, 240, 0.85);
+        border-radius: 16px;
+        padding: 0.75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+        transition: all 0.25s ease;
+    }
+    .pw-exec-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+        text-decoration: none;
+        color: inherit;
+        background: #ffffff;
+    }
+    .pw-exec-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+    .pw-exec-icon-blue { background: #eff6ff; color: #2563eb; }
+    .pw-exec-icon-purple { background: #f5f3ff; color: #8b5cf6; }
+    .pw-exec-icon-emerald { background: #ecfdf5; color: #10b981; }
+    .pw-exec-icon-cyan { background: #ecfeff; color: #06b6d4; }
+    .pw-exec-icon-amber { background: #fffbeb; color: #f59e0b; }
+    .pw-exec-icon-rose { background: #fff1f2; color: #f43f5e; }
+    .pw-exec-lbl { font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.3px; }
+    .pw-exec-val { font-size: 13.5px; font-weight: 800; color: #0f172a; font-family: var(--f-display); margin-top: 1px; }
+
     /* 3D Floating Icon Box on Left */
     .pw-3d-box {
         width: 54px;
@@ -991,6 +1048,7 @@
                     <span>{{ $periodLabel }}</span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-right shadow border-0" style="font-size: 12.5px; border-radius: 16px; padding: 8px;">
+                    <a class="dropdown-item py-2 {{ $filterPeriod === 'all' ? 'fw-bold text-primary' : '' }}" href="{{ route('home', array_merge(request()->query(), ['period' => 'all'])) }}"><i class="fas fa-infinity me-1 text-primary"></i> All Time</a>
                     <a class="dropdown-item py-2 {{ $filterPeriod === 'today' ? 'fw-bold text-primary' : '' }}" href="{{ route('home', array_merge(request()->query(), ['period' => 'today'])) }}">Today</a>
                     <a class="dropdown-item py-2 {{ $filterPeriod === 'yesterday' ? 'fw-bold text-primary' : '' }}" href="{{ route('home', array_merge(request()->query(), ['period' => 'yesterday'])) }}">Yesterday</a>
                     <a class="dropdown-item py-2 {{ $filterPeriod === 'this_week' ? 'fw-bold text-primary' : '' }}" href="{{ route('home', array_merge(request()->query(), ['period' => 'this_week'])) }}">This Week</a>
@@ -1019,10 +1077,10 @@
                 <div class="pw-pill-content">
                     <div class="pw-pill-title">Total Sales</div>
                     <div class="pw-pill-amount">
-                        Rs. {{ $salesPeriod > 0 ? number_format($salesPeriod, 0) : '3,640,091' }}
+                        Rs. {{ number_format($salesPeriod, 0) }}
                     </div>
-                    <div class="pw-pill-trend pw-trend-green">
-                        <i class="fas fa-caret-up"></i> +{{ $growth['sales']['value'] > 0 ? $growth['sales']['value'] : '12.5' }}% <span class="text-muted fw-normal">vs last month</span>
+                    <div class="pw-pill-trend {{ ($growth['sales']['direction'] ?? 'up') === 'down' ? 'pw-trend-red' : 'pw-trend-green' }}">
+                        <i class="fas fa-caret-{{ $growth['sales']['direction'] ?? 'up' }}"></i> {{ $growth['sales']['text'] ?? '0%' }} <span class="text-muted fw-normal">vs prev period</span>
                     </div>
                 </div>
             </div>
@@ -1045,11 +1103,16 @@
                 <div class="pw-pill-content">
                     <div class="pw-pill-title">Total Purchases</div>
                     <div class="pw-pill-amount">
-                        Rs. {{ $purchasesPeriod > 0 ? number_format($purchasesPeriod, 0) : '2,000,000' }}
+                        Rs. {{ number_format($purchasesPeriod, 0) }}
                     </div>
-                    <div class="pw-pill-trend pw-trend-green">
-                        <i class="fas fa-caret-up"></i> +{{ $growth['purchases']['value'] > 0 ? $growth['purchases']['value'] : '8.2' }}% <span class="text-muted fw-normal">vs last month</span>
+                    <div class="pw-pill-trend {{ ($growth['purchases']['direction'] ?? 'up') === 'down' ? 'pw-trend-red' : 'pw-trend-green' }}">
+                        <i class="fas fa-caret-{{ $growth['purchases']['direction'] ?? 'up' }}"></i> {{ $growth['purchases']['text'] ?? '0%' }} <span class="text-muted fw-normal">vs prev period</span>
                     </div>
+                    @if($filterPeriod !== 'all' && ($purchasesLifetime ?? 0) > 0)
+                        <div style="font-size: 10.5px; color: #475569; font-weight: 600; margin-top: 3px;">
+                            <i class="fas fa-database me-1 text-muted"></i>All-Time: Rs. {{ number_format($purchasesLifetime, 0) }}
+                        </div>
+                    @endif
                 </div>
             </div>
             <!-- Sparkline 5 Bars -->
@@ -1071,10 +1134,10 @@
                 <div class="pw-pill-content">
                     <div class="pw-pill-title">Sales Returns</div>
                     <div class="pw-pill-amount">
-                        Rs. {{ $salesReturnsPeriod > 0 ? number_format($salesReturnsPeriod, 0) : '215,000' }}
+                        Rs. {{ number_format($salesReturnsPeriod, 0) }}
                     </div>
-                    <div class="pw-pill-trend pw-trend-red">
-                        <i class="fas fa-caret-down"></i> -{{ $growth['sales_returns']['value'] > 0 ? $growth['sales_returns']['value'] : '2.1' }}% <span class="text-muted fw-normal">vs last month</span>
+                    <div class="pw-pill-trend {{ ($growth['sales_returns']['direction'] ?? 'up') === 'down' ? 'pw-trend-red' : 'pw-trend-green' }}">
+                        <i class="fas fa-caret-{{ $growth['sales_returns']['direction'] ?? 'up' }}"></i> {{ $growth['sales_returns']['text'] ?? '0%' }} <span class="text-muted fw-normal">vs prev period</span>
                     </div>
                 </div>
             </div>
@@ -1097,10 +1160,10 @@
                 <div class="pw-pill-content">
                     <div class="pw-pill-title">Net Profit</div>
                     <div class="pw-pill-amount">
-                        Rs. {{ ($netProfitPeriod !== null && $netProfitPeriod > 0) ? number_format($netProfitPeriod, 0) : '1,424,091' }}
+                        Rs. {{ number_format($netProfitPeriod ?? 0, 0) }}
                     </div>
-                    <div class="pw-pill-trend pw-trend-green">
-                        <i class="fas fa-caret-up"></i> +{{ $growth['net_profit']['value'] > 0 ? $growth['net_profit']['value'] : '15.6' }}% <span class="text-muted fw-normal">vs last month</span>
+                    <div class="pw-pill-trend {{ ($growth['net_profit']['direction'] ?? 'up') === 'down' ? 'pw-trend-red' : 'pw-trend-green' }}">
+                        <i class="fas fa-caret-{{ $growth['net_profit']['direction'] ?? 'up' }}"></i> {{ $growth['net_profit']['text'] ?? '0%' }} <span class="text-muted fw-normal">vs prev period</span>
                     </div>
                 </div>
             </div>
@@ -1116,6 +1179,52 @@
 
     </div>
 
+    <!-- ─── TIER 1.5: EXECUTIVE SECONDARY 3D METRICS BAR ──────────────────────── -->
+    <div class="pw-exec-strip">
+        <a href="{{ route('report.customer.ledger') }}" class="pw-exec-item">
+            <div class="pw-exec-icon pw-exec-icon-blue"><i class="fas fa-hand-holding-dollar"></i></div>
+            <div>
+                <div class="pw-exec-lbl">Receivables</div>
+                <div class="pw-exec-val">Rs. {{ number_format($totalReceivables ?? 0, 0) }}</div>
+            </div>
+        </a>
+        <a href="{{ route('report.vendor.ledger') }}" class="pw-exec-item">
+            <div class="pw-exec-icon pw-exec-icon-purple"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div>
+                <div class="pw-exec-lbl">Payables</div>
+                <div class="pw-exec-val">Rs. {{ number_format($totalPayables ?? 0, 0) }}</div>
+            </div>
+        </a>
+        <a href="{{ route('view_all') }}" class="pw-exec-item">
+            <div class="pw-exec-icon pw-exec-icon-emerald"><i class="fas fa-wallet"></i></div>
+            <div>
+                <div class="pw-exec-lbl">Cash in Hand</div>
+                <div class="pw-exec-val">Rs. {{ number_format($totalCashBalance ?? 0, 0) }}</div>
+            </div>
+        </a>
+        <a href="{{ route('view_all') }}" class="pw-exec-item">
+            <div class="pw-exec-icon pw-exec-icon-cyan"><i class="fas fa-building-columns"></i></div>
+            <div>
+                <div class="pw-exec-lbl">Bank Balance</div>
+                <div class="pw-exec-val">Rs. {{ number_format($totalBankBalance ?? 0, 0) }}</div>
+            </div>
+        </a>
+        <a href="{{ route('all_expense_vochers') }}" class="pw-exec-item">
+            <div class="pw-exec-icon pw-exec-icon-amber"><i class="fas fa-money-bill-transfer"></i></div>
+            <div>
+                <div class="pw-exec-lbl">Expenses</div>
+                <div class="pw-exec-val">Rs. {{ number_format($expensesPeriod ?? 0, 0) }}</div>
+            </div>
+        </a>
+        <a href="{{ route('purchase.return.index') }}" class="pw-exec-item">
+            <div class="pw-exec-icon pw-exec-icon-rose"><i class="fas fa-rotate-left"></i></div>
+            <div>
+                <div class="pw-exec-lbl">Purch. Returns</div>
+                <div class="pw-exec-val">Rs. {{ number_format($purchasesReturnsPeriod ?? 0, 0) }}</div>
+            </div>
+        </a>
+    </div>
+
     <!-- ─── TIER 2: 3 WHITE GLASS CONTAINER CARDS ───────────────────────────── -->
     <div class="pw-grid-tier2">
 
@@ -1126,7 +1235,7 @@
                     <i class="fas fa-chart-line pw-card-title-icon text-primary"></i>
                     <h5 class="pw-card-title">Sales &amp; Purchases Overview</h5>
                 </div>
-                <span class="pw-pill-select">This Month <i class="fas fa-chevron-down" style="font-size: 9px;"></i></span>
+                <span class="pw-pill-select">{{ $periodLabel }}</span>
             </div>
 
             <!-- Chart Legend -->
@@ -1137,7 +1246,7 @@
 
             <!-- Floating Tooltip Pill (matching screenshot) -->
             <div class="pw-floating-pill">
-                Rs. {{ $salesPeriod > 0 ? number_format($salesPeriod / 1000000, 2) . 'M' : '3.64M' }} Sales
+                Rs. {{ number_format($salesPeriod, 0) }} Sales
             </div>
 
             <div style="height: 220px; position: relative;">
@@ -1152,7 +1261,7 @@
                     <i class="fas fa-chart-pie pw-card-title-icon" style="color: #8b5cf6;"></i>
                     <h5 class="pw-card-title">Business Analytics</h5>
                 </div>
-                <span class="pw-pill-select">This Year <i class="fas fa-chevron-down" style="font-size: 9px;"></i></span>
+                <span class="pw-pill-select">{{ $periodLabel }}</span>
             </div>
 
             <!-- Donut + Legend Row -->
@@ -1365,7 +1474,7 @@
                     <i class="fas fa-calculator pw-card-title-icon text-primary"></i>
                     <h5 class="pw-card-title">Financial Overview</h5>
                 </div>
-                <span class="pw-pill-select">This Month <i class="fas fa-chevron-down" style="font-size: 9px;"></i></span>
+                <span class="pw-pill-select">{{ $periodLabel }}</span>
             </div>
 
             <!-- Curved Blue Wave Line Area Chart -->
@@ -1376,15 +1485,15 @@
             <!-- Bottom 3 Pills (Income, Expenses, Profit) -->
             <div class="pw-fin-pills">
                 <div class="pw-fin-pill pw-fin-green">
-                    <div class="pw-fin-val">{{ $financialOverview['income_formatted'] ?? 'Rs. 3.64M' }}</div>
+                    <div class="pw-fin-val">Rs. {{ number_format($financialOverview['income'] ?? 0, 0) }}</div>
                     <div class="pw-fin-lbl">Income</div>
                 </div>
                 <div class="pw-fin-pill pw-fin-red">
-                    <div class="pw-fin-val">{{ $financialOverview['expenses_formatted'] ?? 'Rs. 2.00M' }}</div>
+                    <div class="pw-fin-val">Rs. {{ number_format($financialOverview['expenses'] ?? 0, 0) }}</div>
                     <div class="pw-fin-lbl">Expenses</div>
                 </div>
                 <div class="pw-fin-pill pw-fin-purple">
-                    <div class="pw-fin-val">{{ $financialOverview['profit_formatted'] ?? 'Rs. 1.42M' }}</div>
+                    <div class="pw-fin-val">Rs. {{ number_format($financialOverview['profit'] ?? 0, 0) }}</div>
                     <div class="pw-fin-lbl">Profit</div>
                 </div>
             </div>
@@ -1688,7 +1797,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // ── CHART 1: SALES & PURCHASES OVERVIEW (MATCHING SCREENSHOT) ─────────────
+    // ── CHART 1: SALES & PURCHASES OVERVIEW (100% DYNAMIC FROM CONTROLLER) ───
     function renderOverviewChart() {
         const ctx = document.getElementById('chartOverview');
         if (!ctx) return;
@@ -1705,14 +1814,18 @@
         purpleGrad.addColorStop(0, 'rgba(139, 92, 246, 0.25)');
         purpleGrad.addColorStop(1, 'rgba(139, 92, 246, 0.00)');
 
+        const ovLabels = {!! json_encode($chartOverviewLabels ?? []) !!};
+        const ovSales = {!! json_encode($chartOverviewSales ?? []) !!};
+        const ovPurch = {!! json_encode($chartOverviewPurchases ?? []) !!};
+
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['1 Nov', '7 Nov', '14 Nov', '21 Nov', '30 Nov'],
+                labels: ovLabels,
                 datasets: [
                     {
                         label: 'Sales',
-                        data: [1.2, 2.1, 1.8, 3.1, 3.64],
+                        data: ovSales,
                         borderColor: '#2563eb',
                         backgroundColor: blueGrad,
                         fill: true,
@@ -1721,12 +1834,12 @@
                         pointBackgroundColor: '#2563eb',
                         pointBorderColor: '#ffffff',
                         pointBorderWidth: 2,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
                     },
                     {
                         label: 'Purchases',
-                        data: [0.8, 1.4, 1.2, 2.0, 2.00],
+                        data: ovPurch,
                         borderColor: '#a855f7',
                         backgroundColor: purpleGrad,
                         fill: true,
@@ -1750,7 +1863,7 @@
                         callbacks: {
                             label: function(c) {
                                 const val = c.raw !== undefined ? c.raw : (c.yLabel !== undefined ? c.yLabel : 0);
-                                return (c.dataset ? c.dataset.label : '') + ': Rs. ' + Number(val).toFixed(2) + 'M';
+                                return (c.dataset ? c.dataset.label : '') + ': Rs. ' + Number(val).toLocaleString();
                             }
                         }
                     }
@@ -1764,12 +1877,14 @@
                         gridLines: { color: 'rgba(226, 232, 240, 0.6)' },
                         ticks: {
                             beginAtZero: true,
-                            max: 4,
-                            stepSize: 1,
                             fontColor: '#94a3b8',
                             fontSize: 10,
                             fontStyle: 'bold',
-                            callback: function(v) { return v + 'M'; }
+                            callback: function(v) { 
+                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
+                                return v;
+                            }
                         }
                     }],
                     x: {
@@ -1778,10 +1893,12 @@
                     },
                     y: {
                         beginAtZero: true,
-                        max: 4,
                         ticks: {
-                            stepSize: 1,
-                            callback: function(v) { return v + 'M'; },
+                            callback: function(v) { 
+                                if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+                                if (v >= 1000) return (v / 1000).toFixed(0) + 'K';
+                                return v;
+                            },
                             font: { weight: '600', size: 10 },
                             color: '#94a3b8'
                         },
@@ -1792,21 +1909,22 @@
         });
     }
 
-    // ── CHART 2: BUSINESS ANALYTICS DONUT (MATCHING SCREENSHOT) ──────────────
+    // ── CHART 2: BUSINESS ANALYTICS DONUT (100% DYNAMIC) ──────────────────────
     function renderBusinessDonut() {
         const ctx = document.getElementById('chartBusinessDonut');
         if (!ctx) return;
 
-        const salesPct = {{ $businessAnalytics['sales_ratio'] ?? 68 }};
-        const purchPct = {{ $businessAnalytics['purchases_ratio'] ?? 32 }};
+        const salesPct = {{ $businessAnalytics['sales_ratio'] ?? 0 }};
+        const purchPct = {{ $businessAnalytics['purchases_ratio'] ?? 0 }};
+        const hasData = (salesPct + purchPct) > 0;
 
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Sales', 'Purchases'],
+                labels: hasData ? ['Sales', 'Purchases'] : ['No Data'],
                 datasets: [{
-                    data: [salesPct, purchPct],
-                    backgroundColor: ['#06b6d4', '#a855f7'],
+                    data: hasData ? [salesPct, purchPct] : [1],
+                    backgroundColor: hasData ? ['#06b6d4', '#a855f7'] : ['#e2e8f0'],
                     borderWidth: 0,
                     hoverOffset: 3
                 }]
@@ -1826,22 +1944,23 @@
         });
     }
 
-    // ── CHART 3: STOCK STATUS DONUT (MATCHING SCREENSHOT) ───────────────────
+    // ── CHART 3: STOCK STATUS DONUT (100% DYNAMIC) ───────────────────────────
     function renderStockDonut() {
         const ctx = document.getElementById('chartStockStatus');
         if (!ctx) return;
 
-        const inStock = {{ $stockStatus['in_stock'] ?? 72 }};
-        const lowStock = {{ $stockStatus['low_stock'] ?? 18 }};
-        const outStock = {{ $stockStatus['out_of_stock'] ?? 10 }};
+        const inStock = {{ $stockStatus['in_stock'] ?? 0 }};
+        const lowStock = {{ $stockStatus['low_stock'] ?? 0 }};
+        const outStock = {{ $stockStatus['out_of_stock'] ?? 0 }};
+        const hasStock = (inStock + lowStock + outStock) > 0;
 
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['In Stock', 'Low Stock', 'Out of Stock'],
+                labels: hasStock ? ['In Stock', 'Low Stock', 'Out of Stock'] : ['No Stock Data'],
                 datasets: [{
-                    data: [inStock, lowStock, outStock],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    data: hasStock ? [inStock, lowStock, outStock] : [1],
+                    backgroundColor: hasStock ? ['#10b981', '#f59e0b', '#ef4444'] : ['#e2e8f0'],
                     borderWidth: 0,
                     hoverOffset: 3
                 }]
@@ -1861,7 +1980,7 @@
         });
     }
 
-    // ── CHART 4: FINANCIAL OVERVIEW CURVED BLUE WAVE (MATCHING SCREENSHOT) ───
+    // ── CHART 4: FINANCIAL OVERVIEW CURVED BLUE WAVE (100% DYNAMIC) ───────────
     function renderFinancialWave() {
         const ctx = document.getElementById('chartFinancialWave');
         if (!ctx) return;
@@ -1871,12 +1990,15 @@
         blueGrad.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
         blueGrad.addColorStop(1, 'rgba(59, 130, 246, 0.00)');
 
+        const waveData = {!! json_encode($chartFinancialWaveData ?? []) !!};
+        const waveLabels = {!! json_encode($chartFinancialWaveLabels ?? []) !!};
+
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['', '', '', '', '', '', ''],
+                labels: waveLabels,
                 datasets: [{
-                    data: [1.8, 2.5, 2.1, 3.2, 2.8, 3.4, 3.64],
+                    data: waveData,
                     borderColor: '#2563eb',
                     backgroundColor: blueGrad,
                     fill: true,
@@ -1890,15 +2012,39 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 legend: { display: false },
-                tooltips: { enabled: false },
+                tooltips: { enabled: true },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { enabled: false }
+                    tooltip: {
+                        callbacks: {
+                            label: function(c) {
+                                const val = c.raw !== undefined ? c.raw : (c.yLabel !== undefined ? c.yLabel : 0);
+                                return 'Revenue: Rs. ' + Number(val).toLocaleString();
+                            }
+                        }
+                    }
                 },
                 scales: {
                     xAxes: [{
                         display: false,
                         gridLines: { display: false, drawBorder: false }
+                    }],
+                    yAxes: [{
+                        display: false,
+                        gridLines: { display: false, drawBorder: false }
+                    }],
+                    x: {
+                        display: false,
+                        grid: { display: false, drawBorder: false }
+                    },
+                    y: {
+                        display: false,
+                        grid: { display: false, drawBorder: false }
+                    }
+                }
+            }
+        });
+    }
                     }],
                     yAxes: [{
                         display: false,
