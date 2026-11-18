@@ -283,21 +283,29 @@
                     <label class="form-label small fw-bold text-muted mb-1">To Date</label>
                     <input type="date" id="filterToDate" name="to_date" class="form-control form-control-sm" value="{{ $toDate }}">
                 </div>
-                <div class="col-md-3 col-sm-6">
-                    <label class="form-label small fw-bold text-muted mb-1">Order Booker (Sales Officer)</label>
-                    <select id="filterOfficer" name="sales_officer_id" class="form-select form-select-sm">
-                        <option value="all">All Order Bookers</option>
-                        @foreach($salesOfficers as $officer)
-                            <option value="{{ $officer->id }}">{{ $officer->name }}</option>
-                        @endforeach
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Group By</label>
+                    <select id="filterGroupBy" name="group_by" class="form-select form-select-sm" onchange="loadReportData()">
+                        <option value="customer" selected>Customer Wise</option>
+                        <option value="invoice">Invoice Wise</option>
+                        <option value="order_booker">Order Booker Wise</option>
                     </select>
                 </div>
-                <div class="col-md-3 col-sm-6">
+                <div class="col-md-2 col-sm-6">
                     <label class="form-label small fw-bold text-muted mb-1">Customer</label>
                     <select id="filterCustomer" name="customer_id" class="form-select form-select-sm">
                         <option value="all">All Customers</option>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->id }}">{{ $customer->customer_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Order Booker</label>
+                    <select id="filterOfficer" name="sales_officer_id" class="form-select form-select-sm">
+                        <option value="all">All Order Bookers</option>
+                        @foreach($salesOfficers as $officer)
+                            <option value="{{ $officer->id }}">{{ $officer->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -376,8 +384,8 @@
             <thead>
                 {{-- Group Header Row --}}
                 <tr>
-                    <th rowspan="2" class="col-text" style="width: 120px;">Order Booker Code</th>
-                    <th rowspan="2" class="col-text" style="width: 160px;">Order Booker Name</th>
+                    <th rowspan="2" class="col-text" style="width: 130px;" id="thEntityCode">Customer Code</th>
+                    <th rowspan="2" class="col-text" style="width: 180px;" id="thEntityName">Customer Name</th>
                     <th rowspan="2" class="col-num" style="width: 110px;">Gross Sales Exc GST</th>
                     <th rowspan="2" class="col-num" style="width: 110px;">Gross Sales Inc GST</th>
                     <th rowspan="2" class="col-num" style="width: 110px;">Net Amount</th>
@@ -472,9 +480,20 @@
         loadReportData();
     }
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function resetFilters() {
         document.getElementById('filterFromDate').value = '{{ $fromDate }}';
         document.getElementById('filterToDate').value = '{{ $toDate }}';
+        document.getElementById('filterGroupBy').value = 'customer';
         document.getElementById('filterOfficer').value = 'all';
         document.getElementById('filterCustomer').value = 'all';
         document.getElementById('filterWarehouse').value = 'all';
@@ -492,9 +511,11 @@
         table.style.display = 'none';
         empty.style.display = 'none';
 
+        const groupBy = document.getElementById('filterGroupBy').value;
         const params = new URLSearchParams({
             from_date: document.getElementById('filterFromDate').value,
             to_date: document.getElementById('filterToDate').value,
+            group_by: groupBy,
             sales_officer_id: document.getElementById('filterOfficer').value,
             customer_id: document.getElementById('filterCustomer').value,
             warehouse_id: document.getElementById('filterWarehouse').value,
@@ -509,6 +530,15 @@
         .then(response => response.json())
         .then(res => {
             loading.style.display = 'none';
+
+            // Dynamically update entity column headers based on Group By
+            const codeLabel = res.code_label || (groupBy === 'order_booker' ? 'Order Booker Code' : (groupBy === 'invoice' ? 'Invoice No' : 'Customer Code'));
+            const nameLabel = res.name_label || (groupBy === 'order_booker' ? 'Order Booker Name' : (groupBy === 'invoice' ? 'Customer (Date)' : 'Customer Name'));
+
+            const thCode = document.getElementById('thEntityCode');
+            const thName = document.getElementById('thEntityName');
+            if (thCode) thCode.innerText = codeLabel;
+            if (thName) thName.innerText = nameLabel;
 
             if (!res.ok || !res.rows || res.rows.length === 0) {
                 empty.style.display = 'block';
@@ -534,10 +564,12 @@
             // Populate rows
             let rowsHtml = '';
             res.rows.forEach(r => {
+                const codeVal = r.entity_code || r.customer_code || r.order_booker_code || '-';
+                const nameVal = r.entity_name || r.customer_name || r.order_booker_name || '-';
                 rowsHtml += `
                     <tr>
-                        <td class="col-text fw-bold text-secondary">${r.order_booker_code}</td>
-                        <td class="col-text fw-semibold text-dark">${r.order_booker_name}</td>
+                        <td class="col-text fw-bold text-secondary">${escapeHtml(codeVal)}</td>
+                        <td class="col-text fw-semibold text-dark">${escapeHtml(nameVal)}</td>
                         <td class="col-num">${formatNumber(r.gross_exc_gst)}</td>
                         <td class="col-num">${formatNumber(r.gross_inc_gst)}</td>
                         <td class="col-num fw-bold text-dark">${formatNumber(r.net_amount)}</td>
@@ -617,6 +649,7 @@
         const params = new URLSearchParams({
             from_date: document.getElementById('filterFromDate').value,
             to_date: document.getElementById('filterToDate').value,
+            group_by: document.getElementById('filterGroupBy').value,
             sales_officer_id: document.getElementById('filterOfficer').value,
             customer_id: document.getElementById('filterCustomer').value,
             warehouse_id: document.getElementById('filterWarehouse').value,

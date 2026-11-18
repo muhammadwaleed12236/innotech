@@ -619,7 +619,7 @@
                     <!-- Left: Dynamic Brand Logo + Company Name Pill -->
                     <div class="d-flex align-items-center">
                         @php
-                            $dynCompName = \App\Models\Setting::get('company_name', 'TrendHub');
+                            $dynCompName = \App\Models\Setting::get('company_name', 'ProWave Technologies');
                             $init1 = strtoupper(substr($dynCompName, 0, 1));
                             $init2 = strlen($dynCompName) > 1 ? strtoupper(substr($dynCompName, 1, 1)) : '';
                         @endphp

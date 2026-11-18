@@ -87,6 +87,11 @@ Route::get('/software', function () {
 })->name('software');
 
 Route::get('/home', [HomeController::class, 'index'])->middleware('auth')->name('home');
+Route::get('/dashboard/live-activities', [HomeController::class, 'liveActivities'])->middleware('auth')->name('dashboard.live_activities');
+Route::get('/dashboard/live-stats', [HomeController::class, 'liveStats'])->middleware('auth')->name('dashboard.live_stats');
+Route::post('/dashboard/tasks/store', [HomeController::class, 'storeTask'])->middleware('auth')->name('dashboard.tasks.store');
+Route::post('/dashboard/tasks/{id}/toggle', [HomeController::class, 'toggleTask'])->middleware('auth')->name('dashboard.tasks.toggle');
+Route::delete('/dashboard/tasks/{id}', [HomeController::class, 'deleteTask'])->middleware('auth')->name('dashboard.tasks.delete');
 Route::post('/admin/sync-to-cloud', [SyncController::class, 'syncToCloud'])->middleware('auth')->name('admin.sync_to_cloud');
 
 // Route::get('/adminpage', [HomeController::class, 'adminpage'])->middleware(['auth','admin'])->name('adminpage');

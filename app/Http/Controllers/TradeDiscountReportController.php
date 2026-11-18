@@ -45,6 +45,9 @@ class TradeDiscountReportController extends Controller
 
         return response()->json([
             'ok' => true,
+            'group_by' => $data['group_by'],
+            'code_label' => $data['code_label'],
+            'name_label' => $data['name_label'],
             'rows' => $data['rows'],
             'totals' => $data['totals'],
             'print_date' => Carbon::now()->format('d F , Y h:i a'),
@@ -60,6 +63,8 @@ class TradeDiscountReportController extends Controller
         $data = $this->buildReportData($request);
         $rows = $data['rows'];
         $totals = $data['totals'];
+        $codeLabel = $data['code_label'];
+        $nameLabel = $data['name_label'];
 
         $filename = 'trade_discount_report_' . date('Y-m-d_His') . '.csv';
         $headers = [
@@ -70,15 +75,15 @@ class TradeDiscountReportController extends Controller
             'Expires' => '0',
         ];
 
-        return response()->stream(function () use ($rows, $totals) {
+        return response()->stream(function () use ($rows, $totals, $codeLabel, $nameLabel) {
             $handle = fopen('php://output', 'w');
             // Write UTF-8 BOM for Excel
             fwrite($handle, "\xEF\xBB\xBF");
 
             // Header line 1
             fputcsv($handle, [
-                'Order Booker Code',
-                'Order Booker Name',
+                $codeLabel,
+                $nameLabel,
                 'Gross Sales Exc GST',
                 'Gross Sales Inc GST',
                 'Net Amount',
@@ -98,8 +103,8 @@ class TradeDiscountReportController extends Controller
 
             foreach ($rows as $r) {
                 fputcsv($handle, [
-                    $r['order_booker_code'],
-                    $r['order_booker_name'],
+                    $r['entity_code'] ?? ($r['order_booker_code'] ?? ''),
+                    $r['entity_name'] ?? ($r['order_booker_name'] ?? ''),
                     number_format($r['gross_exc_gst'], 2, '.', ''),
                     number_format($r['gross_inc_gst'], 2, '.', ''),
                     number_format($r['net_amount'], 2, '.', ''),
@@ -153,6 +158,7 @@ class TradeDiscountReportController extends Controller
         $salesOfficerId = $request->get('sales_officer_id');
         $customerId = $request->get('customer_id');
         $warehouseId = $request->get('warehouse_id');
+        $groupBy = $request->get('group_by', 'customer'); // default: customer
 
         $query = Sale::with(['customer_relation.salesOfficer', 'salesOfficer', 'items'])
             ->whereNotIn('sale_status', ['cancelled']);
@@ -194,27 +200,48 @@ class TradeDiscountReportController extends Controller
         $grouped = [];
 
         foreach ($sales as $sale) {
-            // Determine sales officer
-            $officer = $sale->salesOfficer ?: ($sale->customer_relation->salesOfficer ?? null);
-            $officerId = $officer ? $officer->id : 0;
-            $officerName = $officer ? $officer->name : 'Direct / Unassigned';
-
-            // Determine officer code (matching D0043OB12 format)
-            if ($officer) {
-                if (!empty($officer->code)) {
-                    $officerCode = $officer->code;
+            if ($groupBy === 'invoice') {
+                $entityId = 'inv_' . $sale->id;
+                $entityCode = $sale->invoice_no ?: ('INV-' . $sale->id);
+                $custName = $sale->customer_relation ? $sale->customer_relation->customer_name : (!empty($sale->walkin_name) ? $sale->walkin_name : 'Walk-in Customer');
+                $entityName = $custName . ' (' . Carbon::parse($sale->created_at)->format('d-M-Y') . ')';
+            } elseif ($groupBy === 'order_booker') {
+                $officer = $sale->salesOfficer ?: ($sale->customer_relation->salesOfficer ?? null);
+                $officerId = $officer ? $officer->id : 0;
+                $entityId = 'ob_' . $officerId;
+                $entityName = $officer ? $officer->name : 'Direct / Unassigned';
+                if ($officer) {
+                    $entityCode = !empty($officer->code) ? $officer->code : ($distributorCode . 'OB' . $officer->id);
                 } else {
-                    $officerCode = $distributorCode . 'OB' . $officer->id;
+                    $entityCode = 'DIRECT';
                 }
             } else {
-                $officerCode = 'DIRECT';
+                // Default: Customer Wise
+                if ($sale->customer_relation) {
+                    $cust = $sale->customer_relation;
+                    $entityId = 'cust_' . $cust->id;
+                    $entityCode = !empty($cust->customer_id) ? $cust->customer_id : ('CUST-' . str_pad($cust->id, 4, '0', STR_PAD_LEFT));
+                    $entityName = $cust->customer_name;
+                } elseif (!empty($sale->walkin_name)) {
+                    $entityId = 'walkin_' . md5($sale->walkin_name);
+                    $entityCode = 'WALK-IN';
+                    $entityName = $sale->walkin_name;
+                } else {
+                    $entityId = 'walkin_direct';
+                    $entityCode = 'WALK-IN';
+                    $entityName = 'Walk-in Customer';
+                }
             }
 
-            if (!isset($grouped[$officerId])) {
-                $grouped[$officerId] = [
-                    'order_booker_id'    => $officerId,
-                    'order_booker_code'  => $officerCode,
-                    'order_booker_name'  => $officerName,
+            if (!isset($grouped[$entityId])) {
+                $grouped[$entityId] = [
+                    'entity_id'          => $entityId,
+                    'entity_code'        => $entityCode,
+                    'entity_name'        => $entityName,
+                    'customer_code'      => $entityCode,
+                    'customer_name'      => $entityName,
+                    'order_booker_code'  => $entityCode,
+                    'order_booker_name'  => $entityName,
                     'gross_exc_gst'      => 0.0,
                     'gross_inc_gst'      => 0.0,
                     'net_amount'         => 0.0,
@@ -248,16 +275,16 @@ class TradeDiscountReportController extends Controller
                 }
             }
 
-            $grouped[$officerId]['gross_exc_gst']      += $grossExc;
-            $grouped[$officerId]['gross_inc_gst']      += $grossInc;
-            $grouped[$officerId]['net_amount']         += $net;
-            $grouped[$officerId]['reg_discount']       += $regDisc;
-            $grouped[$officerId]['sp_discount']        += $spDisc;
-            $grouped[$officerId]['to_unit']            += $bonusQty;
-            $grouped[$officerId]['to_unit_value']      += $bonusValue;
-            $grouped[$officerId]['to_in_value']        += $extraDiscount;
-            $grouped[$officerId]['trade_activity_val'] += $tradeActivity;
-            $grouped[$officerId]['invoice_count']      += 1;
+            $grouped[$entityId]['gross_exc_gst']      += $grossExc;
+            $grouped[$entityId]['gross_inc_gst']      += $grossInc;
+            $grouped[$entityId]['net_amount']         += $net;
+            $grouped[$entityId]['reg_discount']       += $regDisc;
+            $grouped[$entityId]['sp_discount']        += $spDisc;
+            $grouped[$entityId]['to_unit']            += $bonusQty;
+            $grouped[$entityId]['to_unit_value']      += $bonusValue;
+            $grouped[$entityId]['to_in_value']        += $extraDiscount;
+            $grouped[$entityId]['trade_activity_val'] += $tradeActivity;
+            $grouped[$entityId]['invoice_count']      += 1;
         }
 
         // Finalize rows with percentages
@@ -329,9 +356,23 @@ class TradeDiscountReportController extends Controller
         $totals['total_discount_pct'] = $grandNet > 0 ? round(($totals['total_discount'] / $grandNet) * 100, 2) : 0.0;
         $totals['to_total_pct']       = $grandNet > 0 ? round(($totals['to_total'] / $grandNet) * 100, 2) : 0.0;
 
+        $codeLabel = match($groupBy) {
+            'invoice' => 'Invoice No',
+            'order_booker' => 'Order Booker Code',
+            default => 'Customer Code',
+        };
+        $nameLabel = match($groupBy) {
+            'invoice' => 'Customer (Date)',
+            'order_booker' => 'Order Booker Name',
+            default => 'Customer Name',
+        };
+
         return [
-            'rows' => $rows,
-            'totals' => $totals
+            'group_by'   => $groupBy,
+            'code_label' => $codeLabel,
+            'name_label' => $nameLabel,
+            'rows'       => $rows,
+            'totals'     => $totals
         ];
     }
 }
