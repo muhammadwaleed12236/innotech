@@ -3363,6 +3363,7 @@
                 }
                 if (it.adv_tax_amount !== undefined && it.adv_tax_amount !== null) {
                     $row.find('.adv-tax-amount').val(it.adv_tax_amount);
+                    $row.data('adv_manual', true);
                 }
 
                 if (typeof computeRow === 'function') computeRow($row);

@@ -2595,6 +2595,13 @@
             if ($('#salesTableBody tr').length === 0) {
                 addNewRow();
             }
+            if ($('#customerSelect').val()) {
+                $('#customerSelect').trigger('change');
+            } else {
+                if (typeof window.applyCustomerTaxStatus === 'function') {
+                    window.applyCustomerTaxStatus(null, false);
+                }
+            }
             updateGrandTotals();
             refreshPostedState();
 

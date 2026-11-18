@@ -72,6 +72,7 @@
     window.currentCustomerHasNtn = false;
     window.currentCustomerStrn = '';
     window.currentCustomerNtn = '';
+    window.currentCustomerIsFiler = false;
 
     window.applyCustomerTaxStatus = function(customerData, forceRowUpdate = true) {
         const cfg = window.saleScreenConfig || {};
@@ -85,26 +86,43 @@
             window.currentCustomerHasNtn = false;
             window.currentCustomerStrn = '';
             window.currentCustomerNtn = '';
+            window.currentCustomerIsFiler = false;
         } else {
             const strn = (customerData.strn_number || (customerData.custom_fields && customerData.custom_fields.strn_number) || '').toString().trim();
             const ntn = (customerData.ntn_number || (customerData.custom_fields && customerData.custom_fields.ntn_number) || '').toString().trim();
+            const filerType = (customerData.filer_type || (customerData.custom_fields && customerData.custom_fields.filer_type) || '').toString().toLowerCase().trim();
+
             window.currentCustomerStrn = strn;
             window.currentCustomerNtn = ntn;
             window.currentCustomerHasStrn = Boolean(strn !== '');
             window.currentCustomerHasNtn = Boolean(ntn !== '');
+
+            // Customer is a Filer if they have NTN, filer_type is 'filer', or is_filer is truthy
+            window.currentCustomerIsFiler = Boolean(ntn !== '' || filerType === 'filer' || customerData.is_filer == 1 || customerData.is_filer === true);
         }
 
         const ftPercent = (!isFtEnabled) ? 0 : ((window.currentCustomerHasStrn && strnExempt) ? 0 : defaultFt);
+        const isFiler = window.currentCustomerIsFiler;
 
         const shouldForceRows = forceRowUpdate && (!window.isEditMode || window.userExplicitlyChangedCustomer === true);
         if (shouldForceRows) {
-            // Update Further Tax percent on all item rows
+            // Update Further Tax percent and Advance Tax on all item rows
             $('#salesTableBody tr').each(function() {
                 const $r = $(this);
                 $r.find('.urc-tax-value').val(ftPercent);
                 $r.find('.further-tax-percent').val(ftPercent);
                 $r.find('.urc-toggle').data('type', 'percent').text('%');
                 $r.find('.urc-type-hidden').val('percent');
+
+                // If adv tax was not manually edited by user, recalculate with customer's new filer status
+                if (!$r.data('adv_manual')) {
+                    const filerRate = $r.data('tax_sale_adv_filer') !== undefined ? $r.data('tax_sale_adv_filer') : 0.50;
+                    const nonFilerRate = $r.data('tax_sale_adv_non_filer') !== undefined ? $r.data('tax_sale_adv_non_filer') : 2.50;
+                    const rowAdvRate = isFiler ? filerRate : nonFilerRate;
+                    $r.data('adv_rate', rowAdvRate);
+                    $r.find('.adv-tax-percent').val(rowAdvRate.toFixed(2));
+                }
+
                 if (typeof computeRow === 'function') {
                     computeRow($r);
                 } else if (typeof recalculateRow === 'function') {
@@ -133,12 +151,18 @@
             return;
         }
 
+        const isFiler = window.currentCustomerIsFiler || window.currentCustomerHasNtn;
+        const advBadge = isFiler
+            ? `<span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Filer Customer: Advance Tax 0.5% applied"><i class="fas fa-check-shield me-1"></i> Filer &bull; Adv. Tax (0.5%)</span>`
+            : `<span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Non-Filer Customer: Advance Tax 2.5% applied"><i class="fas fa-shield-alt me-1"></i> Non-Filer &bull; Adv. Tax (2.5%)</span>`;
+
         if (window.currentCustomerHasStrn) {
             $container.html(`
                 <span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1" style="font-size: 11px;" title="STRN Registered: Exempt from Further Tax">
                     <i class="fas fa-check-circle me-1"></i> STRN: ${window.currentCustomerStrn} &bull; FT (0%) Exempt
                 </span>
                 ${window.currentCustomerHasNtn ? `<span class="badge bg-info-subtle text-info border border-info fw-bold px-2 py-1 ms-1" style="font-size: 11px;"><i class="fas fa-id-card me-1"></i> NTN: ${window.currentCustomerNtn}</span>` : ''}
+                ${advBadge}
             `).removeClass('d-none');
         } else if (window.currentCustomerHasNtn) {
             $container.html(`
@@ -146,6 +170,7 @@
                 <span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered for Sales Tax - Further Tax 4% applied">
                     <i class="fas fa-exclamation-triangle me-1"></i> No STRN &bull; FT (4%) Applied
                 </span>
+                ${advBadge}
             `).removeClass('d-none');
         } else {
             const isWalkin = $('#is_walkin').val() === '1';
@@ -155,6 +180,7 @@
                     <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-bold px-2 py-1" style="font-size: 11px;" title="Unregistered buyer - Further Tax 4% applied">
                         <i class="fas fa-info-circle me-1"></i> Unregistered (No STRN) &bull; FT (4%) Applied
                     </span>
+                    ${advBadge}
                 `).removeClass('d-none');
             } else {
                 $container.empty().addClass('d-none');
@@ -946,7 +972,31 @@
         }
 
         // 9. Adv. Tax Amt
-        let advTaxAmt = toNum($row.find('.adv-tax-amount').val());
+        let advTaxAmt = 0;
+        let advTaxPct = 0;
+        const advBase = exclusiveGst + salesTaxAmt + mrpTaxAmt + furtherTaxAmt;
+
+        if ($row.data('adv_manual') || activeField === 'adv_tax_amount' || activeField === 'adv-tax-amount') {
+            advTaxAmt = toNum($row.find('.adv-tax-amount').val());
+            advTaxPct = advBase > 0 ? ((advTaxAmt / advBase) * 100) : 0;
+            $row.find('.adv-tax-percent').val(advTaxPct.toFixed(2));
+        } else {
+            const isFiler = (window.currentCustomerIsFiler || window.currentCustomerHasNtn) ? true : false;
+            let advRate = 0;
+            if ($row.data('tax_sale_adv_filer') !== undefined || $row.data('tax_sale_adv_non_filer') !== undefined) {
+                const fRate = $row.data('tax_sale_adv_filer') !== undefined ? $row.data('tax_sale_adv_filer') : 0.50;
+                const nfRate = $row.data('tax_sale_adv_non_filer') !== undefined ? $row.data('tax_sale_adv_non_filer') : 2.50;
+                advRate = isFiler ? fRate : nfRate;
+            } else if ($row.data('adv_rate') !== undefined) {
+                advRate = $row.data('adv_rate');
+            } else {
+                advRate = isFiler ? 0.50 : 2.50;
+            }
+            $row.data('adv_rate', advRate);
+            $row.find('.adv-tax-percent').val(advRate.toFixed(2));
+            advTaxAmt = advBase > 0 ? (advBase * advRate) / 100 : 0;
+            $row.find('.adv-tax-amount').val(advTaxAmt.toFixed(2));
+        }
 
         // 10. Net Amount = Exclusive GST + Sales Tax + MRP Tax + Further Tax + Adv Tax
         const netLineTotal = exclusiveGst + salesTaxAmt + mrpTaxAmt + furtherTaxAmt + advTaxAmt;
@@ -1808,10 +1858,28 @@
             $row.find('.sales-tax-percent').val(defaultSaleGst.toFixed(2));
             $row.data('st_manual', false);
 
+            // Advance Tax: Filer (0.50%) vs Non-Filer (2.50%)
+            const isFiler = (window.currentCustomerIsFiler || window.currentCustomerHasNtn) ? true : false;
+            const filerRate = (data.tax_sale_adv_filer !== undefined && data.tax_sale_adv_filer !== null) ? parseFloat(data.tax_sale_adv_filer) : 0.50;
+            const nonFilerRate = (data.tax_sale_adv_non_filer !== undefined && data.tax_sale_adv_non_filer !== null) ? parseFloat(data.tax_sale_adv_non_filer) : 2.50;
+            const defaultAdvRate = isFiler ? filerRate : nonFilerRate;
+
+            $row.data('tax_sale_adv_filer', filerRate);
+            $row.data('tax_sale_adv_non_filer', nonFilerRate);
+            $row.data('adv_rate', defaultAdvRate);
+            $row.find('.adv-tax-percent').val(defaultAdvRate.toFixed(2));
+            $row.data('adv_manual', false);
+
             if (data.is_third_schedule) {
                 $row.find('.urc-tax-value').val(0);
                 $row.find('.further-tax-percent').val(0);
                 $row.find('.further-tax-amount').val(0);
+            } else {
+                const isFtEnabled = (window.saleScreenConfig && window.saleScreenConfig.flags && window.saleScreenConfig.flags.further_tax !== undefined) ? window.saleScreenConfig.flags.further_tax : true;
+                const defaultFt = isFtEnabled ? ((window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined) ? window.saleScreenConfig.default_ft_rate : 4) : 0;
+                const ftRate = (!isFtEnabled) ? 0 : ((window.currentCustomerHasStrn) ? 0 : defaultFt);
+                $row.find('.urc-tax-value').val(ftRate);
+                $row.find('.further-tax-percent').val(ftRate);
             }
             
             setupRowQtyToggle($row, data.size_mode);
@@ -2097,8 +2165,16 @@
             updateGrandTotals();
         });
         $(document).on('input change', '.adv-tax-amount', function() {
-            computeRow($(this).closest('tr'), true, 'adv-tax-amount');
+            const $row = $(this).closest('tr');
+            $row.data('adv_manual', true);
+            computeRow($row, true, 'adv_tax_amount');
             updateGrandTotals();
+            refreshPostedState();
+        });
+
+        $(document).on('blur', '.adv-tax-amount', function() {
+            const val = toNum($(this).val());
+            $(this).val(val.toFixed(2));
         });
 
         $(document).on('input change', '.sales-table .sales-tax-amount, .sales-table .sales-tax-value', function() {

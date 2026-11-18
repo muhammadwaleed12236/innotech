@@ -1344,13 +1344,17 @@ class SaleController extends Controller
                 SaleItem::where('sale_id', $sale->id)->delete();
             }
 
-            // Check if customer is registered with STRN (Exempt from Further Tax per Sales Tax Act)
+            // Check if customer is registered with STRN / NTN (Filer vs Non-Filer)
             $customerHasStrn = false;
+            $customerIsFiler = false;
             if (!$isWalkin && !empty($request->customer)) {
                 $relCust = Customer::with('customFieldValues')->find($request->customer);
                 if ($relCust) {
                     $cStrn = $relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null;
+                    $cNtn = $relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null;
+                    $cFilerType = $relCust->getCustomValue('filer_type') ?? $relCust->filer_type ?? null;
                     $customerHasStrn = !empty(trim((string)$cStrn));
+                    $customerIsFiler = !empty(trim((string)$cNtn)) || strtolower(trim((string)$cFilerType)) === 'filer' || !empty($relCust->is_filer);
                 }
             }
 
@@ -1644,6 +1648,13 @@ class SaleController extends Controller
                 }
 
                 $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
+                $advTaxPercent = !empty($request->adv_tax_percent[$index]) ? (float)$request->adv_tax_percent[$index] : 0;
+                if ($advTaxAmount == 0 && empty($request->adv_tax_amount[$index])) {
+                    $defaultAdvRate = $customerIsFiler ? 0.50 : 2.50;
+                    $advBase = $calcExclusiveGst + $salesTaxAmt + $mrpAmount + $furtherTaxAmt;
+                    $advTaxAmount = round($advBase * ($defaultAdvRate / 100), 2);
+                    $advTaxPercent = $defaultAdvRate;
+                }
                 $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $mrpAmount + $furtherTaxAmt + $advTaxAmount, 2);
                 $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);
                 $mfgDate = $request->mfg_date[$index] ?? null;
@@ -1702,7 +1713,6 @@ class SaleController extends Controller
                 $saleItem->price = $dbPrice;
                 $saleItem->gross_amount = $lineGross;
                 $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
-                $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
 
                 $saleItem->trade_activity = $tradeActivity;
                 $saleItem->reg_disc_percent = $regDiscPct;
@@ -1710,6 +1720,7 @@ class SaleController extends Controller
                 $saleItem->sp_disc_percent = $spDiscPct;
                 $saleItem->sp_disc_amount = $spDiscAmt;
                 $saleItem->mrp_amount = $mrpAmount;
+                $saleItem->adv_tax_percent = $advTaxPercent;
                 $saleItem->adv_tax_amount = $advTaxAmount;
                 $saleItem->discount_percent = $calcDiscountPercent;
                 $saleItem->discount_amount = $calcDiscountAmount;
