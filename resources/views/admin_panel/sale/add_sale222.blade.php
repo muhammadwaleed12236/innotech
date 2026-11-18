@@ -53,7 +53,7 @@
         }
 
         .sale-page {
-            max-width: 1560px;
+            max-width: 100%;
             margin: 0 auto;
         }
 
@@ -684,9 +684,14 @@
             background: #ffffff;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
+        @media (min-width: 1200px) {
+            .pos-table-wrap {
+                overflow-x: hidden !important;
+            }
+        }
         .sales-table {
             width: 100% !important;
-            min-width: 1450px !important;
+            min-width: 100% !important;
             border-collapse: collapse !important;
             margin-bottom: 0;
             table-layout: fixed !important;
@@ -694,27 +699,27 @@
         }
 
         /* Fixed Exact Equalized Column Widths */
-        .col-index-th, .sales-table .col-index { width: 28px !important; max-width: 28px !important; text-align: center !important; }
-        .col-product-th, .sales-table .col-product { min-width: 220px !important; text-align: left !important; }
-        .col-warehouse-th, .sales-table .col-warehouse { width: 95px !important; }
-        .col-batch-th, .sales-table .col-batch { width: 78px !important; text-align: center !important; }
-        .col-price-th, .sales-table .col-price-p { width: 72px !important; }
-        .c-stock-th, .sales-table .col-stock { width: 52px !important; text-align: center !important; }
-        .col-qty-ctn-th, .sales-table .col-qty-ctn { width: 54px !important; }
-        .col-qty-pcs-th, .sales-table .col-qty-pcs { width: 54px !important; }
-        .col-total-qty-th, .sales-table .col-total-qty { width: 50px !important; min-width: 48px !important; max-width: 52px !important; text-align: center !important; }
-        .col-gross-th, .sales-table .col-gross-p { width: 70px !important; }
-        .col-trade-activity-th, .sales-table .col-trade-activity { width: 66px !important; }
-        .col-reg-disc-pct-th, .sales-table .col-reg-disc-pct { width: 46px !important; }
-        .col-reg-disc-amt-th, .sales-table .col-reg-disc-amt { width: 66px !important; }
-        .col-sp-disc-pct-th, .sales-table .col-sp-disc-pct { width: 46px !important; }
-        .col-sp-disc-amt-th, .sales-table .col-sp-disc-amt { width: 66px !important; }
-        .c-st-th, .sales-table .col-st { width: 68px !important; }
-        .col-mrp-th, .sales-table .col-mrp { width: 66px !important; }
-        .c-ft-th, .sales-table .col-ft { width: 68px !important; }
-        .col-adv-tax-th, .sales-table .col-adv-tax { width: 66px !important; }
-        .col-amount-th, .sales-table .col-amount { width: 82px !important; text-align: right !important; }
-        .col-action-th, .sales-table .col-action { width: 26px !important; max-width: 26px !important; text-align: center !important; }
+        .col-index-th, .sales-table .col-index { width: 22px !important; max-width: 24px !important; text-align: center !important; }
+        .col-product-th, .sales-table .col-product { min-width: 130px !important; text-align: left !important; }
+        .col-warehouse-th, .sales-table .col-warehouse { width: 70px !important; }
+        .col-batch-th, .sales-table .col-batch { width: 56px !important; text-align: center !important; }
+        .col-price-th, .sales-table .col-price-p { width: 56px !important; }
+        .c-stock-th, .sales-table .col-stock { width: 40px !important; text-align: center !important; }
+        .col-qty-ctn-th, .sales-table .col-qty-ctn { width: 44px !important; }
+        .col-qty-pcs-th, .sales-table .col-qty-pcs { width: 44px !important; }
+        .col-total-qty-th, .sales-table .col-total-qty { width: 40px !important; min-width: 38px !important; max-width: 44px !important; text-align: center !important; }
+        .col-gross-th, .sales-table .col-gross-p { width: 56px !important; }
+        .col-trade-activity-th, .sales-table .col-trade-activity { width: 50px !important; }
+        .col-reg-disc-pct-th, .sales-table .col-reg-disc-pct { width: 36px !important; }
+        .col-reg-disc-amt-th, .sales-table .col-reg-disc-amt { width: 50px !important; }
+        .col-sp-disc-pct-th, .sales-table .col-sp-disc-pct { width: 36px !important; }
+        .col-sp-disc-amt-th, .sales-table .col-sp-disc-amt { width: 50px !important; }
+        .c-st-th, .sales-table .col-st { width: 54px !important; }
+        .col-mrp-th, .sales-table .col-mrp { width: 50px !important; }
+        .c-ft-th, .sales-table .col-ft { width: 56px !important; }
+        .col-adv-tax-th, .sales-table .col-adv-tax { width: 50px !important; }
+        .col-amount-th, .sales-table .col-amount { width: 62px !important; text-align: right !important; }
+        .col-action-th, .sales-table .col-action { width: 22px !important; max-width: 22px !important; text-align: center !important; }
         .sales-table .input-group {
             flex-wrap: nowrap !important;
         }
@@ -1427,28 +1432,33 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             margin-bottom: 0;
         }
+        @media (min-width: 1200px) {
+            .pos-table-wrap {
+                overflow-x: hidden !important;
+            }
+        }
         .sales-table {
-            min-width: 1600px !important;
+            min-width: 100% !important;
             width: 100% !important;
             border-collapse: collapse !important;
             border-spacing: 0 !important;
             margin-bottom: 0 !important;
-            font-size: 12.5px !important;
+            font-size: 11.5px !important;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
         }
         .sales-table thead th {
             background: #F1F5F9 !important;
             color: #334155 !important;
             border: 1px solid #CBD5E1 !important;
-            padding: 8px 4px !important;
+            padding: 4px 1px !important;
             font-weight: 700 !important;
-            font-size: 11px !important;
+            font-size: 9.5px !important;
             text-align: center !important;
             vertical-align: middle !important;
             white-space: normal !important;
-            line-height: 1.25 !important;
+            line-height: 1.15 !important;
             text-transform: uppercase;
-            letter-spacing: .2px;
+            letter-spacing: .1px;
         }
         .sales-table thead th.col-product {
             text-align: left !important;
@@ -1470,16 +1480,16 @@
         }
         .sales-table .form-control, 
         .sales-table .form-select {
-            height: 34px !important;
-            min-height: 34px !important;
-            padding: 2px 6px !important;
-            font-size: 12.5px !important;
+            height: 30px !important;
+            min-height: 30px !important;
+            padding: 1px 3px !important;
+            font-size: 11.5px !important;
             font-weight: 500 !important;
             border-radius: 0 !important;
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
-            line-height: 1.3 !important;
+            line-height: 1.2 !important;
             color: #0F172A !important;
             width: 100% !important;
         }
@@ -1841,29 +1851,29 @@
                     <table class="table sales-table mb-0">
                                                                         <thead>
                             <tr>
-                                <th class="col-index-th text-center" style="width: 28px;">#</th>
-                                <th class="col-product-th text-center" style="min-width: 220px;">Item Title</th>
+                                <th class="col-index-th text-center" style="width: 22px;">#</th>
+                                <th class="col-product-th text-center" style="min-width: 130px;">Item Title</th>
                                 @if($canSelectWarehouse)
-                                    <th class="col-warehouse-th text-center" style="width: 95px;">Warehouse</th>
+                                    <th class="col-warehouse-th text-center" style="width: 70px;">Warehouse</th>
                                 @endif
-                                <th class="col-batch-th text-center" style="width: 78px;">Batch No</th>
-                                <th class="col-price-th text-center" style="width: 72px;">Trade Price<br>/ Retail</th>
-                                <th class="c-stock-th text-center" style="width: 52px;">Stock<br>Bal.</th>
-                                <th class="col-qty-ctn-th text-center" style="width: 54px;">Qty in<br>CTNs</th>
-                                <th class="col-qty-pcs-th text-center" style="width: 54px;">Qty in<br>Pieces / Box</th>
-                                <th class="col-total-qty-th text-center" style="width: 50px; min-width: 48px; max-width: 52px; padding: 4px 1px !important;">Tot<br>Qty</th>
-                                <th class="col-gross-th text-center" style="width: 70px;">Gross</th>
-                                <th class="col-trade-activity-th text-center" style="width: 66px;" title="Bonus Amount Added">Trade<br>Activity</th>
-                                <th class="col-reg-disc-pct-th text-center" style="width: 46px;" title="Regular Discount %">Reg.<br>Disc. %</th>
-                                <th class="col-reg-disc-amt-th text-center" style="width: 66px;" title="Regular Discount Amount">Regular<br>Disc. Amt</th>
-                                <th class="col-sp-disc-pct-th text-center" style="width: 46px;" title="Special Discount %">Sp.<br>Disc. %</th>
-                                <th class="col-sp-disc-amt-th text-center" style="width: 66px;" title="Special Discount Amount">Special<br>Disc. Amt</th>
-                                <th class="c-st-th text-center" style="width: 68px;" title="Sales Tax Amount (PKR)">Sales<br>Tax Amt</th>
-                                <th class="col-mrp-th text-center" style="width: 66px;" title="MRP Tax (Retail Price 3rd Sched)">MRP<br>Amount</th>
-                                <th class="c-ft-th text-center" style="width: 68px;" title="URC Tax (Further Tax for Unregistered)">URC Tax<br>Amount</th>
-                                <th class="col-adv-tax-th text-center" style="width: 66px;" title="Advance Tax (236G/H)">Adv.<br>Tax Amt</th>
-                                <th class="col-amount-th text-center" style="width: 82px;">Net<br>Amount</th>
-                                <th class="col-action-th text-center" style="width: 26px;"><i class="fas fa-times text-danger"></i></th>
+                                <th class="col-batch-th text-center" style="width: 56px;">Batch No</th>
+                                <th class="col-price-th text-center" style="width: 56px;">Trade Price<br>/ Retail</th>
+                                <th class="c-stock-th text-center" style="width: 40px;">Stock<br>Bal.</th>
+                                <th class="col-qty-ctn-th text-center" style="width: 44px;">Qty in<br>CTNs</th>
+                                <th class="col-qty-pcs-th text-center" style="width: 44px;">Qty in<br>Pieces / Box</th>
+                                <th class="col-total-qty-th text-center" style="width: 40px; min-width: 38px; max-width: 44px; padding: 4px 1px !important;">Tot<br>Qty</th>
+                                <th class="col-gross-th text-center" style="width: 56px;">Gross</th>
+                                <th class="col-trade-activity-th text-center" style="width: 50px;" title="Bonus Amount Added">Trade<br>Activity</th>
+                                <th class="col-reg-disc-pct-th text-center" style="width: 36px;" title="Regular Discount %">Reg.<br>Disc. %</th>
+                                <th class="col-reg-disc-amt-th text-center" style="width: 50px;" title="Regular Discount Amount">Regular<br>Disc. Amt</th>
+                                <th class="col-sp-disc-pct-th text-center" style="width: 36px;" title="Special Discount %">Sp.<br>Disc. %</th>
+                                <th class="col-sp-disc-amt-th text-center" style="width: 50px;" title="Special Discount Amount">Special<br>Disc. Amt</th>
+                                <th class="c-st-th text-center" style="width: 54px;" title="Sales Tax Amount (PKR)">Sales<br>Tax Amt</th>
+                                <th class="col-mrp-th text-center" style="width: 50px;" title="MRP Tax (Retail Price 3rd Sched)">MRP<br>Amount</th>
+                                <th class="c-ft-th text-center" style="width: 56px;" title="URC Tax (Further Tax for Unregistered)">URC Tax<br>Amount</th>
+                                <th class="col-adv-tax-th text-center" style="width: 50px;" title="Advance Tax (236G/H)">Adv.<br>Tax Amt</th>
+                                <th class="col-amount-th text-center" style="width: 62px;">Net<br>Amount</th>
+                                <th class="col-action-th text-center" style="width: 22px;"><i class="fas fa-times text-danger"></i></th>
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
