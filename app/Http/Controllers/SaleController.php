@@ -1580,59 +1580,71 @@ class SaleController extends Controller
                 // Dynamic Tax Controls & 3rd Schedule / Tax Type detection
                 $itemTaxType = $product ? $product->taxType : null;
                 $isItemThirdSchedule = $itemTaxType ? $itemTaxType->isThirdSchedule() : (!empty($request->is_third_schedule[$index]) && in_array($request->is_third_schedule[$index], ['1', 1, true]));
-                $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
-                if ($isItemThirdSchedule && $mrpAmount <= 0) {
-                    $rp = (float) ($request->retail_price[$index] ?? $product->retail_price ?? 0);
-                    $mrpAmount = round($rp * $totalPieces, 2);
-                }
-
-                $gstBase = ($isItemThirdSchedule && $mrpAmount > 0) ? $mrpAmount : $calcExclusiveGst;
 
                 $isStEnabled = \App\Models\SaleFieldConfiguration::isEnabled('sales_tax', true);
                 $isFtEnabled = \App\Models\SaleFieldConfiguration::isEnabled('further_tax', true);
                 $strnExemptEnabled = \App\Models\SaleFieldConfiguration::isEnabled('strn_exemption', true);
 
-                $stType = $request->sales_tax_type[$index] ?? 'percent';
-                $postedStAmt = isset($request->sales_tax_amount[$index]) && $request->sales_tax_amount[$index] !== '' ? (float)$request->sales_tax_amount[$index] : null;
-                if ($isStEnabled) {
-                    if ($stType === 'pkr' && $postedStAmt !== null) {
-                        $salesTaxAmt = round($postedStAmt, 2);
-                        $salesTaxPct = $gstBase > 0 ? round(($salesTaxAmt / $gstBase) * 100, 2) : 0;
-                    } else {
-                        $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? ($itemTaxType ? $itemTaxType->getSaleGstRate() : 0));
-                        $salesTaxAmt = round($gstBase * ($salesTaxPct / 100), 2);
+                $rp = (float) ($request->retail_price[$index] ?? $product->retail_price ?? 0);
+                $retailTotal = round($rp * $totalPieces, 2);
+
+                if ($isItemThirdSchedule) {
+                    // 3rd Schedule: Tax on MRP goes into mrp_amount, Sales Tax and Further Tax are 0.00
+                    $mrpAmount = isset($request->mrp_amount[$index]) && $request->mrp_amount[$index] !== '' ? (float)$request->mrp_amount[$index] : 0;
+                    if ($mrpAmount <= 0 && $retailTotal > 0) {
+                        $stPct = (float) ($request->sales_tax_percent[$index] ?? ($itemTaxType ? $itemTaxType->getSaleGstRate() : 18));
+                        $mrpAmount = round($retailTotal * ($stPct / 100), 2);
                     }
-                } else {
-                    $salesTaxPct = 0;
                     $salesTaxAmt = 0;
-                }
+                    $salesTaxPct = 0;
+                    $furtherTaxAmt = 0;
+                    $furtherTaxPct = 0;
+                } else {
+                    // Standard (Non-3rd Schedule): MRP is strictly 0.00, Tax goes into Sales Tax
+                    $mrpAmount = 0;
+                    $stType = $request->sales_tax_type[$index] ?? 'percent';
+                    $postedStAmt = isset($request->sales_tax_amount[$index]) && $request->sales_tax_amount[$index] !== '' ? (float)$request->sales_tax_amount[$index] : null;
 
-                if ($isFtEnabled && !$isItemThirdSchedule) {
-                    $postedFtPct = isset($request->further_tax_percent[$index]) && $request->further_tax_percent[$index] !== '' ? (float)$request->further_tax_percent[$index] : null;
-                    $postedFtAmt = isset($request->further_tax_amount[$index]) && $request->further_tax_amount[$index] !== '' ? (float)$request->further_tax_amount[$index] : null;
-                    $ftType = $request->further_tax_type[$index] ?? 'percent';
+                    if ($isStEnabled) {
+                        if ($stType === 'pkr' && $postedStAmt !== null) {
+                            $salesTaxAmt = round($postedStAmt, 2);
+                            $salesTaxPct = $calcExclusiveGst > 0 ? round(($salesTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
+                        } else {
+                            $salesTaxPct = (float) ($request->sales_tax_percent[$index] ?? ($itemTaxType ? $itemTaxType->getSaleGstRate() : 0));
+                            $salesTaxAmt = round($calcExclusiveGst * ($salesTaxPct / 100), 2);
+                        }
+                    } else {
+                        $salesTaxPct = 0;
+                        $salesTaxAmt = 0;
+                    }
 
-                    if ($ftType === 'pkr' && $postedFtAmt !== null) {
-                        $furtherTaxAmt = round($postedFtAmt, 2);
-                        $furtherTaxPct = $calcExclusiveGst > 0 ? round(($furtherTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
-                    } elseif ($postedFtPct !== null) {
-                        $furtherTaxPct = $postedFtPct;
-                        $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
-                    } elseif ($customerHasStrn && $strnExemptEnabled) {
+                    if ($isFtEnabled) {
+                        $postedFtPct = isset($request->further_tax_percent[$index]) && $request->further_tax_percent[$index] !== '' ? (float)$request->further_tax_percent[$index] : null;
+                        $postedFtAmt = isset($request->further_tax_amount[$index]) && $request->further_tax_amount[$index] !== '' ? (float)$request->further_tax_amount[$index] : null;
+                        $ftType = $request->further_tax_type[$index] ?? 'percent';
+
+                        if ($ftType === 'pkr' && $postedFtAmt !== null) {
+                            $furtherTaxAmt = round($postedFtAmt, 2);
+                            $furtherTaxPct = $calcExclusiveGst > 0 ? round(($furtherTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
+                        } elseif ($postedFtPct !== null) {
+                            $furtherTaxPct = $postedFtPct;
+                            $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
+                        } elseif ($customerHasStrn && $strnExemptEnabled) {
+                            $furtherTaxPct = 0;
+                            $furtherTaxAmt = 0;
+                        } else {
+                            $defaultFtRate = (float) (\App\Models\SaleFieldConfiguration::getDefaultValue('further_tax', 4));
+                            $furtherTaxPct = $defaultFtRate;
+                            $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
+                        }
+                    } else {
                         $furtherTaxPct = 0;
                         $furtherTaxAmt = 0;
-                    } else {
-                        $defaultFtRate = (float) (\App\Models\SaleFieldConfiguration::getDefaultValue('further_tax', 4));
-                        $furtherTaxPct = $defaultFtRate;
-                        $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
                     }
-                } else {
-                    $furtherTaxPct = 0;
-                    $furtherTaxAmt = 0;
                 }
-                $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
+
                 $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
-                $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $furtherTaxAmt + $advTaxAmount, 2);
+                $lineTotal = round($calcExclusiveGst + $salesTaxAmt + $mrpAmount + $furtherTaxAmt + $advTaxAmount, 2);
                 $bonusQty = (float) ($request->bonus_qty[$index] ?? 0);
                 $mfgDate = $request->mfg_date[$index] ?? null;
                 $expDate = $request->exp_date[$index] ?? null;
@@ -1690,7 +1702,6 @@ class SaleController extends Controller
                 $saleItem->price = $dbPrice;
                 $saleItem->gross_amount = $lineGross;
                 $tradeActivity = !empty($request->trade_activity[$index]) ? (float)$request->trade_activity[$index] : 0;
-                $mrpAmount = !empty($request->mrp_amount[$index]) ? (float)$request->mrp_amount[$index] : 0;
                 $advTaxAmount = !empty($request->adv_tax_amount[$index]) ? (float)$request->adv_tax_amount[$index] : 0;
 
                 $saleItem->trade_activity = $tradeActivity;

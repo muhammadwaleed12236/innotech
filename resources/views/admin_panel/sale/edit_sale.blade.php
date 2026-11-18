@@ -1914,6 +1914,7 @@
                                         <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="percent">
                                         <button type="button" class="btn btn-outline-success st-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 9.5px; padding: 0 3px !important; min-width: 16px;">%</button>
                                     </div>
+                                    <div class="st-pkr-display text-end text-success fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated Sales Tax Amount">PKR 0.00</div>
                                     <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
                                     <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
                                     <input type="hidden" class="visible-st" value="0">
@@ -1932,6 +1933,7 @@
                                         <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
                                         <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
                                     </div>
+                                    <div class="urc-pkr-display text-end text-primary fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated URC Tax Amount">PKR 0.00</div>
                                     <input type="hidden" class="further-tax-percent" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}">
                                     <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
                                 </td>

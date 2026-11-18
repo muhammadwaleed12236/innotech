@@ -470,6 +470,7 @@
         <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="percent">
         <button type="button" class="btn btn-outline-success st-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 9.5px; padding: 0 3px !important; min-width: 16px;">%</button>
       </div>
+      <div class="st-pkr-display text-end text-success fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated Sales Tax Amount">PKR 0.00</div>
       <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
       <input type="hidden" class="sales-tax-amount" name="sales_tax_amount[]" value="0">
       <input type="hidden" class="visible-st" value="0">
@@ -494,6 +495,7 @@
         <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
         <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
       </div>
+      <div class="urc-pkr-display text-end text-primary fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated URC Tax Amount">PKR 0.00</div>
       <input type="hidden" class="further-tax-percent" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}">
       <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
     </td>
@@ -847,90 +849,129 @@
         const exclusiveGst = Math.max(0, gross - tradeActivity - totalDam);
         $row.find('.exclusive-gst-amount').val(exclusiveGst.toFixed(2));
 
-        // 6. MRP Amount (Retail Amount)
-        let mrpAmount = 0;
+        // 6. Retail Total (MRP Value - Used to compute MRP Tax for 3rd Schedule items)
+        let retailTotal = 0;
         const retailPricePerPiece = toNum($row.find('.retail-price').val()) || toNum($row.data('retail_price'));
         const retailPriceBox = toNum($row.data('retail_price_box'));
         const unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'ctn';
 
-        if ($row.data('mrp_manual') || activeField === 'mrp_amount') {
-            mrpAmount = toNum($row.find('.mrp-amount').val() || $row.find('.visible-mrp').val());
-        } else if (totalPieces > 0 && retailPricePerPiece > 0) {
-            mrpAmount = retailPricePerPiece * totalPieces;
+        if (totalPieces > 0 && retailPricePerPiece > 0) {
+            retailTotal = retailPricePerPiece * totalPieces;
         } else if (retailPricePerPiece > 0) {
-            mrpAmount = (['by_cartons', 'by_bandal'].includes(sizeMode) && unitMode !== 'pcs') ? (retailPriceBox || (retailPricePerPiece * packQty)) : retailPricePerPiece;
-        } else {
-            mrpAmount = toNum($row.find('.mrp-amount').val() || $row.find('.visible-mrp').val());
+            retailTotal = (['by_cartons', 'by_bandal'].includes(sizeMode) && unitMode !== 'pcs') ? (retailPriceBox || (retailPricePerPiece * packQty)) : retailPricePerPiece;
         }
 
-        // 7. Taxes (Sales Tax)
+        // 7. Taxes (Sales Tax & MRP Tax)
         const cfg = window.saleScreenConfig || {};
         const isStEnabled = cfg.flags && cfg.flags.sales_tax !== undefined ? cfg.flags.sales_tax : true;
         const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
 
         const isThirdSchedule = !!$row.data('is_third_schedule') || $row.find('.hidden-is-third-schedule').val() === '1';
-        const stTaxBase = (isThirdSchedule && mrpAmount > 0) ? mrpAmount : exclusiveGst;
 
         let stVal = toNum($row.find('.sales-tax-value').val());
-        let stType = $row.find('.st-toggle').data('type') || 'percent';
+        let stType = $row.find('.sales-tax-type-hidden').val() || $row.find('.st-toggle').attr('data-type') || $row.find('.st-toggle').data('type') || 'percent';
         let salesTaxPct = 0;
         let salesTaxAmt = 0;
-
-        if (!isStEnabled) {
-            salesTaxPct = 0;
-            salesTaxAmt = 0;
-            $row.find('.sales-tax-percent').val(0);
-        } else if (stType === 'percent') {
-            salesTaxPct = stVal;
-            salesTaxAmt = stTaxBase > 0 ? (stTaxBase * salesTaxPct) / 100 : 0;
-            $row.find('.sales-tax-percent').val(salesTaxPct);
-        } else {
-            salesTaxAmt = stVal;
-            salesTaxPct = stTaxBase > 0 ? ((salesTaxAmt / stTaxBase) * 100) : 0;
-            $row.find('.sales-tax-percent').val(salesTaxPct.toFixed(2));
-        }
-
-        $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
-        $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
-
-        // 8. URC Tax (Further Tax for Unregistered Customer) - 3rd schedule items are exempt
-        let urcVal = toNum($row.find('.urc-tax-value').val());
-        let urcType = $row.find('.urc-toggle').data('type') || 'percent';
+        let mrpTaxAmt = 0;
         let furtherTaxPct = 0;
         let furtherTaxAmt = 0;
 
-        if (!isFtEnabled || isThirdSchedule) {
+        if (isThirdSchedule) {
+            // ─── 3RD SCHEDULE (MRP) ITEMS ───────────────────────────────────────
+            // Tax goes into the MRP Amount column! Sales Tax and Further Tax are 0.00.
+            if ($row.data('mrp_manual') || activeField === 'mrp_amount') {
+                mrpTaxAmt = toNum($row.find('.mrp-amount').val() || $row.find('.visible-mrp').val());
+            } else {
+                const taxRate = stVal > 0 ? stVal : (toNum($row.data('tax_sale_gst')) || 18);
+                mrpTaxAmt = retailTotal > 0 ? (retailTotal * taxRate) / 100 : 0;
+            }
+
+            salesTaxPct = 0;
+            salesTaxAmt = 0;
             furtherTaxPct = 0;
             furtherTaxAmt = 0;
+
+            if (activeField !== 'mrp_amount') {
+                $row.find('.mrp-amount').val(mrpTaxAmt.toFixed(2));
+                $row.find('.visible-mrp').val(mrpTaxAmt.toFixed(2));
+            }
+
+            $row.find('.sales-tax-percent').val(0);
+            $row.find('.sales-tax-amount').val(0);
+            $row.find('.visible-st').val(0);
+            $row.find('.st-pkr-display').text('PKR 0.00 (In MRP)');
+
             $row.find('.further-tax-percent').val(0);
+            $row.find('.further-tax-amount').val(0);
             $row.find('.urc-tax-value').val(0);
-        } else if (urcType === 'percent') {
-            furtherTaxPct = urcVal;
-            furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
-            $row.find('.further-tax-percent').val(furtherTaxPct);
+            $row.find('.visible-ft').val(0);
+            $row.find('.urc-pkr-display').text('PKR 0.00 (Exempt)');
         } else {
-            furtherTaxAmt = urcVal;
-            furtherTaxPct = exclusiveGst > 0 ? ((furtherTaxAmt / exclusiveGst) * 100) : 0;
-            $row.find('.further-tax-percent').val(furtherTaxPct.toFixed(2));
+            // ─── STANDARD (NON-3RD SCHEDULE) ITEMS ──────────────────────────────
+            // MRP Amount column is strictly 0.00! Tax goes into Sales Tax column.
+            mrpTaxAmt = 0;
+            $row.find('.mrp-amount').val('0.00');
+            $row.find('.visible-mrp').val('0.00');
+
+            if (!isStEnabled) {
+                salesTaxPct = 0;
+                salesTaxAmt = 0;
+                $row.find('.sales-tax-percent').val(0);
+            } else if (stType === 'percent') {
+                salesTaxPct = stVal;
+                salesTaxAmt = exclusiveGst > 0 ? (exclusiveGst * salesTaxPct) / 100 : 0;
+                $row.find('.sales-tax-percent').val(salesTaxPct);
+            } else {
+                salesTaxAmt = stVal;
+                salesTaxPct = exclusiveGst > 0 ? ((salesTaxAmt / exclusiveGst) * 100) : 0;
+                $row.find('.sales-tax-percent').val(salesTaxPct.toFixed(2));
+            }
+
+            $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
+            $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
+
+            // Live PKR / % display right on the row
+            if (stType === 'percent') {
+                $row.find('.st-pkr-display').text('PKR ' + salesTaxAmt.toFixed(2));
+            } else {
+                $row.find('.st-pkr-display').text(salesTaxPct.toFixed(2) + ' %');
+            }
+
+            // 8. URC Tax (Further Tax for Unregistered Customer)
+            let urcVal = toNum($row.find('.urc-tax-value').val());
+            let urcType = $row.find('.urc-type-hidden').val() || $row.find('.urc-toggle').attr('data-type') || $row.find('.urc-toggle').data('type') || 'percent';
+
+            if (!isFtEnabled) {
+                furtherTaxPct = 0;
+                furtherTaxAmt = 0;
+                $row.find('.further-tax-percent').val(0);
+                $row.find('.urc-tax-value').val(0);
+            } else if (urcType === 'percent') {
+                furtherTaxPct = urcVal;
+                furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
+                $row.find('.further-tax-percent').val(furtherTaxPct);
+            } else {
+                furtherTaxAmt = urcVal;
+                furtherTaxPct = exclusiveGst > 0 ? ((furtherTaxAmt / exclusiveGst) * 100) : 0;
+                $row.find('.further-tax-percent').val(furtherTaxPct.toFixed(2));
+            }
+
+            $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
+            $row.find('.visible-ft').val(furtherTaxAmt.toFixed(2));
+
+            // Live PKR / % display right on the row
+            if (urcType === 'percent') {
+                $row.find('.urc-pkr-display').text('PKR ' + furtherTaxAmt.toFixed(2));
+            } else {
+                $row.find('.urc-pkr-display').text(furtherTaxPct.toFixed(2) + ' %');
+            }
         }
 
         // 9. Adv. Tax Amt
         let advTaxAmt = toNum($row.find('.adv-tax-amount').val());
 
-        // 10. Net Amount
-        const netLineTotal = exclusiveGst + salesTaxAmt + furtherTaxAmt + advTaxAmt;
-
-        // Populate visible and hidden tax amounts
-        if (activeField !== 'sales_tax_amount') {
-            $row.find('.sales-tax-amount').val(salesTaxAmt.toFixed(2));
-            $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
-        }
-        if (activeField !== 'mrp_amount') {
-            $row.find('.mrp-amount').val(mrpAmount.toFixed(2));
-            $row.find('.visible-mrp').val(mrpAmount.toFixed(2));
-        }
-        $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
-        $row.find('.visible-ft').val(furtherTaxAmt.toFixed(2));
+        // 10. Net Amount = Exclusive GST + Sales Tax + MRP Tax + Further Tax + Adv Tax
+        const netLineTotal = exclusiveGst + salesTaxAmt + mrpTaxAmt + furtherTaxAmt + advTaxAmt;
         $row.find('.sales-amount').val(netLineTotal.toFixed(2));
     }
 
@@ -1758,11 +1799,12 @@
                 $row.find('.price-per-piece').val(rate);
             }
             
-            // Set MRP Amount directly from retail price (MRP for 3rd Schedule)
-            const initialRetailAmount = (['by_cartons', 'by_bandal'].includes(data.size_mode) && unitMode !== 'pcs') ? retailPerBox : retailPerPiece;
-            $row.find('.mrp-amount').val((initialRetailAmount > 0 ? initialRetailAmount : rate).toFixed(2));
-            $row.find('.visible-mrp').val((initialRetailAmount > 0 ? initialRetailAmount : rate).toFixed(2));
+            // For 3rd Schedule items, tax on MRP is calculated; for non-3rd Schedule, MRP is strictly 0.00
             $row.data('mrp_manual', false);
+            if (!data.is_third_schedule) {
+                $row.find('.mrp-amount').val('0.00');
+                $row.find('.visible-mrp').val('0.00');
+            }
             
             $row.find('.pack-qty').val(data.pieces_per_box || 1);
             $row.find('.size-h').val(data.height || '-');
@@ -1782,13 +1824,12 @@
             $row.data('is_third_schedule', !!data.is_third_schedule);
             $row.find('.hidden-is-third-schedule').val(data.is_third_schedule ? '1' : '0');
 
-            // Apply Product-Specific Tax Type
-            let stGst = (data.tax_sale_gst !== undefined && data.tax_sale_gst !== null) ? parseFloat(data.tax_sale_gst) : 18;
-            if (data.tax_type_code === '0001') {
-                stGst = 0;
-            }
-            $row.find('.sales-tax-value').val(stGst);
-            $row.find('.sales-tax-percent').val(stGst);
+            // Sales Tax starts at 0.00 as requested (no direct 18% applied automatically, user will enter manually or toggle)
+            let stGst = 0.00;
+            $row.find('.sales-tax-value').val('0.00');
+            $row.find('.sales-tax-percent').val('0.00');
+            $row.find('.sales-tax-amount').val('0.00');
+            $row.find('.st-pkr-display').text('PKR 0.00');
 
             if (data.is_third_schedule) {
                 $row.find('.urc-tax-value').val(0);
@@ -2043,9 +2084,9 @@
         $(document).on('click', '.urc-toggle', function() {
             const $btn = $(this);
             const $row = $btn.closest('tr');
-            const curType = $btn.data('type') || 'percent';
+            const curType = $btn.data('type') || $btn.attr('data-type') || $row.find('.urc-type-hidden').val() || 'percent';
             const newType = curType === 'percent' ? 'pkr' : 'percent';
-            $btn.data('type', newType).text(newType === 'percent' ? '%' : 'PKR');
+            $btn.data('type', newType).attr('data-type', newType).text(newType === 'percent' ? '%' : 'PKR');
             $row.find('.urc-type-hidden').val(newType);
 
             const curAmt = toNum($row.find('.further-tax-amount').val());
@@ -2055,7 +2096,7 @@
             } else {
                 $row.find('.urc-tax-value').val(curPct || 4);
             }
-            computeRow($row, true);
+            computeRow($row, true, 'urc_tax_value');
             updateGrandTotals();
         });
 
@@ -2094,10 +2135,10 @@
             const $btn = $(this);
             const $row = $btn.closest('tr');
             const $typeHidden = $row.find('.sales-tax-type-hidden');
-            const curType = $btn.data('type') || 'percent';
+            const curType = $btn.data('type') || $btn.attr('data-type') || $typeHidden.val() || 'percent';
             const newType = curType === 'percent' ? 'pkr' : 'percent';
 
-            $btn.data('type', newType).text(newType === 'percent' ? '%' : 'PKR');
+            $btn.data('type', newType).attr('data-type', newType).text(newType === 'percent' ? '%' : 'PKR');
             $typeHidden.val(newType);
 
             const curAmt = toNum($row.find('.sales-tax-amount').val());
@@ -2108,7 +2149,7 @@
                 $row.find('.sales-tax-value').val(curPct);
             }
 
-            computeRow($row, true);
+            computeRow($row, true, 'sales_tax_value');
             updateGrandTotals();
             refreshPostedState();
         });
