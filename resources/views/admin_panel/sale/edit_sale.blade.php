@@ -1631,10 +1631,61 @@
                     </div>
                     <div class="sale-title-main">
                         <h5 class="header-text mb-0">Edit Sale #{{ $sale->invoice_no }}</h5>
-                        <div class="sale-subtitle">Update invoice for {{ optional($sale->customer_relation)->customer_name ? $sale->customer_relation->customer_name : 'Walk-in Customer' }}</div>
+                        <div class="sale-subtitle">Update invoice for {{ optional($sale->customer_relation)->customer_name ? $sale->customer_relation->customer_name : ($sale->walkin_name ?? 'Walk-in Customer') }}</div>
                     </div>
                 </div>
 
+                @php
+                    $firstItemWh = $sale->items->first()?->warehouse_id ?? (auth()->user()->warehouse_id ?? 1);
+                    $user = auth()->user();
+                    $canSelectWarehouse = $user && (
+                        (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
+                        (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
+                        $user->can('warehouse.view')
+                    );
+                    $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
+                @endphp
+
+                {{-- Header Right: Invoice No, Warehouse & Date --}}
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    {{-- Invoice No --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 fw-bold text-secondary" for="inputInvoiceNo">Inv #:</label>
+                        <div class="input-group invoice-group" style="width: 200px;">
+                            <input type="text" class="form-control text-center fw-bold input-readonly" name="Invoice_no" id="inputInvoiceNo" value="{{ $sale->invoice_no }}" readonly style="height: 38px;">
+                        </div>
+                    </div>
+
+                    @if($canSelectWarehouse)
+                    {{-- Warehouse Selector --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 fw-bold text-secondary" for="headerWarehouseSelect"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse:</label>
+                        <select name="warehouse_id" id="headerWarehouseSelect" class="form-select form-select-sm fw-bold border-primary shadow-sm" style="min-width: 170px; height: 38px;">
+                            @foreach($warehouse as $wh)
+                                <option value="{{ $wh->id }}" {{ $firstItemWh == $wh->id ? 'selected' : '' }}>
+                                    {{ $wh->warehouse_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @else
+                        <input type="hidden" name="warehouse_id" id="headerWarehouseSelect" value="{{ $firstItemWh ?? $userWarehouseId }}">
+                    @endif
+
+                    {{-- Date --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 fw-bold text-secondary" for="displayDateInput">Date:</label>
+                        <input type="text" name="sale_date" class="form-control datepicker-custom text-center fw-bold" id="displayDateInput" value="{{ $sale->created_at ? $sale->created_at->format('Y-m-d') : date('Y-m-d') }}" style="width: 130px; height: 38px;">
+                    </div>
+
+                    {{-- Screen Configuration Button --}}
+                    <div>
+                        <a href="{{ route('sales.configuration') }}" target="_blank" class="btn btn-outline-secondary d-flex align-items-center gap-1 px-2" style="height: 38px; border-radius: 8px;" title="Configure Sale Fields & Taxes">
+                            <i class="fas fa-sliders-h text-primary"></i>
+                            <span class="d-none d-md-inline small fw-bold">Screen Config</span>
+                        </a>
+                    </div>
+                </div>
             </div>
 
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
@@ -1643,35 +1694,7 @@
                     {{-- Left: Customer Dropdown, Grouped Action Buttons, Sale Type --}}
                     <div class="col-xl-6 col-lg-6 col-md-12">
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                            {{-- Customer Input Group --}}
-                            @php
-                                    $firstItemWh = $sale->items->first()?->warehouse_id ?? (auth()->user()->warehouse_id ?? 1);
-                                @endphp
-                                @php
-                                    $user = auth()->user();
-                                    $canSelectWarehouse = $user && (
-                                        (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) ||
-                                        (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
-                                        $user->can('warehouse.view')
-                                    );
-                                    $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
-                                @endphp
-                                @if($canSelectWarehouse)
-                                <div class="warehouse-select-container me-2">
-                                    <label class="field-label mb-1 fw-bold text-secondary"><i class="fas fa-warehouse text-primary me-1"></i>Warehouse</label>
-                                    <select name="warehouse_id" id="headerWarehouseSelect" class="form-select form-select-sm fw-bold border-primary shadow-sm" style="height: 38px; min-width: 160px;">
-                                        @foreach($warehouse as $wh)
-                                            <option value="{{ $wh->id }}" {{ $firstItemWh == $wh->id ? 'selected' : '' }}>
-                                                {{ $wh->warehouse_name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                @else
-                                    <input type="hidden" name="warehouse_id" id="headerWarehouseSelect" value="{{ $firstItemWh ?? $userWarehouseId }}">
-                                @endif
-
-                                <div class="cust-select-container">
+                            <div class="cust-select-container">
                                 <label class="field-label mb-1">Customer</label>
                                 <div class="input-group customer-input-group">
                                     <div id="customerInputWrapper" style="min-width: 0;">
@@ -3236,6 +3259,9 @@
                 'is_third_schedule' => (int) ((($prod && $prod->taxType) ? $prod->taxType->isThirdSchedule() : ($prod->is_third_schedule ?? false)) || (isset($it->mrp_amount) && (float) $it->mrp_amount > 0) ? 1 : 0),
                 'adv_tax_percent' => isset($it->adv_tax_percent) && $it->adv_tax_percent !== '' ? (float) $it->adv_tax_percent : 0,
                 'adv_tax_amount' => isset($it->adv_tax_amount) && $it->adv_tax_amount !== '' ? (float) $it->adv_tax_amount : 0,
+                'batch_id' => $it->batch_id ?? null,
+                'batch_no' => $it->batch_no ?? null,
+                'serials' => $it->serials ?? null,
             ];
         })->values()->all();
     @endphp
@@ -3294,6 +3320,18 @@
                 $row.find('.variant-stock-value').val(it.stock);
                 $row.find('.stock').val(it.stock);
 
+                // Populate Batch and Serials
+                if (it.batch_no) {
+                    $row.find('.selected-batch-no').val(it.batch_no);
+                    $row.find('.batch-no-hidden').val(it.batch_no);
+                }
+                if (it.batch_id) {
+                    $row.find('.batch-id-hidden').val(it.batch_id);
+                }
+                if (it.serials) {
+                    $row.find('.serials-hidden').val(typeof it.serials === 'object' ? JSON.stringify(it.serials) : it.serials);
+                }
+
                 $row.find('.retail-price').val(it.retail_price);
                 $row.find('.wholesale-price').val(it.wholesale_price);
                 $row.find('.weight-per-piece').val(it.weight_per_piece);
@@ -3308,24 +3346,33 @@
                 $row.find('.pack-qty').val(it.ppb);
                 applyRowUnitMode($row, it.size_mode);
 
-                var unitMode = $row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main';
                 var cartonQty, priceDisplay;
+                var looseQty = 0;
 
                 if (['by_cartons', 'by_bandal'].includes(it.size_mode)) {
-                    var boxes = Math.floor(it.total_pieces / it.ppb);
-                    var loose = (it.total_pieces % it.ppb);
-                    cartonQty = (loose > 0) ? boxes + '.' + loose : String(boxes);
-                    var baseQty = it.total_pieces / it.ppb;
-                    priceDisplay = baseQty > 0 ? ((it.total + it.discount_amount) / baseQty) : it.price;
+                    var ppb = it.ppb > 0 ? it.ppb : 1;
+                    var totalPcs = parseFloat(it.total_pieces) || 0;
+                    var boxes = Math.floor(totalPcs / ppb);
+                    var loose = Math.round(totalPcs % ppb);
+                    cartonQty = boxes;
+                    looseQty = (it.loose_pieces !== undefined && it.loose_pieces !== null && parseFloat(it.loose_pieces) > 0)
+                        ? parseFloat(it.loose_pieces)
+                        : loose;
+                    priceDisplay = (it.price !== undefined && parseFloat(it.price) > 0)
+                        ? parseFloat(it.price)
+                        : (it.retail_price > 0 ? (it.retail_price * ppb) : 0);
                 } else {
-                    cartonQty = it.total_pieces;
-                    priceDisplay = it.total_pieces > 0 ? ((it.total + it.discount_amount) / it.total_pieces) : it.price;
+                    cartonQty = parseFloat(it.total_pieces) || 0;
+                    looseQty = 0;
+                    priceDisplay = (it.price !== undefined && parseFloat(it.price) > 0)
+                        ? parseFloat(it.price)
+                        : (it.retail_price > 0 ? parseFloat(it.retail_price) : 0);
                 }
 
                 $row.find('.carton-qty').val(cartonQty);
-                $row.find('.loose-pcs-input').val(it.loose_pieces || 0);
-                $row.find('.visible-price').val(priceDisplay);
-                $row.find('.price-per-piece').val(priceDisplay);
+                $row.find('.loose-pcs-input').val(looseQty);
+                $row.find('.visible-price').val(priceDisplay > 0 ? priceDisplay.toFixed(2) : '0.00');
+                $row.find('.price-per-piece').val(priceDisplay > 0 ? priceDisplay.toFixed(2) : '0.00');
                 $row.find('.hidden-sub-unit-mode').val($row.find('.qty-unit-toggle').attr('data-unit-mode') || 'main');
 
                 if (it.discount_amount > 0 && it.discount_percent <= 0) {
@@ -3350,7 +3397,6 @@
                 if (it.sales_tax_amount !== undefined && it.sales_tax_amount !== null) {
                     $row.find('.sales-tax-amount').val(it.sales_tax_amount);
                     $row.find('.visible-st').val(it.sales_tax_amount);
-                    $row.data('st_manual', true);
                 }
                 if (it.further_tax_percent !== undefined && it.further_tax_percent !== null) {
                     $row.find('.further-tax-percent').val(it.further_tax_percent);
@@ -3387,15 +3433,15 @@
                     $row.find('.mrp-amount').val('0.00');
                     $row.find('.visible-mrp').val('0.00');
                     $row.data('mrp_manual', false);
-                    if (it.sales_tax_amount !== undefined && it.sales_tax_amount !== null) {
-                        $row.find('.sales-tax-amount').val(parseFloat(it.sales_tax_amount).toFixed(2));
-                        $row.find('.visible-st').val(parseFloat(it.sales_tax_amount).toFixed(2));
-                        $row.data('st_manual', true);
-                    }
                     if (it.sales_tax_percent !== undefined && it.sales_tax_percent !== null) {
                         $row.find('.sales-tax-percent').val(parseFloat(it.sales_tax_percent).toFixed(2));
                         $row.data('default_tax_rate', parseFloat(it.sales_tax_percent));
                     }
+                    if (it.sales_tax_amount !== undefined && it.sales_tax_amount !== null && parseFloat(it.sales_tax_amount) > 0) {
+                        $row.find('.sales-tax-amount').val(parseFloat(it.sales_tax_amount).toFixed(2));
+                        $row.find('.visible-st').val(parseFloat(it.sales_tax_amount).toFixed(2));
+                    }
+                    $row.data('st_manual', false);
                 }
 
                 if (it.adv_tax_percent !== undefined && it.adv_tax_percent !== null) {
@@ -3404,7 +3450,6 @@
                 }
                 if (it.adv_tax_amount !== undefined && it.adv_tax_amount !== null && parseFloat(it.adv_tax_amount) > 0) {
                     $row.find('.adv-tax-amount').val(parseFloat(it.adv_tax_amount).toFixed(2));
-                    $row.data('adv_manual', true);
                 }
 
                 if (typeof computeRow === 'function') computeRow($row);
@@ -3429,7 +3474,7 @@
                     }
                 } else {
                     var cid = {{ Js::from($sale->customer_id) }};
-                    var ctext = '{{ addslashes(optional($sale->customer_relation)->customer_id) }} — {{ addslashes(optional($sale->customer_relation)->customer_name) }}';
+                    var ctext = '{{ addslashes(optional($sale->customer_relation)->customer_id ? ($sale->customer_relation->customer_id . " — ") : "") }}{{ addslashes(optional($sale->customer_relation)->customer_name ?? "Customer #".$sale->customer_id) }}';
                     var custRel = @json($sale->customer_relation);
                     if (typeof window.applyCustomerTaxStatus === 'function' && custRel) {
                         window.applyCustomerTaxStatus(custRel, false);

@@ -1510,10 +1510,10 @@ class SaleController extends Controller
                     }
 
                     // Check available stock to strictly block negative stock sales
-                    if (!in_array($request->sale_status, ['draft', 'quotation'])) {
-                        $whId = $request->warehouse_id ?? 1;
+                    if ($status === 'posted') {
+                        $itemWhId = !empty($warehouses[$index]) ? (int)$warehouses[$index] : $headerWhId;
                         $whStock = \App\Models\WarehouseStock::where('product_id', $product->id)
-                            ->where('warehouse_id', $whId)
+                            ->where('warehouse_id', $itemWhId)
                             ->first();
                         $availPcs = $whStock ? (float)$whStock->total_pieces : 0;
                         if ($availPcs < $totalPieces) {
