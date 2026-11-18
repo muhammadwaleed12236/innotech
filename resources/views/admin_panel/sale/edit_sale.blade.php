@@ -703,8 +703,17 @@
         .col-product-th, .sales-table .col-product { min-width: 130px !important; text-align: left !important; }
         .col-warehouse-th, .sales-table .col-warehouse { width: 70px !important; }
         .col-batch-th, .sales-table .col-batch { width: 56px !important; text-align: center !important; }
-        .col-price-th, .sales-table .col-price-p { width: 56px !important; }
-        .c-stock-th, .sales-table .col-stock { width: 40px !important; text-align: center !important; }
+        .col-price-th, .sales-table .col-price-p { width: 54px !important; }
+        .c-stock-th, .sales-table .col-stock { width: 72px !important; text-align: center !important; }
+        .sales-table tbody input.stock {
+            font-size: 10px !important;
+            padding: 1px 1px !important;
+            font-weight: 700 !important;
+            color: #047857 !important;
+            background-color: #F0FDF4 !important;
+            white-space: nowrap !important;
+            text-overflow: ellipsis !important;
+        }
         .col-qty-ctn-th, .sales-table .col-qty-ctn { width: 44px !important; }
         .col-qty-pcs-th, .sales-table .col-qty-pcs { width: 44px !important; }
         .col-total-qty-th, .sales-table .col-total-qty { width: 40px !important; min-width: 38px !important; max-width: 44px !important; text-align: center !important; }
@@ -1783,8 +1792,8 @@
                                     <th class="col-warehouse-th text-center" style="width: 70px;">Warehouse</th>
                                 @endif
                                 <th class="col-batch-th text-center" style="width: 56px;">Batch No</th>
-                                <th class="col-price-th text-center" style="width: 56px;">Trade Price<br>/ Retail</th>
-                                <th class="c-stock-th text-center" style="width: 40px;">Stock<br>Bal.</th>
+                                <th class="col-price-th text-center" style="width: 54px;">Trade Price<br>/ Retail</th>
+                                <th class="c-stock-th text-center" style="width: 72px;" title="Available Stock: Cartons and Pieces">Stock<br>Bal.</th>
                                 <th class="col-qty-ctn-th text-center" style="width: 44px;">Qty in<br>CTNs</th>
                                 <th class="col-qty-pcs-th text-center" style="width: 44px;">Qty in<br>Pieces / Box</th>
                                 <th class="col-total-qty-th text-center" style="width: 40px; min-width: 38px; max-width: 44px; padding: 4px 1px !important;">Tot<br>Qty</th>
@@ -3184,9 +3193,10 @@
             if ($vStock > 0 && in_array($it->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
                 $boxes = floor($vStock / $ppb);
                 $loose = (int) ($vStock % $ppb);
-                $stockDisplay = $loose > 0 ? $boxes . '.' . $loose : $boxes;
+                $boxText = $loose > 0 ? "{$boxes}.{$loose} Ctn" : "{$boxes} Ctn";
+                $stockDisplay = "{$boxText} (" . round($vStock) . " Pcs)";
             } else {
-                $stockDisplay = $vStock > 0 ? rtrim(rtrim(number_format($vStock, 2), '0'), '.') : 0;
+                $stockDisplay = $vStock > 0 ? (rtrim(rtrim(number_format($vStock, 2), '0'), '.') . ' Pcs') : '0 Pcs';
             }
 
             return [

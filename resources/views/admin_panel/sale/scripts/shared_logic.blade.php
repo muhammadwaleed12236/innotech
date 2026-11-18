@@ -681,6 +681,21 @@
         });
     }
 
+    function formatStockDisplay(stockPieces, ppb, sizeMode) {
+        stockPieces = parseFloat(stockPieces) || 0;
+        ppb = parseFloat(ppb) || 1;
+        if ((['by_cartons', 'by_bandal'].includes(sizeMode) || sizeMode === 'by_size') && ppb > 1) {
+            const boxes = Math.floor(stockPieces / ppb);
+            const loose = Math.round(stockPieces % ppb);
+            const boxText = loose > 0 ? `${boxes}.${loose} Ctn` : `${boxes} Ctn`;
+            return `${boxText} (${Math.round(stockPieces)} Pcs)`;
+        } else if (sizeMode === 'by_kg') {
+            return stockPieces < 1 && stockPieces > 0 ? `${stockPieces} Kg (${Math.round(stockPieces*1000)} Gm)` : `${stockPieces} Kg`;
+        } else {
+            return `${Math.round(stockPieces)} Pcs`;
+        }
+    }
+
     function loadWarehousesForProduct($row, productId, preSelectId = null) {
         if (!productId) return;
         var $whInput = $row.find('.warehouse');
@@ -697,21 +712,11 @@
                 $whInput.val(matched.warehouse_id);
                 // If variant stock already populated, do not overwrite with generic product stock
                 if (!$row.find('.variant-stock-value').val()) {
-                    let disp;
                     const ppb = parseFloat(matched.ppb) || 1;
+                    const stockPieces = parseFloat(matched.stock) || 0;
+                    const disp = formatStockDisplay(stockPieces, ppb, matched.size_mode);
 
-                    if ((['by_cartons', 'by_bandal'].includes(matched.size_mode) || matched.size_mode === 'by_size') && ppb > 1) {
-                        const boxes = Math.floor(matched.boxes || 0);
-                        const loose = matched.stock % ppb;
-                        disp = loose > 0 ? `${boxes}.${loose}` : boxes;
-                    } else if (matched.size_mode === 'by_kg') {
-                        const s = parseFloat(matched.stock) || 0;
-                        disp = s < 1 && s > 0 ? `${s} Kg (${Math.round(s*1000)} Gm)` : `${s} Kg`;
-                    } else {
-                        disp = matched.stock || 0;
-                    }
-
-                    $row.find('.stock').val(disp);
+                    $row.find('.stock').val(disp).attr('title', `Stock: ${disp}`);
                 }
             }
         }
@@ -725,45 +730,6 @@
             .done(function(warehouses) {
                 window.whProductCache[productId] = warehouses;
                 applyWarehouseData(warehouses);
-            });
-        return;
-        // Old load preserved below
-        $.get('{{ route('warehouses.get') }}', {
-                product_id: productId
-            })
-            .done(function(warehouses) {
-                var validWarehouses = Array.isArray(warehouses) ? warehouses : [];
-                var matched = validWarehouses.find(function(w) { return w.warehouse_id == targetWhId; });
-                if (!matched && validWarehouses.length > 0) {
-                    matched = validWarehouses[0];
-                }
-
-                if (matched) {
-                    $whInput.val(matched.warehouse_id);
-                    let disp;
-                    const ppb = parseFloat(matched.ppb) || 1;
-
-                    if ((['by_cartons', 'by_bandal'].includes(matched.size_mode) || matched.size_mode === 'by_size') && ppb > 1) {
-                        const boxes = Math.floor(matched.boxes || 0);
-                        const loose = matched.stock % ppb;
-                        disp = loose > 0 ? `${boxes}.${loose}` : boxes;
-                    } else if (matched.size_mode === 'by_kg') {
-                        const s = parseFloat(matched.stock) || 0;
-                        if (s > 0 && s < 1) {
-                            const gm = (s * 1000).toFixed(1);
-                            disp = `${s.toFixed(2)} Kg (${gm} Gm)`;
-                        } else {
-                            disp = `${s.toFixed(2)} Kg`;
-                        }
-                    } else {
-                        disp = matched.stock;
-                    }
-                    $row.find('.stock').val(disp);
-                    $row.find('.variant-stock-value').val(disp);
-                }
-            })
-            .fail(function(xhr) {
-                console.error('Warehouse fetch error:', xhr);
             });
     }
 
@@ -1782,17 +1748,17 @@
             $row.find('.size-display').val(variantSize !== '-' ? variantSize : '');
             $row.find('.color-display').val(variantColor);
             
-            // Store variant stock for later use (after warehouse loads)
-            if (variantStock !== null) {
-                $row.find('.variant-stock-value').val(variantStock);
-                $row.find('.stock').val(variantStock);
-            } else {
-                $row.find('.variant-stock-value').val('');
-            }
-            
             // Store available stock pieces on row for instant negative stock validation
             const availPieces = parseFloat(data.stock_pieces !== undefined ? data.stock_pieces : (variantStock !== null ? variantStock : (data.stock || 0)));
             $row.data('available_stock_pieces', availPieces);
+
+            // Format stock display (cartons + pieces)
+            const ppbVal = parseFloat(data.pieces_per_box) || 1;
+            const displayStock = formatStockDisplay(availPieces, ppbVal, data.size_mode);
+
+            // Store formatted stock for later use
+            $row.find('.variant-stock-value').val(displayStock);
+            $row.find('.stock').val(displayStock).attr('title', `Stock: ${displayStock}`);
             
             loadWarehousesForProduct($row, pid);
             
