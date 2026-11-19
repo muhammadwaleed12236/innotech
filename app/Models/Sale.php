@@ -102,4 +102,9 @@ class Sale extends Model
     {
         return $this->hasMany(SaleReturn::class, 'sale_id');
     }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
 }

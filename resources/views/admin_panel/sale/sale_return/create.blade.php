@@ -1,887 +1,918 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
-    <style>
-        /* Professional ERP Styling */
-        :root {
-            --erp-primary: #4a69bd;
-            /* Professional Blue */
-            --erp-bg: #f5f6fa;
-            --erp-border: #dcdde1;
-            --erp-text: #2f3640;
-            --erp-muted: #7f8fa6;
-        }
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-        body {
-            background-color: var(--erp-bg);
-            color: var(--erp-text);
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
+<style>
+    :root {
+        --pos-blue: #2563EB;
+        --pos-blue-hover: #1D4ED8;
+        --pos-blue-soft: #EFF6FF;
+        --pos-green: #16A34A;
+        --pos-green-soft: #F0FDF4;
+        --pos-red: #DC2626;
+        --pos-red-soft: #FEF2F2;
+        --pos-orange: #F59E0B;
+        --pos-orange-soft: #FFFBEB;
+        --pos-text: #0F172A;
+        --pos-muted: #64748B;
+        --pos-border: #CBD5E1;
+        --pos-bg: #F1F5F9;
+        --pos-card: #FFFFFF;
+        --pos-radius: 8px;
+        --pos-radius-lg: 12px;
+        --pos-input-h: 36px;
+    }
 
-        .erp-card {
-            background: white;
-            border: 1px solid var(--erp-border);
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            margin-bottom: 1.5rem;
-        }
+    body {
+        background-color: var(--pos-bg) !important;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        color: var(--pos-text) !important;
+    }
 
-        .erp-header {
-            background: white;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--erp-border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 8px 8px 0 0;
-        }
+    .sale-page {
+        max-width: 100%;
+        margin: 0 auto;
+    }
 
-        .erp-header h5 {
-            margin: 0;
-            font-weight: 600;
-            color: var(--erp-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+    .sale-card {
+        background: var(--pos-card);
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-lg);
+        box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
 
-        .form-label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--erp-muted);
-            text-transform: uppercase;
-            margin-bottom: 0.3rem;
-        }
+    .field-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--pos-muted);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+    }
 
-        .form-control,
-        .form-select {
-            border-radius: 4px;
-            border: 1px solid var(--erp-border);
-            padding: 0.4rem 0.75rem;
-            font-size: 0.9rem;
-        }
+    .sale-page .form-control,
+    .sale-page .form-select {
+        height: var(--pos-input-h);
+        border: 1px solid var(--pos-border);
+        border-radius: 6px;
+        padding: 5px 9px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--pos-text);
+        background-color: #ffffff;
+    }
 
-        .form-control:focus {
-            border-color: var(--erp-primary);
-            box-shadow: 0 0 0 2px rgba(74, 105, 189, 0.2);
-        }
+    .sale-page .form-control:focus,
+    .sale-page .form-select:focus {
+        border-color: var(--pos-red);
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+    }
 
-        .form-control[readonly] {
-            background-color: #f9fafb;
-            /* Minimalist light gray */
-            color: var(--erp-muted);
-            font-weight: 500;
-            cursor: not-allowed;
-            pointer-events: none;
-            border-color: var(--erp-border);
-            /* Standard border, no pattern */
-            opacity: 1;
-            /* Full opacity for clarity */
-        }
+    /* Table Styling matching Sale Table */
+    .sales-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        background: #ffffff;
+        font-size: 12px;
+    }
 
-        .form-control[readonly]:focus {
-            box-shadow: none;
-            border-color: #dee2e6;
-        }
+    .sales-table thead th {
+        background: #0f172a;
+        color: #ffffff;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 10.5px;
+        letter-spacing: .3px;
+        padding: 8px 5px !important;
+        border: 1px solid #1e293b;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
 
-        /* Table Styles */
-        .erp-table-container {
-            border: 1px solid var(--erp-border);
-            border-radius: 6px;
-            overflow: hidden;
-        }
+    .sales-table thead th.th-return {
+        background: #991b1b !important; /* Distinct Crimson Red for Return Columns */
+        border-color: #b91c1c !important;
+    }
 
-        .table-erp {
-            width: 100%;
-            margin-bottom: 0;
-        }
+    .sales-table tbody td {
+        padding: 6px 5px !important;
+        border: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
 
-        .table-erp thead th {
-            background-color: #f1f2f6;
-            color: var(--erp-text);
-            font-weight: 600;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            padding: 0.75rem;
-            border-bottom: 2px solid var(--erp-border);
-            white-space: nowrap;
-        }
+    .sales-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
 
-        .table-erp tbody td {
-            vertical-align: middle;
-            padding: 0.5rem;
-            border-bottom: 1px solid #f1f2f6;
-        }
+    .sales-table .td-return {
+        background-color: #fef2f2 !important; /* Soft light red highlight */
+        border-left: 2px solid #ef4444 !important;
+        border-right: 2px solid #ef4444 !important;
+    }
 
-        .table-erp input.form-control {
-            border: 1px solid transparent;
-            background: transparent;
-            padding: 0.25rem 0.5rem;
-            height: auto;
-        }
+    .ret-input {
+        height: 32px !important;
+        text-align: center;
+        font-weight: 700 !important;
+        font-family: monospace;
+        font-size: 13.5px !important;
+        border: 1.5px solid #f87171 !important;
+        background-color: #ffffff !important;
+        color: #b91c1c !important;
+    }
 
-        .table-erp input.form-control:focus,
-        .table-erp input.form-control:hover {
-            border-color: var(--erp-border);
-            background: white;
-        }
+    .ret-input:focus {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+    }
 
-        /* Read-only inputs in table */
-        .table-erp input.form-control[readonly] {
-            cursor: not-allowed;
-            pointer-events: none;
-            background-color: transparent;
-            /* Seamless integration */
-            color: #adb5bd;
-            /* Muted text */
-            font-weight: 400;
-            border-color: transparent;
-        }
+    /* Floating / Sticky Footer Summary */
+    .return-summary-card {
+        background: #1e293b;
+        color: #ffffff;
+        border-radius: var(--pos-radius-lg);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+</style>
 
-        .table-erp input.form-control[readonly]:hover,
-        .table-erp input.form-control[readonly]:focus {
-            background-color: #f8f9fa;
-            border-color: transparent;
-            box-shadow: none;
-            cursor: not-allowed;
-        }
+<div class="container-fluid px-3 px-lg-4 pt-3 pb-5 sale-page">
 
-        .summary-card {
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 1.5rem;
-            border: 1px solid var(--erp-border);
-        }
+    <!-- Top Alert / Flash Messages -->
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-3" role="alert">
+            <i class="fas fa-check-circle fs-5"></i>
+            <div>{{ session('success') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm d-flex align-items-center gap-2 mb-3" role="alert">
+            <i class="fas fa-exclamation-triangle fs-5"></i>
+            <div>{{ session('error') }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
+    <!-- Page Header & Action Bar -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-danger text-white px-2 py-1 font-monospace text-uppercase" style="font-size: 11px;">
+                    <i class="fas fa-undo-alt me-1"></i> SALE RETURN / CREDIT NOTE
+                </span>
+                <span class="badge bg-light text-dark border font-monospace" style="font-size: 12px;">
+                    Orig Inv: {{ $sale->invoice_no }}
+                </span>
+            </div>
+            <h4 class="fw-bold text-dark mb-0 mt-1">
+                Process Sale Return &amp; Customer Credit
+            </h4>
+        </div>
 
-        .summary-row.total {
-            border-top: 1px solid var(--erp-border);
-            padding-top: 0.5rem;
-            margin-top: 0.5rem;
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--erp-primary);
-        }
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-danger fw-bold shadow-sm" id="btnReturnAllItems">
+                <i class="fas fa-check-double me-1"></i> Return All Items
+            </button>
+            <button type="button" class="btn btn-outline-secondary shadow-sm" id="btnResetAllItems">
+                <i class="fas fa-redo me-1"></i> Reset
+            </button>
+            <a href="{{ route('sale.index') }}" class="btn btn-light border shadow-sm">
+                <i class="fas fa-arrow-left me-1"></i> Back to Sales
+            </a>
+        </div>
+    </div>
 
-        .btn-erp-primary {
-            background-color: var(--erp-primary);
-            color: white;
-            padding: 0.6rem 1.5rem;
-            font-weight: 500;
-            border: none;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
+    <form id="saleReturnForm" action="{{ route('sale.return.store') }}" method="POST">
+        @csrf
+        <input type="hidden" name="sale_id" value="{{ $sale->id }}">
+        <input type="hidden" name="customer_id" value="{{ $sale->customer_id }}">
 
-        .btn-erp-primary:hover {
-            background-color: #3c5aa6;
-            color: white;
-            transform: translateY(-1px);
-        }
+        <!-- Top Context Panels: Customer, Original Sale, Return Settings -->
+        <div class="row g-3 mb-3">
+            
+            <!-- 1. Customer Information Card -->
+            <div class="col-lg-4 col-md-6">
+                <div class="sale-card p-3 h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="field-label mb-0 text-primary"><i class="fas fa-store me-1"></i> Customer / Retailer</span>
+                        <span class="badge bg-primary-subtle text-primary font-monospace" style="font-size: 10px;">
+                            {{ optional($sale->customer_relation)->customer_id ?? ('CUST-' . $sale->customer_id) }}
+                        </span>
+                    </div>
 
-        /* Select2 Tweaks */
-        .select2-container .select2-selection--single {
-            height: 36px;
-            border-color: var(--erp-border);
-        }
+                    <h5 class="fw-bold text-dark mb-1">
+                        {{ optional($sale->customer_relation)->customer_name ?? ($sale->walkin_name ?? 'Walking Customer') }}
+                    </h5>
+                    <div class="small text-muted font-monospace">
+                        <i class="fas fa-phone text-success me-1"></i> {{ optional($sale->customer_relation)->mobile ?: '—' }}
+                    </div>
+                    <div class="small text-muted mt-1 text-truncate">
+                        <i class="fas fa-map-marker-alt text-danger me-1"></i> 
+                        {{ optional($sale->customer_relation)->area ? optional($sale->customer_relation)->area . ', ' : '' }}{{ optional($sale->customer_relation)->city ?: 'Karachi' }}
+                    </div>
 
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 36px;
-        }
-
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 36px;
-        }
-
-        .select2-container--default .select2-selection--multiple {
-            border-color: var(--erp-border);
-        }
-
-        /* Editable Field Highlighting */
-        /* Editable Field Highlighting - Minimal */
-        .quantity-box:not([readonly]),
-        #extraDiscount {
-            background-color: #fff;
-            font-weight: 600;
-            color: var(--erp-text);
-            transition: all 0.2s;
-        }
-
-        /* Only show focus ring when active */
-        .quantity-box:not([readonly]):focus,
-        #extraDiscount:focus {
-            border-color: var(--erp-primary) !important;
-            box-shadow: 0 0 0 3px rgba(74, 105, 189, 0.1) !important;
-        }
-
-        .quantity-box:not([readonly]):hover {
-            border-color: #b0bdd1;
-        }
-
-        /* Visual indicator for editable vs read-only */
-        .form-label .fa-lock {
-            color: #dee2e6;
-            /* Very subtle lock icon */
-        }
-    </style>
-
-
-    <!-- Structure Wrapper -->
-    <div class="container-fluid py-4">
-        <div class="erp-card">
-            <div class="erp-header">
-                <h5><i class="fas fa-undo-alt me-2"></i> Sale Return</h5>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="badge bg-light text-dark border"><i class="fas fa-file-invoice me-1"></i> Original Invoice #
-                        {{ $sale->invoice_no }}</span>
-                    <a href="{{ route('sale.index') }}" class="btn btn-sm btn-outline-secondary">Back to List</a>
+                    <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Customer Balance:</span>
+                        @php
+                            $custBal = optional($sale->customer_relation)->balance ?? 0;
+                        @endphp
+                        <span class="fw-bold font-monospace {{ $custBal > 0 ? 'text-danger' : 'text-success' }}" style="font-size: 13px;">
+                            Rs {{ number_format(abs($custBal), 2) }} {{ $custBal > 0 ? 'Dr' : 'Cr' }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <div class="card-body p-4">
-                <form action="{{ route('sale.return.store') }}" method="POST">
-                    @csrf
-                    <input type="hidden" name="sale_id" value="{{ $sale->id }}">
-                    {{-- Assuming Single Branch/Warehouse for now or derived from Purchase --}}
-                    <input type="hidden" name="warehouse_id" value="{{ $sale->warehouse_id ?? 1 }}">
+            <!-- 2. Original Sale Details Card -->
+            <div class="col-lg-4 col-md-6">
+                <div class="sale-card p-3 h-100">
+                    <span class="field-label text-info"><i class="fas fa-file-invoice me-1"></i> Original Invoice Details</span>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">Invoice No:</span>
+                        <strong class="font-monospace text-primary">{{ $sale->invoice_no }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">Sale Date:</span>
+                        <span class="small text-dark fw-semibold">{{ $sale->created_at ? $sale->created_at->format('d/m/Y h:i A') : '—' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">Original Total Net:</span>
+                        <strong class="font-monospace text-dark">Rs {{ number_format($sale->total_net, 2) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <span class="small text-muted">Booker / S.R:</span>
+                        <span class="badge bg-light text-dark border">
+                            {{ optional($sale->orderBooker)->name ?? optional($sale->salesOfficer)->name ?? 'Direct / Admin' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Alert Section -->
-                    @if (session('success'))
-                        <div class="alert alert-success alert-dismissible fade show shadow-sm border-0" role="alert">
-                            <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
-                    @if (session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0" role="alert">
-                            <i class="fas fa-exclamation-circle me-2"></i> {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    @endif
+            <!-- 3. Return Parameters Card -->
+            <div class="col-lg-4 col-md-12">
+                <div class="sale-card p-3 h-100">
+                    <span class="field-label text-danger"><i class="fas fa-sliders-h me-1"></i> Return Parameters</span>
 
-                    <!-- Top Section: customer & Reference -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label"><i class="fas fa-lock text-muted me-1"
-                                    style="font-size: 0.7rem;"></i>customer</label>
-                            {{-- Read-Only customer Name --}}
-                            <input type="text" class="form-control form-control-sm"
-                                value="{{ optional($sale->customer)->name ?? 'Unknown customer' }}" readonly
-                                style="background-color: #e9ecef; border-color: #dee2e6;">
-                            {{-- Hidden ID for Form Submission --}}
-                            <input type="hidden" name="customer_id" value="{{ $sale->customer_id }}">
+                    <div class="row g-2">
+                        <div class="col-sm-6">
+                            <label class="field-label mb-1">Return Date <span class="text-danger">*</span></label>
+                            <input type="date" name="return_date" class="form-control" value="{{ date('Y-m-d') }}" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label"><i class="fas fa-lock text-muted me-1"
-                                    style="font-size: 0.7rem;"></i>Reference / PO #</label>
-                            <input type="text" name="reference" class="form-control form-control-sm"
-                                value="{{ $sale->invoice_no ?? '' }}" readonly>
+                        <div class="col-sm-6">
+                            <label class="field-label mb-1">Receiving Warehouse <span class="text-danger">*</span></label>
+                            <select name="warehouse_id" class="form-select" required>
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}" {{ ($sale->warehouse_id == $wh->id) ? 'selected' : '' }}>
+                                        {{ $wh->warehouse_name ?? $wh->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div class="col-md-5 text-end align-self-end">
-                            <div class="p-2 bg-light rounded d-inline-block border">
-                                <small class="text-muted d-block text-start" style="font-size: 0.7rem;">ORIGINAL PURCHASE
-                                    DATE</small>
-                                <strong class="text-dark"><i class="far fa-calendar-alt me-1"></i>
-                                    {{ $sale->created_at->format('d/m/Y h:i A') }}</strong>
+                        <div class="col-12 mt-2">
+                            <label class="field-label mb-1">Return Reason / Reference</label>
+                            <input type="text" name="return_reason" class="form-control" placeholder="e.g. Defective items, Market return, Excess supply...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Items Table Card (Exact same format as Sales Table with prominent Return Column on the side) -->
+        <div class="sale-card mb-4 overflow-hidden">
+            <div class="p-3 bg-white border-bottom d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-boxes text-danger fs-5"></i>
+                    <div>
+                        <h6 class="fw-bold text-dark mb-0">Original Invoiced Items &amp; Return Quantity</h6>
+                        <small class="text-muted">Enter return quantity in the highlighted red columns. System calculates refund value, taxes &amp; discounts automatically.</small>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-light text-muted border px-2 py-1 font-monospace">
+                        {{ $sale->items->count() }} Invoice Items
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table sales-table align-middle text-center mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 28px;">#</th>
+                            <th class="text-start" style="min-width: 170px;">Item Title / Packaging</th>
+                            <th style="width: 65px;">Batch</th>
+                            <th style="width: 75px;" class="text-end">Trade Price<br>(TP)</th>
+                            
+                            {{-- Sold Quantities (Read-only reference) --}}
+                            <th style="width: 52px;" title="Original Sold Cartons">Sold<br>CTN</th>
+                            <th style="width: 52px;" title="Original Sold Loose Pieces">Sold<br>Loose</th>
+                            <th style="width: 65px;" title="Total Sold Pieces">Total<br>Sold Pcs</th>
+                            <th style="width: 65px;" title="Already Returned Pieces">Prev.<br>Ret. Pcs</th>
+                            
+                            {{-- DEDICATED RETURN SECTION (HIGHLIGHTED IN RED/BURGUNDY) --}}
+                            <th class="th-return" style="width: 78px;" title="Enter Cartons to Return">
+                                Return<br>CTNs
+                            </th>
+                            <th class="th-return" style="width: 78px;" title="Enter Loose Pieces to Return">
+                                Return<br>Loose Pcs
+                            </th>
+                            <th class="th-return" style="width: 68px;" title="Total Pieces being returned">
+                                Tot Ret<br>Pieces
+                            </th>
+                            <th class="th-return" style="width: 48px;" title="Quick Fill Max">
+                                Quick
+                            </th>
+
+                            {{-- Financial Return Calculations --}}
+                            <th style="width: 80px;" class="text-end" title="Return Gross TP">Return<br>Gross</th>
+                            <th style="width: 65px;" class="text-center" title="Discount Reversal">Disc<br>Adj</th>
+                            <th style="width: 75px;" class="text-end" title="Sales Tax Refund">Tax<br>Refund</th>
+                            <th style="width: 95px;" class="text-end" title="Net Customer Refund">Net<br>Refund</th>
+                        </tr>
+                    </thead>
+                    <tbody id="returnTableBody">
+                        @php
+                            $allFullyReturned = true;
+                        @endphp
+                        @forelse($sale->items as $idx => $item)
+                            @php
+                                if ($item->max_returnable_pieces > 0) {
+                                    $allFullyReturned = false;
+                                }
+                            @endphp
+                            <tr class="return-row" 
+                                data-row-id="{{ $item->id }}"
+                                data-ppb="{{ $item->ppb }}"
+                                data-size-mode="{{ $item->size_mode }}"
+                                data-trade-rate="{{ $item->trade_rate }}"
+                                data-piece-rate="{{ $item->piece_rate }}"
+                                data-disc-pct="{{ $item->total_disc_pct }}"
+                                data-gst-rate="{{ $item->gst_rate }}"
+                                data-is-3rd="{{ $item->is_3rd ? 1 : 0 }}"
+                                data-mrp="{{ $item->mrp_rate }}"
+                                data-max-pieces="{{ $item->max_returnable_pieces }}"
+                                data-max-cartons="{{ $item->max_returnable_cartons }}"
+                                data-max-loose="{{ $item->max_returnable_loose }}">
+
+                                <input type="hidden" name="product_id[]" value="{{ $item->product_id }}">
+                                <input type="hidden" name="color[]" value="{{ $item->color ?? '' }}">
+                                <input type="hidden" name="qty[]" class="input-total-return-pieces" value="0">
+                                <input type="hidden" name="price[]" class="input-row-price" value="{{ $item->trade_rate }}">
+                                <input type="hidden" name="item_disc[]" class="input-row-disc" value="0">
+                                <input type="hidden" name="tax_amount[]" class="input-row-tax" value="0">
+                                <input type="hidden" name="line_gross[]" class="input-row-gross" value="0">
+                                <input type="hidden" name="line_total[]" class="input-row-net" value="0">
+
+                                <!-- Row # -->
+                                <td class="text-center text-muted font-monospace">{{ $idx + 1 }}</td>
+
+                                <!-- Product Title & Pack Info -->
+                                <td class="text-start">
+                                    <div class="fw-bold text-dark" style="font-size: 13px;">{{ $item->item_title }}</div>
+                                    <div class="text-muted small d-flex gap-2 font-monospace" style="font-size: 11px;">
+                                        @if($item->brand_title)
+                                            <span><i class="fas fa-tag text-secondary me-1"></i>{{ $item->brand_title }}</span>
+                                        @endif
+                                        <span class="badge bg-light text-dark border">
+                                            1 CTN = {{ $item->ppb }} {{ $item->unit_title }}
+                                        </span>
+                                        @if($item->is_3rd)
+                                            <span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 9px;">3rd Sched MRP</span>
+                                        @endif
+                                    </div>
+                                </td>
+
+                                <!-- Batch No -->
+                                <td class="text-center font-monospace small">
+                                    <span class="badge bg-light text-muted border">{{ $item->batch_title }}</span>
+                                </td>
+
+                                <!-- Trade Price -->
+                                <td class="text-end font-monospace fw-bold text-dark">
+                                    {{ number_format($item->trade_rate, 2) }}
+                                    <div class="text-muted small" style="font-size: 10px;">/ ctn</div>
+                                </td>
+
+                                <!-- Sold CTNs -->
+                                <td class="text-center font-monospace">
+                                    <span class="badge bg-light text-dark border">{{ $item->sold_cartons }}</span>
+                                </td>
+
+                                <!-- Sold Loose Pcs -->
+                                <td class="text-center font-monospace">
+                                    <span class="badge bg-light text-dark border">{{ $item->sold_loose }}</span>
+                                </td>
+
+                                <!-- Total Sold Pieces -->
+                                <td class="text-center font-monospace fw-bold text-dark">
+                                    {{ (int)$item->sold_total_pieces }}
+                                </td>
+
+                                <!-- Already Returned Pieces -->
+                                <td class="text-center font-monospace">
+                                    @if($item->already_returned_pieces > 0)
+                                        <span class="badge bg-danger-subtle text-danger border border-danger">
+                                            {{ (int)$item->already_returned_pieces }}
+                                        </span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+
+                                {{-- DEDICATED RETURN SECTION (HIGHLIGHTED IN SOFT RED) --}}
+                                <!-- Return Cartons Input -->
+                                <td class="td-return text-center">
+                                    @if($item->max_returnable_pieces > 0)
+                                        <input type="number" 
+                                               name="return_carton[]" 
+                                               class="form-control ret-input input-return-carton" 
+                                               min="0" 
+                                               max="{{ $item->max_returnable_cartons }}" 
+                                               step="1" 
+                                               placeholder="0" 
+                                               value="0"
+                                               title="Max Cartons Returnable: {{ $item->max_returnable_cartons }}">
+                                    @else
+                                        <span class="badge bg-secondary text-white small">Fully Ret.</span>
+                                    @endif
+                                </td>
+
+                                <!-- Return Loose Input -->
+                                <td class="td-return text-center">
+                                    @if($item->max_returnable_pieces > 0)
+                                        <input type="number" 
+                                               name="return_loose[]" 
+                                               class="form-control ret-input input-return-loose" 
+                                               min="0" 
+                                               max="{{ $item->ppb > 1 ? ($item->ppb - 1) : $item->max_returnable_pieces }}" 
+                                               step="1" 
+                                               placeholder="0" 
+                                               value="0"
+                                               title="Max Loose Returnable: {{ $item->ppb > 1 ? ($item->ppb - 1) : $item->max_returnable_pieces }}">
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
+                                </td>
+
+                                <!-- Total Return Pieces (Auto-computed) -->
+                                <td class="td-return text-center font-monospace">
+                                    <span class="badge bg-white text-danger border border-danger fw-bold display-ret-pieces" style="font-size: 11px;">
+                                        0
+                                    </span>
+                                </td>
+
+                                <!-- Quick Max Button -->
+                                <td class="td-return text-center">
+                                    @if($item->max_returnable_pieces > 0)
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 btn-quick-max" title="Return Max remaining">
+                                            All
+                                        </button>
+                                    @endif
+                                </td>
+
+                                <!-- Return Gross -->
+                                <td class="text-end font-monospace text-muted display-ret-gross">
+                                    0.00
+                                </td>
+
+                                <!-- Discount Adjust -->
+                                <td class="text-center font-monospace text-danger small display-ret-disc">
+                                    -0.00
+                                </td>
+
+                                <!-- Tax Refund -->
+                                <td class="text-end font-monospace text-success small display-ret-tax">
+                                    +0.00
+                                </td>
+
+                                <!-- Net Refund Amount -->
+                                <td class="text-end font-monospace fw-bold text-danger fs-6 display-ret-net">
+                                    Rs 0.00
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="15" class="text-center py-5 text-muted">
+                                    No items found for this sale invoice.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if($allFullyReturned)
+                <div class="alert alert-warning m-3 d-flex align-items-center gap-2">
+                    <i class="fas fa-exclamation-circle fs-4"></i>
+                    <div>
+                        <strong>Notice:</strong> All items in this invoice have already been 100% returned. No further returns can be accepted for this document.
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- Return Summary & Settlement Card -->
+        <div class="return-summary-card p-4">
+            <div class="row g-4 align-items-center">
+                
+                <!-- Left: Quantities Breakdown & Notes -->
+                <div class="col-lg-6 border-end border-secondary">
+                    <h6 class="fw-bold text-white-50 text-uppercase mb-3" style="font-size: 11.5px; letter-spacing: 0.5px;">
+                        <i class="fas fa-clipboard-list text-warning me-1"></i> Return Summary Breakdown
+                    </h6>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-3">
+                            <div class="bg-dark rounded p-2 text-center">
+                                <span class="text-white-50 small d-block" style="font-size: 10px;">Items Ret.</span>
+                                <strong class="fs-6 font-monospace text-white" id="statReturnItems">0</strong>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="bg-dark rounded p-2 text-center">
+                                <span class="text-white-50 small d-block" style="font-size: 10px;">Cartons Ret.</span>
+                                <strong class="fs-6 font-monospace text-warning" id="statReturnCartons">0</strong>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="bg-dark rounded p-2 text-center">
+                                <span class="text-white-50 small d-block" style="font-size: 10px;">Loose Pcs</span>
+                                <strong class="fs-6 font-monospace text-info" id="statReturnLoose">0</strong>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="bg-dark rounded p-2 text-center">
+                                <span class="text-white-50 small d-block" style="font-size: 10px;">Tot Pieces</span>
+                                <strong class="fs-6 font-monospace text-danger" id="statReturnTotalPieces">0</strong>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Return Info -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Return Date <span class="text-danger">*</span></label>
-                            <input type="date" name="return_date" class="form-control" value="{{ date('Y-m-d') }}"
-                                required>
+                    <!-- Settlement Method -->
+                    <div>
+                        <label class="text-white-50 small fw-bold text-uppercase mb-2" style="font-size: 10.5px;">
+                            Refund Settlement Method:
+                        </label>
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="settlement_mode" id="mode_credit" value="credit" checked>
+                                <label class="form-check-label text-white fw-semibold" for="mode_credit">
+                                    <i class="fas fa-credit-card text-success me-1"></i> Credit Note (Customer Ledger)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="settlement_mode" id="mode_cash" value="cash">
+                                <label class="form-check-label text-white fw-semibold" for="mode_cash">
+                                    <i class="fas fa-money-bill-wave text-warning me-1"></i> Cash / Bank Refund
+                                </label>
+                            </div>
                         </div>
-                        <div class="col-md-8">
-                            <label class="form-label">Return Reason / Notes</label>
-                            <input type="text" name="return_reason" class="form-control"
-                                placeholder="e.g., Damaged goods, Wrong item sent">
+
+                        <!-- Cash/Bank Account Selector (Hidden unless Cash selected) -->
+                        <div id="cashRefundBox" class="mt-2 row g-2" style="display: none;">
+                            <div class="col-sm-6">
+                                <select name="payment_account_id[]" class="form-select form-select-sm bg-dark text-white border-secondary">
+                                    <option value="">-- Select Cash/Bank Account --</option>
+                                    @foreach($accounts as $acc)
+                                        <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-sm-6">
+                                <input type="number" step="0.01" min="0" name="payment_amount[]" id="inputCashRefundAmount" class="form-control form-control-sm font-monospace fw-bold" placeholder="Refund Amount">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Financial Refund Calculations & Submit -->
+                <div class="col-lg-6 ps-lg-4">
+                    <div class="d-flex justify-content-between align-items-center mb-1 small">
+                        <span class="text-white-50">Return Gross TP:</span>
+                        <span class="font-monospace text-white" id="summaryReturnGross">Rs 0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1 small">
+                        <span class="text-white-50">Discount Reversal:</span>
+                        <span class="font-monospace text-danger" id="summaryReturnDisc">-Rs 0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 small">
+                        <span class="text-white-50">Sales Tax Refund:</span>
+                        <span class="font-monospace text-success" id="summaryReturnTax">+Rs 0.00</span>
+                    </div>
+
+                    <div class="border-top border-secondary pt-2 mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-white-50 small text-uppercase fw-bold d-block">Total Refund / Credit Note</span>
+                            <small class="text-muted" style="font-size: 10px;">Amount credited to customer's account</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="fw-bold font-monospace fs-4 text-warning" id="summaryTotalRefund">Rs 0.00</span>
                         </div>
                     </div>
 
-                    <!-- Items Table -->
-                    <div class="d-flex justify-content-end mb-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnReturnAll">
-                            <i class="fas fa-check-double me-1"></i> Return All
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ route('sale.index') }}" class="btn btn-outline-light px-3">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-danger btn-lg px-4 fw-bold shadow" id="btnSubmitReturn" {{ $allFullyReturned ? 'disabled' : '' }}>
+                            <i class="fas fa-undo-alt me-2"></i> Confirm &amp; Post Sale Return
                         </button>
                     </div>
-                    <div class="table-responsive erp-table-container mb-4">
-                        <table class="table table-erp table-hover align-middle">
-                            <thead>
-                                <tr>
-                                    <th style="width: 20%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Product</th>
-                                    <th style="width: 8%;">Size</th>
-                                    {{-- <th style="width: 8%;">Color</th> --}}
-                                    <th style="width: 8%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Item Code</th>
-                                    <th style="width: 12%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>PC per box</th>
-                                    <th style="width: 10%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Purchased Price</th>
-                                    <th style="width: 10%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Purchased Qty PC</th>
-                                    <th style="width: 10%;">Return Qty (Box.Piece)</th>
-                                    <th style="width: 12%;">Total Return Pieces</th>
-                                    <th style="width: 12%;">Total Amount</th>
-                                    <th style="width: 5%;" class="text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="returnItems">
-                                @foreach ($sale->items as $index => $item)
-                                    <tr>
-                                        <input type="hidden" name="product_id[]" value="{{ $item['product_id'] }}">
-                                        <input type="hidden" name="color[]" value="{{ $item['color'] ?? '' }}">
-                                        {{-- Hidden Discount to preserve refund math if needed --}}
-                                        <input type="hidden" name="item_disc[]" class="item_disc"
-                                            value="{{ $item['discount'] ?? 0 }}" data-original-discount="{{ $item['discount'] ?? 0 }}">
-                                        <input type="hidden" name="unit[]" value="{{ $item['unit'] ?? 'pc' }}">
-                                        <input type="hidden" name="size_mode[]" class="size-mode"
-                                            value="{{ $item['size_mode'] ?? 'by_pieces' }}">
-                                        <input type="hidden" name="pieces_per_m2[]" class="pieces-per-m2"
-                                            value="{{ $item['pieces_per_m2'] ?? 0 }}">
+                </div>
 
-                                        <td>
-                                            <input type="text" class="form-control fw-bold"
-                                                value="{{ $item['item_name'] }}" readonly>
-                                            <small class="text-muted d-block ms-2"
-                                                style="font-size: 0.75rem;">{{ $item['brand'] ?? '' }}</small>
-                                        </td>
-
-                                        {{-- Size --}}
-                                        <td>
-                                            <input type="text" class="form-control text-center"
-                                                value="{{ $item['size_val'] ?? '-' }}" readonly>
-                                        </td>
-
-                                        {{-- Color --}}
-                                        {{-- <td>
-                                            <input type="text" class="form-control text-center"
-                                                value="{{ $item['color_val'] ?? '-' }}" readonly>
-                                        </td> --}}
-
-                                        <td><input type="text" class="form-control text-center"
-                                                value="{{ $item['item_code'] }}" readonly></td>
-
-                                        {{-- PC per box --}}
-                                        <td>
-                                            <input type="number" class="form-control text-center pieces-per-box"
-                                                value="{{ $item['pieces_per_box'] ?? 1 }}" readonly>
-                                        </td>
-
-
-                                        {{-- Purchased Price Per Pc --}}
-                                        <td><input type="number" name="price[]" step="0.01"
-                                                class="form-control text-end price" value="{{ (float) $item['price'] }}"
-                                                readonly>
-                                            <small class="text-muted d-block text-end" style="font-size: 0.65rem;">
-                                                @if (($item['size_mode'] ?? '') == 'by_size')
-                                                    Per M²
-                                                @elseif(($item['size_mode'] ?? '') == 'by_cartons')
-                                                    Per Box
-                                                @else
-                                                    Per Pc
-                                                @endif
-                                            </small>
-                                        </td>
-
-                                        {{-- Purchased Qty (Read Only) --}}
-                                        <td>
-                                            @php
-                                                $original = $item['original_qty'] ?? $item['qty'];
-                                                $returned = $item['returned_qty'] ?? 0;
-                                                $netRemaining = $item['max_returnable'] ?? ($original - $returned);
-                                                $ppb = $item['pieces_per_box'] ?? 1;
-                                                
-                                                // Format remaining pieces to Box.Piece
-                                                if ($ppb > 1) {
-                                                    $remBoxes = floor($netRemaining / $ppb);
-                                                    $remPcs = $netRemaining % $ppb;
-                                                    $remDisplay = $remBoxes . ($remPcs > 0 ? '.'.$remPcs : '');
-                                                } else {
-                                                    $remDisplay = $netRemaining;
-                                                }
-                                            @endphp
-                                            <div class="text-center">
-                                                <span class="fw-bold text-dark fs-6">{{ $remDisplay }}</span>
-                                                <small class="text-muted d-block" style="font-size: 0.65rem;">Remaining Pieces: {{ $netRemaining }}</small>
-                                            </div>
-                                            @if ($returned > 0)
-                                                <div class="mt-1 pt-1 border-top" style="font-size: 0.65rem;">
-                                                    <span class="text-danger">Returned: {{ $returned }}</span>
-                                                    <span class="text-muted ms-1">/ {{ $original }}</span>
-                                                </div>
-                                            @endif
-                                        </td>
-
-
-                                        {{-- Return Qty (Box.Piece) --}}
-                                        <td>
-                                            <input type="text" name="qty_box[]"
-                                                class="form-control text-center quantity-box" value="0"
-                                                placeholder="0.0" {{ $netRemaining <= 0 ? 'readonly' : '' }}>
-                                            <small class="text-muted" style="font-size: 0.7rem;">Format: Box.Piece</small>
-                                        </td>
-
-                                        {{-- Total Return Pieces (Read Only, Calculated) --}}
-                                        <td>
-                                            <input type="number" name="qty[]"
-                                                class="form-control text-center fw-bold text-primary quantity"
-                                                value="0" readonly min="0" max="{{ $netRemaining }}"
-                                                data-max="{{ $netRemaining }}" data-original="{{ $original }}"
-                                                data-returned="{{ $returned }}">
-                                        </td>
-
-                                        <td><input type="text" name="total[]"
-                                                class="form-control text-end fw-bold row-total" value="0.00" readonly>
-                                        </td>
-                                        <td class="text-center">
-                                            <button type="button"
-                                                class="btn btn-sm btn-outline-danger border-0 remove-row rounded-circle"
-                                                title="Remove Item"><i class="fas fa-times"></i></button>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Footer Summary -->
-                    <div class="row mt-4">
-                        <div class="col-md-7">
-                            <div class="p-4 bg-light rounded border h-100">
-                                <label class="form-label text-muted small">AMOUNT IN WORDS</label>
-                                <input type="text" name="total_amount_Words"
-                                    class="form-control border-0 bg-transparent fw-bold text-primary fs-5 fst-italic"
-                                    id="amountInWords" readonly placeholder="...">
-
-                                <div class="mt-4 pt-4 border-top">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-cubes text-muted"></i>
-                                        <span class="text-muted small">Total Pieces Returned:</span>
-                                        <strong id="totalPieces" class="text-dark fs-5">0</strong>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Partial Return Status Indicator -->
-                        <div class="col-md-12 mb-3">
-                            <div class="partial-return-indicator shadow-sm border-0 p-3 rounded"
-                                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 class="mb-0 text-white">
-                                        <i class="fas fa-chart-pie me-2"></i>Return Status
-                                    </h6>
-                                    <span id="returnTypeBadge" class="badge bg-light text-dark">
-                                        <i class="fas fa-spinner fa-spin me-1"></i>Calculating...
-                                    </span>
-                                </div>
-                                <div class="progress" style="height: 25px; background: rgba(255,255,255,0.2);">
-                                    <div id="returnProgressBar"
-                                        class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                                        style="width: 0%; background: #10ac84;" aria-valuenow="0" aria-valuemin="0"
-                                        aria-valuemax="100">
-                                        <strong id="returnPercentage">0%</strong>
-                                    </div>
-                                </div>
-                                <div class="mt-2 text-white small" id="returnStatusText">
-                                    <i class="fas fa-info-circle me-1"></i>Select items to return
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-5">
-                            <div class="summary-card shadow-sm border-0">
-                                <h6 class="mb-3 text-uppercase fw-bold text-muted"
-                                    style="font-size: 0.8rem; letter-spacing: 1px;">Refund Summary</h6>
-                                <div class="summary-row">
-                                    <span class="text-muted">Subtotal</span>
-                                    <input type="text" name="total_subtotal" id="billAmount"
-                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0"
-                                        readonly value="0.00">
-                                </div>
-                                <div class="summary-row">
-                                    <span class="text-muted">Less: Item Discount</span>
-                                    <input type="text" name="total_discount" id="itemDiscount"
-                                        class="form-control form-control-sm w-50 text-end border-0 bg-transparent p-0 text-danger"
-                                        readonly value="0.00">
-                                </div>
-                                <div class="summary-row align-items-center mt-2">
-                                    <span class="text-dark fw-medium">Less: Extra Deductions</span>
-                                    <input type="number" name="extra_discount" id="extraDiscount"
-                                        class="form-control form-control-sm w-50 text-end bg-white"
-                                        value="{{ (float) ($sale->total_extradiscount ?? 0) }}">
-                                </div>
-                                <hr class="my-3">
-                                <div class="summary-row total">
-                                    <span>NET REFUND AMOUNT</span>
-                                    <input type="text" name="net_amount" id="netAmount"
-                                        class="form-control form-control-lg w-50 text-end border-0 bg-transparent p-0 fw-bold text-primary"
-                                        readonly value="0.00">
-                                </div>
-
-                                <!-- Payment Voucher Section -->
-                                <div class="mt-4 pt-4 border-top">
-                                    <h6 class="mb-3 text-uppercase fw-bold text-muted"
-                                        style="font-size: 0.8rem; letter-spacing: 1px;">
-                                        <i class="fas fa-money-bill-wave me-2"></i>Refund Received (Optional)
-                                    </h6>
-
-                                    <div class="alert alert-light border small text-muted">
-                                        <i class="fas fa-info-circle me-1"></i> If you received cash/bank refund, enter
-                                        details. Otherwise, amount will be credited to customer Ledger.
-                                    </div>
-
-                                    <div class="payment-voucher-rows">
-                                        <div class="payment-row mb-2">
-                                            <div class="row g-2">
-                                                <div class="col-7">
-                                                    <select name="payment_account_id[]"
-                                                        class="form-select form-select-sm payment-account">
-                                                        <option value="">Select Account (Cash/Bank)</option>
-                                                        @foreach ($accounts as $acc)
-                                                            <option value="{{ $acc->id }}">{{ $acc->title }}
-                                                                ({{ $acc->account_code }})
-                                                            </option>
-                                                        @endforeach
-                                                    </select>
-                                                </div>
-                                                <div class="col-5">
-                                                    <input type="number" name="payment_amount[]" step="0.01"
-                                                        class="form-control form-control-sm text-end payment-amount"
-                                                        placeholder="Amount">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-
-                                <div class="mt-4 d-grid gap-2">
-                                    <button type="submit" class="btn btn-erp-primary btn-lg shadow-sm">
-                                        <i class="fas fa-check-circle me-2"></i> Process Sale Return
-                                    </button>
-
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </form>
             </div>
         </div>
-    </div>
+
+    </form>
+
+</div>
 @endsection
 
 @section('js')
-    <script>
-        $(document).ready(function() {
+<script>
+$(document).ready(function() {
 
-            // Initialize Select2
-            // Initialize Select2
-            if ($.fn.select2) {
-                $('.payment-account').select2();
+    // Helper: calculate a single row
+    function calculateRow($row) {
+        let ppb = parseInt($row.data('ppb')) || 1;
+        let sizeMode = $row.data('size-mode') || 'by_pieces';
+        let tradeRate = parseFloat($row.data('trade-rate')) || 0;
+        let pieceRate = parseFloat($row.data('piece-rate')) || 0;
+        let discPct = parseFloat($row.data('disc-pct')) || 0;
+        let gstRate = parseFloat($row.data('gst-rate')) || 0;
+        let is3rd = parseInt($row.data('is-3rd')) || 0;
+        let mrp = parseFloat($row.data('mrp')) || 0;
+
+        let maxPieces = parseFloat($row.data('max-pieces')) || 0;
+        let maxCartons = parseFloat($row.data('max-cartons')) || 0;
+
+        let retCtn = parseInt($row.find('.input-return-carton').val()) || 0;
+        let retLoose = parseInt($row.find('.input-return-loose').val()) || 0;
+
+        if (retCtn < 0) retCtn = 0;
+        if (retLoose < 0) retLoose = 0;
+
+        // Total return pieces
+        let totPieces = (retCtn * ppb) + retLoose;
+
+        // Validation against remaining max pieces
+        if (totPieces > maxPieces) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'warning',
+                title: 'Cannot exceed max remaining returnable pieces (' + maxPieces + ' pcs)',
+                showConfirmButton: false,
+                timer: 2500
+            });
+
+            // Auto-cap to max pieces
+            totPieces = maxPieces;
+            retCtn = ppb > 1 ? Math.floor(totPieces / ppb) : 0;
+            retLoose = ppb > 1 ? (totPieces % ppb) : totPieces;
+
+            $row.find('.input-return-carton').val(retCtn);
+            $row.find('.input-return-loose').val(retLoose);
+        }
+
+        // Calculate Gross
+        let lineGross = 0;
+        if (sizeMode === 'by_cartons' || sizeMode === 'by_bandal') {
+            lineGross = (retCtn * tradeRate) + (retLoose * pieceRate);
+        } else {
+            lineGross = totPieces * (ppb > 1 ? pieceRate : tradeRate);
+        }
+
+        // Calculate Discount
+        let lineDisc = (lineGross * discPct) / 100;
+        let exclGst = Math.max(0, lineGross - lineDisc);
+
+        // Calculate Tax Refund
+        let lineTax = 0;
+        if (gstRate > 0) {
+            if (is3rd && mrp > 0) {
+                lineTax = (mrp * totPieces) * (gstRate / 100);
             } else {
-                console.warn('Select2 not loaded');
+                lineTax = exclGst * (gstRate / 100);
             }
+        }
 
-            function num(n) {
-                return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
+        // Net Refund Total
+        let lineNet = exclGst + lineTax;
+
+        // Update Row Displays & Hidden Form Inputs
+        $row.find('.display-ret-pieces').text(totPieces);
+        $row.find('.display-ret-gross').text(lineGross.toFixed(2));
+        $row.find('.display-ret-disc').text('-' + lineDisc.toFixed(2));
+        $row.find('.display-ret-tax').text('+' + lineTax.toFixed(2));
+        $row.find('.display-ret-net').text('Rs ' + lineNet.toFixed(2));
+
+        $row.find('.input-total-return-pieces').val(totPieces);
+        $row.find('.input-row-disc').val(lineDisc.toFixed(2));
+        $row.find('.input-row-tax').val(lineTax.toFixed(2));
+        $row.find('.input-row-gross').val(lineGross.toFixed(2));
+        $row.find('.input-row-net').val(lineNet.toFixed(2));
+
+        $row.data('calc-pieces', totPieces);
+        $row.data('calc-cartons', retCtn);
+        $row.data('calc-loose', retLoose);
+        $row.data('calc-gross', lineGross);
+        $row.data('calc-disc', lineDisc);
+        $row.data('calc-tax', lineTax);
+        $row.data('calc-net', lineNet);
+
+        calculateOverallSummary();
+    }
+
+    // Overall Summary Calculation
+    function calculateOverallSummary() {
+        let totalItems = 0;
+        let totalCartons = 0;
+        let totalLoose = 0;
+        let totalPieces = 0;
+        let totalGross = 0;
+        let totalDisc = 0;
+        let totalTax = 0;
+        let totalNet = 0;
+
+        $('.return-row').each(function() {
+            let pcs = $(this).data('calc-pieces') || 0;
+            if (pcs > 0) {
+                totalItems++;
+                totalCartons += ($(this).data('calc-cartons') || 0);
+                totalLoose += ($(this).data('calc-loose') || 0);
+                totalPieces += pcs;
+                totalGross += ($(this).data('calc-gross') || 0);
+                totalDisc += ($(this).data('calc-disc') || 0);
+                totalTax += ($(this).data('calc-tax') || 0);
+                totalNet += ($(this).data('calc-net') || 0);
             }
-
-            function numberToWords(num) {
-                const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
-                    "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen",
-                    "Eighteen", "Nineteen"
-                ];
-                const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-                if ((num = num.toString()).length > 9) return "Overflow";
-                const n = ("000000000" + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{3})$/);
-                if (!n) return;
-                let str = "";
-                str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + " Crore " : "";
-                str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + " Lakh " : "";
-                str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + " Thousand " : "";
-                str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + " " : "";
-                return str.trim() + " Rupees Only";
-            }
-
-            function recalcRow($row) {
-                const qty = num($row.find('.quantity').val()); // Pieces (Total)
-                const price = num($row.find('.price').val()); // Price (Unit Price)
-                const sizeMode = $row.find('.size-mode').val();
-                const ppm2 = num($row.find('.pieces-per-m2').val());
-                const ppb = num($row.find('.pieces-per-box').val()) || 1;
-
-                let total = 0;
-
-                if (sizeMode === 'by_size') {
-                    total = qty * ppm2 * price;
-                } else if (['by_cartons', 'by_bandal'].includes(sizeMode) || sizeMode === 'by_carton') {
-                    // Price is Per Box, qty is Total Pieces
-                    total = ppb > 0 ? (qty / ppb) * price : qty * price;
-                } else {
-                    // Price is Per Piece
-                    total = qty * price;
-                }
-
-                $row.find('.row-total').val(total.toFixed(2));
-            }
-
-            function recalcSummary() {
-                let billAmount = 0;
-                let totalQty = 0;
-                let itemDiscountTotal = 0;
-
-                $('#returnItems tr').each(function() {
-                    const qty = num($(this).find('.quantity').val());
-                    const rowTotal = num($(this).find('.row-total').val());
-
-                    billAmount += rowTotal;
-                    totalQty += qty;
-
-                    const originalDiscount = num($(this).find('.item_disc').attr('data-original-discount'));
-                    const originalQty = num($(this).find('.quantity').attr('data-original'));
-                    
-                    if (originalQty > 0) {
-                        const calculatedDiscount = (originalDiscount / originalQty) * qty;
-                        itemDiscountTotal += calculatedDiscount;
-                        $(this).find('.item_disc').val(calculatedDiscount);
-                    }
-                });
-
-                const extraDiscount = num($('#extraDiscount').val()); // Deduction
-
-                const net = billAmount - itemDiscountTotal - extraDiscount;
-
-                $('#billAmount').val(billAmount.toFixed(2));
-                $('#itemDiscount').val(itemDiscountTotal.toFixed(2));
-                $('#netAmount').val(net.toFixed(2));
-
-                if (net > 0) {
-                    $('#amountInWords').val(numberToWords(Math.round(net)));
-                } else {
-                    $('#amountInWords').val('Zero Rupees');
-                }
-
-                $('#totalPieces').text(totalQty);
-
-                // Update visual indicators
-                updatePartialReturnIndicator();
-            }
-
-            // Return All Button Logic
-            $('#btnReturnAll').click(function() {
-                $('#returnItems tr').each(function() {
-                    const $row = $(this);
-                    const maxQty = parseFloat($row.find('.quantity').attr('data-max')) || 0;
-                    const ppb = parseFloat($row.find('.pieces-per-box').val()) || 1;
-
-                    // Set Total Pieces
-                    $row.find('.quantity').val(maxQty);
-
-                    // Calculate Box.Piece representation
-                    let boxDisplay = '';
-                    if (ppb > 1) {
-                        const boxes = Math.floor(maxQty / ppb);
-                        const pieces = maxQty % ppb;
-                        if (pieces > 0) {
-                            boxDisplay = boxes + '.' + pieces;
-                        } else {
-                            boxDisplay = boxes;
-                        }
-                    } else {
-                        boxDisplay = maxQty; // If no box size, just show total pieces
-                    }
-
-                    // Update Box Input
-                    $row.find('.quantity-box').val(boxDisplay);
-
-                    // Trigger recalc
-                    recalcRow($row);
-                });
-                recalcSummary();
-            });
-
-            // Auto-fill Max on Click/Focus if 0
-            $(document).on('click focus', '.quantity-box', function() {
-                const val = $(this).val();
-                // Check if 0, 0.0, or empty
-                if (parseFloat(val) === 0 || val === '') {
-                    const $row = $(this).closest('tr');
-                    const maxQty = parseFloat($row.find('.quantity').attr('data-max')) || 0;
-                    const ppb = parseFloat($row.find('.pieces-per-box').val()) || 1;
-
-                    // Calculate Box.Piece representation
-                    let boxDisplay = '';
-                    if (ppb > 1) {
-                        const boxes = Math.floor(maxQty / ppb);
-                        const pieces = maxQty % ppb;
-                        if (pieces > 0) {
-                            boxDisplay = boxes + '.' + pieces;
-                        } else {
-                            boxDisplay = boxes;
-                        }
-                    } else {
-                        boxDisplay = maxQty;
-                    }
-
-                    $(this).val(boxDisplay);
-                    $(this).trigger('input'); // Update totals
-                    $(this).select(); // Select text for easy overwrite
-                }
-            });
-
-            // Box.Piece Input Logic
-            $(document).on('input', '.quantity-box', function() {
-                const $row = $(this).closest('tr');
-                const val = $(this).val();
-                const ppb = num($row.find('.pieces-per-box').val());
-
-                // Parse Box.Piece format
-                // Example: 1.2 => 1 Box, 2 Pieces (NOT 1.2 Boxes)
-                // Logic: Integer part = Box. Decimal part = Pieces.
-
-                let boxes = 0;
-                let pieces = 0;
-
-                if (val.includes('.')) {
-                    const parts = val.split('.');
-                    boxes = num(parts[0]);
-
-                    // STRICT LOGIC: "10.1" -> 1 piece. "10.01" -> 1 piece. "10.10" -> 10 pieces.
-                    // We treat the part after dot as an integer "Piece Count" directly.
-                    const decimalPart = parts[1];
-                    if (decimalPart) {
-                        // User explicitly said "10.1 means 10 box and 1 piece".
-                        // Standard float would treat 10.1 as 10.10 (10 pieces if ppb=100) or similar.
-                        // Here we take the string value literally as integer pieces.
-                        pieces = parseInt(decimalPart);
-                    }
-                } else {
-                    boxes = num(val);
-                }
-
-                // Validation: If pieces >= ppb, just allow it but it might look weird.
-                // Or auto-convert? User said "apply it everything... accucsry".
-                // If I have 12 pieces/box and write 0.12, that is 12 pieces => 1 box.
-                // Let's just sum it up.
-
-                let totalPieces = 0;
-                if (ppb > 0) {
-                    totalPieces = (boxes * ppb) + pieces;
-                } else {
-                    totalPieces = boxes; // If no box size, inputs are pieces
-                }
-
-                // Update Read-Only Total Pieces
-                $row.find('.quantity').val(totalPieces);
-
-                // Trigger validations and recalc
-                $row.find('.quantity').trigger('input');
-            });
-
-
-            // Events
-            $(document).on('input', '.quantity, .price, #extraDiscount', function() {
-                const $row = $(this).closest('tr');
-
-                // Validate max returnable quantity
-                if ($(this).hasClass('quantity')) {
-                    const qtyPc = num($(this).val());
-                    const maxReturnable = num($(this).attr('data-max'));
-
-                    if (qtyPc > maxReturnable) {
-                        $(this).val(maxReturnable);
-                        $(this).addClass('border-danger');
-
-                        // Show warning
-                        if (!$(this).next('.text-danger').length) {
-                            $(this).after('<small class="text-danger d-block">Max: ' + maxReturnable +
-                                ' pieces (Purchased Qty)</small>');
-                        }
-
-                        setTimeout(() => {
-                            $(this).removeClass('border-danger');
-                            $(this).next('.text-danger').fadeOut(300, function() {
-                                $(this).remove();
-                            });
-                        }, 2000);
-                    }
-                }
-
-                if ($row.length) {
-                    recalcRow($row);
-                }
-                recalcSummary();
-            });
-
-            // Initialize
-            $('#returnItems tr').each(function() {
-                recalcRow($(this));
-            });
-            recalcSummary();
-
-            // Remove row
-            $(document).on('click', '.remove-row', function() {
-                $(this).closest('tr').remove();
-                recalcSummary();
-            });
-
-            // Update Partial Return Visual Indicator
-            function updatePartialReturnIndicator() {
-                let totalOriginalPieces = 0;
-                let totalReturningPieces = 0;
-
-                $('#returnItems tr').each(function() {
-                    const $qtyInput = $(this).find('.quantity');
-                    const soldQty = num($qtyInput.attr('data-max')); // Max is original
-                    const returningQty = num($qtyInput.val());
-
-                    totalOriginalPieces += soldQty;
-                    totalReturningPieces += returningQty;
-                });
-
-                const returnPercentage = totalOriginalPieces > 0 ? (totalReturningPieces / totalOriginalPieces *
-                        100) :
-                    0;
-
-                // Update progress bar
-                $('#returnProgressBar').css('width', returnPercentage + '%');
-                $('#returnProgressBar').attr('aria-valuenow', returnPercentage);
-                $('#returnPercentage').text(returnPercentage.toFixed(1) + '%');
-
-                // Update badge and status text
-                if (totalReturningPieces === 0) {
-                    $('#returnTypeBadge').html('<i class="fas fa-info-circle me-1"></i>No Items Selected');
-                    $('#returnTypeBadge').removeClass().addClass('badge bg-secondary');
-                    $('#returnStatusText').html('<i class="fas fa-info-circle me-1"></i>Select items to return');
-                    $('#returnProgressBar').css('background', '#6c757d');
-                } else if (returnPercentage >= 100) {
-                    $('#returnTypeBadge').html('<i class="fas fa-check-circle me-1"></i>Full Return');
-                    $('#returnTypeBadge').removeClass().addClass('badge bg-success');
-                    $('#returnStatusText').html('<i class="fas fa-check-circle me-1"></i>Returning all ' +
-                        totalOriginalPieces + ' pieces (100% of purchase)');
-                    $('#returnProgressBar').css('background', '#10ac84');
-                } else {
-                    $('#returnTypeBadge').html('<i class="fas fa-chart-pie me-1"></i>Partial Return');
-                    $('#returnTypeBadge').removeClass().addClass('badge bg-warning text-dark');
-                    $('#returnStatusText').html('<i class="fas fa-chart-pie me-1"></i>Returning ' +
-                        totalReturningPieces + ' of ' + totalOriginalPieces + ' pieces (' + returnPercentage
-                        .toFixed(1) + '%)');
-                    $('#returnProgressBar').css('background', '#f79f1f');
-                }
-            }
-
-
         });
-    </script>
+
+        $('#statReturnItems').text(totalItems);
+        $('#statReturnCartons').text(totalCartons);
+        $('#statReturnLoose').text(totalLoose);
+        $('#statReturnTotalPieces').text(totalPieces);
+
+        $('#summaryReturnGross').text('Rs ' + totalGross.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        $('#summaryReturnDisc').text('-Rs ' + totalDisc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        $('#summaryReturnTax').text('+Rs ' + totalTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        $('#summaryTotalRefund').text('Rs ' + totalNet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        // If Cash refund is selected, prefill refund amount
+        if ($('#mode_cash').is(':checked')) {
+            $('#inputCashRefundAmount').val(totalNet.toFixed(2));
+        }
+    }
+
+    // Listen on return inputs change
+    $(document).on('input change', '.input-return-carton, .input-return-loose', function() {
+        let $row = $(this).closest('.return-row');
+        calculateRow($row);
+    });
+
+    // Quick Max Button on row
+    $(document).on('click', '.btn-quick-max', function(e) {
+        e.preventDefault();
+        let $row = $(this).closest('.return-row');
+        let maxPieces = parseFloat($row.data('max-pieces')) || 0;
+        let ppb = parseInt($row.data('ppb')) || 1;
+
+        let maxCtn = ppb > 1 ? Math.floor(maxPieces / ppb) : 0;
+        let maxLse = ppb > 1 ? (maxPieces % ppb) : maxPieces;
+
+        $row.find('.input-return-carton').val(maxCtn);
+        $row.find('.input-return-loose').val(maxLse);
+        calculateRow($row);
+    });
+
+    // Top Button: Return All Items
+    $('#btnReturnAllItems').on('click', function(e) {
+        e.preventDefault();
+        $('.return-row').each(function() {
+            let maxPieces = parseFloat($(this).data('max-pieces')) || 0;
+            let ppb = parseInt($(this).data('ppb')) || 1;
+
+            if (maxPieces > 0) {
+                let maxCtn = ppb > 1 ? Math.floor(maxPieces / ppb) : 0;
+                let maxLse = ppb > 1 ? (maxPieces % ppb) : maxPieces;
+
+                $(this).find('.input-return-carton').val(maxCtn);
+                $(this).find('.input-return-loose').val(maxLse);
+            } else {
+                $(this).find('.input-return-carton').val(0);
+                $(this).find('.input-return-loose').val(0);
+            }
+            calculateRow($(this));
+        });
+
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'info',
+            title: 'All available items set to maximum returnable quantity.',
+            showConfirmButton: false,
+            timer: 2000
+        });
+    });
+
+    // Top Button: Reset All Items
+    $('#btnResetAllItems').on('click', function(e) {
+        e.preventDefault();
+        $('.return-row').each(function() {
+            $(this).find('.input-return-carton').val(0);
+            $(this).find('.input-return-loose').val(0);
+            calculateRow($(this));
+        });
+    });
+
+    // Settlement mode toggle
+    $('input[name="settlement_mode"]').on('change', function() {
+        if ($(this).val() === 'cash') {
+            $('#cashRefundBox').slideDown();
+            let net = parseFloat($('#summaryTotalRefund').text().replace(/[^0-9.]/g, '')) || 0;
+            $('#inputCashRefundAmount').val(net.toFixed(2));
+        } else {
+            $('#cashRefundBox').slideUp();
+            $('#inputCashRefundAmount').val('');
+        }
+    });
+
+    // Form Submission with SweetAlert confirmation
+    $('#saleReturnForm').on('submit', function(e) {
+        e.preventDefault();
+        let $form = $(this);
+        let $btn = $('#btnSubmitReturn');
+
+        let validCount = 0;
+        $('.return-row').each(function() {
+            let pcs = $(this).data('calc-pieces') || 0;
+            if (pcs > 0) validCount++;
+        });
+
+        if (validCount === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Items to Return',
+                text: 'Please enter a return quantity in the red column for at least one item.'
+            });
+            return;
+        }
+
+        let totalRefund = $('#summaryTotalRefund').text();
+
+        Swal.fire({
+            title: 'Confirm Sale Return?',
+            html: 'Total Refund Value: <strong class="text-danger">' + totalRefund + '</strong><br>Stock will be restored and customer ledger will be adjusted.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, Post Return'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                let origText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i> Processing Return...');
+
+                $.ajax({
+                    url: $form.attr('action'),
+                    type: 'POST',
+                    data: $form.serialize(),
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                        'Accept': 'application/json'
+                    },
+                    success: function(res) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: res.message || 'Sale return processed successfully.',
+                            confirmButtonText: 'View Return Details'
+                        }).then(() => {
+                            if (res.redirect_url) {
+                                window.location.href = res.redirect_url;
+                            } else {
+                                window.location.href = "{{ route('sale.return.index') }}";
+                            }
+                        });
+                    },
+                    error: function(xhr) {
+                        let msg = 'Failed to process return.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
+                        $btn.prop('disabled', false).html(origText);
+                    }
+                });
+            }
+        });
+    });
+
+});
+</script>
 @endsection

@@ -10,9 +10,12 @@
                         <h4 class="fw-bold mb-0 text-dark">Sale Return Details</h4>
                         <p class="text-muted mb-0 small">Return Invoice: {{ $return->return_invoice }}</p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i> Print Slip
+                        </button>
                         <a href="{{ route('sale.return.index') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left"></i> Back to List
+                            <i class="fas fa-arrow-left me-1"></i> Back to List
                         </a>
                     </div>
                 </div>

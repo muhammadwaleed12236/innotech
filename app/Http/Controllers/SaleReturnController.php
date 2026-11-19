@@ -19,10 +19,21 @@ class SaleReturnController extends Controller
 {
     public function showReturnForm($id)
     {
-        $sale = Sale::with(['customer_relation', 'items.product.brand'])->findOrFail($id);
+        $sale = Sale::with([
+            'customer_relation',
+            'items.product.brand',
+            'items.product.unit',
+            'items.product.taxType',
+            'orderBooker',
+            'salesman',
+            'warehouse'
+        ])->findOrFail($id);
+
         $accounts = Account::whereHas('head', function($q) {
-            $q->whereIn('name', ['Cash', 'Bank']);
+            $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank', 'Cheque', 'cheque']);
         })->where('status', 1)->orderBy('title')->get();
+
+        $warehouses = Warehouse::all();
         
         // Calculate already returned quantities
         $pastReturns = SaleReturn::where('sale_id', $id)
@@ -32,129 +43,65 @@ class SaleReturnController extends Controller
         $returnedQtyMap = [];
         foreach ($pastReturns as $sr) {
             foreach ($sr->items as $srItem) {
-                if ($srItem->is_manual) {
-                    $key = 'MANUAL_' . strtolower(trim($srItem->product_name));
-                } else {
-                    $key = $srItem->product_id . '_' . ($srItem->color ?? '');
-                }
+                $key = (int)$srItem->product_id;
                 if (!isset($returnedQtyMap[$key])) {
                     $returnedQtyMap[$key] = 0;
                 }
-                $returnedQtyMap[$key] += $srItem->qty;
+                $returnedQtyMap[$key] += (float)$srItem->qty;
             }
         }
         
-        // Format sale items with complete product data
+        // Format sale items with complete FMCG packaging and return limits
         $sale->items->each(function ($item) use ($returnedQtyMap) {
             $product = $item->product;
-            if ($item->is_manual) {
-                $key = 'MANUAL_' . strtolower(trim($item->product_name));
-            } else {
-                $key = $item->product_id . '_' . ($item->color ?? '');
-            }
-            $alreadyReturned = $returnedQtyMap[$key] ?? 0;
+            $ppb = ($product && (float)$product->pieces_per_box > 0) ? (int)$product->pieces_per_box : 1;
+            $item->ppb = $ppb;
             
-            // Extract variant information from sale item color field
-            $variant = [];
-            if (!empty($item->color)) {
-                $b64Decoded = base64_decode($item->color, true);
-                if ($b64Decoded !== false) {
-                    $json = json_decode($b64Decoded, true);
-                    if (is_array($json)) {
-                        $variant = $json;
-                    }
-                }
-                if (empty($variant)) {
-                    $json = json_decode($item->color, true);
-                    if (is_array($json)) {
-                        $variant = $json;
-                    }
-                }
-            }
-
-            $sizeStr = $variant['size'] ?? ($variant['size_val'] ?? '-');
-            $colorStr = $variant['color'] ?? ($variant['color_val'] ?? '-');
-
-            $item->size_val = $sizeStr;
-            $item->color_val = $colorStr;
-
-            // Add product details
-            $item->item_name = $product->product_name ?? $product->item_name ?? 'Unknown';
-            $item->item_code = $product->product_code ?? $product->item_code ?? '';
+            // Total sold pieces
+            $totalPieces = (float)($item->total_pieces ?: ($item->qty ?: 0));
+            $item->sold_total_pieces = $totalPieces;
+            $item->sold_cartons = $ppb > 1 ? floor($totalPieces / $ppb) : 0;
+            $item->sold_loose = $ppb > 1 ? ($totalPieces % $ppb) : (int)$totalPieces;
             
-            // Fix brand - get name from relationship
-            if ($product->brand && is_object($product->brand)) {
-                $item->brand = $product->brand->name ?? '';
-            } else {
-                $item->brand = $product->brand_name ?? '';
-            }
+            // Already returned
+            $prodId = (int)$item->product_id;
+            $alreadyReturned = (float)($returnedQtyMap[$prodId] ?? 0);
+            $item->already_returned_pieces = $alreadyReturned;
+            $item->already_returned_cartons = $ppb > 1 ? floor($alreadyReturned / $ppb) : 0;
+            $item->already_returned_loose = $ppb > 1 ? ($alreadyReturned % $ppb) : (int)$alreadyReturned;
             
-            // Resolve live variant and accurate pieces_per_box
-            $liveVariant = null;
-            if ($product && !empty($product->color)) {
-                $prodVariants = json_decode($product->color, true);
-                if (is_array($prodVariants)) {
-                    if (!empty($variant['barcode'])) {
-                        $liveVariant = collect($prodVariants)->firstWhere('barcode', $variant['barcode']);
-                    }
-                    if (!$liveVariant && !empty($variant['name'])) {
-                        $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
-                            $n1 = strtolower(trim($v['name'] ?? ''));
-                            $n2 = strtolower(trim($variant['name'] ?? ''));
-                            return $n1 === $n2 || ($n1 && $n2 && (str_contains($n1, $n2) || str_contains($n2, $n1)));
-                        });
-                    }
-                    if (!$liveVariant && !empty($variant['size']) && $variant['size'] !== '-') {
-                        $liveVariant = collect($prodVariants)->first(function($v) use ($variant) {
-                            $s1 = strtolower(trim($v['size'] ?? ''));
-                            $s2 = strtolower(trim($variant['size'] ?? ''));
-                            return $s1 === $s2 || ($s1 && $s2 && (str_starts_with($s1, $s2) || str_starts_with($s2, $s1)));
-                        });
-                    }
-                    if (!$liveVariant && count($prodVariants) === 1) {
-                        $liveVariant = $prodVariants[0];
-                    }
-                }
-            }
-
-            $ppb = 1;
-            if ($liveVariant && !empty($liveVariant['conv_factor']) && (float)$liveVariant['conv_factor'] > 0) {
-                $ppb = (float)$liveVariant['conv_factor'];
-            } elseif ($liveVariant && !empty($liveVariant['pieces_per_box']) && (float)$liveVariant['pieces_per_box'] > 0) {
-                $ppb = (float)$liveVariant['pieces_per_box'];
-            } elseif (!empty($variant['conv_factor']) && (float)$variant['conv_factor'] > 0) {
-                $ppb = (float)$variant['conv_factor'];
-            } elseif (!empty($variant['pieces_per_box']) && (float)$variant['pieces_per_box'] > 0) {
-                $ppb = (float)$variant['pieces_per_box'];
-            } elseif (!empty($variant['size']) && is_numeric($variant['size']) && (float)$variant['size'] > 0) {
-                $ppb = (float)$variant['size'];
-            } elseif ($product && (float)$product->pieces_per_box > 0) {
-                $ppb = (float)$product->pieces_per_box;
-            } elseif (!empty($item->pieces_per_box) && (float)$item->pieces_per_box > 0) {
-                $ppb = (float)$item->pieces_per_box;
-            }
-
-            if ($ppb <= 0) $ppb = 1;
-            $item->pieces_per_box = $ppb;
+            // Max returnable
+            $maxReturnable = max(0, $totalPieces - $alreadyReturned);
+            $item->max_returnable_pieces = $maxReturnable;
+            $item->max_returnable_cartons = $ppb > 1 ? floor($maxReturnable / $ppb) : 0;
+            $item->max_returnable_loose = $ppb > 1 ? ($maxReturnable % $ppb) : (int)$maxReturnable;
             
-            $item->size_mode = $product->size_mode ?? 'by_pieces';
-            $item->pieces_per_m2 = $product->m2_of_box ?? 0;
-            $item->unit = $item->unit ?? 'pc';
+            // Pricing & Rates
+            $tradeRate = (float)($item->price ?: ($product ? $product->trade_price : 0));
+            $item->trade_rate = $tradeRate;
+            $item->piece_rate = (float)($item->price_per_piece ?: ($ppb > 0 ? round($tradeRate / $ppb, 4) : $tradeRate));
             
-            // Quantity calculations
-            $item->qty = $item->total_pieces ?? $item->qty ?? 0;
-            $item->original_qty = $item->qty;
-            $item->returned_qty = $alreadyReturned;
-            $item->max_returnable = max(0, $item->qty - $alreadyReturned);
+            // Discount %
+            $regDisc = (float)($item->reg_disc_percent ?: ($item->discount_percent ?: 0));
+            $spDisc = (float)($item->sp_disc_percent ?: 0);
+            $item->total_disc_pct = $regDisc + $spDisc;
+            $item->discount_rate = $item->total_disc_pct;
             
-            // Pricing: use actual sale price (price_per_piece from POS/Sale), not product master price
-            $item->price = (!empty($item->price_per_piece) && $item->price_per_piece > 0) 
-                ? $item->price_per_piece 
-                : ($item->price ?? $item->per_price ?? 0);
-            $item->discount = $item->discount_amount ?? $item->discount ?? $item->per_discount ?? 0;
+            // Tax & MRP
+            $taxType = $product ? $product->taxType : null;
+            $item->gst_rate = (float)($item->sales_tax_percent ?: ($taxType ? $taxType->getSaleGstRate() : 0));
+            $item->is_3rd = (bool)($item->mrp_amount > 0 || ($taxType && $taxType->isThirdSchedule()) || ($product && $product->is_third_schedule));
+            $item->mrp_rate = (float)($item->retail_price ?: ($product ? ($product->retail_price ?: $product->sale_price_per_piece) : 0));
+            
+            // Meta labels
+            $item->item_title = $item->product_name ?: ($product ? $product->item_name : 'Product');
+            $item->brand_title = $product && $product->brand ? $product->brand->name : ($product->brand_name ?? '');
+            $item->unit_title = $product && $product->unit ? $product->unit->name : 'pc';
+            $item->batch_title = $item->batch_no ?: '—';
+            $item->size_mode = $product ? ($product->size_mode ?? 'by_pieces') : ($item->size_mode ?? 'by_pieces');
         });
         
-        return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'returnedQtyMap'));
+        return view('admin_panel.sale.sale_return.create', compact('sale', 'accounts', 'warehouses', 'returnedQtyMap'));
     }
 
     /**
@@ -304,34 +251,39 @@ class SaleReturnController extends Controller
 
                 if ($ppb <= 0) $ppb = 1;
 
-                // Calculate Line Total Logic based on size mode
-                if ($sizeMode === 'by_size') {
-                    $lineTotal = round($ppm2 * $qty * $price, 2);
-                } elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']) || $sizeMode === 'by_carton') {
-                    $lineTotal = round(($ppb > 0 ? ($qty / $ppb) : $qty) * $price, 2);
-                } else {
-                    $lineTotal = round($qty * $price, 2);
-                }
-                
-                $netLineTotal = $lineTotal - $itemDisc;
-
                 // Calculate boxes and loose pieces
-                $boxes = floor($qty / $ppb);
-                $loosePieces = $qty % $ppb;
+                $boxes = (int)($request->return_carton[$idx] ?? floor($qty / $ppb));
+                $loosePieces = (int)($request->return_loose[$idx] ?? ($qty % $ppb));
+
+                // Calculate Line Total Logic based on size mode or direct line net
+                if (!empty($request->line_total[$idx]) && (float)$request->line_total[$idx] > 0) {
+                    $netLineTotal = (float)$request->line_total[$idx];
+                    $lineTotal = (float)($request->line_gross[$idx] ?? $netLineTotal);
+                } else {
+                    if ($sizeMode === 'by_size') {
+                        $lineTotal = round($ppm2 * $qty * $price, 2);
+                    } elseif (in_array($sizeMode, ['by_cartons', 'by_bandal']) || $sizeMode === 'by_carton') {
+                        $lineTotal = round(($ppb > 0 ? ($qty / $ppb) : $qty) * $price, 2);
+                    } else {
+                        $lineTotal = round($qty * $price, 2);
+                    }
+                    $netLineTotal = $lineTotal - $itemDisc;
+                }
 
                 // Create Return Item
                 SaleReturnItem::create([
                     'sale_return_id' => $return->id,
                     'product_id' => $productId,
+                    'product_name' => $product->item_name ?? $product->product_name ?? 'Product',
                     'color' => $request->color[$idx] ?? null,
                     'warehouse_id' => $validated['warehouse_id'],
                     'qty' => $qty,
-                    'boxes' => $boxes + ($loosePieces / $ppb), // Decimal boxes
+                    'boxes' => $boxes,
                     'loose_pieces' => $loosePieces,
                     'price' => $price,
                     'item_discount' => $itemDisc,
-                    'unit' => 'pc',
-                    'line_total' => $lineTotal,
+                    'unit' => $product->unit->name ?? 'pc',
+                    'line_total' => $netLineTotal,
                 ]);
 
                 // Calculate Stock Qty with Variant Conv Factor
@@ -503,7 +455,16 @@ class SaleReturnController extends Controller
 
             DB::commit();
 
-            return redirect()->route('sale.return.index')->with('success', 'Sale return processed successfully.');
+            $msg = "Sale Return #{$nextInvoice} processed successfully.";
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $msg,
+                    'redirect_url' => route('sale.return.view', $return->id),
+                ]);
+            }
+
+            return redirect()->route('sale.return.view', $return->id)->with('success', $msg);
 
         } catch (\Exception $e) {
             DB::rollBack();
