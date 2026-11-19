@@ -125,7 +125,9 @@ class SaleController extends Controller
     public function addsale()
     {
         $customer = Customer::with('salesOfficer')->get();
-        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+        $salesOfficers = \App\Models\SalesOfficer::active()->orderBy('name')->get();
+        $orderBookers = \App\Models\SalesOfficer::active()->bookers()->orderBy('name')->get();
+        $salesmen = \App\Models\SalesOfficer::active()->salesmen()->orderBy('name')->get();
         $warehouse = Warehouse::all();
         
         \App\Models\InvoiceSeries::ensureQuotationSeries();
@@ -171,7 +173,7 @@ class SaleController extends Controller
         $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
         return view('admin_panel.sale.add_sale222', compact('termsAndConditions', 
             'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'chequeAccount', 
-            'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'
+            'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers', 'orderBookers', 'salesmen'
         ));
     }
 
@@ -1078,6 +1080,8 @@ class SaleController extends Controller
                 'po_no' => $sale->po_no,
                 'po_date' => $sale->po_date ? \Carbon\Carbon::parse($sale->po_date)->format('d/m/Y') : null,
                 'sales_officer_name' => $sale->salesOfficer->name ?? ($sale->customer_relation->salesOfficer->name ?? null),
+                'order_booker_name' => $sale->orderBooker->name ?? ($sale->salesOfficer->name ?? null),
+                'salesman_name' => $sale->salesman->name ?? null,
                 'return_note' => $sale->return_note,
                 'total_bill_amount' => (float)$sale->total_bill_amount,
                 'total_extradiscount' => (float)$sale->total_extradiscount,
@@ -1114,7 +1118,9 @@ class SaleController extends Controller
         // 2. Data for Dropdowns (Same as addsale)
         $customer = Customer::with('salesOfficer')->get();
         $warehouse = Warehouse::all();
-        $salesOfficers = \App\Models\SalesOfficer::orderBy('name')->get();
+        $salesOfficers = \App\Models\SalesOfficer::active()->orderBy('name')->get();
+        $orderBookers = \App\Models\SalesOfficer::active()->bookers()->orderBy('name')->get();
+        $salesmen = \App\Models\SalesOfficer::active()->salesmen()->orderBy('name')->get();
         \App\Models\InvoiceSeries::ensureQuotationSeries();
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
         $defaultSeries = $allSeries->where('is_default', 1)->first() ?: $allSeries->first();
@@ -1137,7 +1143,7 @@ class SaleController extends Controller
 
         // 4. Return the Edit Sale View
         $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
-        return view('admin_panel.sale.edit_sale', compact('termsAndConditions', 'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'chequeAccount', 'existingCheque', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers'));
+        return view('admin_panel.sale.edit_sale', compact('termsAndConditions', 'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'chequeAccount', 'existingCheque', 'sale', 'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers', 'orderBookers', 'salesmen'));
     }
 
     public function updatesale(Request $request, $id)
@@ -1261,7 +1267,9 @@ class SaleController extends Controller
                 $sale->branch_id = $request->branch_id ?? (auth()->check() ? auth()->user()->branch_id : null);
             }
             $sale->customer_id = $request->customer;
-            $sale->sales_officer_id = $request->filled('sales_officer_id') ? $request->sales_officer_id : null;
+            $sale->sales_officer_id = $request->filled('sales_officer_id') ? $request->sales_officer_id : ($request->order_booker_id ?? null);
+            $sale->order_booker_id = $request->filled('order_booker_id') ? $request->order_booker_id : ($request->filled('sales_officer_id') ? $request->sales_officer_id : null);
+            $sale->salesman_id = $request->filled('salesman_id') ? $request->salesman_id : null;
             $sale->po_no = $request->filled('po_no') ? trim($request->po_no) : null;
             $sale->po_date = $request->filled('po_date') ? \Carbon\Carbon::parse($request->po_date)->format('Y-m-d') : null;
             $sale->walkin_name = $isWalkin ? $request->walkin_name : null;

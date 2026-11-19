@@ -43,6 +43,16 @@ class Sale extends Model
         return $this->belongsTo(SalesOfficer::class, 'sales_officer_id', 'id');
     }
 
+    public function orderBooker()
+    {
+        return $this->belongsTo(SalesOfficer::class, 'order_booker_id', 'id');
+    }
+
+    public function salesman()
+    {
+        return $this->belongsTo(SalesOfficer::class, 'salesman_id', 'id');
+    }
+
     public function customer_relation()
     {
         return $this->belongsTo(Customer::class, 'customer_id', 'id');

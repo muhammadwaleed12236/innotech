@@ -2194,17 +2194,41 @@
 
                         <div class="pt-2 border-top mt-3">
                             <div class="row g-2 mb-2">
-                                {{-- Sales Officer / Person --}}
+                                {{-- Order Booker (S.R) --}}
                                 <div class="col-md-6 col-lg-3">
-                                    <label class="field-label mb-1" for="salesOfficerSelect" style="font-size: 11px;">
-                                        <i class="fas fa-user-tie text-primary me-1"></i> Sales Officer
+                                    <label class="field-label mb-1" for="orderBookerSelect" style="font-size: 11px;">
+                                        <i class="fas fa-clipboard-list text-primary me-1"></i> Order Booker (S.R)
                                     </label>
-                                    <select class="form-select form-select-sm" name="sales_officer_id" id="salesOfficerSelect" style="height: 34px; font-size: 12px;">
-                                        <option value="">Choose Sales Officer...</option>
-                                        @if(isset($salesOfficers) && count($salesOfficers) > 0)
+                                    <select class="form-select form-select-sm" name="order_booker_id" id="orderBookerSelect" style="height: 34px; font-size: 12px;">
+                                        <option value="">Direct / Select Booker...</option>
+                                        @if(isset($orderBookers) && count($orderBookers) > 0)
+                                            @foreach($orderBookers as $ob)
+                                                <option value="{{ $ob->id }}" {{ (isset($sale) && ($sale->order_booker_id == $ob->id || $sale->sales_officer_id == $ob->id)) ? 'selected' : '' }}>
+                                                    [{{ $ob->code ?: ('B-' . $ob->id) }}] {{ $ob->name }}
+                                                </option>
+                                            @endforeach
+                                        @elseif(isset($salesOfficers))
                                             @foreach($salesOfficers as $so)
                                                 <option value="{{ $so->id }}" {{ (isset($sale) && $sale->sales_officer_id == $so->id) ? 'selected' : '' }}>
-                                                    {{ $so->name }} {{ $so->mobile ? '(' . $so->mobile . ')' : '' }}
+                                                    {{ $so->name }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                    <input type="hidden" name="sales_officer_id" id="salesOfficerHidden" value="{{ $sale->sales_officer_id ?? '' }}">
+                                </div>
+
+                                {{-- Salesman / Delivery Person --}}
+                                <div class="col-md-6 col-lg-3">
+                                    <label class="field-label mb-1" for="salesmanSelect" style="font-size: 11px;">
+                                        <i class="fas fa-truck text-success me-1"></i> Salesman / Delivery
+                                    </label>
+                                    <select class="form-select form-select-sm" name="salesman_id" id="salesmanSelect" style="height: 34px; font-size: 12px;">
+                                        <option value="">Select Salesman...</option>
+                                        @if(isset($salesmen) && count($salesmen) > 0)
+                                            @foreach($salesmen as $sm)
+                                                <option value="{{ $sm->id }}" {{ (isset($sale) && $sale->salesman_id == $sm->id) ? 'selected' : '' }}>
+                                                    [{{ $sm->code ?: ('S-' . $sm->id) }}] {{ $sm->name }}
                                                 </option>
                                             @endforeach
                                         @endif
@@ -2708,6 +2732,8 @@
                     let officerId = d.sales_officer_id || $('#customerSelect').find(':selected').data('sales-officer');
                     if (officerId) {
                         $('#salesOfficerSelect').val(officerId);
+                        $('#orderBookerSelect').val(officerId);
+                        $('#salesOfficerHidden').val(officerId);
                     }
 
                     if (typeof window.updateCustomerDisplayCards === 'function') {

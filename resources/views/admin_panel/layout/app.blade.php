@@ -926,7 +926,9 @@
                                             <li><a href="{{ route('province.index') }}"><i class="fas fa-map"></i> Provinces</a></li>
                                         @endcan
                                         @can('sales.officers.view')
-                                            <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i> Sales Officers</a></li>
+                                            <li><a href="{{ url('sales-officers') }}"><i class="fas fa-user-tie"></i> Order Bookers & Salesmen</a></li>
+                                            <li><a href="{{ route('bookings.index') }}"><i class="fas fa-clipboard-list text-info"></i> Order Bookings</a></li>
+                                            <li><a href="{{ route('booker.dashboard') }}" target="_blank"><i class="fas fa-mobile-alt text-success"></i> Booker Portal (Field)</a></li>
                                         @endcan
                                         @can('receipts.voucher.view')
                                             <li><a href="{{ route('customer.payments') }}"><i class="fas fa-hand-holding-usd"></i> Customer Payments</a></li>

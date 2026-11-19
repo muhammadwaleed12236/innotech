@@ -14,7 +14,7 @@ class ProductBookingController extends Controller
     public function index()
     {
         // User Request: "getting only posted sale information"
-        $bookings = Sale::with(['customer_relation', 'items.product'])
+        $bookings = Sale::with(['customer_relation', 'items.product', 'orderBooker', 'salesOfficer', 'salesman'])
             ->where('is_booking', 1) // Show ONLY bookings (both pending and confirmed)
             ->orderBy('id', 'desc')
             ->get();

@@ -29,6 +29,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+        if ($user && $user->isOrderBooker()) {
+            return redirect()->intended(route('booker.dashboard'));
+        }
+
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 

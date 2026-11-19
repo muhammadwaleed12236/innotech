@@ -36,6 +36,7 @@
                                     <tr>
                                         <th class="py-3 ps-3 rounded-start text-secondary fw-semibold text-uppercase small">ID</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Customer</th>
+                                        <th class="py-3 text-secondary fw-semibold text-uppercase small">Booker / S.R</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Reference</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small">Product</th>
                                         <th class="py-3 text-secondary fw-semibold text-uppercase small text-center">Qty</th>
@@ -59,6 +60,28 @@
                                                     </div>
                                                     <span class="fw-medium text-dark">{{ optional($booking->customer_relation)->customer_name ?? 'N/A' }}</span>
                                                 </div>
+                                            </td>
+                                            <td>
+                                                @php
+                                                    $booker = $booking->orderBooker ?? $booking->salesOfficer;
+                                                @endphp
+                                                @if ($booker)
+                                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 font-monospace" style="font-size: 11px;">
+                                                        <i class="fas fa-user-edit me-1"></i>{{ $booker->name }}
+                                                        @if ($booker->code)
+                                                            <small class="text-muted">({{ $booker->code }})</small>
+                                                        @endif
+                                                    </span>
+                                                @else
+                                                    <span class="text-muted small">Direct / Admin</span>
+                                                @endif
+                                                @if ($booking->salesman)
+                                                    <div class="mt-1">
+                                                        <span class="badge bg-secondary-subtle text-dark border px-2 py-0" style="font-size: 10px;">
+                                                            <i class="fas fa-truck me-1 text-secondary"></i>{{ $booking->salesman->name }}
+                                                        </span>
+                                                    </div>
+                                                @endif
                                             </td>
                                             <td class="font-monospace text-dark">{{ $booking->reference ?? '-' }}</td>
                                             <td class="text-muted small">

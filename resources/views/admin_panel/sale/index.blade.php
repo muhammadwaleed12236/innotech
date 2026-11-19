@@ -1097,9 +1097,14 @@
                                                 Walk-in / No contact details specified
                                             </div>
                                         ` : ''}
-                                        ${sale.sales_officer_name ? `
+                                        ${sale.order_booker_name || sale.sales_officer_name ? `
                                             <div class="text-primary small mt-2 pt-1 border-top" style="font-size:11px;">
-                                                <i class="fas fa-user-tie mr-1"></i> Sales Officer: <strong>${sale.sales_officer_name}</strong>
+                                                <i class="fas fa-user-edit mr-1 text-primary"></i> Booker / S.R: <strong>${sale.order_booker_name || sale.sales_officer_name}</strong>
+                                            </div>
+                                        ` : ''}
+                                        ${sale.salesman_name ? `
+                                            <div class="text-secondary small mt-1" style="font-size:11px;">
+                                                <i class="fas fa-truck mr-1 text-info"></i> Salesman: <strong>${sale.salesman_name}</strong>
                                             </div>
                                         ` : ''}
                                     </div>

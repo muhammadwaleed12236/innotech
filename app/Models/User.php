@@ -63,6 +63,21 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\Hr\Employee::class);
     }
 
+    public function salesOfficer()
+    {
+        return $this->hasOne(\App\Models\SalesOfficer::class, 'user_id');
+    }
+
+    public function isOrderBooker(): bool
+    {
+        return $this->usertype === 'order_booker' || ($this->salesOfficer && in_array($this->salesOfficer->type, ['order_booker', 'both']));
+    }
+
+    public function isSalesman(): bool
+    {
+        return $this->usertype === 'salesman' || ($this->salesOfficer && in_array($this->salesOfficer->type, ['salesman', 'both']));
+    }
+
     /**
      * Check if user's employee profile is active (can login)
      * Returns true if user has no employee profile (admin/non-employee users)

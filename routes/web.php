@@ -26,6 +26,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleConfigurationController;
 use App\Http\Controllers\SalesOfficerController;
+use App\Http\Controllers\BookerPortalController;
 use App\Http\Controllers\StocksController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StockAdjustmentController;
@@ -349,12 +350,26 @@ Route::middleware('auth')->group(function () {
     Route::delete('provinces/{id}', [ProvinceController::class, 'destroy'])->middleware('permission:provinces.delete')->name('province.destroy');
     Route::get('provinces/delete/{id}', [ProvinceController::class, 'destroy'])->middleware('permission:provinces.delete')->name('province.delete');
 
-    // Sales Officer
+    // Sales Officer & Order Booker Management
     Route::get('sales-officers', [SalesOfficerController::class, 'index'])->middleware('permission:sales.officers.view')->name('sales.officer.index');
+    Route::get('order-bookers', [SalesOfficerController::class, 'index'])->middleware('permission:sales.officers.view')->name('order-bookers.index');
+    Route::get('sales-officers/next-code', [SalesOfficerController::class, 'getNextCode'])->name('sales-officer.next-code');
+    Route::post('sales-officers/toggle-status/{id}', [SalesOfficerController::class, 'toggleStatus'])->middleware('permission:sales.officers.edit')->name('sales-officer.toggle-status');
     Route::post('sales-officers/store', [SalesOfficerController::class, 'store'])->middleware('permission:sales.officers.create|sales.officers.edit')->name('sales-officer.store');
     Route::get('sales-officers/edit/{id}', [SalesOfficerController::class, 'edit'])->middleware('permission:sales.officers.edit')->name('sales.officer.edit');
     Route::delete('sales-officers/{id}', [SalesOfficerController::class, 'destroy'])->middleware('permission:sales.officers.delete')->name('sales-officer.delete');
     Route::get('sales-officers/delete/{id}', [SalesOfficerController::class, 'destroy'])->middleware('permission:sales.officers.delete')->name('sales-officer.delete.get');
+
+    // Order Booker Dedicated Mobile Portal
+    Route::prefix('booker')->name('booker.')->group(function () {
+        Route::get('/dashboard', [BookerPortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/orders', [BookerPortalController::class, 'orders'])->name('orders.index');
+        Route::get('/orders/create', [BookerPortalController::class, 'createOrder'])->name('orders.create');
+        Route::post('/orders/store', [BookerPortalController::class, 'storeOrder'])->name('orders.store');
+        Route::get('/orders/{id}', [BookerPortalController::class, 'showOrder'])->name('orders.show');
+        Route::get('/shops', [BookerPortalController::class, 'shops'])->name('shops.index');
+        Route::post('/shops/quick-store', [BookerPortalController::class, 'quickStoreShop'])->name('shops.quick-store');
+    });
 
     // products
 
