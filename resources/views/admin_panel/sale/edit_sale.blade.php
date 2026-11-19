@@ -1966,13 +1966,13 @@
                                 <!-- URC TAX AMOUNT -->
                                 <td class="col-ft">
                                     <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control urc-tax-value text-start text-primary fw-semibold" name="further_tax_percent[]" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}" placeholder="0" title="URC Tax (% or Amount)">
+                                        <input type="number" step="0.01" class="form-control urc-tax-value text-start text-primary fw-semibold" name="further_tax_percent[]" value="0.00" placeholder="0" title="URC Tax (% or Amount)">
                                         <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
                                         <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
                                     </div>
                                     <div class="urc-pkr-display text-end text-primary fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated URC Tax Amount">PKR 0.00</div>
-                                    <input type="hidden" class="further-tax-percent" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}">
-                                    <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
+                                    <input type="hidden" class="further-tax-percent" value="0.00">
+                                    <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0.00">
                                 </td>
 
                                 <!-- ADV. TAX AMT -->
@@ -2654,7 +2654,9 @@
 
             // Track when user manually selects customer
             $(document).on('select2:select', '#customerSelect', function() {
-                window.userExplicitlyChangedCustomer = true;
+                if (!window.isEditModeLoading) {
+                    window.userExplicitlyChangedCustomer = true;
+                }
             });
             $('#customerSelect').on('select2:clear', function() {
                 window.userExplicitlyChangedCustomer = true;
@@ -3248,13 +3250,50 @@
                 $stockDisplay = $vStock > 0 ? (rtrim(rtrim(number_format($vStock, 2), '0'), '.') . ' Pcs') : '0 Pcs';
             }
 
+            $baseName = $it->product_name ?: ($prod->item_name ?? 'Product #'.$it->product_id);
+            $displayName = $baseName;
+            $vName = $vData['name'] ?? '';
+            $vSize = (isset($vData['size']) && $vData['size'] !== '-') ? $vData['size'] : '';
+            $vColor = (isset($vData['color']) && $vData['color'] !== '-') ? $vData['color'] : '';
+
+            if (!empty($vName)) {
+                if (stripos($vName, $baseName) !== false) {
+                    $displayName = $vName;
+                } else {
+                    $displayName = $baseName . ' - ' . $vName;
+                }
+            } elseif (!empty($vSize) || !empty($vColor)) {
+                $extra = trim($vSize . ($vColor ? " ($vColor)" : ''));
+                if ($extra && !str_contains($displayName, $extra)) {
+                    $displayName .= ' - ' . $extra;
+                }
+            }
+
+            // Compound ID for select2 option value so select2 correctly matches this variant
+            $compoundId = (string) $it->product_id;
+            if (!empty($vData)) {
+                $encodedVData = is_string($it->color) && base64_decode($it->color, true) !== false 
+                    ? $it->color 
+                    : base64_encode(json_encode($vData));
+                $compoundId = $it->product_id . '|variant|' . $encodedVData;
+            }
+
+            $furtherTaxPct = (isset($it->further_tax_percent) && $it->further_tax_percent !== null && $it->further_tax_percent !== '') 
+                ? (float) $it->further_tax_percent 
+                : ((isset($it->further_tax_amount) && (float) $it->further_tax_amount > 0) ? (float) ($saleConfig['default_ft_rate'] ?? 4) : 0.0);
+            $furtherTaxAmt = (isset($it->further_tax_amount) && $it->further_tax_amount !== null && $it->further_tax_amount !== '') 
+                ? (float) $it->further_tax_amount 
+                : 0.0;
+
             return [
                 'id' => $it->product_id,
-                'name' => $it->product_name ?: ($prod->item_name ?? 'Product #'.$it->product_id),
+                'compound_id' => $compoundId,
+                'name' => $displayName,
                 'warehouse_id' => $it->warehouse_id,
                 'size_mode' => $it->size_mode ?: 'pieces',
                 'variant_data' => $it->color,
                 'size' => $vData['size'] ?? '',
+                'v_size' => $vSize,
                 'stock' => $stockDisplay,
                 'total' => (float) $it->total,
                 'total_pieces' => (float) $it->total_pieces,
@@ -3272,8 +3311,8 @@
                 'sale_discount_percent' => (float) ($prod->sale_discount_percent ?? 0),
                 'sales_tax_percent' => isset($it->sales_tax_percent) && $it->sales_tax_percent !== '' ? (float) $it->sales_tax_percent : (float) ($saleConfig['default_st_rate'] ?? 18),
                 'sales_tax_amount' => isset($it->sales_tax_amount) && $it->sales_tax_amount !== '' ? (float) $it->sales_tax_amount : 0,
-                'further_tax_percent' => isset($it->further_tax_percent) && $it->further_tax_percent !== '' ? (float) $it->further_tax_percent : (float) ($saleConfig['default_ft_rate'] ?? 4),
-                'further_tax_amount' => isset($it->further_tax_amount) && $it->further_tax_amount !== '' ? (float) $it->further_tax_amount : 0,
+                'further_tax_percent' => $furtherTaxPct,
+                'further_tax_amount' => $furtherTaxAmt,
                 'exclusive_gst_amount' => isset($it->exclusive_gst_amount) && $it->exclusive_gst_amount !== '' ? (float) $it->exclusive_gst_amount : 0,
                 'gross_amount' => isset($it->gross_amount) && $it->gross_amount !== '' ? (float) $it->gross_amount : 0,
                 'trade_activity' => isset($it->trade_activity) && $it->trade_activity !== '' ? (float) $it->trade_activity : 0,
@@ -3331,11 +3370,13 @@
 
             function populateEditRow($row, it) {
                 var $sel = $row.find('.product');
-                if ($sel.find('option[value="' + it.id + '"]').length === 0) {
-                    $sel.append(new Option(it.name, it.id, true, true));
-                } else {
-                    $sel.val(it.id);
+                var optVal = it.compound_id || it.id;
+                var optText = it.name;
+                if (it.item_code) {
+                    optText += " (SKU: " + it.item_code + ")";
                 }
+
+                $sel.empty().append(new Option(optText, optVal, true, true));
                 $sel.trigger('change');
 
                 $row.find('.product-id-hidden').val(it.id);
@@ -3424,13 +3465,13 @@
                     $row.find('.sales-tax-amount').val(it.sales_tax_amount);
                     $row.find('.visible-st').val(it.sales_tax_amount);
                 }
-                if (it.further_tax_percent !== undefined && it.further_tax_percent !== null) {
-                    $row.find('.further-tax-percent').val(it.further_tax_percent);
-                    $row.find('.urc-tax-value').val(it.further_tax_percent);
-                }
-                if (it.further_tax_amount !== undefined && it.further_tax_amount !== null) {
-                    $row.find('.further-tax-amount').val(it.further_tax_amount);
-                }
+                var ftPct = (it.further_tax_percent !== undefined && it.further_tax_percent !== null) ? parseFloat(it.further_tax_percent) : 0;
+                var ftAmt = (it.further_tax_amount !== undefined && it.further_tax_amount !== null) ? parseFloat(it.further_tax_amount) : 0;
+                $row.find('.further-tax-percent').val(ftPct);
+                $row.find('.urc-tax-value').val(ftPct);
+                $row.find('.further-tax-amount').val(ftAmt.toFixed(2));
+                $row.find('.visible-ft').val(ftAmt.toFixed(2));
+                $row.find('.urc-pkr-display').text('PKR ' + ftAmt.toFixed(2));
                 if (it.exclusive_gst_amount !== undefined && it.exclusive_gst_amount !== null) {
                     $row.find('.exclusive-gst-amount').val(it.exclusive_gst_amount);
                 }
@@ -3479,6 +3520,15 @@
                 }
 
                 if (typeof computeRow === 'function') computeRow($row);
+
+                // Enforce saved further tax values from DB if originally 0 or specific
+                if (parseFloat(it.further_tax_percent || 0) === 0 && parseFloat(it.further_tax_amount || 0) === 0) {
+                    $row.find('.further-tax-percent').val(0);
+                    $row.find('.urc-tax-value').val(0);
+                    $row.find('.further-tax-amount').val('0.00');
+                    $row.find('.visible-ft').val('0.00');
+                    $row.find('.urc-pkr-display').text('PKR 0.00');
+                }
             }
 
             function editPrefill() {

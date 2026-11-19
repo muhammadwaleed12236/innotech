@@ -92,6 +92,20 @@ class TaxType extends Model
     }
 
     /**
+     * Get effective Sale Further Tax / Unregistered Sales Tax rate (%)
+     */
+    public function getSaleFurtherTaxRate(): float
+    {
+        if ($this->isThirdSchedule()) {
+            return 0.0;
+        }
+        if ($this->unreg_st_active && in_array($this->unreg_st_applied_on, ['sales', 'both'])) {
+            return (float) ($this->unreg_st_rate ?: 0.0);
+        }
+        return 0.0;
+    }
+
+    /**
      * Products associated with this tax type
      */
     public function products()

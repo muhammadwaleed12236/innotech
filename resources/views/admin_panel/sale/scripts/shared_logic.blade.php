@@ -889,6 +889,7 @@
             $row.find('.further-tax-amount').val(0);
             $row.find('.urc-tax-value').val(0);
             $row.find('.visible-ft').val(0);
+            $row.find('.urc-pkr-display').text('PKR 0.00');
         } else {
             // ─── STANDARD (NON-3RD SCHEDULE) ITEMS ──────────────────────────────
             // MRP Amount column is strictly 0.00! Sales Tax is shown directly in PKR.
@@ -935,6 +936,7 @@
 
             $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
             $row.find('.visible-ft').val(furtherTaxAmt.toFixed(2));
+            $row.find('.urc-pkr-display').text('PKR ' + furtherTaxAmt.toFixed(2));
         }
 
         // 9. Adv. Tax Amt
@@ -1597,7 +1599,8 @@
                 $('#rvWrapper').appendTo('#walkinReceiptsContainer');
             }
             if (typeof window.applyCustomerTaxStatus === 'function') {
-                window.applyCustomerTaxStatus(null, true);
+                const forceUpdate = !window.isEditMode || window.userExplicitlyChangedCustomer === true;
+                window.applyCustomerTaxStatus(null, forceUpdate);
             }
         } else {
             $('#btnTypeCustomer').addClass('btn-primary active text-white').removeClass('btn-outline-primary');
@@ -1618,11 +1621,13 @@
             if (currentCustId) {
                 $.get("{{ url('sale/customers') }}/" + currentCustId + "?t=" + new Date().getTime(), function(d) {
                     if (typeof window.applyCustomerTaxStatus === 'function') {
-                        window.applyCustomerTaxStatus(d, true);
+                        const forceUpdate = !window.isEditMode || window.userExplicitlyChangedCustomer === true;
+                        window.applyCustomerTaxStatus(d, forceUpdate);
                     }
                 });
             } else if (typeof window.applyCustomerTaxStatus === 'function') {
-                window.applyCustomerTaxStatus(null, true);
+                const forceUpdate = !window.isEditMode || window.userExplicitlyChangedCustomer === true;
+                window.applyCustomerTaxStatus(null, forceUpdate);
             }
         }
         if (typeof updateGrandTotals === 'function') updateGrandTotals();
@@ -1842,8 +1847,13 @@
                 $row.find('.further-tax-amount').val(0);
             } else {
                 const isFtEnabled = (window.saleScreenConfig && window.saleScreenConfig.flags && window.saleScreenConfig.flags.further_tax !== undefined) ? window.saleScreenConfig.flags.further_tax : true;
-                const defaultFt = isFtEnabled ? ((window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined) ? window.saleScreenConfig.default_ft_rate : 4) : 0;
-                const ftRate = (!isFtEnabled) ? 0 : ((window.currentCustomerHasStrn) ? 0 : defaultFt);
+                let defaultFt = 0;
+                if (data.tax_sale_further_tax !== undefined && data.tax_sale_further_tax !== null) {
+                    defaultFt = parseFloat(data.tax_sale_further_tax) || 0;
+                } else if (data.has_further_tax) {
+                    defaultFt = (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined) ? window.saleScreenConfig.default_ft_rate : 4;
+                }
+                const ftRate = (!isFtEnabled || window.currentCustomerHasStrn) ? 0 : defaultFt;
                 $row.find('.urc-tax-value').val(ftRate);
                 $row.find('.further-tax-percent').val(ftRate);
             }
@@ -2106,7 +2116,7 @@
             if (newType === 'pkr') {
                 $row.find('.urc-tax-value').val(curAmt.toFixed(2));
             } else {
-                $row.find('.urc-tax-value').val(curPct || 4);
+                $row.find('.urc-tax-value').val(curPct !== undefined && curPct !== null ? curPct : 0);
             }
             computeRow($row, true, 'urc_tax_value');
             updateGrandTotals();
