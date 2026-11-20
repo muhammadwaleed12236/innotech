@@ -81,9 +81,9 @@
 
                 <div class="col-6 text-end">
                     <div class="text-muted">Booked By (S.R):</div>
-                    <strong class="text-dark">{{ optional($order->orderBooker)->name ?? optional($order->salesOfficer)->name ?? $booker->name }}</strong>
+                    <strong class="text-dark">{{ optional($order->orderBooker)->name ?? optional($order->salesOfficer)->name ?? optional($booker)->name ?? 'Order Booker' }}</strong>
                     <div class="text-muted font-monospace">
-                        ID: {{ optional($order->orderBooker)->code ?? optional($order->salesOfficer)->code ?? $booker->code }}
+                        ID: {{ optional($order->orderBooker)->code ?? optional($order->salesOfficer)->code ?? optional($booker)->code ?? '—' }}
                     </div>
                     @if($order->salesman)
                         <div class="text-muted mt-1">
@@ -182,7 +182,7 @@ $(document).ready(function() {
         let refNo = "{{ $order->invoice_no }}";
         let totalNet = "Rs {{ number_format($order->total_net, 2) }}";
         let itemsCount = "{{ $order->items->count() }}";
-        let bookerName = "{{ optional($order->orderBooker)->name ?? $booker->name }}";
+        let bookerName = "{{ optional($order->orderBooker)->name ?? optional($order->salesOfficer)->name ?? optional($booker)->name ?? 'Order Booker' }}";
         let shopMobile = "{{ optional($order->customer_relation)->mobile ?? '' }}";
 
         let text = `*Order Booking Confirmation*\n` +

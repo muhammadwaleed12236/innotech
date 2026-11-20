@@ -326,13 +326,20 @@ class BookerPortalController extends Controller
     public function showOrder($id)
     {
         $booker = $this->getActiveBooker();
-        if (!$booker) {
-            return redirect()->route('dashboard');
+        $user = Auth::user();
+
+        $query = Sale::with(['customer_relation', 'items.product.unit', 'orderBooker', 'salesman']);
+        
+        // If not an admin user, restrict to the booker's own orders
+        if ($booker && !($user && ($user->usertype === 'admin' || $user->isSuperAdmin()))) {
+            $query->where('order_booker_id', $booker->id);
         }
 
-        $order = Sale::with(['customer_relation', 'items.product.unit', 'orderBooker', 'salesman'])
-            ->where('order_booker_id', $booker->id)
-            ->findOrFail($id);
+        $order = $query->findOrFail($id);
+
+        if (!$booker) {
+            $booker = $order->orderBooker ?? $order->salesOfficer;
+        }
 
         return view('booker_portal.order_detail', compact('booker', 'order'));
     }

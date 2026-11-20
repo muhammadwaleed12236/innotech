@@ -397,6 +397,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/purchase/{id}/receipt', [PurchaseController::class, 'receipt'])->middleware('permission:purchases.view')->name('purchase.receipt');
 
     Route::get('purchase/return', [PurchaseController::class, 'purchaseReturnIndex'])->name('purchase.return.index');
+    Route::get('purchase/return/create', [PurchaseController::class, 'createDirectReturn'])->name('purchase.return.create');
+    Route::get('add/purchase-return', [PurchaseController::class, 'createDirectReturn'])->name('purchase.return.direct');
     Route::get('purchase/return/{id}/view', [PurchaseController::class, 'viewReturn'])->name('purchase.return.view');
     Route::get('purchase/return/{id}', [PurchaseController::class, 'showReturnForm'])->name('purchase.return.show');
     Route::post('purchase/return/store', [PurchaseController::class, 'storeReturn'])->name('purchase.return.store');
@@ -447,6 +449,8 @@ Route::middleware('auth')->group(function () {
 
     // Sale Return Routes - NEW SYSTEM
     Route::get('sale/return', [App\Http\Controllers\SaleReturnController::class, 'saleReturnIndex'])->middleware('permission:sales.view')->name('sale.return.index');
+    Route::get('sale/return/create', [App\Http\Controllers\SaleReturnController::class, 'createDirectReturn'])->middleware('permission:sales.create')->name('sale.return.create');
+    Route::get('add/sale-return', [App\Http\Controllers\SaleReturnController::class, 'createDirectReturn'])->middleware('permission:sales.create')->name('sale.return.direct');
     Route::get('sale/return/{id}/view', [App\Http\Controllers\SaleReturnController::class, 'viewReturn'])->middleware('permission:sales.view')->name('sale.return.view');
     Route::get('sale/return/{id}', [App\Http\Controllers\SaleReturnController::class, 'showReturnForm'])->middleware('permission:sales.create')->name('sale.return.show');
     Route::post('sale/return/store', [App\Http\Controllers\SaleReturnController::class, 'processSaleReturn'])->middleware('permission:sales.create')->name('sale.return.store');
@@ -462,6 +466,7 @@ Route::middleware('auth')->group(function () {
     // booking system
 
     Route::get('bookings', [ProductBookingController::class, 'index'])->middleware('permission:bookings.view')->name('bookings.index');
+    Route::get('bookings/{id}/details', [ProductBookingController::class, 'getBookingDetails'])->middleware('permission:bookings.view')->name('bookings.details');
     Route::get('bookings/create', [ProductBookingController::class, 'create'])->middleware('permission:bookings.create')->name('bookings.create');
     Route::post('bookings/store', [ProductBookingController::class, 'store'])->middleware('permission:bookings.create')->name('bookings.store');
     Route::get('booking/receipt/{id}', [ProductBookingController::class, 'receipt'])->middleware('permission:bookings.view')->name('booking.receipt');
