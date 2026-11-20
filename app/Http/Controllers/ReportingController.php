@@ -4826,4 +4826,326 @@ class ReportingController extends Controller
         ]);
     }
 
+    /**
+     * Trial Balance Report View
+     */
+    public function trial_balance_report()
+    {
+        return view('admin_panel.reporting.trial_balance_report');
+    }
+
+    /**
+     * Fetch Trial Balance Data (Debits & Credits across all Accounts)
+     */
+    public function fetch_trial_balance(Request $request)
+    {
+        $startDate = $request->start_date ?: date('Y-01-01');
+        $endDate = $request->end_date ?: date('Y-m-d');
+        $endDateTime = $endDate . ' 23:59:59';
+
+        $balanceService = app(\App\Services\BalanceService::class);
+
+        $accounts = DB::table('accounts')
+            ->leftJoin('account_heads', 'accounts.head_id', '=', 'account_heads.id')
+            ->select(
+                'accounts.id',
+                'accounts.account_code',
+                'accounts.title',
+                'accounts.type as normal_type',
+                'accounts.opening_balance',
+                'account_heads.name as head_name'
+            )
+            ->orderBy('account_heads.name')
+            ->orderBy('accounts.title')
+            ->get();
+
+        $rows = [];
+        $totalOpeningDr = 0;
+        $totalOpeningCr = 0;
+        $totalPeriodDr  = 0;
+        $totalPeriodCr  = 0;
+        $totalClosingDr = 0;
+        $totalClosingCr = 0;
+
+        foreach ($accounts as $acc) {
+            $initialOb = (float)($acc->opening_balance ?? 0);
+            $normType = strtolower($acc->normal_type ?? 'debit');
+
+            // Prior period journal entries
+            $prior = DB::table('journal_entries')
+                ->where('account_id', $acc->id)
+                ->where('entry_date', '<', $startDate)
+                ->where('description', 'NOT LIKE', 'Opening Balance%')
+                ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
+                ->first();
+
+            $priorDr = (float)($prior->dr ?? 0);
+            $priorCr = (float)($prior->cr ?? 0);
+
+            if ($normType === 'credit') {
+                $netOpening = $initialOb + $priorCr - $priorDr;
+                $openDr = $netOpening < 0 ? abs($netOpening) : 0;
+                $openCr = $netOpening >= 0 ? $netOpening : 0;
+            } else {
+                $netOpening = $initialOb + $priorDr - $priorCr;
+                $openDr = $netOpening >= 0 ? $netOpening : 0;
+                $openCr = $netOpening < 0 ? abs($netOpening) : 0;
+            }
+
+            // Current period journal entries
+            $period = DB::table('journal_entries')
+                ->where('account_id', $acc->id)
+                ->whereBetween('entry_date', [$startDate, $endDateTime])
+                ->where('description', 'NOT LIKE', 'Opening Balance%')
+                ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
+                ->first();
+
+            $periodDr = (float)($period->dr ?? 0);
+            $periodCr = (float)($period->cr ?? 0);
+
+            // Closing Balance
+            $netClosing = ($openDr - $openCr) + ($periodDr - $periodCr);
+            $closeDr = $netClosing > 0 ? $netClosing : 0;
+            $closeCr = $netClosing < 0 ? abs($netClosing) : 0;
+
+            if ($openDr == 0 && $openCr == 0 && $periodDr == 0 && $periodCr == 0 && $closeDr == 0 && $closeCr == 0) {
+                continue;
+            }
+
+            $rows[] = [
+                'code'        => $acc->account_code ?: 'A-' . str_pad($acc->id, 4, '0', STR_PAD_LEFT),
+                'title'       => $acc->title,
+                'head'        => $acc->head_name ?: 'General',
+                'opening_dr'  => round($openDr, 2),
+                'opening_cr'  => round($openCr, 2),
+                'period_dr'   => round($periodDr, 2),
+                'period_cr'   => round($periodCr, 2),
+                'closing_dr'  => round($closeDr, 2),
+                'closing_cr'  => round($closeCr, 2),
+            ];
+
+            $totalOpeningDr += $openDr;
+            $totalOpeningCr += $openCr;
+            $totalPeriodDr  += $periodDr;
+            $totalPeriodCr  += $periodCr;
+            $totalClosingDr += $closeDr;
+            $totalClosingCr += $closeCr;
+        }
+
+        // Accounts Receivable Control
+        $custBalPrior = DB::table('journal_entries')
+            ->where('party_type', \App\Models\Customer::class)
+            ->where('entry_date', '<', $startDate)
+            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as bal')
+            ->value('bal') ?? 0;
+        $custOb = (float)DB::table('customers')->sum('opening_balance');
+        $custOpenNet = $custOb + (float)$custBalPrior;
+
+        $custPeriod = DB::table('journal_entries')
+            ->where('party_type', \App\Models\Customer::class)
+            ->whereBetween('entry_date', [$startDate, $endDateTime])
+            ->where('description', 'NOT LIKE', 'Opening Balance%')
+            ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
+            ->first();
+        $custPeriodDr = (float)($custPeriod->dr ?? 0);
+        $custPeriodCr = (float)($custPeriod->cr ?? 0);
+        $custCloseNet = $custOpenNet + $custPeriodDr - $custPeriodCr;
+
+        if ($custOpenNet != 0 || $custPeriodDr != 0 || $custPeriodCr != 0 || $custCloseNet != 0) {
+            $cOpenDr = $custOpenNet > 0 ? $custOpenNet : 0;
+            $cOpenCr = $custOpenNet < 0 ? abs($custOpenNet) : 0;
+            $cCloseDr = $custCloseNet > 0 ? $custCloseNet : 0;
+            $cCloseCr = $custCloseNet < 0 ? abs($custCloseNet) : 0;
+
+            $rows[] = [
+                'code'        => 'AR-CONTROL',
+                'title'       => 'Accounts Receivable (Customers Control)',
+                'head'        => 'Current Assets',
+                'opening_dr'  => round($cOpenDr, 2),
+                'opening_cr'  => round($cOpenCr, 2),
+                'period_dr'   => round($custPeriodDr, 2),
+                'period_cr'   => round($custPeriodCr, 2),
+                'closing_dr'  => round($cCloseDr, 2),
+                'closing_cr'  => round($cCloseCr, 2),
+            ];
+
+            $totalOpeningDr += $cOpenDr;
+            $totalOpeningCr += $cOpenCr;
+            $totalPeriodDr  += $custPeriodDr;
+            $totalPeriodCr  += $custPeriodCr;
+            $totalClosingDr += $cCloseDr;
+            $totalClosingCr += $cCloseCr;
+        }
+
+        // Accounts Payable Control
+        $vendBalPrior = DB::table('journal_entries')
+            ->where('party_type', \App\Models\Vendor::class)
+            ->where('entry_date', '<', $startDate)
+            ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as bal')
+            ->value('bal') ?? 0;
+        $vendOb = (float)DB::table('vendors')->sum('opening_balance');
+        $vendOpenNet = $vendOb + (float)$vendBalPrior;
+
+        $vendPeriod = DB::table('journal_entries')
+            ->where('party_type', \App\Models\Vendor::class)
+            ->whereBetween('entry_date', [$startDate, $endDateTime])
+            ->where('description', 'NOT LIKE', 'Opening Balance%')
+            ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
+            ->first();
+        $vendPeriodDr = (float)($vendPeriod->dr ?? 0);
+        $vendPeriodCr = (float)($vendPeriod->cr ?? 0);
+        $vendCloseNet = $vendOpenNet + $vendPeriodCr - $vendPeriodDr;
+
+        if ($vendOpenNet != 0 || $vendPeriodDr != 0 || $vendPeriodCr != 0 || $vendCloseNet != 0) {
+            $vOpenDr = $vendOpenNet < 0 ? abs($vendOpenNet) : 0;
+            $vOpenCr = $vendOpenNet >= 0 ? $vendOpenNet : 0;
+            $vCloseDr = $vendCloseNet < 0 ? abs($vendCloseNet) : 0;
+            $vCloseCr = $vendCloseNet >= 0 ? $vendCloseNet : 0;
+
+            $rows[] = [
+                'code'        => 'AP-CONTROL',
+                'title'       => 'Accounts Payable (Vendors Control)',
+                'head'        => 'Current Liabilities',
+                'opening_dr'  => round($vOpenDr, 2),
+                'opening_cr'  => round($vOpenCr, 2),
+                'period_dr'   => round($vendPeriodDr, 2),
+                'period_cr'   => round($vendPeriodCr, 2),
+                'closing_dr'  => round($vCloseDr, 2),
+                'closing_cr'  => round($vCloseCr, 2),
+            ];
+
+            $totalOpeningDr += $vOpenDr;
+            $totalOpeningCr += $vOpenCr;
+            $totalPeriodDr  += $vendPeriodDr;
+            $totalPeriodCr  += $vendPeriodCr;
+            $totalClosingDr += $vCloseDr;
+            $totalClosingCr += $vCloseCr;
+        }
+
+        return response()->json([
+            'date_range' => date('d-M-Y', strtotime($startDate)) . ' to ' . date('d-M-Y', strtotime($endDate)),
+            'rows'       => $rows,
+            'totals'     => [
+                'opening_dr' => round($totalOpeningDr, 2),
+                'opening_cr' => round($totalOpeningCr, 2),
+                'period_dr'  => round($totalPeriodDr, 2),
+                'period_cr'  => round($totalPeriodCr, 2),
+                'closing_dr' => round($totalClosingDr, 2),
+                'closing_cr' => round($totalClosingCr, 2),
+            ],
+            'is_balanced' => abs($totalClosingDr - $totalClosingCr) < 1.0,
+        ]);
+    }
+
+    /**
+     * General Ledger Report View
+     */
+    public function general_ledger_report(Request $request)
+    {
+        $accounts = DB::table('accounts')
+            ->leftJoin('account_heads', 'accounts.head_id', '=', 'account_heads.id')
+            ->select('accounts.id', 'accounts.title', 'accounts.account_code', 'account_heads.name as head_name')
+            ->orderBy('accounts.title')
+            ->get();
+
+        return view('admin_panel.reporting.general_ledger_report', compact('accounts'));
+    }
+
+    /**
+     * Fetch General Ledger Transactions for Selected Account
+     */
+    public function fetch_general_ledger(Request $request)
+    {
+        $accountId = $request->account_id;
+        $startDate = $request->start_date ?: date('Y-01-01');
+        $endDate = $request->end_date ?: date('Y-m-d');
+        $endDateTime = $endDate . ' 23:59:59';
+
+        if (!$accountId) {
+            return response()->json(['error' => 'Please select an account'], 400);
+        }
+
+        $account = DB::table('accounts')
+            ->leftJoin('account_heads', 'accounts.head_id', '=', 'account_heads.id')
+            ->where('accounts.id', $accountId)
+            ->select('accounts.*', 'account_heads.name as head_name')
+            ->first();
+
+        if (!$account) {
+            return response()->json(['error' => 'Account not found'], 404);
+        }
+
+        $normType = strtolower($account->type ?? 'debit');
+        $initialOb = (float)($account->opening_balance ?? 0);
+
+        // Prior transactions
+        $prior = DB::table('journal_entries')
+            ->where('account_id', $accountId)
+            ->where('entry_date', '<', $startDate)
+            ->where('description', 'NOT LIKE', 'Opening Balance%')
+            ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
+            ->first();
+
+        $priorDr = (float)($prior->dr ?? 0);
+        $priorCr = (float)($prior->cr ?? 0);
+
+        $openingBalance = ($normType === 'credit')
+            ? ($initialOb + $priorCr - $priorDr)
+            : ($initialOb + $priorDr - $priorCr);
+
+        // Period entries
+        $entries = DB::table('journal_entries')
+            ->where('account_id', $accountId)
+            ->whereBetween('entry_date', [$startDate, $endDateTime])
+            ->where('description', 'NOT LIKE', 'Opening Balance%')
+            ->orderBy('entry_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $transactions = [];
+        $runningBalance = $openingBalance;
+        $totalDr = 0;
+        $totalCr = 0;
+
+        foreach ($entries as $e) {
+            $dr = (float)($e->debit ?? 0);
+            $cr = (float)($e->credit ?? 0);
+
+            if ($normType === 'credit') {
+                $runningBalance += ($cr - $dr);
+            } else {
+                $runningBalance += ($dr - $cr);
+            }
+
+            $totalDr += $dr;
+            $totalCr += $cr;
+
+            $transactions[] = [
+                'date'        => date('d-M-Y', strtotime($e->entry_date)),
+                'description' => $e->description,
+                'source_type' => class_basename($e->source_type ?? ''),
+                'source_id'   => $e->source_id,
+                'debit'       => $dr,
+                'credit'      => $cr,
+                'balance'     => $runningBalance,
+            ];
+        }
+
+        return response()->json([
+            'account' => [
+                'id'    => $account->id,
+                'title' => $account->title,
+                'code'  => $account->account_code ?: 'A-' . str_pad($account->id, 4, '0', STR_PAD_LEFT),
+                'head'  => $account->head_name ?: 'General',
+                'type'  => ucfirst($normType),
+            ],
+            'date_range'      => date('d-M-Y', strtotime($startDate)) . ' to ' . date('d-M-Y', strtotime($endDate)),
+            'opening_balance' => $openingBalance,
+            'closing_balance' => $runningBalance,
+            'total_debit'     => $totalDr,
+            'total_credit'    => $totalCr,
+            'transactions'    => $transactions,
+        ]);
+    }
+
 }

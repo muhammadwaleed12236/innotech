@@ -597,6 +597,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/report/balance-sheet', [ReportingController::class, 'balance_sheet_report'])->name('report.balance_sheet');
     Route::get('/report/balance-sheet-fetch', [ReportingController::class, 'fetch_balance_sheet'])->name('report.balance_sheet.fetch');
 
+    Route::get('/report/trial-balance', [ReportingController::class, 'trial_balance_report'])->name('report.trial_balance');
+    Route::get('/report/trial-balance-fetch', [ReportingController::class, 'fetch_trial_balance'])->name('report.trial_balance.fetch');
+
+    Route::get('/report/general-ledger', [ReportingController::class, 'general_ledger_report'])->name('report.general_ledger');
+    Route::get('/report/general-ledger-fetch', [ReportingController::class, 'fetch_general_ledger'])->name('report.general_ledger.fetch');
+
     Route::get('/report/item-stock', [ReportingController::class, 'item_stock_report'])->middleware('permission:item.stock.report.view')->name('report.item_stock');
     Route::post('/report/item-stock-fetch', [ReportingController::class, 'fetchItemStock'])->middleware('permission:item.stock.report.view')->name('report.item_stock.fetch');
     Route::get('/report/product-variants/{productId}', [ReportingController::class, 'getProductVariants'])->middleware('permission:item.stock.report.view')->name('report.product_variants');

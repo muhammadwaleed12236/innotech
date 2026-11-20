@@ -1203,6 +1203,10 @@
                                             <li><a href="{{ route('report.balance_sheet') }}"><i class="fa-solid fa-scale-balanced"></i>
                                                     Balance Sheet</a></li>
                                         @endcan
+                                        <li><a href="{{ route('report.trial_balance') }}"><i class="fa-solid fa-scale-unbalanced-flip text-primary"></i>
+                                                Trial Balance</a></li>
+                                        <li><a href="{{ route('report.general_ledger') }}"><i class="fa-solid fa-book-journal-whills text-info"></i>
+                                                General Ledger</a></li>
                                     </ul>
                                 </div>
                             @endcanany
