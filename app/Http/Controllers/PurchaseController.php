@@ -2427,7 +2427,26 @@ class PurchaseController extends Controller
         return view('admin_panel.purchase.receipt', compact('purchase', 'previousBalance', 'currentBalance'));
     }
 
-    // purchase_reutun
+    // purchase_return
+
+    public function createDirectReturn()
+    {
+        $lastReturn = PurchaseReturn::latest('id')->first();
+        $nextInvoice = 'PRTN-' . str_pad(((optional($lastReturn)->id ?? 0) + 1), 5, '0', STR_PAD_LEFT);
+
+        $vendors = Vendor::orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        $payment_accounts = \App\Models\Account::whereHas('head', function($q) {
+            $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank']);
+        })->where('status', 1)->orderBy('title')->get();
+
+        return view('admin_panel.purchase.purchase_return.standalone_create', compact(
+            'nextInvoice',
+            'vendors',
+            'warehouses',
+            'payment_accounts'
+        ));
+    }
 
     public function showReturnForm($id)
     {
@@ -2619,20 +2638,20 @@ class PurchaseController extends Controller
             'return_date' => 'required|date',
             'return_reason' => 'nullable|string|max:255',
             'product_id' => 'required|array',
-            'product_id.*' => 'required|exists:products,id',
+            'product_id.*' => 'required',
             'qty' => 'required|array', // Pieces (Total Pieces)
             'qty.*' => 'required|numeric|min:0', // Allow 0 if partial
             'price' => 'required|array',
-            'payment_account_id' => 'nullable|array',
-            'payment_amount' => 'nullable|array',
+            'payment_account_id' => 'nullable',
+            'payment_amount' => 'nullable',
         ]);
 
         try {
             DB::beginTransaction();
 
             // 1. Generate Return Invoice #
-            $lastReturn = PurchaseReturn::latest()->first();
-            $nextInvoice = 'PRTN-'.str_pad(optional($lastReturn)->id + 1 ?? 1, 5, '0', STR_PAD_LEFT);
+            $lastReturn = PurchaseReturn::latest('id')->first();
+            $nextInvoice = 'PRTN-' . str_pad(((optional($lastReturn)->id ?? 0) + 1), 5, '0', STR_PAD_LEFT);
 
             // 2. Create Purchase Return Record
             $purchase = $request->purchase_id ? Purchase::find($request->purchase_id) : null;
@@ -2663,7 +2682,7 @@ class PurchaseController extends Controller
             $now = now();
 
             // 3. Process Items & Stock
-            foreach ($validated['product_id'] as $index => $productId) {
+            foreach ($validated['product_id'] as $index => $rawProductId) {
                 $qty = (float) ($validated['qty'][$index] ?? 0); // Pieces
                 $price = (float) ($validated['price'][$index] ?? 0);
 
@@ -2672,24 +2691,39 @@ class PurchaseController extends Controller
                 }
 
                 $colorField = $request->color[$index] ?? null;
+                $productId = $rawProductId;
+
+                if (is_string($rawProductId) && str_contains($rawProductId, '|variant|')) {
+                    $parts = explode('|variant|', $rawProductId);
+                    $productId = (int) $parts[0];
+                    if (empty($colorField) && !empty($parts[1])) {
+                        $colorField = $parts[1];
+                    }
+                } else {
+                    $productId = (int) $rawProductId;
+                }
 
                 // Find original item to get snapshots matching color
-                $origItem = \App\Models\PurchaseItem::where('purchase_id', $purchase->id ?? 0)
-                    ->where('product_id', $productId)
-                    ->where(function($q) use ($colorField) {
-                        if (!empty($colorField)) {
-                            $q->where('color', $colorField);
-                        }
-                    })
-                    ->first();
-
-                if (!$origItem) {
-                    $origItem = \App\Models\PurchaseItem::where('purchase_id', $purchase->id ?? 0)
+                $origItem = null;
+                if ($purchase) {
+                    $origItem = \App\Models\PurchaseItem::where('purchase_id', $purchase->id)
                         ->where('product_id', $productId)
+                        ->where(function($q) use ($colorField) {
+                            if (!empty($colorField)) {
+                                $q->where('color', $colorField);
+                            }
+                        })
                         ->first();
+
+                    if (!$origItem) {
+                        $origItem = \App\Models\PurchaseItem::where('purchase_id', $purchase->id)
+                            ->where('product_id', $productId)
+                            ->first();
+                    }
                 }
 
                 $product = Product::find($productId);
+                if (!$product) continue;
 
                 // Resolve variant PPB
                 $vPpb = null;
@@ -2703,6 +2737,8 @@ class PurchaseController extends Controller
                         if (is_array($vData)) {
                             if (isset($vData['conv_factor']) && (float)$vData['conv_factor'] > 0) {
                                 $vPpb = (float)$vData['conv_factor'];
+                            } elseif (isset($vData['pieces_per_box']) && (float)$vData['pieces_per_box'] > 0) {
+                                $vPpb = (float)$vData['pieces_per_box'];
                             } elseif (isset($vData['size']) && is_numeric($vData['size']) && (float)$vData['size'] > 0) {
                                 $vPpb = (float)$vData['size'];
                             }
@@ -2717,23 +2753,30 @@ class PurchaseController extends Controller
                 if ($ppb <= 0) $ppb = 1;
 
                 $sizeMode = $origItem ? ($origItem->size_mode ?? 'by_pieces') : ($product->size_mode ?? 'by_pieces');
-                $unit = strtolower($origItem->unit ?? ($product->unit->name ?? 'pc'));
+                $unit = strtolower($request->unit[$index] ?? ($origItem->unit ?? ($product->unit->name ?? 'pc')));
                 $isCarton = in_array($unit, ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl']) || (in_array($sizeMode, ['by_cartons', 'by_bandal']));
                 
                 // Fallback to m2_of_box if pieces_per_m2 is 0 or missing in old data
                 $ppm2 = $origItem && $origItem->pieces_per_m2 > 0 ? $origItem->pieces_per_m2 : ($product->m2_of_box ?? 0);
 
-                // Calculate Line Total Logic (Same as Purchase Store)
-                if ($sizeMode === 'by_size') {
-                    $lineTotal = round(($ppm2 ?: 1) * $qty * $price, 2);
-                } elseif ($isCarton) {
-                    $piecePrice = $ppb > 0 ? ($price / $ppb) : $price;
-                    $lineTotal = round($qty * $piecePrice, 2);
-                } else {
-                    $lineTotal = round($qty * $price, 2);
-                }
+                $itemDisc = (float) ($request->item_discount[$index] ?? ($request->item_disc[$index] ?? 0));
 
-                $itemDisc = 0;
+                // Calculate Line Total Logic (Same as Purchase Store)
+                if (!empty($request->line_total[$index]) && (float)$request->line_total[$index] > 0) {
+                    $lineTotal = (float)$request->line_total[$index];
+                } elseif (!empty($request->line_net[$index]) && (float)$request->line_net[$index] > 0) {
+                    $lineTotal = (float)$request->line_net[$index];
+                } else {
+                    if ($sizeMode === 'by_size') {
+                        $lineTotal = round(($ppm2 ?: 1) * $qty * $price, 2);
+                    } elseif ($isCarton) {
+                        $piecePrice = $ppb > 0 ? ($price / $ppb) : $price;
+                        $lineTotal = round($qty * $piecePrice, 2);
+                    } else {
+                        $lineTotal = round($qty * $price, 2);
+                    }
+                    $lineTotal = max(0, $lineTotal - $itemDisc);
+                }
 
                 PurchaseReturnItem::create([
                     'purchase_return_id' => $return->id,
@@ -2741,7 +2784,7 @@ class PurchaseController extends Controller
                     'qty' => $qty, // Pieces
                     'price' => $price,
                     'item_discount' => $itemDisc,
-                    'unit' => $origItem->unit ?? ($isCarton ? 'Carton' : 'pc'),
+                    'unit' => $request->unit[$index] ?? ($origItem->unit ?? ($isCarton ? 'Carton' : 'pc')),
                     'line_total' => $lineTotal,
                     'color' => $colorField,
                 ]);
@@ -2749,7 +2792,6 @@ class PurchaseController extends Controller
                 // Check for weight product conversion factor
                 $stockQty = $qty;
                 if ($sizeMode === 'by_kg' || $sizeMode === 'by_gm') {
-                    $colorField = $request->color[$index] ?? null;
                     if (!empty($colorField)) {
                         try {
                             $b64Decoded = base64_decode($colorField, true);
@@ -2767,20 +2809,19 @@ class PurchaseController extends Controller
                     }
                 }
 
-                // Update Stock (DECREMENT)
+                // Update Stock (DECREMENT from WarehouseStock)
                 $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
                     ->where('product_id', $productId)
                     ->lockForUpdate()
                     ->first();
 
                 if ($stock) {
-                    $product = Product::find($productId); // Ensure fresher product data
                     $ppbVal = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
                     
                     // Use total_pieces as primary source of truth to avoid losing loose pieces, fallback only if zero
-                    $currentTotalPieces = $stock->total_pieces;
+                    $currentTotalPieces = (float)$stock->total_pieces;
                     if ($currentTotalPieces == 0 && $stock->quantity > 0) {
-                        $currentTotalPieces = $stock->quantity * $ppbVal;
+                        $currentTotalPieces = (float)$stock->quantity * $ppbVal;
                     }
                     
                     // Subtract Return Qty (Pieces)
@@ -2790,15 +2831,13 @@ class PurchaseController extends Controller
                     $stock->quantity = $newTotalPieces / $ppbVal; // Convert back to Boxes
                     $stock->save();
                 } else {
-                     // Should technically not happen for return, but handle gracefully
-                     $product = Product::find($productId);
                      $ppbVal = $product->pieces_per_box > 0 ? $product->pieces_per_box : 1;
                      
                      WarehouseStock::create([
                         'warehouse_id' => $validated['warehouse_id'],
                         'product_id' => $productId,
-                        'total_pieces' => -$stockQty, // Negative stock?
-                        'quantity' => -$stockQty / $ppbVal,
+                        'total_pieces' => 0,
+                        'quantity' => 0,
                         'price' => 0
                      ]);
                 }
@@ -2810,12 +2849,12 @@ class PurchaseController extends Controller
                     'qty' => $stockQty,
                     'ref_type' => 'PURCHASE_RETURN',
                     'ref_id' => $return->id,
-                    'note' => "Purchase Return",
+                    'note' => "Purchase Return (#{$nextInvoice})",
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
 
-                $subtotal += $lineTotal;
+                $subtotal += ($lineTotal + $itemDisc);
                 $totalItemDiscount += $itemDisc;
             }
 
@@ -2824,7 +2863,7 @@ class PurchaseController extends Controller
                 DB::table('stock_movements')->insert($movements);
             }
 
-            $netAmount = ($subtotal - $totalItemDiscount) - ($request->extra_discount ?? 0);
+            $netAmount = max(0, ($subtotal - $totalItemDiscount) - ($request->extra_discount ?? 0));
 
             // 4. Handle Refund Payment
             $totalPaid = 0;
@@ -2907,15 +2946,12 @@ class PurchaseController extends Controller
             // B. Update Legacy Vendor Ledger
             // Logic: Return reduces Payable (Debit Vendor).
             // Refund increases Payable back (Credit Vendor) - effectively clearing the Debit.
-            
             $balanceChange = -($netAmount - $totalPaid); // Reduces payable
 
             // Using VendorLedger table manual update for legacy views
             $ledger = \App\Models\VendorLedger::where('vendor_id', $validated['vendor_id'])->latest()->first();
             $currentClosing = $ledger ? $ledger->closing_balance : 0; // Current closing
             
-            // Note: VendorLedger table structure does not support transaction history (no date/desc columns),
-            // so we treat it as a Balance Snapshot.
             \App\Models\VendorLedger::updateOrCreate(
                 ['vendor_id' => $validated['vendor_id']],
                 [
@@ -2928,10 +2964,27 @@ class PurchaseController extends Controller
 
             DB::commit();
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Purchase return processed successfully.',
+                    'redirect' => route('purchase.return.index'),
+                    'return_id' => $return->id
+                ]);
+            }
+
             return redirect()->route('purchase.return.index')->with('success', 'Purchase return processed successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error processing return: ' . $e->getMessage()
+                ], 422);
+            }
+
             return back()->with('error', 'Error processing return: '.$e->getMessage());
         }
     }

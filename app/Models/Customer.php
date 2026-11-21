@@ -18,6 +18,16 @@ class Customer extends Model
     ];
 
     
+    public function getNameAttribute()
+    {
+        return $this->customer_name;
+    }
+
+    public function getPhoneAttribute()
+    {
+        return $this->mobile;
+    }
+
     public function linkedVendor()
     {
         return $this->belongsTo(Vendor::class, 'linked_vendor_id');

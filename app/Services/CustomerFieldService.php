@@ -228,10 +228,10 @@ class CustomerFieldService
             }
         }
 
-        // Also capture province, city, area directly if provided
-        foreach (['province', 'city', 'area'] as $locKey) {
+        // Also capture province, city, area, sales_officer_id directly if provided
+        foreach (['province', 'city', 'area', 'sales_officer_id'] as $locKey) {
             if (array_key_exists($locKey, $input)) {
-                $systemAttributes[$locKey] = !empty($input[$locKey]) ? trim($input[$locKey]) : null;
+                $systemAttributes[$locKey] = !empty($input[$locKey]) ? $input[$locKey] : null;
             }
         }
 
@@ -449,6 +449,27 @@ class CustomerFieldService
                 'visible_in_search' => false,
                 'visible_in_export' => false,
                 'sort_order'        => 40,
+            ],
+            [
+                'field_key'         => 'sales_officer_id',
+                'label'             => 'Order Booker (S.R)',
+                'field_type'        => 'dropdown',
+                'is_system'         => true,
+                'system_column'     => 'sales_officer_id',
+                'section'           => 'Basic Information',
+                'placeholder'       => 'Select Order Booker...',
+                'help_text'         => 'Order Booker / Sales Officer assigned to this customer',
+                'is_required'       => false,
+                'is_unique'         => false,
+                'is_enabled'        => true,
+                'is_readonly'       => false,
+                'visible_in_list'   => true,
+                'visible_in_view'   => true,
+                'visible_in_create' => true,
+                'visible_in_edit'   => true,
+                'visible_in_search' => true,
+                'visible_in_export' => true,
+                'sort_order'        => 45,
             ],
             [
                 'field_key'         => 'mobile',

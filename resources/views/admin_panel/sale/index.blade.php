@@ -344,9 +344,13 @@
                         <p class="text-muted mb-0 small">View, search, filter and edit your sales invoices & bookings</p>
                     </div>
                     <div class="sales-hdr-actions">
-                        <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
+                        <a class="btn btn-outline-secondary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                             href="{{ route('sale.return.index') }}" style="border-radius: 8px;">
-                            <i class="fas fa-undo"></i> Returns
+                            <i class="fas fa-list"></i> Returns List
+                        </a>
+                        <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
+                            href="{{ route('sale.return.create') }}" style="border-radius: 8px;">
+                            <i class="fas fa-undo"></i> Direct Return
                         </a>
                         <a class="btn btn-outline-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                             href="{{ url('bookings') }}" style="border-radius: 8px;">

@@ -910,6 +910,8 @@
                                         @endcan
                                         @can('sales.view')
                                             <li><a href="{{ url('sale') }}"><i class="fas fa-list"></i> All Sales</a></li>
+                                            <li><a href="{{ route('sale.return.index') }}"><i class="fas fa-undo text-danger"></i> Sale Returns</a></li>
+                                            <li><a href="{{ route('claims.index') }}"><i class="fas fa-exclamation-triangle text-warning"></i> Customer Claims &amp; Damages</a></li>
                                             <li><a href="{{ route('sales.configuration') }}"><i class="fas fa-sliders-h text-primary"></i> Sale Fields &amp; Tax Config</a></li>
                                         @endcan
                                         @can('customers.view')
@@ -960,6 +962,7 @@
                                             <li><a href="{{ route('purchase-pos.index') }}"><i class="fas fa-cash-register"></i> Purchase POS</a></li>
                                         @endcan
                                         <li><a href="{{ route('purchase.return.index') }}"><i class="fas fa-undo"></i> Purchase Return</a></li>
+                                        <li><a href="{{ route('claims.report') }}"><i class="fas fa-chart-pie text-info"></i> Claims &amp; Damage Report</a></li>
                                         @can('vendors.view')
                                             <li><a href="{{ url('vendor') }}"><i class="fas fa-truck"></i> Vendors</a></li>
                                         @endcan

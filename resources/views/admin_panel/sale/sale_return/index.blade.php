@@ -16,6 +16,9 @@
                         <a class="btn btn-outline-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1" href="{{ route('sale.index') }}">
                             <i class="fas fa-shopping-cart"></i> All Sales Invoices
                         </a>
+                        <a class="btn btn-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1" href="{{ route('sale.return.create') }}">
+                            <i class="fas fa-plus"></i> New Direct Return
+                        </a>
                     </div>
                 </div>
 

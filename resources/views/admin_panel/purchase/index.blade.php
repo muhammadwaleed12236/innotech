@@ -259,9 +259,13 @@
                         <p class="text-muted mb-0 small">View and manage your purchase invoices</p>
                     </div>
                     <div class="purch-hdr-actions">
-                        <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
+                        <a class="btn btn-outline-secondary px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
                             href="{{ route('purchase.return.index') }}" style="border-radius: 8px;">
-                            <i class="fas fa-undo"></i> Returns
+                            <i class="fas fa-list"></i> Returns List
+                        </a>
+                        <a class="btn btn-outline-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1 justify-content-center"
+                            href="{{ route('purchase.return.create') }}" style="border-radius: 8px;">
+                            <i class="fas fa-undo"></i> Direct Return
                         </a>
 
                         <button type="button" id="btnOpenPurchaseSettings" class="btn btn-secondary px-3 shadow-sm fw-semibold d-inline-flex align-items-center gap-1 justify-content-center text-white" data-toggle="modal" data-target="#purchaseGstSettingModal" data-bs-toggle="modal" data-bs-target="#purchaseGstSettingModal" style="border-radius: 8px; height: 38px; cursor: pointer;" title="Purchase GST Settings">

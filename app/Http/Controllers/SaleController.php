@@ -187,9 +187,13 @@ class SaleController extends Controller
                 $join->on('products.id', '=', 'warehouse_stocks.product_id')
                     ->where('warehouse_stocks.warehouse_id', $warehouseId);
             })
-            ->where('products.is_active', true) /* Only active products */
-            ->where('warehouse_stocks.total_pieces', '>', 0) /* Only products with stock */
-            ->where(function ($query) use ($q) {
+            ->where('products.is_active', true); /* Only active products */
+
+        if (!$request->boolean('allow_zero_stock') && !$request->boolean('is_return')) {
+            $products->where('warehouse_stocks.total_pieces', '>', 0); /* Only products with stock for regular sale */
+        }
+
+        $products = $products->where(function ($query) use ($q) {
                 $query->where('products.item_name', 'like', "%{$q}%")
                     ->orWhere('products.item_code', 'like', "%{$q}%")
                     ->orWhere('products.barcode_path', 'like', "%{$q}%")

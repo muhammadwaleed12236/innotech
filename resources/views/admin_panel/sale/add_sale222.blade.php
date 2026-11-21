@@ -147,11 +147,86 @@
             box-shadow: 0 0 0 2px rgba(37, 99, 235, .15) !important;
         }
 
+        /* ---------- ERP HEADER & LEDGER KPI PILLS ---------- */
+        .erp-header-card {
+            background: #ffffff;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+        }
+        .erp-field-label {
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            color: #475569;
+            margin-bottom: 5px;
+            white-space: nowrap;
+        }
+        .erp-status-strip {
+            background: #F8FAFC;
+            border-radius: 7px;
+            padding: 6px 12px;
+            border: 1px solid #E2E8F0;
+        }
+        .erp-kpi-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.3;
+            white-space: nowrap;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+        }
+        .erp-kpi-pill:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+        .erp-kpi-danger {
+            background: #FEF2F2;
+            color: #DC2626;
+            border-color: #FECACA;
+        }
+        .erp-kpi-primary {
+            background: #EFF6FF;
+            color: #2563EB;
+            border-color: #BFDBFE;
+        }
+        .erp-kpi-success {
+            background: #F0FDF4;
+            color: #16A34A;
+            border-color: #BBF7D0;
+        }
+        .erp-kpi-purple {
+            background: #FAF5FF;
+            color: #7E22CE;
+            border-color: #E9D5FF;
+        }
+        .erp-kpi-pill .kpi-label {
+            color: #64748B;
+            font-weight: 600;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .erp-kpi-pill .kpi-val {
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .erp-kpi-pill .kpi-suffix {
+            font-size: 11px;
+            font-weight: 700;
+        }
+
         /* Grouped Customer Search + Action Buttons (Auto-adaptive) */
         .cust-select-container {
-            flex: 1 1 280px;
-            min-width: 260px;
-            max-width: 440px;
+            width: 100%;
         }
         .customer-input-group {
             display: flex;
@@ -1740,90 +1815,146 @@
             </div>
 
             {{-- ============================ SALE INFORMATION CARD ============================ --}}
-            <div class="sale-card mb-3 p-2 px-3">
-                <div class="row g-2 align-items-center">
-                    {{-- Left: Customer Dropdown, Grouped Action Buttons, Sale Type --}}
-                    <div class="col-xl-7 col-lg-7 col-md-12">
-                        <div class="d-flex align-items-end gap-2 flex-wrap">
-                            {{-- Customer Input Group --}}
-                            <div class="cust-select-container">
-                                <label class="field-label mb-1">Customer</label>
-                                <div class="input-group customer-input-group">
-                                    <div id="customerInputWrapper" style="min-width: 0;">
-                                        <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
-                                        <select class="form-select" id="customerSelect" name="customer" style="width:100%">
-                                            <option value="">Select Customer...</option>
-                                            @if(isset($customer) && count($customer) > 0)
-                                                @foreach($customer as $c)
-                                                    <option value="{{ $c->id }}" 
-                                                            data-mobile="{{ $c->mobile }}" 
-                                                            data-address="{{ $c->address }}" 
-                                                            data-code="{{ $c->customer_id }}"
-                                                            data-prev="{{ $c->previous_balance ?? 0 }}" 
-                                                            data-range="{{ $c->balance_range ?? 0 }}"
-                                                            data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
-                                                        {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
-                                                    </option>
-                                                @endforeach
-                                            @endif
-                                        </select>
-                                    </div>
-                                    <button type="button" id="btnOpenAddCustomerModal"
-                                            class="btn btn-outline-primary"
-                                            data-toggle="modal" data-target="#addCustomerModal"
-                                            data-bs-toggle="modal" data-bs-target="#addCustomerModal"
-                                            title="Quick Add Customer (Alt+C or F2)">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <button type="button" id="btnToggleCustomerInfo"
-                                            class="btn btn-outline-secondary"
-                                            data-toggle="modal" data-target="#modalCustomerDetails"
-                                            data-bs-toggle="modal" data-bs-target="#modalCustomerDetails"
-                                            title="View Customer Details">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                                <div id="customerTaxBadgeContainer" class="mt-1 d-none"></div>
-                                <div id="customerQuickInfoContainer" class="mt-1 d-flex flex-wrap gap-1 align-items-center d-none" style="font-size: 11px;">
-                                    <span class="badge bg-light text-secondary border me-1" id="cqi_address_badge" title="Customer Address">
-                                        <i class="fas fa-map-marker-alt text-danger me-1"></i><span id="cqi_address_text">—</span>
-                                    </span>
-                                    <span class="badge bg-light text-primary border" id="cqi_credit_badge" title="Credit Limit">
-                                        <i class="fas fa-shield-alt text-primary me-1"></i>Limit: <span id="cqi_credit_text">Unlimited</span>
-                                    </span>
-                                </div>
-                            </div>
-
-                            {{-- Sale Type --}}
-                            <div class="align-self-end mb-0 wrapper-sale-type">
-                                <label class="field-label mb-1">Sale Type</label>
-                                <div class="seg-toggle" role="group" aria-label="Sale Type">
-                                    <button type="button" class="btn btn-primary active text-white" id="btnTypeCustomer">
-                                        <i class="fas fa-users me-1"></i> Customer
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary" id="btnTypeWalkin">
-                                        <i class="fas fa-walking me-1"></i> Walk-in
-                                    </button>
-                                </div>
-                                <select class="d-none" id="partyTypeSelect" name="partyType">
-                                    @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
-                                        <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
-                                    @endforeach
+            <div class="sale-card erp-header-card mb-3 p-3">
+                <div class="row g-2 align-items-end">
+                    {{-- 1. Customer Input Group --}}
+                    <div class="col-12 col-md-6 col-lg-4 col-xl-4">
+                        <label class="erp-field-label" for="customerSelect">
+                            <i class="fas fa-user-tag text-primary me-1"></i> Customer <span class="text-danger ms-1">*</span>
+                        </label>
+                        <div class="input-group customer-input-group">
+                            <div id="customerInputWrapper" style="min-width: 0; width: 100%;">
+                                <input type="text" class="form-control d-none" name="walkin_name" id="walkinNameInput" value="Walk-in Customer" placeholder="Enter Walk-in Name...">
+                                <select class="form-select" id="customerSelect" name="customer" style="width:100%">
+                                    <option value="">Select Customer...</option>
+                                    @if(isset($customer) && count($customer) > 0)
+                                        @foreach($customer as $c)
+                                            <option value="{{ $c->id }}" 
+                                                    data-mobile="{{ $c->mobile }}" 
+                                                    data-address="{{ $c->address }}" 
+                                                    data-code="{{ $c->customer_id }}"
+                                                    data-prev="{{ $c->previous_balance ?? 0 }}" 
+                                                    data-range="{{ $c->balance_range ?? 0 }}"
+                                                    data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
+                                                {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
+                                            </option>
+                                        @endforeach
+                                    @endif
                                 </select>
                             </div>
+                            <button type="button" id="btnOpenAddCustomerModal"
+                                    class="btn btn-outline-primary"
+                                    data-toggle="modal" data-target="#addCustomerModal"
+                                    data-bs-toggle="modal" data-bs-target="#addCustomerModal"
+                                    title="Quick Add Customer (Alt+C or F2)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button type="button" id="btnToggleCustomerInfo"
+                                    class="btn btn-outline-secondary"
+                                    data-toggle="modal" data-target="#modalCustomerDetails"
+                                    data-bs-toggle="modal" data-bs-target="#modalCustomerDetails"
+                                    title="View Customer Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
                     </div>
 
-                    {{-- Right: Balances on single line --}}
-                    <div class="col-xl-5 col-lg-5 col-md-12 text-xl-end mt-2 mt-xl-0 d-flex justify-content-xl-end justify-content-start align-items-center">
-                        <div class="d-inline-flex align-items-center flex-nowrap gap-2 fw-bold text-nowrap" style="font-size: 12px; white-space: nowrap;">
-                            <span class="text-danger">Prev. Due: <span id="cc_prev_bal_val">Rs 0</span> <span id="cc_prev_bal_suffix">Dr</span></span>
-                            <span class="text-muted opacity-50">|</span>
-                            <span class="text-primary">Current Due: <span id="cc_current_bill">Rs 0</span></span>
-                            <span class="text-muted opacity-50">|</span>
-                            <span class="text-success">Paid: <span id="cc_paid_now">Rs 0</span></span>
-                            <span class="text-muted opacity-50">|</span>
-                            <span style="color: #9333EA;">Closing: <span id="cc_closing_bal_val">Rs 0</span> <span id="cc_closing_bal_suffix">Dr</span></span>
+                    {{-- 2. Sale Type --}}
+                    <div class="col-6 col-md-6 col-lg-2 col-xl-2 wrapper-sale-type">
+                        <label class="erp-field-label">
+                            <i class="fas fa-layer-group text-secondary me-1"></i> Sale Type
+                        </label>
+                        <div class="seg-toggle w-100" role="group" aria-label="Sale Type">
+                            <button type="button" class="btn btn-primary active text-white w-50" id="btnTypeCustomer">
+                                <i class="fas fa-users me-1"></i> Customer
+                            </button>
+                            <button type="button" class="btn btn-outline-primary w-50" id="btnTypeWalkin">
+                                <i class="fas fa-walking me-1"></i> Walk-in
+                            </button>
+                        </div>
+                        <select class="d-none" id="partyTypeSelect" name="partyType">
+                            @foreach(\App\Models\CustomerType::orderBy('name')->get() as $type)
+                                <option value="{{ $type->name }}" {{ $type->name === 'Main Customer' ? 'selected' : '' }}>{{ $type->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- 3. Order Booker (S.R) --}}
+                    <div class="col-6 col-md-6 col-lg-3 col-xl-3 wrapper-officer">
+                        <label class="erp-field-label" for="orderBookerSelect">
+                            <i class="fas fa-clipboard-list text-primary me-1"></i> Order Booker (S.R)
+                        </label>
+                        <select class="form-select form-select-sm" name="order_booker_id" id="orderBookerSelect" style="height: 38px; font-size: 12.5px; border-radius: 6px;">
+                            <option value="">Direct / Select Booker...</option>
+                            @if(isset($orderBookers) && count($orderBookers) > 0)
+                                @foreach($orderBookers as $ob)
+                                    <option value="{{ $ob->id }}" {{ (isset($sale) && ($sale->order_booker_id == $ob->id || $sale->sales_officer_id == $ob->id)) ? 'selected' : '' }}>
+                                        [{{ $ob->code ?: ('B-' . $ob->id) }}] {{ $ob->name }}
+                                    </option>
+                                @endforeach
+                            @elseif(isset($salesOfficers))
+                                @foreach($salesOfficers as $so)
+                                    <option value="{{ $so->id }}" {{ (isset($sale) && $sale->sales_officer_id == $so->id) ? 'selected' : '' }}>
+                                        {{ $so->name }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <input type="hidden" name="sales_officer_id" id="salesOfficerHidden" value="{{ $sale->sales_officer_id ?? '' }}">
+                    </div>
+
+                    {{-- 4. Salesman / Delivery Person --}}
+                    <div class="col-12 col-md-6 col-lg-3 col-xl-3 wrapper-salesman">
+                        <label class="erp-field-label" for="salesmanSelect">
+                            <i class="fas fa-truck text-success me-1"></i> Salesman / Delivery
+                        </label>
+                        <select class="form-select form-select-sm" name="salesman_id" id="salesmanSelect" style="height: 38px; font-size: 12.5px; border-radius: 6px;">
+                            <option value="">Select Salesman...</option>
+                            @if(isset($salesmen) && count($salesmen) > 0)
+                                @foreach($salesmen as $sm)
+                                    <option value="{{ $sm->id }}" {{ (isset($sale) && $sale->salesman_id == $sm->id) ? 'selected' : '' }}>
+                                        [{{ $sm->code ?: ('S-' . $sm->id) }}] {{ $sm->name }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                </div>
+
+                {{-- ============================ ERP STATUS & FINANCIAL STRIP ============================ --}}
+                <div class="erp-status-strip mt-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    {{-- Left: Customer Meta & Badges --}}
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <div id="customerTaxBadgeContainer" class="d-none"></div>
+                        <div id="customerQuickInfoContainer" class="d-flex flex-wrap gap-1 align-items-center d-none" style="font-size: 11px;">
+                            <span class="badge bg-white text-secondary border me-1" id="cqi_address_badge" title="Customer Address">
+                                <i class="fas fa-map-marker-alt text-danger me-1"></i><span id="cqi_address_text">—</span>
+                            </span>
+                            <span class="badge bg-white text-primary border" id="cqi_credit_badge" title="Credit Limit">
+                                <i class="fas fa-shield-alt text-primary me-1"></i>Limit: <span id="cqi_credit_text">Unlimited</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Right: Balances formatted as ERP Financial KPI Badges --}}
+                    <div class="d-flex align-items-center flex-wrap gap-2 ms-auto">
+                        <div class="erp-kpi-pill erp-kpi-danger" title="Previous Balance Due">
+                            <span class="kpi-label">Prev. Due:</span>
+                            <span class="kpi-val" id="cc_prev_bal_val">Rs 0</span>
+                            <span class="kpi-suffix" id="cc_prev_bal_suffix">Dr</span>
+                        </div>
+                        <div class="erp-kpi-pill erp-kpi-primary" title="Current Invoice Amount">
+                            <span class="kpi-label">Current Due:</span>
+                            <span class="kpi-val" id="cc_current_bill">Rs 0</span>
+                        </div>
+                        <div class="erp-kpi-pill erp-kpi-success" title="Amount Paid Now">
+                            <span class="kpi-label">Paid:</span>
+                            <span class="kpi-val" id="cc_paid_now">Rs 0</span>
+                        </div>
+                        <div class="erp-kpi-pill erp-kpi-purple" title="Net Closing Balance">
+                            <span class="kpi-label">Closing:</span>
+                            <span class="kpi-val" id="cc_closing_bal_val">Rs 0</span>
+                            <span class="kpi-suffix" id="cc_closing_bal_suffix">Dr</span>
                         </div>
                     </div>
                 </div>
@@ -2242,46 +2373,6 @@
 
                         <div class="pt-2 border-top mt-3">
                             <div class="checkout-extra-fields mb-2">
-                                {{-- Order Booker (S.R) --}}
-                                <div class="wrapper-officer">
-                                    <label class="field-label mb-1" for="orderBookerSelect" style="font-size: 11px;">
-                                        <i class="fas fa-clipboard-list text-primary me-1"></i> Order Booker (S.R)
-                                    </label>
-                                    <select class="form-select form-select-sm" name="order_booker_id" id="orderBookerSelect" style="height: 34px; font-size: 12px;">
-                                        <option value="">Direct / Select Booker...</option>
-                                        @if(isset($orderBookers) && count($orderBookers) > 0)
-                                            @foreach($orderBookers as $ob)
-                                                <option value="{{ $ob->id }}" {{ (isset($sale) && ($sale->order_booker_id == $ob->id || $sale->sales_officer_id == $ob->id)) ? 'selected' : '' }}>
-                                                    [{{ $ob->code ?: ('B-' . $ob->id) }}] {{ $ob->name }}
-                                                </option>
-                                            @endforeach
-                                        @elseif(isset($salesOfficers))
-                                            @foreach($salesOfficers as $so)
-                                                <option value="{{ $so->id }}" {{ (isset($sale) && $sale->sales_officer_id == $so->id) ? 'selected' : '' }}>
-                                                    {{ $so->name }}
-                                                </option>
-                                            @endforeach
-                                        @endif
-                                    </select>
-                                    <input type="hidden" name="sales_officer_id" id="salesOfficerHidden" value="{{ $sale->sales_officer_id ?? '' }}">
-                                </div>
-
-                                {{-- Salesman / Delivery Person --}}
-                                <div class="wrapper-salesman">
-                                    <label class="field-label mb-1" for="salesmanSelect" style="font-size: 11px;">
-                                        <i class="fas fa-truck text-success me-1"></i> Salesman / Delivery
-                                    </label>
-                                    <select class="form-select form-select-sm" name="salesman_id" id="salesmanSelect" style="height: 34px; font-size: 12px;">
-                                        <option value="">Select Salesman...</option>
-                                        @if(isset($salesmen) && count($salesmen) > 0)
-                                            @foreach($salesmen as $sm)
-                                                <option value="{{ $sm->id }}" {{ (isset($sale) && $sale->salesman_id == $sm->id) ? 'selected' : '' }}>
-                                                    [{{ $sm->code ?: ('S-' . $sm->id) }}] {{ $sm->name }}
-                                                </option>
-                                            @endforeach
-                                        @endif
-                                    </select>
-                                </div>
 
                                 {{-- PO Number (Customer Mail Order / PO) --}}
                                 <div class="wrapper-po-no">
@@ -2537,6 +2628,15 @@
                             <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Mobile</label>
                                 <input type="text" class="form-control" name="mobile" placeholder="0300-1234567">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label font-weight-bold fw-bold">Order Booker (S.R)</label>
+                                <select class="form-control form-select" name="sales_officer_id" id="modalSalesOfficer">
+                                    <option value="">Direct / Select Booker...</option>
+                                    @foreach(($orderBookers ?? $salesOfficers ?? []) as $ob)
+                                        <option value="{{ $ob->id }}">{{ ($ob->code ? '['.$ob->code.'] ' : '') . $ob->name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label font-weight-bold fw-bold">Opening Balance</label>
@@ -2822,12 +2922,18 @@
                 if (typeof updateGrandTotals === 'function') updateGrandTotals();
             });
 
+            $(document).on('change', '#orderBookerSelect', function() {
+                $('#salesOfficerHidden').val($(this).val());
+            });
+
             function clearCustomerInfo() {
                 $('#address, #tel').val('');
                 $('#previousBalance, #rangeBalance').val('0');
                 $('#ci_code, #ci_name, #ci_mobile, #ci_address').text('—');
                 $('#ci_prev_bal, #ci_range_bal').text('0.00');
                 $('#salesOfficerSelect').val('');
+                $('#orderBookerSelect').val('');
+                $('#salesOfficerHidden').val('');
                 if (typeof window.updateCustomerDisplayCards === 'function') {
                     window.updateCustomerDisplayCards(null);
                 }
@@ -2908,6 +3014,8 @@
 
                 if (salesOfficer) {
                     $('#salesOfficerSelect').val(salesOfficer);
+                    $('#orderBookerSelect').val(salesOfficer);
+                    $('#salesOfficerHidden').val(salesOfficer);
                 }
 
                 // 4. Update the Select2 dropdown cleanly and standardly

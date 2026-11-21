@@ -40,6 +40,7 @@ use App\Http\Controllers\WarehouseStockController;
 use App\Http\Controllers\ZoneController;
 use App\Http\Controllers\ProvinceController;
 use App\Http\Controllers\TaxTypeController;
+use App\Http\Controllers\ClaimController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -402,6 +403,14 @@ Route::middleware('auth')->group(function () {
     Route::get('purchase/return/{id}/view', [PurchaseController::class, 'viewReturn'])->name('purchase.return.view');
     Route::get('purchase/return/{id}', [PurchaseController::class, 'showReturnForm'])->name('purchase.return.show');
     Route::post('purchase/return/store', [PurchaseController::class, 'storeReturn'])->name('purchase.return.store');
+
+    // Customer Claims & Damage Management Routes
+    Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
+    Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
+    Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
+    Route::get('/claims/report', [ClaimController::class, 'report'])->name('claims.report');
+    Route::get('/claims/vendor-allowance/{vendorId}', [ClaimController::class, 'getVendorAllowance'])->name('claims.vendor_allowance');
+    Route::get('/claims/{id}', [ClaimController::class, 'show'])->name('claims.show');
 
     // Inward Gatepass Routes
     Route::get('/InwardGatepass', [InwardgatepassController::class, 'index'])->middleware('permission:inward.gatepass.view')->name('InwardGatepass.home');

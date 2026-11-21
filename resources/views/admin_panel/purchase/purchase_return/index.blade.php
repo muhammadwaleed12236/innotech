@@ -8,8 +8,20 @@
                     <div class="col-lg-12">
 
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h3>Purchase Returns</h3>
-                            <a class="btn btn-primary" href="{{ route('Purchase.home') }}">Back to Purchases</a>
+                            <div>
+                                <h4 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+                                    <i class="fas fa-undo-alt text-danger"></i> Purchase Returns &amp; Debit Notes
+                                </h4>
+                                <p class="text-muted mb-0 small">Manage vendor returns, debit notes, and inventory deductions</p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a class="btn btn-outline-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1" href="{{ route('Purchase.home') }}">
+                                    <i class="fas fa-shopping-cart"></i> All Purchases
+                                </a>
+                                <a class="btn btn-danger px-3 shadow-sm fw-medium d-inline-flex align-items-center gap-1" href="{{ route('purchase.return.create') }}">
+                                    <i class="fas fa-plus"></i> New Direct Return
+                                </a>
+                            </div>
                         </div>
 
                         <div class="border mt-1 shadow rounded bg-white">

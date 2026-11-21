@@ -115,12 +115,28 @@ class ProductController extends Controller
 
         $query = Product::query()
             ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code', 'tax_type_id', 'model')
-            ->with(['unit', 'taxType'])
-            ->withSum('warehouseStocks', 'total_pieces') /* Sum PIECES, not boxes */
-            ->where('is_active', true) /* Only active products */
-            ->whereHas('warehouseStocks', function($q) {
+            ->with(['unit', 'taxType']);
+
+        $warehouseId = $request->get('warehouse_id');
+        if ($warehouseId) {
+            $query->withSum(['warehouseStocks' => function($q) use ($warehouseId) {
+                $q->where('warehouse_id', $warehouseId);
+            }], 'total_pieces');
+        } else {
+            $query->withSum('warehouseStocks', 'total_pieces'); /* Sum PIECES, not boxes */
+        }
+
+        $query->where('is_active', true); /* Only active products */
+
+        $allowZero = $request->boolean('allow_zero_stock') || $request->boolean('all_products') || $request->boolean('is_purchase') || $request->boolean('is_return');
+        if (!$allowZero) {
+            $query->whereHas('warehouseStocks', function($q) use ($warehouseId) {
+                if ($warehouseId) {
+                    $q->where('warehouse_id', $warehouseId);
+                }
                 $q->where('total_pieces', '>', 0);
             });
+        }
 
         if ($term !== '') {
             $termTrimmed = trim($term);

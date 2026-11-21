@@ -17,6 +17,58 @@ use Carbon\Carbon;
 
 class SaleReturnController extends Controller
 {
+    public function createDirectReturn()
+    {
+        $customer = Customer::with('salesOfficer')->orderBy('customer_name')->get();
+        $salesOfficers = \App\Models\SalesOfficer::active()->orderBy('name')->get();
+        $orderBookers = \App\Models\SalesOfficer::active()->bookers()->orderBy('name')->get();
+        $salesmen = \App\Models\SalesOfficer::active()->salesmen()->orderBy('name')->get();
+        $warehouse = Warehouse::all();
+        
+        // Generate Next Return Invoice Number
+        $lastReturnId = SaleReturn::max('id') ?? 0;
+        do {
+            $lastReturnId++;
+            $nextInvoiceNumber = 'SR-' . str_pad($lastReturnId, 4, '0', STR_PAD_LEFT);
+        } while (SaleReturn::where('return_invoice', $nextInvoiceNumber)->exists());
+
+        $recentProducts = Product::where('is_active', true)
+            ->with(['taxType', 'brand'])
+            ->latest()
+            ->take(12)
+            ->get();
+            
+        $allProducts = Product::where('is_active', true)
+            ->with(['taxType', 'brand'])
+            ->orderBy('item_name')
+            ->get();
+
+        $chequeAccount = \App\Models\Account::firstOrCreate(
+            ['title' => 'Cheques in Hand'],
+            [
+                'head_id' => (\App\Models\AccountHead::where('name', 'LIKE', '%cheque%')->orWhere('name', 'LIKE', '%cash%')->value('id')) ?: (\App\Models\AccountHead::firstOrCreate(['name' => 'Cheque'], ['type' => 'Asset', 'level' => 1, 'opening_balance' => 0])->id ?? null),
+                'opening_balance' => 0,
+                'current_balance' => 0,
+                'type' => 'Debit',
+                'status' => 1
+            ]
+        );
+        $accounts = \App\Models\Account::whereHas('head', function($q) {
+            $q->whereIn('name', ['Cash', 'Bank', 'cash', 'bank', 'Cheque', 'cheque']);
+        })->where('status', 1)
+            ->where('title', '!=', 'Cheques in Hand')
+            ->orderBy('title')
+            ->get();
+
+        $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
+
+        return view('admin_panel.sale.sale_return.standalone_create', compact(
+            'customer', 'salesOfficers', 'orderBookers', 'salesmen', 'warehouse',
+            'nextInvoiceNumber', 'recentProducts', 'allProducts', 'accounts',
+            'chequeAccount', 'termsAndConditions'
+        ));
+    }
+
     public function showReturnForm($id)
     {
         $sale = Sale::with([
@@ -109,21 +161,32 @@ class SaleReturnController extends Controller
      */
     public function processSaleReturn(Request $request)
     {
+        $whId = $request->warehouse_id;
+        if (is_array($whId)) {
+            $whId = reset($whId);
+        }
+        if (!$whId) {
+            $whId = auth()->user()->warehouse_id ?? 1;
+        }
+
         $validated = $request->validate([
             'sale_id' => 'nullable|exists:sales,id',
             'customer_id' => 'nullable',
-            'warehouse_id' => 'required|exists:warehouses,id',
-            'return_date' => 'required|date',
+            'customer' => 'nullable',
+            'warehouse_id' => 'nullable',
+            'return_date' => 'nullable|date',
+            'sale_date' => 'nullable',
             'product_id' => 'required|array',
-            'product_id.*' => 'required|exists:products,id',
+            'product_id.*' => 'nullable',
             'color' => 'nullable|array',
-            'qty' => 'required|array',
-            'qty.*' => 'required|numeric|min:0',
-            'price' => 'required|array',
-            'price.*' => 'required|numeric|min:0',
+            'qty' => 'nullable|array',
+            'total_pieces' => 'nullable|array',
+            'price' => 'nullable|array',
+            'trade_price' => 'nullable|array',
             'item_disc' => 'nullable|array',
             'extra_discount' => 'nullable|numeric|min:0',
             'return_reason' => 'nullable|string',
+            'remarks' => 'nullable|string',
             'payment_account_id' => 'nullable|array',
             'payment_amount' => 'nullable|array',
         ]);
@@ -139,8 +202,10 @@ class SaleReturnController extends Controller
             } while (SaleReturn::where('return_invoice', $nextInvoice)->exists());
 
             // Resolve Customer ID (fallback to Walking Customer if empty/null)
-            $customerId = $validated['customer_id'] ?? null;
-            if (!$customerId) {
+            $isWalkin = $request->boolean('is_walkin') || ($request->partyType === 'Walking Customer') || ($request->customer_type === 'Walking Customer');
+            $customerId = $request->customer_id ?: ($request->customer ?: null);
+
+            if ($isWalkin || !$customerId) {
                 $walkingCustomer = \App\Models\Customer::where('customer_type', 'Walking Customer')->first();
                 if ($walkingCustomer) {
                     $customerId = $walkingCustomer->id;
@@ -160,7 +225,8 @@ class SaleReturnController extends Controller
             // Validate that at least one item has return quantity > 0
             $hasItems = false;
             foreach ($request->product_id as $idx => $productId) {
-                $qty = (float) $request->qty[$idx];
+                if (empty($productId)) continue;
+                $qty = (float) ($request->total_pieces[$idx] ?? ($request->qty[$idx] ?? 0));
                 if ($qty > 0) {
                     $hasItems = true;
                     break;
@@ -170,18 +236,25 @@ class SaleReturnController extends Controller
                 throw new \Exception("Please enter a return quantity for at least one item.");
             }
 
+            $returnDate = $request->return_date ?: ($request->sale_date ?: date('Y-m-d'));
+            $remarksText = $request->return_reason ?: ($request->remarks ?: ($request->reference ?: null));
+
             // Create Sale Return Header
             $return = SaleReturn::create([
-                'sale_id' => $validated['sale_id'] ?? null,
+                'sale_id' => $request->sale_id ?: null,
                 'return_invoice' => $nextInvoice,
                 'customer_id' => $customerId,
-                'warehouse_id' => $validated['warehouse_id'],
-                'return_date' => $validated['return_date'],
-                'remarks' => $validated['return_reason'] ?? null,
+                'sales_officer_id' => $request->sales_officer_id ?: ($request->order_booker_id ?: null),
+                'order_booker_id' => $request->order_booker_id ?: ($request->sales_officer_id ?: null),
+                'salesman_id' => $request->salesman_id ?: null,
+                'walkin_name' => $isWalkin ? ($request->walkin_name ?: 'Walk-in Customer') : null,
+                'warehouse_id' => $whId,
+                'return_date' => $returnDate,
+                'remarks' => $remarksText,
                 'status' => 'posted',
             ]);
 
-            $sale = $validated['sale_id'] ? Sale::with('items')->find($validated['sale_id']) : null;
+            $sale = !empty($request->sale_id) ? Sale::with('items')->find($request->sale_id) : null;
             $now = Carbon::now();
             $movements = [];
             $subtotal = 0;
@@ -189,13 +262,17 @@ class SaleReturnController extends Controller
 
             // Process Each Return Item
             foreach ($request->product_id as $idx => $productId) {
-                $qty = (float) $request->qty[$idx]; // Total pieces
+                if (empty($productId)) continue;
+                $qty = (float) ($request->total_pieces[$idx] ?? ($request->qty[$idx] ?? 0)); // Total pieces
                 if ($qty <= 0) continue;
 
-                $price = (float) $request->price[$idx];
-                $itemDisc = (float) ($request->item_disc[$idx] ?? 0);
+                $price = (float) ($request->trade_price[$idx] ?? ($request->price[$idx] ?? 0));
+                $itemDisc = (float) ($request->item_disc[$idx] ?? (($request->reg_disc_amt[$idx] ?? 0) + ($request->sp_disc_amt[$idx] ?? 0)));
+                
                 // Get product for PPB and size_mode calculation
                 $product = Product::find($productId);
+                if (!$product) continue;
+
                 $sizeMode = $product->size_mode ?? 'by_pieces';
                 $ppm2 = $product->m2_of_box ?? 0;
 
@@ -203,12 +280,12 @@ class SaleReturnController extends Controller
                 $vData = [];
                 if (!empty($rColor)) {
                     $b64 = base64_decode($rColor, true);
-                    $vData = ($b64 !== false) ? json_decode($b64, true) : json_decode($rColor, true);
+                    $vData = ($b64 !== false) ? json_decode($b64, true) : (is_string($rColor) ? json_decode($rColor, true) : (array)$rColor);
                     if (!is_array($vData)) $vData = [];
                 }
 
                 $liveVariant = null;
-                if ($product && !empty($product->color)) {
+                if (!empty($product->color)) {
                     $prodVariants = json_decode($product->color, true);
                     if (is_array($prodVariants)) {
                         if (!empty($vData['barcode'])) {
@@ -252,12 +329,15 @@ class SaleReturnController extends Controller
                 if ($ppb <= 0) $ppb = 1;
 
                 // Calculate boxes and loose pieces
-                $boxes = (int)($request->return_carton[$idx] ?? floor($qty / $ppb));
-                $loosePieces = (int)($request->return_loose[$idx] ?? ($qty % $ppb));
+                $boxes = (int)($request->return_carton[$idx] ?? ($request->carton[$idx] ?? floor($qty / $ppb)));
+                $loosePieces = (int)($request->return_loose[$idx] ?? ($request->loose_piece[$idx] ?? ($qty % $ppb)));
 
                 // Calculate Line Total Logic based on size mode or direct line net
                 if (!empty($request->line_total[$idx]) && (float)$request->line_total[$idx] > 0) {
                     $netLineTotal = (float)$request->line_total[$idx];
+                    $lineTotal = (float)($request->line_gross[$idx] ?? $netLineTotal);
+                } elseif (!empty($request->line_net[$idx]) && (float)$request->line_net[$idx] > 0) {
+                    $netLineTotal = (float)$request->line_net[$idx];
                     $lineTotal = (float)($request->line_gross[$idx] ?? $netLineTotal);
                 } else {
                     if ($sizeMode === 'by_size') {
@@ -276,12 +356,21 @@ class SaleReturnController extends Controller
                     'product_id' => $productId,
                     'product_name' => $product->item_name ?? $product->product_name ?? 'Product',
                     'color' => $request->color[$idx] ?? null,
-                    'warehouse_id' => $validated['warehouse_id'],
+                    'warehouse_id' => $whId,
                     'qty' => $qty,
                     'boxes' => $boxes,
                     'loose_pieces' => $loosePieces,
                     'price' => $price,
+                    'trade_price' => (float)($request->trade_price[$idx] ?? $price),
+                    'retail_price' => (float)($request->retail_price[$idx] ?? ($product->retail_price ?? 0)),
+                    'reg_disc_percent' => (float)($request->reg_disc_percent[$idx] ?? 0),
+                    'sp_disc_percent' => (float)($request->sp_disc_percent[$idx] ?? 0),
                     'item_discount' => $itemDisc,
+                    'sales_tax_percent' => (float)($request->sales_tax_percent[$idx] ?? ($request->gst_pct[$idx] ?? 0)),
+                    'sales_tax_amount' => (float)($request->sales_tax_amount[$idx] ?? ($request->gst_pkr[$idx] ?? 0)),
+                    'further_tax_percent' => (float)($request->further_tax_percent[$idx] ?? ($request->further_tax_pct[$idx] ?? 0)),
+                    'further_tax_amount' => (float)($request->further_tax_amount[$idx] ?? ($request->further_tax_pkr[$idx] ?? 0)),
+                    'mrp_amount' => (float)($request->mrp_amount[$idx] ?? 0),
                     'unit' => $product->unit->name ?? 'pc',
                     'line_total' => $netLineTotal,
                 ]);
@@ -303,14 +392,13 @@ class SaleReturnController extends Controller
                     }
                 }
 
-                // Update Stock (INCREMENT - goods coming back)
-                $stock = WarehouseStock::where('warehouse_id', $validated['warehouse_id'])
+                // Update Stock (INCREMENT - goods coming back to warehouse)
+                $stock = WarehouseStock::where('warehouse_id', $whId)
                     ->where('product_id', $productId)
                     ->lockForUpdate()
                     ->first();
 
                 if ($stock) {
-                    // Use total_pieces as primary source of truth to avoid losing loose pieces, fallback only if zero
                     $currentTotalPieces = $stock->total_pieces;
                     if ($currentTotalPieces == 0 && $stock->quantity > 0) {
                         $currentTotalPieces = $stock->quantity * $ppb;
@@ -323,7 +411,7 @@ class SaleReturnController extends Controller
                 } else {
                     // Create new stock entry
                     WarehouseStock::create([
-                        'warehouse_id' => $validated['warehouse_id'],
+                        'warehouse_id' => $whId,
                         'product_id' => $productId,
                         'total_pieces' => $stockQty,
                         'quantity' => $stockQty / $ppb,
@@ -342,7 +430,7 @@ class SaleReturnController extends Controller
                                 ->whereIn('serial_number', $toRestore)
                                 ->update([
                                     'status' => 'available',
-                                    'warehouse_id' => $validated['warehouse_id'],
+                                    'warehouse_id' => $whId,
                                 ]);
                         }
                     }
@@ -369,7 +457,12 @@ class SaleReturnController extends Controller
                 DB::table('stock_movements')->insert($movements);
             }
 
-            $netAmount = ($subtotal - $totalItemDiscount) - ($request->extra_discount ?? 0);
+            $totalTax = (float)($request->total_sales_tax ?? 0) + (float)($request->total_further_tax ?? 0) + (float)($request->total_adv_tax ?? 0);
+            if (!empty($request->total_net) && (float)$request->total_net > 0) {
+                $netAmount = (float)$request->total_net;
+            } else {
+                $netAmount = ($subtotal - $totalItemDiscount - (float)($request->extra_discount ?? 0)) + $totalTax;
+            }
 
             // Handle Refund Payment (Payment Voucher)
             $totalPaid = 0;
@@ -395,7 +488,7 @@ class SaleReturnController extends Controller
                         // Create Payment Voucher via Service
                         $voucherData = [
                             'voucher_type' => \App\Models\VoucherMaster::TYPE_PAYMENT,
-                            'date' => $validated['return_date'],
+                            'date' => $returnDate,
                             'status' => \App\Models\VoucherMaster::STATUS_POSTED,
                             'party_type' => \App\Models\Customer::class,
                             'party_id' => $customerId,
@@ -426,12 +519,18 @@ class SaleReturnController extends Controller
             $return->update([
                 'bill_amount' => $subtotal,
                 'item_discount' => $totalItemDiscount,
+                'total_reg_discount' => (float)($request->total_reg_discount ?? 0),
+                'total_sp_discount' => (float)($request->total_sp_discount ?? 0),
+                'total_sales_tax' => (float)($request->total_sales_tax ?? 0),
+                'total_further_tax' => (float)($request->total_further_tax ?? 0),
+                'total_adv_tax' => (float)($request->total_adv_tax ?? 0),
+                'extra_discount' => (float)($request->extra_discount ?? 0),
                 'net_amount' => $netAmount,
                 'paid' => $totalPaid,
                 'balance' => $netAmount - $totalPaid,
             ]);
 
-            // Update Sale Status (only if it is a full return)
+            // Update Sale Status (only if it is a full return against original sale)
             if ($sale) {
                 $totalSold = $sale->items->sum('total_pieces');
                 $totalReturned = SaleReturnItem::join('sale_returns', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
@@ -449,10 +548,6 @@ class SaleReturnController extends Controller
                 $transactionService->createSaleReturnVoucher($return);
             }
 
-            // Update Customer Ledger (if exists)
-            // Sale Return increases customer balance (they owe less or we owe them)
-            $balanceChange = $netAmount - $totalPaid;
-
             DB::commit();
 
             $msg = "Sale Return #{$nextInvoice} processed successfully.";
@@ -468,7 +563,16 @@ class SaleReturnController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Error processing return: ' . $e->getMessage());
+            \Log::error("Sale Return Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ], 422);
+            }
+
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
 
