@@ -1728,7 +1728,9 @@
                         data: function(params) {
                             return {
                                 q: params.term || '',
-                                page: params.page || 1
+                                page: params.page || 1,
+                                is_purchase: 1,
+                                allow_zero_stock: 1
                             };
                         },
                         processResults: function(data, params) {

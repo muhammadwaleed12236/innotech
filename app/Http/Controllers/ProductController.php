@@ -128,7 +128,15 @@ class ProductController extends Controller
 
         $query->where('is_active', true); /* Only active products */
 
-        $allowZero = $request->boolean('allow_zero_stock') || $request->boolean('all_products') || $request->boolean('is_purchase') || $request->boolean('is_return');
+        $isPurchaseContext = $request->boolean('is_purchase')
+            || $request->get('context') === 'purchase'
+            || stripos(request()->header('referer', ''), 'purchase') !== false;
+
+        $allowZero = $request->boolean('allow_zero_stock')
+            || $request->boolean('all_products')
+            || $request->boolean('is_purchase')
+            || $request->boolean('is_return')
+            || $isPurchaseContext;
         if (!$allowZero) {
             $query->whereHas('warehouseStocks', function($q) use ($warehouseId) {
                 if ($warehouseId) {
@@ -181,7 +189,7 @@ class ProductController extends Controller
                 ->toArray();
         }
 
-        $results = $products->getCollection()->flatMap(function ($p) use ($term, $custDiscounts) {
+        $results = $products->getCollection()->flatMap(function ($p) use ($term, $custDiscounts, $allowZero) {
             $stockPieces = (float) ($p->warehouse_stocks_sum_total_pieces ?? 0);
             $ppb = $p->pieces_per_box > 0 ? $p->pieces_per_box : 1;
             $custDisc = (float)($custDiscounts[$p->id] ?? 0);
@@ -223,8 +231,8 @@ class ProductController extends Controller
             }
 
             if (count($variants) > 0) {
-                $cacheKey = 'prod_var_search_' . $p->id . '_' . ((int)$stockPieces);
-                $allExpanded = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb, $custDisc) {
+                $cacheKey = 'prod_var_search_' . $p->id . '_' . ((int)$stockPieces) . '_az_' . ($allowZero ? '1' : '0');
+                $allExpanded = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function() use ($p, $variants, $unitName, $stockPieces, $ppb, $custDisc, $allowZero) {
                 // Fetch all sales and returns for this product to distribute
                 $salesList = DB::table('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
@@ -440,8 +448,8 @@ class ProductController extends Controller
                         $vSaleDisc = $custDisc;
                     }
                     
-                    // Completely skip variants that have 0 or negative stock
-                    if ($vBalance <= 0) {
+                    // Completely skip variants that have 0 or negative stock unless zero stock allowed (e.g. Purchase/Returns)
+                    if (!$allowZero && $vBalance <= 0) {
                         continue;
                     }
 
@@ -464,6 +472,7 @@ class ProductController extends Controller
                         'trade_price_per_box' => ((float)($v['purch_price'] ?? $p->trade_price ?? $p->purchase_price_per_piece ?? 0) * $vPpb),
                         'hs_code' => $vHsCode,
                         'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)),
+                        'is_exempt' => (bool) ($p->taxType && ($p->taxType->code === '0001' || stripos($p->taxType->title, 'exempt') !== false || (!$p->taxType->st_sale_active && !$p->taxType->isThirdSchedule()))),
                         'tax_type_id' => $p->tax_type_id,
                         'tax_type_code' => $p->taxType->code ?? '',
                         'tax_type_title' => $p->taxType->title ?? '',
@@ -556,8 +565,8 @@ class ProductController extends Controller
                 }
             }
 
-            // Completely skip simple products that have 0 or negative stock
-            if ($stockPieces <= 0) {
+            // Completely skip simple products that have 0 or negative stock unless zero stock allowed (e.g. Purchase/Returns)
+            if (!$allowZero && $stockPieces <= 0) {
                 return [];
             }
 
@@ -580,6 +589,7 @@ class ProductController extends Controller
                 'trade_price_per_box' => (float)($p->purchase_price_per_box ?: (($p->trade_price ?: $p->purchase_price_per_piece ?: 0) * $ppb)),
                 'hs_code' => $p->hs_code ?? '',
                 'is_third_schedule' => (bool) ($p->taxType ? $p->taxType->isThirdSchedule() : ($p->is_third_schedule ?? false)),
+                'is_exempt' => (bool) ($p->taxType && ($p->taxType->code === '0001' || stripos($p->taxType->title, 'exempt') !== false || (!$p->taxType->st_sale_active && !$p->taxType->isThirdSchedule()))),
                 'tax_type_id' => $p->tax_type_id,
                 'tax_type_code' => $p->taxType->code ?? '',
                 'tax_type_title' => $p->taxType->title ?? '',

@@ -74,13 +74,72 @@
     window.currentCustomerNtn = '';
     window.currentCustomerIsFiler = false;
 
-    window.applyCustomerTaxStatus = function(customerData, forceRowUpdate = true) {
+    window.getRowTaxConfig = function($r) {
         const cfg = window.saleScreenConfig || {};
         const isFtEnabled = cfg.flags && cfg.flags.further_tax !== undefined ? cfg.flags.further_tax : true;
         const strnExempt = cfg.strn_exemption !== undefined ? cfg.strn_exemption : true;
-        const defaultFt = isFtEnabled ? (cfg.default_ft_rate !== undefined ? cfg.default_ft_rate : 4) : 0;
-        const badgesEnabled = cfg.flags && cfg.flags.customer_tax_badges !== undefined ? cfg.flags.customer_tax_badges : true;
 
+        const is3rd = !!$r.data('is_third_schedule') || $r.find('.hidden-is-third-schedule').val() === '1';
+        const rawDefaultRate = $r.data('default_tax_rate');
+        const defaultRate = (rawDefaultRate !== undefined && rawDefaultRate !== null && rawDefaultRate !== '')
+            ? toNum(rawDefaultRate)
+            : toNum($r.find('.sales-tax-percent').val());
+        const isExempt = !!$r.data('is_exempt') || 
+            $r.data('tax_type_code') === '0001' || 
+            ($r.data('tax_type_title') && String($r.data('tax_type_title')).toUpperCase().includes('EXEMPT')) ||
+            (defaultRate === 0 && !is3rd);
+        
+        let hasFt = true;
+        if (is3rd || isExempt) {
+            hasFt = false;
+        } else if ($r.data('has_further_tax') !== undefined) {
+            hasFt = Boolean($r.data('has_further_tax'));
+        }
+
+        let defaultFtRate = 4.0;
+        if ($r.data('tax_sale_further_tax') !== undefined && $r.data('tax_sale_further_tax') !== null && parseFloat($r.data('tax_sale_further_tax')) > 0) {
+            defaultFtRate = parseFloat($r.data('tax_sale_further_tax'));
+        } else if (cfg.default_ft_rate !== undefined) {
+            defaultFtRate = parseFloat(cfg.default_ft_rate);
+        }
+
+        // Customer status:
+        // Registered Customer has STRN
+        const custHasStrn = Boolean(window.currentCustomerHasStrn);
+        const custHasNtn = Boolean(window.currentCustomerHasNtn);
+        const custIsFiler = Boolean(window.currentCustomerIsFiler || custHasNtn || custHasStrn);
+
+        // Matrix calculation:
+        // 1. Further Tax (URC Tax):
+        //    - Registered customer (STRN): ALWAYS 0.00% on ALL products
+        //    - Unregistered customer (Non-STRN):
+        //        - 3rd Schedule: 0.00%
+        //        - Exempt: 0.00%
+        //        - Non-3rd Schedule: 4.00%
+        //        - Reduced Rate (10%): 4.00%
+        let ftRate = 0.0;
+        if (isFtEnabled && (!custHasStrn || !strnExempt) && hasFt && !is3rd && !isExempt) {
+            ftRate = defaultFtRate;
+        }
+
+        // 2. Advance Tax:
+        //    - Unregistered (no NTN, no STRN): 2.50%
+        //    - Filer but Not Registered (only NTN): 0.50%
+        //    - Registered Customer (NTN + STRN): 0.50%
+        const filerAdvRate = ($r.data('tax_sale_adv_filer') !== undefined && $r.data('tax_sale_adv_filer') !== null) ? parseFloat($r.data('tax_sale_adv_filer')) : 0.50;
+        const nonFilerAdvRate = ($r.data('tax_sale_adv_non_filer') !== undefined && $r.data('tax_sale_adv_non_filer') !== null) ? parseFloat($r.data('tax_sale_adv_non_filer')) : 2.50;
+        const advRate = custIsFiler ? filerAdvRate : nonFilerAdvRate;
+
+        return {
+            isThirdSchedule: is3rd,
+            isExempt: isExempt,
+            hasFurtherTax: hasFt,
+            furtherTaxRate: ftRate,
+            advanceTaxRate: advRate
+        };
+    };
+
+    window.applyCustomerTaxStatus = function(customerData, forceRowUpdate = true) {
         if (!customerData) {
             window.currentCustomerHasStrn = false;
             window.currentCustomerHasNtn = false;
@@ -97,30 +156,26 @@
             window.currentCustomerHasStrn = Boolean(strn !== '');
             window.currentCustomerHasNtn = Boolean(ntn !== '');
 
-            // Customer is a Filer if they have NTN, filer_type is 'filer', or is_filer is truthy
-            window.currentCustomerIsFiler = Boolean(ntn !== '' || filerType === 'filer' || customerData.is_filer == 1 || customerData.is_filer === true);
+            // Customer is a Filer if they have STRN, NTN, filer_type is 'filer', or is_filer is truthy
+            window.currentCustomerIsFiler = Boolean(strn !== '' || ntn !== '' || filerType === 'filer' || customerData.is_filer == 1 || customerData.is_filer === true);
         }
-
-        const ftPercent = (!isFtEnabled) ? 0 : ((window.currentCustomerHasStrn && strnExempt) ? 0 : defaultFt);
-        const isFiler = window.currentCustomerIsFiler;
 
         const shouldForceRows = forceRowUpdate && (!window.isEditMode || window.userExplicitlyChangedCustomer === true);
         if (shouldForceRows) {
             // Update Further Tax percent and Advance Tax on all item rows
             $('#salesTableBody tr').each(function() {
                 const $r = $(this);
-                $r.find('.urc-tax-value').val(ftPercent);
-                $r.find('.further-tax-percent').val(ftPercent);
+                const taxCfg = window.getRowTaxConfig($r);
+
+                $r.find('.urc-tax-value').val(taxCfg.furtherTaxRate);
+                $r.find('.further-tax-percent').val(taxCfg.furtherTaxRate);
                 $r.find('.urc-toggle').data('type', 'percent').text('%');
                 $r.find('.urc-type-hidden').val('percent');
 
                 // If adv tax was not manually edited by user, recalculate with customer's new filer status
                 if (!$r.data('adv_manual')) {
-                    const filerRate = $r.data('tax_sale_adv_filer') !== undefined ? $r.data('tax_sale_adv_filer') : 0.50;
-                    const nonFilerRate = $r.data('tax_sale_adv_non_filer') !== undefined ? $r.data('tax_sale_adv_non_filer') : 2.50;
-                    const rowAdvRate = isFiler ? filerRate : nonFilerRate;
-                    $r.data('adv_rate', rowAdvRate);
-                    $r.find('.adv-tax-percent').val(rowAdvRate.toFixed(2));
+                    $r.data('adv_rate', taxCfg.advanceTaxRate);
+                    $r.find('.adv-tax-percent').val(taxCfg.advanceTaxRate.toFixed(2));
                 }
 
                 if (typeof computeRow === 'function') {
@@ -151,14 +206,14 @@
             return;
         }
 
-        const isFiler = window.currentCustomerIsFiler || window.currentCustomerHasNtn;
+        const isFiler = window.currentCustomerHasStrn || window.currentCustomerHasNtn || window.currentCustomerIsFiler;
         const advBadge = isFiler
-            ? `<span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Filer Customer: Advance Tax 0.5% applied"><i class="fas fa-check-shield me-1"></i> Filer &bull; Adv. Tax (0.5%)</span>`
-            : `<span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Non-Filer Customer: Advance Tax 2.5% applied"><i class="fas fa-shield-alt me-1"></i> Non-Filer &bull; Adv. Tax (2.5%)</span>`;
+            ? `<span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Filer / Registered Customer: Advance Tax 0.5% applied"><i class="fas fa-check-shield me-1"></i> Filer &bull; Adv. Tax (0.5%)</span>`
+            : `<span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered / Non-Filer: Advance Tax 2.5% applied"><i class="fas fa-shield-alt me-1"></i> Non-Filer &bull; Adv. Tax (2.5%)</span>`;
 
         if (window.currentCustomerHasStrn) {
             $container.html(`
-                <span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1" style="font-size: 11px;" title="STRN Registered: Exempt from Further Tax">
+                <span class="badge bg-success-subtle text-success border border-success fw-bold px-2 py-1" style="font-size: 11px;" title="STRN Registered: Exempt from Further Tax (0%)">
                     <i class="fas fa-check-circle me-1"></i> STRN: ${window.currentCustomerStrn} &bull; FT (0%) Exempt
                 </span>
                 ${window.currentCustomerHasNtn ? `<span class="badge bg-info-subtle text-info border border-info fw-bold px-2 py-1 ms-1" style="font-size: 11px;"><i class="fas fa-id-card me-1"></i> NTN: ${window.currentCustomerNtn}</span>` : ''}
@@ -167,7 +222,7 @@
         } else if (window.currentCustomerHasNtn) {
             $container.html(`
                 <span class="badge bg-info-subtle text-info border border-info fw-bold px-2 py-1" style="font-size: 11px;"><i class="fas fa-id-card me-1"></i> NTN: ${window.currentCustomerNtn}</span>
-                <span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered for Sales Tax - Further Tax 4% applied">
+                <span class="badge bg-warning-subtle text-warning border border-warning fw-bold px-2 py-1 ms-1" style="font-size: 11px;" title="Unregistered for Sales Tax - Further Tax 4% applied on Non-3rd Schedule">
                     <i class="fas fa-exclamation-triangle me-1"></i> No STRN &bull; FT (4%) Applied
                 </span>
                 ${advBadge}
@@ -177,7 +232,7 @@
             const hasCust = $('#customerSelect').val();
             if (hasCust || isWalkin) {
                 $container.html(`
-                    <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-bold px-2 py-1" style="font-size: 11px;" title="Unregistered buyer - Further Tax 4% applied">
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary fw-bold px-2 py-1" style="font-size: 11px;" title="Unregistered buyer - Further Tax 4% applied on Non-3rd Schedule">
                         <i class="fas fa-info-circle me-1"></i> Unregistered (No STRN) &bull; FT (4%) Applied
                     </span>
                     ${advBadge}
@@ -473,7 +528,7 @@
 
     <!-- REGULAR DISC. AMT -->
     <td class="col-reg-disc-amt">
-      <input type="number" step="0.01" class="form-control reg-disc-amount text-start" name="reg_disc_amount[]" value="0.00" placeholder="0.00">
+      <input type="number" step="0.01" class="form-control reg-disc-amount text-start input-readonly" name="reg_disc_amount[]" value="0.00" placeholder="0.00" readonly tabindex="-1">
     </td>
 
     <!-- SP. DISC. % -->
@@ -485,13 +540,13 @@
 
     <!-- SPECIAL DISC. AMT -->
     <td class="col-sp-disc-amt">
-      <input type="number" step="0.01" class="form-control sp-disc-amount text-start" name="sp_disc_amount[]" value="0.00" placeholder="0.00">
+      <input type="number" step="0.01" class="form-control sp-disc-amount text-start input-readonly" name="sp_disc_amount[]" value="0.00" placeholder="0.00" readonly tabindex="-1">
       <input type="hidden" class="discount-amount" value="0">
     </td>
 
     <!-- SALES TAX AMT (PKR) -->
     <td class="col-st">
-      <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)">
+      <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold input-readonly" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)" readonly tabindex="-1">
       <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
       <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="pkr">
       <input type="hidden" class="visible-st" value="0">
@@ -499,31 +554,29 @@
 
     <!-- MRP AMOUNT -->
     <td class="col-mrp">
-      <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)">
+      <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary input-readonly" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)" readonly tabindex="-1">
       <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
     </td>
 
     <!-- URC TAX AMOUNT -->
     <td class="col-ft">
-      <div class="input-group input-group-sm">
-        <input type="number"
-               step="0.01"
-               class="form-control urc-tax-value text-start text-primary fw-semibold"
-               name="further_tax_percent[]"
-               value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}"
-               placeholder="0"
-               title="URC Tax (% or Amount)">
-        <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
-        <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
-      </div>
-      <div class="urc-pkr-display text-end text-primary fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated URC Tax Amount">PKR 0.00</div>
-      <input type="hidden" class="further-tax-percent" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}">
-      <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
+      <input type="number"
+             step="0.01"
+             class="form-control further-tax-amount visible-ft text-start text-primary fw-semibold input-readonly"
+             name="further_tax_amount[]"
+             value="0.00"
+             placeholder="0.00"
+             title="URC Tax Amount (PKR)"
+             readonly
+             tabindex="-1">
+      <input type="hidden" class="further-tax-percent" name="further_tax_percent[]" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}">
+      <input type="hidden" class="urc-tax-value" value="${(window.currentCustomerHasStrn && (window.saleScreenConfig && window.saleScreenConfig.strn_exemption !== false)) ? 0 : (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined ? window.saleScreenConfig.default_ft_rate : 4)}">
+      <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
     </td>
 
     <!-- ADV. TAX AMT -->
     <td class="col-adv-tax">
-      <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)">
+      <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis input-readonly" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)" readonly tabindex="-1">
       <input type="hidden" class="adv-tax-percent" name="adv_tax_percent[]" value="0">
     </td>
 
@@ -855,8 +908,21 @@
 
         const isThirdSchedule = !!$row.data('is_third_schedule') || $row.find('.hidden-is-third-schedule').val() === '1';
 
-        const defaultRate = toNum($row.data('default_tax_rate')) || 18.0;
-        let salesTaxPct = defaultRate;
+        const rawDefaultRate = $row.data('default_tax_rate');
+        const defaultRate = (rawDefaultRate !== undefined && rawDefaultRate !== null && rawDefaultRate !== '')
+            ? toNum(rawDefaultRate)
+            : (($row.find('.sales-tax-percent').val() !== '' && $row.find('.sales-tax-percent').val() !== undefined) ? toNum($row.find('.sales-tax-percent').val()) : 18.0);
+
+        const isExempt = Boolean(
+            $row.data('is_exempt') === true ||
+            $row.data('is_exempt') === 1 ||
+            $row.data('is_exempt') === '1' ||
+            $row.data('tax_type_code') === '0001' ||
+            ($row.data('tax_type_title') && String($row.data('tax_type_title')).toUpperCase().includes('EXEMPT')) ||
+            (defaultRate === 0 && !isThirdSchedule)
+        );
+
+        let salesTaxPct = isExempt ? 0 : defaultRate;
         let salesTaxAmt = 0;
         let mrpTaxAmt = 0;
         let furtherTaxPct = 0;
@@ -897,10 +963,10 @@
             $row.find('.mrp-amount').val('0.00');
             $row.find('.visible-mrp').val('0.00');
 
-            if (!isStEnabled) {
+            if (!isStEnabled || isExempt) {
                 salesTaxPct = 0;
                 salesTaxAmt = 0;
-                $row.find('.sales-tax-percent').val(0);
+                $row.find('.sales-tax-percent').val('0.00');
                 $row.find('.sales-tax-amount').val('0.00');
             } else if ($row.data('st_manual') || activeField === 'sales_tax_amount') {
                 salesTaxAmt = toNum($row.find('.sales-tax-amount').val());
@@ -916,27 +982,26 @@
             $row.find('.visible-st').val(salesTaxAmt.toFixed(2));
 
             // 8. URC Tax (Further Tax for Unregistered Customer)
-            let urcVal = toNum($row.find('.urc-tax-value').val());
-            let urcType = $row.find('.urc-type-hidden').val() || $row.find('.urc-toggle').attr('data-type') || $row.find('.urc-toggle').data('type') || 'percent';
+            const custHasStrn = Boolean(window.currentCustomerHasStrn);
+            const canHaveFt = !isExempt && ($row.data('has_further_tax') !== false);
+            const prodFtRate = ($row.data('tax_sale_further_tax') !== undefined && $row.data('tax_sale_further_tax') !== null && parseFloat($row.data('tax_sale_further_tax')) > 0)
+                ? parseFloat($row.data('tax_sale_further_tax'))
+                : 4.0;
 
-            if (!isFtEnabled) {
+            if (!isFtEnabled || custHasStrn || !canHaveFt || isExempt) {
                 furtherTaxPct = 0;
                 furtherTaxAmt = 0;
-                $row.find('.further-tax-percent').val(0);
-                $row.find('.urc-tax-value').val(0);
-            } else if (urcType === 'percent') {
-                furtherTaxPct = urcVal;
-                furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
-                $row.find('.further-tax-percent').val(furtherTaxPct);
             } else {
-                furtherTaxAmt = urcVal;
-                furtherTaxPct = exclusiveGst > 0 ? ((furtherTaxAmt / exclusiveGst) * 100) : 0;
-                $row.find('.further-tax-percent').val(furtherTaxPct.toFixed(2));
+                furtherTaxPct = prodFtRate;
+                furtherTaxAmt = exclusiveGst > 0 ? (exclusiveGst * furtherTaxPct) / 100 : 0;
             }
 
-            $row.find('.further-tax-amount').val(furtherTaxAmt.toFixed(2));
-            $row.find('.visible-ft').val(furtherTaxAmt.toFixed(2));
-            $row.find('.urc-pkr-display').text('PKR ' + furtherTaxAmt.toFixed(2));
+            $row.find('.further-tax-percent').val(furtherTaxPct);
+            $row.find('.urc-tax-value').val(furtherTaxPct);
+            $row.find('.further-tax-amount, .visible-ft').val(furtherTaxAmt.toFixed(2));
+            if ($row.find('.urc-pkr-display').length) {
+                $row.find('.urc-pkr-display').text('PKR ' + furtherTaxAmt.toFixed(2));
+            }
         }
 
         // 9. Adv. Tax Amt
@@ -949,7 +1014,9 @@
             advTaxPct = advBase > 0 ? ((advTaxAmt / advBase) * 100) : 0;
             $row.find('.adv-tax-percent').val(advTaxPct.toFixed(2));
         } else {
-            const isFiler = (window.currentCustomerIsFiler || window.currentCustomerHasNtn) ? true : false;
+            const custHasStrn = Boolean(window.currentCustomerHasStrn);
+            const custHasNtn = Boolean(window.currentCustomerHasNtn);
+            const isFiler = (custHasStrn || custHasNtn || window.currentCustomerIsFiler) ? true : false;
             let advRate = 0;
             if ($row.data('tax_sale_adv_filer') !== undefined || $row.data('tax_sale_adv_non_filer') !== undefined) {
                 const fRate = $row.data('tax_sale_adv_filer') !== undefined ? $row.data('tax_sale_adv_filer') : 0.50;
@@ -1823,39 +1890,43 @@
             $row.data('is_third_schedule', !!data.is_third_schedule);
             $row.find('.hidden-is-third-schedule').val(data.is_third_schedule ? '1' : '0');
 
-            // Set default tax rate from product (e.g. 18.0%)
-            const defaultSaleGst = (data.tax_sale_gst !== undefined && data.tax_sale_gst !== null) ? parseFloat(data.tax_sale_gst) : 18.0;
+            $row.data('tax_type_id', data.tax_type_id);
+            $row.data('tax_type_code', data.tax_type_code);
+            $row.data('tax_type_title', data.tax_type_title);
+
+            const isExempt = Boolean(
+                data.is_exempt === true || 
+                data.is_exempt === 1 || 
+                data.is_exempt === '1' ||
+                data.tax_type_code === '0001' || 
+                (data.tax_type_title && String(data.tax_type_title).toUpperCase().includes('EXEMPT')) ||
+                (!data.is_third_schedule && (data.tax_sale_gst !== undefined && parseFloat(data.tax_sale_gst) === 0))
+            );
+            $row.data('is_exempt', isExempt);
+
+            // Set default tax rate from product (e.g. 18.0% or 0.00% if exempt)
+            const defaultSaleGst = isExempt ? 0.0 : ((data.tax_sale_gst !== undefined && data.tax_sale_gst !== null && data.tax_sale_gst !== '') ? parseFloat(data.tax_sale_gst) : 18.0);
             $row.data('default_tax_rate', defaultSaleGst);
             $row.find('.sales-tax-percent').val(defaultSaleGst.toFixed(2));
             $row.data('st_manual', false);
 
-            // Advance Tax: Filer (0.50%) vs Non-Filer (2.50%)
-            const isFiler = (window.currentCustomerIsFiler || window.currentCustomerHasNtn) ? true : false;
+            $row.data('has_further_tax', (data.has_further_tax !== undefined) ? !!data.has_further_tax : (!data.is_third_schedule && !isExempt && defaultSaleGst > 0));
+            $row.data('tax_sale_further_tax', isExempt ? 0 : data.tax_sale_further_tax);
+
             const filerRate = (data.tax_sale_adv_filer !== undefined && data.tax_sale_adv_filer !== null) ? parseFloat(data.tax_sale_adv_filer) : 0.50;
             const nonFilerRate = (data.tax_sale_adv_non_filer !== undefined && data.tax_sale_adv_non_filer !== null) ? parseFloat(data.tax_sale_adv_non_filer) : 2.50;
-            const defaultAdvRate = isFiler ? filerRate : nonFilerRate;
-
             $row.data('tax_sale_adv_filer', filerRate);
             $row.data('tax_sale_adv_non_filer', nonFilerRate);
-            $row.data('adv_rate', defaultAdvRate);
-            $row.find('.adv-tax-percent').val(defaultAdvRate.toFixed(2));
             $row.data('adv_manual', false);
 
-            if (data.is_third_schedule) {
-                $row.find('.urc-tax-value').val(0);
-                $row.find('.further-tax-percent').val(0);
-                $row.find('.further-tax-amount').val(0);
-            } else {
-                const isFtEnabled = (window.saleScreenConfig && window.saleScreenConfig.flags && window.saleScreenConfig.flags.further_tax !== undefined) ? window.saleScreenConfig.flags.further_tax : true;
-                let defaultFt = 0;
-                if (data.tax_sale_further_tax !== undefined && data.tax_sale_further_tax !== null) {
-                    defaultFt = parseFloat(data.tax_sale_further_tax) || 0;
-                } else if (data.has_further_tax) {
-                    defaultFt = (window.saleScreenConfig && window.saleScreenConfig.default_ft_rate !== undefined) ? window.saleScreenConfig.default_ft_rate : 4;
-                }
-                const ftRate = (!isFtEnabled || window.currentCustomerHasStrn) ? 0 : defaultFt;
-                $row.find('.urc-tax-value').val(ftRate);
-                $row.find('.further-tax-percent').val(ftRate);
+            // Compute initial matrix rates using getRowTaxConfig
+            const rowTax = window.getRowTaxConfig($row);
+            $row.data('adv_rate', rowTax.advanceTaxRate);
+            $row.find('.adv-tax-percent').val(rowTax.advanceTaxRate.toFixed(2));
+            $row.find('.urc-tax-value').val(rowTax.furtherTaxRate);
+            $row.find('.further-tax-percent').val(rowTax.furtherTaxRate);
+            if (rowTax.furtherTaxRate === 0) {
+                $row.find('.further-tax-amount').val('0.00');
             }
             
             setupRowQtyToggle($row, data.size_mode);

@@ -217,6 +217,7 @@ class SaleController extends Controller
             $purchaseGst = $taxType ? $taxType->getPurchaseGstRate() : 18.0;
 
             $product->is_third_schedule = $isThird ? 1 : 0;
+            $product->is_exempt = (bool) ($taxType && ($taxType->code === '0001' || stripos($taxType->title, 'exempt') !== false || (!$taxType->st_sale_active && !$isThird)));
             $product->tax_type_id = $product->tax_type_id;
             $product->tax_type_code = $taxType->code ?? null;
             $product->tax_type_title = $taxType->title ?? null;
@@ -1008,7 +1009,14 @@ class SaleController extends Controller
 
     public function saleinvoice($id)
     {
-        $sale = Sale::with(['customer_relation.salesOfficer'])->findOrFail($id);
+        $sale = Sale::with([
+            'customer_relation.salesOfficer',
+            'orderBooker',
+            'salesman',
+            'salesOfficer',
+            'items.product.category_relation',
+            'items.product.taxType'
+        ])->findOrFail($id);
         $items = $this->_getSaleItems($sale);
         $isEstimate = request()->query('type') === 'estimate';
 
@@ -2877,6 +2885,37 @@ class SaleController extends Controller
                 'sales_tax_amount' => (float) ($item->sales_tax_amount ?? 0),
                 'further_tax_percent' => (float) ($item->further_tax_percent ?? 0),
                 'further_tax_amount' => (float) ($item->further_tax_amount ?? 0),
+                'hs_code' => $item->product->hs_code ?? ($variant['hs_code'] ?? ($liveVariant['hs_code'] ?? '')),
+                'category_name' => $item->product->category_relation->name ?? ($item->category->name ?? ''),
+                'reg_disc_percent' => (float) ($item->reg_disc_percent ?? 0),
+                'reg_disc_amount' => (float) ($item->reg_disc_amount ?? 0),
+                'sp_disc_percent' => (float) ($item->sp_disc_percent ?? 0),
+                'sp_disc_amount' => (float) ($item->sp_disc_amount ?? 0),
+                'trade_activity' => (float) ($item->trade_activity ?? 0),
+                'trade_offer' => (float) ($item->trade_offer ?? 0),
+                'mrp_amount' => (float) ($item->mrp_amount ?? 0),
+                'adv_tax_percent' => (float) ($item->adv_tax_percent ?? 0),
+                'adv_tax_amount' => (float) ($item->adv_tax_amount ?? 0),
+                'tax_type' => (function() use ($item) {
+                    $rawTitle = strtoupper(trim($item->product->taxType->title ?? ''));
+                    $isNonThird = str_contains($rawTitle, 'NON THIRD') || str_contains($rawTitle, 'NON-THIRD') || str_contains($rawTitle, 'NON 3RD');
+                    $isThird = !$isNonThird && (
+                        ($item->product && (bool)$item->product->is_third_schedule) 
+                        || str_contains($rawTitle, 'THIRD SCHEDULE') 
+                        || str_contains($rawTitle, '3RD SCHEDULE') 
+                        || str_contains($rawTitle, 'MRP') 
+                        || (float)($item->mrp_amount ?? 0) > 0
+                    );
+                    $isExempt = str_contains($rawTitle, 'EXEMPT') || ((float)($item->sales_tax_percent ?? 0) == 0 && (float)($item->mrp_amount ?? 0) == 0);
+
+                    if ($isThird) {
+                        return 'MRP';
+                    } elseif ($isExempt) {
+                        return 'Exempt';
+                    } else {
+                        return 'Taxable';
+                    }
+                })(),
             ];
         });
     }

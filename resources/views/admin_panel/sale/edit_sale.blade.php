@@ -1808,7 +1808,12 @@
                                                     data-code="{{ $c->customer_id }}"
                                                     data-prev="{{ $c->previous_balance ?? 0 }}" 
                                                     data-range="{{ $c->balance_range ?? 0 }}"
-                                                    data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
+                                                    data-sales-officer="{{ $c->sales_officer_id ?? '' }}"
+                                                    data-strn="{{ $c->strn_number }}"
+                                                    data-ntn="{{ $c->ntn_number }}"
+                                                    data-filer="{{ $c->filer_type }}"
+                                                    data-is-registered="{{ $c->is_registered ? '1' : '0' }}"
+                                                    data-is-filer="{{ $c->is_filer ? '1' : '0' }}">
                                                 {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
                                             </option>
                                         @endforeach
@@ -2088,7 +2093,7 @@
 
                                 <!-- REGULAR DISC. AMT -->
                                 <td class="col-reg-disc-amt">
-                                    <input type="number" step="0.01" class="form-control reg-disc-amount text-start" name="reg_disc_amount[]" value="0.00" placeholder="0.00">
+                                    <input type="number" step="0.01" class="form-control reg-disc-amount text-start input-readonly" name="reg_disc_amount[]" value="0.00" placeholder="0.00" readonly tabindex="-1">
                                 </td>
 
                                 <!-- SP. DISC. % -->
@@ -2100,13 +2105,13 @@
 
                                 <!-- SPECIAL DISC. AMT -->
                                 <td class="col-sp-disc-amt">
-                                    <input type="number" step="0.01" class="form-control sp-disc-amount text-start" name="sp_disc_amount[]" value="0.00" placeholder="0.00">
+                                    <input type="number" step="0.01" class="form-control sp-disc-amount text-start input-readonly" name="sp_disc_amount[]" value="0.00" placeholder="0.00" readonly tabindex="-1">
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
                                 <!-- SALES TAX AMT (PKR) -->
                                 <td class="col-st">
-                                    <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)">
+                                    <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold input-readonly" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)" readonly tabindex="-1">
                                     <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
                                     <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="pkr">
                                     <input type="hidden" class="visible-st" value="0">
@@ -2114,25 +2119,21 @@
 
                                 <!-- MRP AMOUNT -->
                                 <td class="col-mrp">
-                                    <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)">
+                                    <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary input-readonly" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)" readonly tabindex="-1">
                                     <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
                                 </td>
 
                                 <!-- URC TAX AMOUNT -->
                                 <td class="col-ft">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control urc-tax-value text-start text-primary fw-semibold" name="further_tax_percent[]" value="0.00" placeholder="0" title="URC Tax (% or Amount)">
-                                        <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
-                                        <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
-                                    </div>
-                                    <div class="urc-pkr-display text-end text-primary fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated URC Tax Amount">PKR 0.00</div>
-                                    <input type="hidden" class="further-tax-percent" value="0.00">
-                                    <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0.00">
+                                    <input type="number" step="0.01" class="form-control further-tax-amount visible-ft text-start text-primary fw-semibold input-readonly" name="further_tax_amount[]" value="0.00" placeholder="0.00" title="URC Tax Amount (PKR)" readonly tabindex="-1">
+                                    <input type="hidden" class="further-tax-percent" name="further_tax_percent[]" value="0.00">
+                                    <input type="hidden" class="urc-tax-value" value="0.00">
+                                    <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
                                 </td>
 
                                 <!-- ADV. TAX AMT -->
                                 <td class="col-adv-tax">
-                                    <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)">
+                                    <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis input-readonly" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)" readonly tabindex="-1">
                                     <input type="hidden" class="adv-tax-percent" name="adv_tax_percent[]" value="0">
                                 </td>
 
@@ -2840,6 +2841,15 @@
                     if (typeof window.populateCustomerModalDetails === 'function') {
                         window.populateCustomerModalDetails();
                     }
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus({
+                            strn_number: $opt.attr('data-strn') || '',
+                            ntn_number: $opt.attr('data-ntn') || '',
+                            filer_type: $opt.attr('data-filer') || '',
+                            is_registered: $opt.attr('data-is-registered') === '1',
+                            is_filer: $opt.attr('data-is-filer') === '1'
+                        }, window.userExplicitlyChangedCustomer === true);
+                    }
                 }
 
                 $.get("{{ url('sale/customers') }}/" + id + "?t=" + new Date().getTime(), function(d) {
@@ -3462,6 +3472,9 @@
                 'sp_disc_amount' => isset($it->sp_disc_amount) ? (float) $it->sp_disc_amount : (float) ($it->discount_amount ?? 0),
                 'mrp_amount' => isset($it->mrp_amount) && $it->mrp_amount !== '' ? (float) $it->mrp_amount : 0,
                 'is_third_schedule' => (int) ((($prod && $prod->taxType) ? $prod->taxType->isThirdSchedule() : ($prod->is_third_schedule ?? false)) || (isset($it->mrp_amount) && (float) $it->mrp_amount > 0) ? 1 : 0),
+                'is_exempt' => (int) ((($prod && $prod->taxType) ? ($prod->taxType->code === '0001' || stripos($prod->taxType->title, 'exempt') !== false || (!$prod->taxType->st_sale_active && !$prod->taxType->isThirdSchedule())) : false) || (isset($it->sales_tax_percent) && (float)$it->sales_tax_percent === 0.0 && !(isset($it->mrp_amount) && (float)$it->mrp_amount > 0)) ? 1 : 0),
+                'tax_type_code' => ($prod && $prod->taxType) ? $prod->taxType->code : null,
+                'tax_type_title' => ($prod && $prod->taxType) ? $prod->taxType->title : null,
                 'adv_tax_percent' => isset($it->adv_tax_percent) && $it->adv_tax_percent !== '' ? (float) $it->adv_tax_percent : 0,
                 'adv_tax_amount' => isset($it->adv_tax_amount) && $it->adv_tax_amount !== '' ? (float) $it->adv_tax_amount : 0,
                 'batch_id' => $it->batch_id ?? null,
@@ -3609,9 +3622,10 @@
                 var ftAmt = (it.further_tax_amount !== undefined && it.further_tax_amount !== null) ? parseFloat(it.further_tax_amount) : 0;
                 $row.find('.further-tax-percent').val(ftPct);
                 $row.find('.urc-tax-value').val(ftPct);
-                $row.find('.further-tax-amount').val(ftAmt.toFixed(2));
-                $row.find('.visible-ft').val(ftAmt.toFixed(2));
-                $row.find('.urc-pkr-display').text('PKR ' + ftAmt.toFixed(2));
+                $row.find('.further-tax-amount, .visible-ft').val(ftAmt.toFixed(2));
+                if ($row.find('.urc-pkr-display').length) {
+                    $row.find('.urc-pkr-display').text('PKR ' + ftAmt.toFixed(2));
+                }
                 if (it.exclusive_gst_amount !== undefined && it.exclusive_gst_amount !== null) {
                     $row.find('.exclusive-gst-amount').val(it.exclusive_gst_amount);
                 }
@@ -3626,6 +3640,11 @@
                 const is3rd = Boolean(parseInt(it.is_third_schedule, 10) === 1);
                 $row.data('is_third_schedule', is3rd);
                 $row.find('.hidden-is-third-schedule').val(is3rd ? '1' : '0');
+                const isExempt = Boolean(parseInt(it.is_exempt, 10) === 1 || (parseFloat(it.sales_tax_percent || 0) === 0 && !is3rd));
+                $row.data('is_exempt', isExempt);
+                if (it.tax_type_code) $row.data('tax_type_code', it.tax_type_code);
+                if (it.tax_type_title) $row.data('tax_type_title', it.tax_type_title);
+                $row.data('default_tax_rate', isExempt ? 0 : parseFloat(it.sales_tax_percent || 18));
 
                 if (is3rd) {
                     let mrpVal = (it.mrp_amount !== undefined && it.mrp_amount !== null && parseFloat(it.mrp_amount) > 0) ? parseFloat(it.mrp_amount) : 0;
@@ -3665,9 +3684,10 @@
                 if (parseFloat(it.further_tax_percent || 0) === 0 && parseFloat(it.further_tax_amount || 0) === 0) {
                     $row.find('.further-tax-percent').val(0);
                     $row.find('.urc-tax-value').val(0);
-                    $row.find('.further-tax-amount').val('0.00');
-                    $row.find('.visible-ft').val('0.00');
-                    $row.find('.urc-pkr-display').text('PKR 0.00');
+                    $row.find('.further-tax-amount, .visible-ft').val('0.00');
+                    if ($row.find('.urc-pkr-display').length) {
+                        $row.find('.urc-pkr-display').text('PKR 0.00');
+                    }
                 }
             }
 

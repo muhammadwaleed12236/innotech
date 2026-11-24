@@ -440,7 +440,12 @@
                                                         data-code="{{ $c->customer_id }}"
                                                         data-prev="{{ $c->previous_balance ?? 0 }}" 
                                                         data-range="{{ $c->balance_range ?? 0 }}"
-                                                        data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
+                                                        data-sales-officer="{{ $c->sales_officer_id ?? '' }}"
+                                                        data-strn="{{ $c->strn_number }}"
+                                                        data-ntn="{{ $c->ntn_number }}"
+                                                        data-filer="{{ $c->filer_type }}"
+                                                        data-is-registered="{{ $c->is_registered ? '1' : '0' }}"
+                                                        data-is-filer="{{ $c->is_filer ? '1' : '0' }}">
                                                     {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
                                                 </option>
                                             @endforeach
@@ -1038,13 +1043,23 @@ $(document).ready(function() {
         });
     }
 
-    // Auto-sync Order Booker when Customer is selected
+    // Auto-sync Order Booker and tax status when Customer is selected
     $(document).on('change', '#customerSelect', function() {
         const $opt = $(this).find('option:selected');
         const officerId = $opt.attr('data-sales-officer');
         if (officerId) {
             $('#orderBookerSelect').val(officerId);
             $('#salesOfficerHidden').val(officerId);
+        }
+        if (typeof window.applyCustomerTaxStatus === 'function') {
+            const hasData = Boolean($opt.length && $opt.val());
+            window.applyCustomerTaxStatus(hasData ? {
+                strn_number: $opt.attr('data-strn') || '',
+                ntn_number: $opt.attr('data-ntn') || '',
+                filer_type: $opt.attr('data-filer') || '',
+                is_registered: $opt.attr('data-is-registered') === '1',
+                is_filer: $opt.attr('data-is-filer') === '1'
+            } : null, true);
         }
     });
 

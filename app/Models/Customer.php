@@ -17,6 +17,28 @@ class Customer extends Model
         'payment_reminder_date', 'reminder_snoozed_at', 'reminder_day', 'source', 'province', 'city', 'area'
     ];
 
+    protected $appends = ['strn_number', 'ntn_number', 'is_registered', 'is_filer'];
+
+    public function getStrnNumberAttribute()
+    {
+        return $this->getCustomValue('strn_number');
+    }
+
+    public function getNtnNumberAttribute()
+    {
+        return $this->getCustomValue('ntn_number');
+    }
+
+    public function getIsRegisteredAttribute(): bool
+    {
+        return !empty(trim((string) $this->strn_number));
+    }
+
+    public function getIsFilerAttribute(): bool
+    {
+        return strtolower((string) $this->filer_type) === 'filer' || !empty(trim((string) $this->ntn_number));
+    }
+
     
     public function getNameAttribute()
     {

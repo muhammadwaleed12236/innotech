@@ -61,6 +61,8 @@ class CustomerController extends Controller
         $data['strn_number'] = $customValues['strn_number'] ?? $customer->strn_number ?? '';
         $data['cnic'] = $customValues['cnic'] ?? $customer->cnic ?? '';
         $data['filer_type'] = $customValues['filer_type'] ?? $customer->filer_type ?? '';
+        $data['is_registered'] = !empty(trim((string)$data['strn_number']));
+        $data['is_filer'] = strtolower((string)$data['filer_type']) === 'filer' || !empty(trim((string)$data['ntn_number']));
 
         // Map status to remarks if needed by frontend
         $data['remarks'] = $customer->status ?? '';

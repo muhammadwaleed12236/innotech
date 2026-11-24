@@ -1835,7 +1835,12 @@
                                                     data-code="{{ $c->customer_id }}"
                                                     data-prev="{{ $c->previous_balance ?? 0 }}" 
                                                     data-range="{{ $c->balance_range ?? 0 }}"
-                                                    data-sales-officer="{{ $c->sales_officer_id ?? '' }}">
+                                                    data-sales-officer="{{ $c->sales_officer_id ?? '' }}"
+                                                    data-strn="{{ $c->strn_number }}"
+                                                    data-ntn="{{ $c->ntn_number }}"
+                                                    data-filer="{{ $c->filer_type }}"
+                                                    data-is-registered="{{ $c->is_registered ? '1' : '0' }}"
+                                                    data-is-filer="{{ $c->is_filer ? '1' : '0' }}">
                                                 {{ $c->customer_id ? $c->customer_id . ' — ' : '' }}{{ $c->customer_name }} {{ $c->mobile ? '(' . $c->mobile . ')' : '' }}
                                             </option>
                                         @endforeach
@@ -2115,7 +2120,7 @@
 
                                 <!-- REGULAR DISC. AMT -->
                                 <td class="col-reg-disc-amt">
-                                    <input type="number" step="0.01" class="form-control reg-disc-amount text-start" name="reg_disc_amount[]" value="0.00" placeholder="0.00">
+                                    <input type="number" step="0.01" class="form-control reg-disc-amount text-start input-readonly" name="reg_disc_amount[]" value="0.00" placeholder="0.00" readonly tabindex="-1">
                                 </td>
 
                                 <!-- SP. DISC. % -->
@@ -2127,13 +2132,13 @@
 
                                 <!-- SPECIAL DISC. AMT -->
                                 <td class="col-sp-disc-amt">
-                                    <input type="number" step="0.01" class="form-control sp-disc-amount text-start" name="sp_disc_amount[]" value="0.00" placeholder="0.00">
+                                    <input type="number" step="0.01" class="form-control sp-disc-amount text-start input-readonly" name="sp_disc_amount[]" value="0.00" placeholder="0.00" readonly tabindex="-1">
                                     <input type="hidden" class="discount-amount" value="0">
                                 </td>
 
                                 <!-- SALES TAX AMT (PKR) -->
                                 <td class="col-st">
-                                    <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)">
+                                    <input type="number" step="0.01" class="form-control sales-tax-amount text-start text-success fw-semibold input-readonly" name="sales_tax_amount[]" value="0.00" placeholder="0.00" title="Sales Tax Amount (PKR)" readonly tabindex="-1">
                                     <input type="hidden" class="sales-tax-percent" name="sales_tax_percent[]" value="0.00">
                                     <input type="hidden" class="sales-tax-type-hidden" name="sales_tax_type[]" value="pkr">
                                     <input type="hidden" class="visible-st" value="0">
@@ -2141,25 +2146,21 @@
 
                                 <!-- MRP AMOUNT -->
                                 <td class="col-mrp">
-                                    <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)">
+                                    <input type="number" step="0.01" class="form-control visible-mrp mrp-amount text-start fw-semibold text-primary input-readonly" name="mrp_amount[]" value="0.00" placeholder="0.00" title="Retail Amount (MRP)" readonly tabindex="-1">
                                     <input type="hidden" class="hidden-is-third-schedule" name="is_third_schedule[]" value="0">
                                 </td>
 
                                 <!-- URC TAX AMOUNT -->
                                 <td class="col-ft">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" step="0.01" class="form-control urc-tax-value text-start text-primary fw-semibold" name="further_tax_percent[]" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}" placeholder="0" title="URC Tax (% or Amount)">
-                                        <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
-                                        <button type="button" class="btn btn-outline-primary urc-toggle px-1 py-0 fw-bold" data-type="percent" tabindex="-1" title="Toggle % or PKR" style="font-size: 10px;">%</button>
-                                    </div>
-                                    <div class="urc-pkr-display text-end text-primary fw-bold font-monospace" style="font-size: 10.5px; line-height: 1.1; margin-top: 2px;" title="Calculated URC Tax Amount">PKR 0.00</div>
-                                    <input type="hidden" class="further-tax-percent" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}">
-                                    <input type="hidden" class="further-tax-amount" name="further_tax_amount[]" value="0">
+                                    <input type="number" step="0.01" class="form-control further-tax-amount visible-ft text-start text-primary fw-semibold input-readonly" name="further_tax_amount[]" value="0.00" placeholder="0.00" title="URC Tax Amount (PKR)" readonly tabindex="-1">
+                                    <input type="hidden" class="further-tax-percent" name="further_tax_percent[]" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}">
+                                    <input type="hidden" class="urc-tax-value" value="{{ (float)($saleConfig['default_ft_rate'] ?? 4) }}">
+                                    <input type="hidden" class="urc-type-hidden" name="further_tax_type[]" value="percent">
                                 </td>
 
                                 <!-- ADV. TAX AMT -->
                                 <td class="col-adv-tax">
-                                    <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)">
+                                    <input type="number" step="0.01" class="form-control adv-tax-amount text-start fw-semibold text-danger-emphasis input-readonly" name="adv_tax_amount[]" value="0.00" placeholder="0.00" title="Advance Tax (236G/H)" readonly tabindex="-1">
                                     <input type="hidden" class="adv-tax-percent" name="adv_tax_percent[]" value="0">
                                 </td>
 
@@ -2863,6 +2864,15 @@
                     }
                     if (typeof window.populateCustomerModalDetails === 'function') {
                         window.populateCustomerModalDetails();
+                    }
+                    if (typeof window.applyCustomerTaxStatus === 'function') {
+                        window.applyCustomerTaxStatus({
+                            strn_number: $opt.attr('data-strn') || '',
+                            ntn_number: $opt.attr('data-ntn') || '',
+                            filer_type: $opt.attr('data-filer') || '',
+                            is_registered: $opt.attr('data-is-registered') === '1',
+                            is_filer: $opt.attr('data-is-filer') === '1'
+                        }, true);
                     }
                 }
 
