@@ -145,7 +145,6 @@ class User extends Authenticatable
 
         return $this->hasRole('Super Admin')
             || $this->hasRole('superAdmin')
-            || $this->hasRole('admin')
             || $this->hasRole('superadmin')
             || $this->email === 'superadmin@example.com'
             || $this->email === 'admin@admin.com';

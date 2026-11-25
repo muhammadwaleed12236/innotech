@@ -2397,6 +2397,10 @@ class ReportingController extends Controller
         $productId = $request->product_id;
         $vendorId = $request->vendor_id;
 
+        $user = auth()->user();
+        $isSuperAdmin = $user ? $user->isSuperAdmin() : false;
+        $effectiveBranchId = (!$isSuperAdmin && $user && method_exists($user, 'getEffectiveBranchId')) ? $user->getEffectiveBranchId() : null;
+
         $query = DB::table('purchases')
             ->join('purchase_items', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->leftJoin('products', 'purchase_items.product_id', '=', 'products.id')
@@ -2420,6 +2424,16 @@ class ReportingController extends Controller
                 'purchases.paid_amount',
                 'purchases.due_amount'
             );
+
+        if (!$isSuperAdmin) {
+            if ($effectiveBranchId) {
+                $query->where('purchases.branch_id', $effectiveBranchId);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $query->where('purchases.branch_id', $request->branch_id);
+        }
 
         if ($startDate && $endDate) {
             $query->whereDate('purchases.purchase_date', '>=', $startDate)

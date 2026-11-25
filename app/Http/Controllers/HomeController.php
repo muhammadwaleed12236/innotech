@@ -445,15 +445,24 @@ class HomeController extends Controller
                     ->sum('net_amount');
 
                 if ($user->can('purchase.returns.view')) {
-                    $prQuery = DB::table('purchase_returns');
-                    if ($filterPeriod !== 'all') {
-                        $prQuery->whereBetween('return_date', [$startDateOnly, $endDateOnly]);
+                    $prQuery = DB::table('purchase_returns')
+                        ->join('purchases', 'purchases.id', '=', 'purchase_returns.purchase_id');
+                    if ($currentBranchId !== null) {
+                        $prQuery->where('purchases.branch_id', $currentBranchId);
                     }
-                    $purchasesReturnsPeriod = (float) $prQuery->sum('net_amount');
+                    if ($filterPeriod !== 'all') {
+                        $prQuery->whereBetween('purchase_returns.return_date', [$startDateOnly, $endDateOnly]);
+                    }
+                    $purchasesReturnsPeriod = (float) $prQuery->sum('purchase_returns.net_amount');
 
-                    $purchasesReturnsPrevPeriod = (float) DB::table('purchase_returns')
-                        ->whereBetween('return_date', [$prevStartDateOnly, $prevEndDateOnly])
-                        ->sum('net_amount');
+                    $prPrevQuery = DB::table('purchase_returns')
+                        ->join('purchases', 'purchases.id', '=', 'purchase_returns.purchase_id');
+                    if ($currentBranchId !== null) {
+                        $prPrevQuery->where('purchases.branch_id', $currentBranchId);
+                    }
+                    $purchasesReturnsPrevPeriod = (float) $prPrevQuery
+                        ->whereBetween('purchase_returns.return_date', [$prevStartDateOnly, $prevEndDateOnly])
+                        ->sum('purchase_returns.net_amount');
                 }
 
                 // Net purchases matching PurchaseController logic
@@ -500,25 +509,44 @@ class HomeController extends Controller
             $expenseBreakdown = collect();
 
             if ($user->can('expense.voucher.view') || $user->can('vouchers.view') || $user->can('all.vouchers.view')) {
-                $expensesTodayV1 = (float) DB::table('expense_vouchers')->whereDate('entry_date', $today)->sum('total_amount');
-                $expensesTodayV2 = (float) DB::table('voucher_masters')->where('voucher_type', 'expense')->whereDate('date', $today)->sum('total_amount');
-                $expensesToday = $expensesTodayV1 + $expensesTodayV2;
+                $expTodayV1 = DB::table('expense_vouchers')->whereDate('entry_date', $today);
+                $expTodayV2 = DB::table('voucher_masters')->where('voucher_type', 'expense')->whereDate('date', $today);
+                if ($currentBranchId !== null) {
+                    $expTodayV1->where('branch_id', $currentBranchId);
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id')) {
+                        $expTodayV2->where('branch_id', $currentBranchId);
+                    }
+                }
+                $expensesToday = (float)$expTodayV1->sum('total_amount') + (float)$expTodayV2->sum('total_amount');
 
                 $expV1Query = DB::table('expense_vouchers');
                 $expV2Query = DB::table('voucher_masters')->where('voucher_type', 'expense');
+                if ($currentBranchId !== null) {
+                    $expV1Query->where('branch_id', $currentBranchId);
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id')) {
+                        $expV2Query->where('branch_id', $currentBranchId);
+                    }
+                }
                 if ($filterPeriod !== 'all') {
                     $expV1Query->whereBetween('entry_date', [$startDateOnly, $endDateOnly]);
                     $expV2Query->whereBetween('date', [$startDateOnly, $endDateOnly]);
                 }
-                $expV1Period = (float) $expV1Query->sum('total_amount');
-                $expV2Period = (float) $expV2Query->sum('total_amount');
-                $expensesPeriod = $expV1Period + $expV2Period;
+                $expensesPeriod = (float)$expV1Query->sum('total_amount') + (float)$expV2Query->sum('total_amount');
 
-                $expV1Prev = (float) DB::table('expense_vouchers')->whereBetween('entry_date', [$prevStartDateOnly, $prevEndDateOnly])->sum('total_amount');
-                $expV2Prev = (float) DB::table('voucher_masters')->where('voucher_type', 'expense')->whereBetween('date', [$prevStartDateOnly, $prevEndDateOnly])->sum('total_amount');
-                $expensesPrevPeriod = $expV1Prev + $expV2Prev;
+                $expV1Prev = DB::table('expense_vouchers')->whereBetween('entry_date', [$prevStartDateOnly, $prevEndDateOnly]);
+                $expV2Prev = DB::table('voucher_masters')->where('voucher_type', 'expense')->whereBetween('date', [$prevStartDateOnly, $prevEndDateOnly]);
+                if ($currentBranchId !== null) {
+                    $expV1Prev->where('branch_id', $currentBranchId);
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id')) {
+                        $expV2Prev->where('branch_id', $currentBranchId);
+                    }
+                }
+                $expensesPrevPeriod = (float)$expV1Prev->sum('total_amount') + (float)$expV2Prev->sum('total_amount');
 
                 $expenseBreakdownQuery = DB::table('expense_vouchers');
+                if ($currentBranchId !== null) {
+                    $expenseBreakdownQuery->where('branch_id', $currentBranchId);
+                }
                 if ($filterPeriod !== 'all') {
                     $expenseBreakdownQuery->whereBetween('entry_date', [$startDateOnly, $endDateOnly]);
                 }
@@ -640,9 +668,12 @@ class HomeController extends Controller
                     }
                 }
                 if ($totalPayables <= 0) {
-                    $totalPayables = (float) DB::table('purchases')
-                        ->whereNotIn('status_purchase', ['cancelled', 'draft'])
-                        ->sum('due_amount');
+                    $totalPayablesQuery = DB::table('purchases')
+                        ->whereNotIn('status_purchase', ['cancelled', 'draft']);
+                    if ($currentBranchId !== null) {
+                        $totalPayablesQuery->where('branch_id', $currentBranchId);
+                    }
+                    $totalPayables = (float) $totalPayablesQuery->sum('due_amount');
                 }
             }
 
@@ -986,7 +1017,8 @@ class HomeController extends Controller
             // 14. MULTI-BRANCH ENTERPRISE MATRIX
             $multiBranchesSummary = collect();
             $totEnterpriseSales = 0;
-            foreach ($allBranches as $b) {
+            $branchesToSummarize = $isSuperAdmin ? $allBranches : ($currentBranchId ? $allBranches->where('id', $currentBranchId) : collect());
+            foreach ($branchesToSummarize as $b) {
                 $bSales = (float) DB::table('sales')
                     ->where('branch_id', $b->id)
                     ->whereBetween('created_at', [$startDtStr, $endDtStr])
@@ -1343,6 +1375,11 @@ class HomeController extends Controller
         if ($effectiveBranchId) {
             $salesQuery->where('branch_id', $effectiveBranchId);
             $purchasesQuery->where('branch_id', $effectiveBranchId);
+            $expensesQuery->where('branch_id', $effectiveBranchId);
+        } elseif (!$isSuperAdmin) {
+            $salesQuery->whereRaw('1 = 0');
+            $purchasesQuery->whereRaw('1 = 0');
+            $expensesQuery->whereRaw('1 = 0');
         }
 
         $salesToday = (float) $salesQuery->sum('total_net');

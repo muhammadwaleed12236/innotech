@@ -23,6 +23,18 @@ class SaleController extends Controller
         $query = Sale::with(['customer_relation', 'items.product', 'returns'])
             ->whereIn('sale_status', ['draft', 'booked', 'posted', 'returned', 'quotation']);
 
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            $effectiveBranchId = $user->getEffectiveBranchId();
+            if ($effectiveBranchId) {
+                $query->where('branch_id', $effectiveBranchId);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $query->where('branch_id', $request->branch_id);
+        }
+
         // Apply Status Filter
         if ($request->has('status') && $request->status != 'all') {
             $query->where('sale_status', $request->status);

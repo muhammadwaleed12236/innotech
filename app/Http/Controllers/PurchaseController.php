@@ -78,6 +78,18 @@ class PurchaseController extends Controller
     {
         $query = Purchase::with(['branch', 'warehouse', 'vendor', 'items', 'returns']);
 
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            $effectiveBranchId = $user->getEffectiveBranchId();
+            if ($effectiveBranchId) {
+                $query->where('branch_id', $effectiveBranchId);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $query->where('branch_id', $request->branch_id);
+        }
+
         if ($request->has('status') && $request->status != 'all') {
             $query->where('status_purchase', $request->status);
         }
@@ -196,10 +208,26 @@ class PurchaseController extends Controller
 
     public function add_purchase()
     {
-        // $userId = Auth::id();
-        $Purchase = Purchase::get();
+        $user = auth()->user();
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
+
+        $Purchase = Purchase::latest()->limit(50)->get();
         $Vendor = Vendor::get();
-        $Warehouse = Warehouse::all();
+
+        $warehouseQuery = Warehouse::query();
+        if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+            $warehouseQuery->where('branch_id', $effectiveBranchId);
+        }
+        $Warehouse = $warehouseQuery->get();
+        if ($Warehouse->isEmpty() && $effectiveBranchId) {
+            $branchName = $user->effective_branch?->name ?? ('Branch #' . $effectiveBranchId);
+            $newWh = Warehouse::firstOrCreate(
+                ['branch_id' => $effectiveBranchId, 'warehouse_name' => $branchName . ' Store'],
+                ['creater_id' => $user->id ?? 1]
+            );
+            $Warehouse = collect([$newWh]);
+        }
+
         $allProducts = \App\Models\Product::where('is_active', true)
             ->withSum('warehouseStocks', 'total_pieces')
             ->orderBy('item_name')
@@ -224,8 +252,23 @@ class PurchaseController extends Controller
     }
     public function quickCreate()
     {
+        $user = auth()->user();
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
+
         $Vendor = Vendor::get();
-        $Warehouse = Warehouse::get();
+        $warehouseQuery = Warehouse::query();
+        if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+            $warehouseQuery->where('branch_id', $effectiveBranchId);
+        }
+        $Warehouse = $warehouseQuery->get();
+        if ($Warehouse->isEmpty() && $effectiveBranchId) {
+            $branchName = $user->effective_branch?->name ?? ('Branch #' . $effectiveBranchId);
+            $newWh = Warehouse::firstOrCreate(
+                ['branch_id' => $effectiveBranchId, 'warehouse_name' => $branchName . ' Store'],
+                ['creater_id' => $user->id ?? 1]
+            );
+            $Warehouse = collect([$newWh]);
+        }
         $accounts = \App\Models\Account::whereHas('head', function($q) {
             $q->whereIn('name', ['Cash', 'Bank']);
         })->where('status', 1)->orderBy('title')->get();
@@ -301,8 +344,16 @@ class PurchaseController extends Controller
                 ? 'PUR-'.str_pad(((int) preg_replace('/[^0-9]/', '', $lastInvoice)) + 1, 3, '0', STR_PAD_LEFT)
                 : 'PUR-001';
 
+            $user = auth()->user();
+            $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
+            if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+                $branchId = (int) $effectiveBranchId;
+            } else {
+                $branchId = (int) ($request->branch_id ?? ($effectiveBranchId ?: 1));
+            }
+
             $purchase = Purchase::create([
-                'branch_id' => 1,
+                'branch_id' => $branchId,
                 'warehouse_id' => (int) ($request->warehouse_id ?: 1),
                 'vendor_id' => $vendorId,
                 'purchase_date' => now(),

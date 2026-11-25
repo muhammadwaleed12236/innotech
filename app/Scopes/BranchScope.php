@@ -35,6 +35,9 @@ class BranchScope implements Scope
         $branchId = method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
         if ($branchId) {
             $builder->where($model->getTable() . '.branch_id', $branchId);
+        } else {
+            // Non-superadmin without an assigned branch cannot see any data
+            $builder->whereRaw('1 = 0');
         }
     }
 }
