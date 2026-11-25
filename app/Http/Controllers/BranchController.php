@@ -87,6 +87,16 @@ class BranchController extends Controller
             }
         }
 
+        // Ensure every branch has a designated warehouse
+        \App\Models\Warehouse::withoutGlobalScopes()->firstOrCreate(
+            ['branch_id' => $branch->id],
+            [
+                'warehouse_name' => $branch->name . ' Store',
+                'creater_id' => $request->user_id ?? (auth()->id() ?: 1),
+                'location' => $branch->address ?? 'Main',
+            ]
+        );
+
         return response()->json($msg);
         
     }

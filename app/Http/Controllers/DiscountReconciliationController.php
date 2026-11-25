@@ -57,6 +57,18 @@ class DiscountReconciliationController extends Controller
         // 1. Fetch Purchases in period (flexible date filtering)
         $purchasesQuery = Purchase::with(['vendor', 'items.product']);
 
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            $effectiveBranchId = $user->getEffectiveBranchId();
+            if ($effectiveBranchId) {
+                $purchasesQuery->where('branch_id', $effectiveBranchId);
+            } else {
+                $purchasesQuery->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $purchasesQuery->where('branch_id', $request->branch_id);
+        }
+
         if ($request->filled('date_from')) {
             $purchasesQuery->whereDate('purchase_date', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));
         }
@@ -754,6 +766,18 @@ class DiscountReconciliationController extends Controller
         $selectedHead = $request->filled('head') ? trim($request->input('head')) : null;
 
         $purchasesQuery = Purchase::with(['vendor', 'items.product']);
+
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            $effectiveBranchId = $user->getEffectiveBranchId();
+            if ($effectiveBranchId) {
+                $purchasesQuery->where('branch_id', $effectiveBranchId);
+            } else {
+                $purchasesQuery->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $purchasesQuery->where('branch_id', $request->branch_id);
+        }
 
         if ($request->filled('date_from')) {
             $purchasesQuery->whereDate('purchase_date', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));

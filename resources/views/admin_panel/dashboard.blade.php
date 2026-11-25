@@ -1674,11 +1674,11 @@
                 <div class="pw-card-title-group">
                     <i class="fas fa-network-wired pw-card-title-icon text-primary"></i>
                     <div>
-                        <h5 class="pw-card-title">Multi-Branch Operations</h5>
-                        <p class="text-muted mb-0" style="font-size: 11.5px; font-weight: 500;">Live sales &amp; procurement sync across distribution nodes</p>
+                        <h5 class="pw-card-title">{{ $isSuperAdmin ? 'Multi-Branch Operations' : 'Branch Node Status' }}</h5>
+                        <p class="text-muted mb-0" style="font-size: 11.5px; font-weight: 500;">{{ $isSuperAdmin ? 'Live sales & procurement sync across distribution nodes' : 'Active branch operational metrics & warehouse node' }}</p>
                     </div>
                 </div>
-                <span class="pw-live-indicator"><span class="pw-pulse-dot"></span> {{ $allBranches->count() }} ACTIVE NODES</span>
+                <span class="pw-live-indicator"><span class="pw-pulse-dot"></span> {{ $isSuperAdmin ? $allBranches->count() . ' ACTIVE NODES' : 'BRANCH NODE' }}</span>
             </div>
 
             <!-- Branch List Cards -->

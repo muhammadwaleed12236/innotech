@@ -10,6 +10,11 @@ class Warehouse extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new \App\Scopes\BranchScope);
+    }
+
     protected $guarded = [];
 
     public function user()

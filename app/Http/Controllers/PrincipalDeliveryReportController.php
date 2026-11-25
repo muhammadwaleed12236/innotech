@@ -228,6 +228,18 @@ class PrincipalDeliveryReportController extends Controller
             ->orderBy('purchase_date', 'asc')
             ->orderBy('id', 'asc');
 
+        $user = auth()->user();
+        if ($user && !$user->isSuperAdmin()) {
+            $effectiveBranchId = $user->getEffectiveBranchId();
+            if ($effectiveBranchId) {
+                $query->where('branch_id', $effectiveBranchId);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $query->where('branch_id', $request->branch_id);
+        }
+
         if ($request->filled('date_from')) {
             $query->whereDate('purchase_date', '>=', Carbon::parse($request->date_from)->format('Y-m-d'));
         }
