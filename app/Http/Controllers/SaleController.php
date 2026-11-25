@@ -2877,6 +2877,10 @@ class SaleController extends Controller
                 }
             }
 
+            $totPcs = (float) $item->total_pieces;
+            $grAmount = (float) ($item->gross_amount ?? 0);
+            $piecePrice = ($totPcs > 0 && $grAmount > 0) ? round($grAmount / $totPcs, 2) : (float) $item->price;
+
             return [
                 'is_manual' => $item->is_manual,
                 'product_id' => $item->product_id,
@@ -2888,7 +2892,7 @@ class SaleController extends Controller
                 'qty_box' => (float) $item->qty, // Store Box Count separately
                 'total_pieces' => (int) $item->total_pieces,
                 'loose_pieces' => (int) $item->loose_pieces,
-                'price' => (float) $item->price, // Price Per Piece / Unit
+                'price' => $piecePrice, // Price Per Piece / Unit
                 'discount' => (float) $item->discount_percent, // Legacy
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,

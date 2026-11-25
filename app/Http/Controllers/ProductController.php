@@ -209,13 +209,8 @@ class ProductController extends Controller
                 default => 'Pcs',
             };
 
-            $stockDisplay = $stockPieces > 0 ? (rtrim(rtrim(number_format($stockPieces, 2), '0'), '.') . ' Pcs') : '0 Pcs';
-            if ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $ppb > 1) {
-                $boxes = floor($stockPieces / $ppb);
-                $loose = (int) ($stockPieces % $ppb);
-                $boxText = $loose > 0 ? "{$boxes}.{$loose} Ctn" : "{$boxes} Ctn";
-                $stockDisplay = "{$boxText} (" . round($stockPieces) . " Pcs)";
-            } elseif ($p->size_mode === 'by_kg') {
+            $stockDisplay = $stockPieces > 0 ? (round($stockPieces) . ' Pcs') : '0 Pcs';
+            if ($p->size_mode === 'by_kg') {
                 $s = (float) $stockPieces;
                 $stockDisplay = $s < 1 && $s > 0 ? "{$s} Kg (" . round($s * 1000) . " Gm)" : "{$s} Kg";
             }
@@ -428,11 +423,6 @@ class ProductController extends Controller
                             $pcsCount = (int) floor($vBalance);
                             $vStockDisplay = "{$pcsCount}";
                         }
-                    } elseif ((in_array($p->size_mode, ['by_cartons', 'by_bandal']) || $p->size_mode === 'by_size') && $vPpb > 1) {
-                        $vBoxes = (int) floor($vBalance / $vPpb);
-                        $vLoose = (int) round($vBalance - ($vBoxes * $vPpb));
-                        $vBoxText = $vLoose > 0 ? "{$vBoxes}.{$vLoose} Ctn" : "{$vBoxes} Ctn";
-                        $vStockDisplay = "{$vBoxText} (" . round($vBalance) . " Pcs)";
                     } else {
                         $vStockDisplay = round($vBalance) . " Pcs";
                     }

@@ -3391,14 +3391,7 @@
                 $matched = $it->warehouse_id ? $ws->firstWhere('warehouse_id', $it->warehouse_id) : null;
                 $vStock = $matched ? (float) $matched->total_pieces : (float) $ws->sum('total_pieces');
             }
-            if ($vStock > 0 && in_array($it->size_mode, ['by_cartons', 'by_bandal']) && $ppb > 1) {
-                $boxes = floor($vStock / $ppb);
-                $loose = (int) ($vStock % $ppb);
-                $boxText = $loose > 0 ? "{$boxes}.{$loose} Ctn" : "{$boxes} Ctn";
-                $stockDisplay = "{$boxText} (" . round($vStock) . " Pcs)";
-            } else {
-                $stockDisplay = $vStock > 0 ? (rtrim(rtrim(number_format($vStock, 2), '0'), '.') . ' Pcs') : '0 Pcs';
-            }
+            $stockDisplay = $vStock > 0 ? (round($vStock) . ' Pcs') : '0 Pcs';
 
             $baseName = $it->product_name ?: ($prod->item_name ?? 'Product #'.$it->product_id);
             $displayName = $baseName;
@@ -3569,24 +3562,32 @@
                 var cartonQty, priceDisplay;
                 var looseQty = 0;
 
+                var ppb = it.ppb > 0 ? it.ppb : 1;
+                var totalPcs = parseFloat(it.total_pieces) || 0;
+                var rawGross = parseFloat(it.gross_amount) || 0;
+                var rawPrice = parseFloat(it.price) || 0;
+
+                // Always calculate Price Per Piece
+                if (totalPcs > 0 && rawGross > 0) {
+                    priceDisplay = rawGross / totalPcs;
+                } else if (['by_cartons', 'by_bandal'].includes(it.size_mode) && ppb > 1 && rawPrice > 0 && rawPrice > (parseFloat(it.retail_price) || 0) * 1.5) {
+                    priceDisplay = rawPrice / ppb;
+                } else if (rawPrice > 0) {
+                    priceDisplay = rawPrice;
+                } else {
+                    priceDisplay = parseFloat(it.retail_price) || 0;
+                }
+
                 if (['by_cartons', 'by_bandal'].includes(it.size_mode)) {
-                    var ppb = it.ppb > 0 ? it.ppb : 1;
-                    var totalPcs = parseFloat(it.total_pieces) || 0;
                     var boxes = Math.floor(totalPcs / ppb);
                     var loose = Math.round(totalPcs % ppb);
                     cartonQty = boxes;
                     looseQty = (it.loose_pieces !== undefined && it.loose_pieces !== null && parseFloat(it.loose_pieces) > 0)
                         ? parseFloat(it.loose_pieces)
                         : loose;
-                    priceDisplay = (it.price !== undefined && parseFloat(it.price) > 0)
-                        ? parseFloat(it.price)
-                        : (it.retail_price > 0 ? (it.retail_price * ppb) : 0);
                 } else {
-                    cartonQty = parseFloat(it.total_pieces) || 0;
+                    cartonQty = totalPcs;
                     looseQty = 0;
-                    priceDisplay = (it.price !== undefined && parseFloat(it.price) > 0)
-                        ? parseFloat(it.price)
-                        : (it.retail_price > 0 ? parseFloat(it.retail_price) : 0);
                 }
 
                 $row.find('.carton-qty').val(cartonQty);

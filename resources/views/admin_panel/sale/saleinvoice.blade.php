@@ -435,10 +435,12 @@
         $groupedItems[$cat][] = $it;
 
         $itPcs = (float)($it['total_pieces'] ?? ($it['qty'] ?? 0));
-        $itPrice = (float)($it['price'] ?? 0);
         $itGross = (float)($it['gross_amount'] ?? 0);
-        if ($itGross <= 0) {
+        $itPrice = (float)($it['price'] ?? 0);
+        if ($itGross <= 0 && $itPcs > 0 && $itPrice > 0) {
             $itGross = $itPcs * $itPrice;
+        } elseif ($itPcs > 0 && $itGross > 0) {
+            $itPrice = round($itGross / $itPcs, 2);
         }
 
         $calcTotalPcs += $itPcs;
@@ -620,10 +622,12 @@
                     @foreach ($catItems as $item)
                         @php
                             $itPcs = (float)($item['total_pieces'] ?? ($item['qty'] ?? 0));
-                            $itPrice = (float)($item['price'] ?? 0);
                             $itGross = (float)($item['gross_amount'] ?? 0);
-                            if ($itGross <= 0) {
+                            $itPrice = (float)($item['price'] ?? 0);
+                            if ($itGross <= 0 && $itPcs > 0 && $itPrice > 0) {
                                 $itGross = $itPcs * $itPrice;
+                            } elseif ($itPcs > 0 && $itGross > 0) {
+                                $itPrice = round($itGross / $itPcs, 2);
                             }
                             $itSpDisc = (float)($item['sp_disc_amount'] ?? 0);
                             $itRegDisc = (float)($item['reg_disc_amount'] ?? 0);
