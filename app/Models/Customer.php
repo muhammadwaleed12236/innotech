@@ -21,12 +21,16 @@ class Customer extends Model
 
     public function getStrnNumberAttribute()
     {
-        return $this->getCustomValue('strn_number');
+        return (!empty($this->attributes['strn_number']) ? $this->attributes['strn_number'] : null)
+            ?? (!empty($this->attributes['strn']) ? $this->attributes['strn'] : null)
+            ?? $this->getCustomValue('strn_number');
     }
 
     public function getNtnNumberAttribute()
     {
-        return $this->getCustomValue('ntn_number');
+        return (!empty($this->attributes['ntn_number']) ? $this->attributes['ntn_number'] : null)
+            ?? (!empty($this->attributes['ntn']) ? $this->attributes['ntn'] : null)
+            ?? $this->getCustomValue('ntn_number');
     }
 
     public function getIsRegisteredAttribute(): bool
