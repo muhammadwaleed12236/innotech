@@ -218,7 +218,11 @@ class HomeController extends Controller
             $salesReturnsPrevPeriod = 0;
             $salesCashPeriod = 0;
             $salesCreditPeriod = 0;
-            $salesChartStats = ['daily' => ['series' => [], 'categories' => []]];
+            $salesChartStats = [
+                'daily' => ['series' => [], 'categories' => [], 'sales' => array_fill(0, 7, 0), 'purchases' => array_fill(0, 7, 0)],
+                'weekly' => ['series' => [], 'categories' => ['Week 1', 'Week 2', 'Week 3', 'Week 4'], 'sales' => array_fill(0, 4, 0), 'purchases' => array_fill(0, 4, 0)],
+                'monthly' => ['series' => [], 'categories' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], 'sales' => array_fill(0, 12, 0), 'purchases' => array_fill(0, 12, 0)],
+            ];
             $salesByCategory = collect();
             $topProducts = collect();
             $topCustomers = collect();
@@ -413,6 +417,8 @@ class HomeController extends Controller
             $purchasesThisMonth = 0;
             $purchasesReturnsPeriod = 0;
             $purchasesReturnsPrevPeriod = 0;
+            $purchasesLifetime = 0;
+            $salesLifetime = 0;
             $recentPurchases = collect();
             $topSuppliers = collect();
 
@@ -509,11 +515,16 @@ class HomeController extends Controller
             $expenseBreakdown = collect();
 
             if ($user->can('expense.voucher.view') || $user->can('vouchers.view') || $user->can('all.vouchers.view')) {
+                $hasExpVoucherBranch = \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id');
+                $hasVoucherMasterBranch = \Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id');
+
                 $expTodayV1 = DB::table('expense_vouchers')->whereDate('entry_date', $today);
                 $expTodayV2 = DB::table('voucher_masters')->where('voucher_type', 'expense')->whereDate('date', $today);
                 if ($currentBranchId !== null) {
-                    $expTodayV1->where('branch_id', $currentBranchId);
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id')) {
+                    if ($hasExpVoucherBranch) {
+                        $expTodayV1->where('branch_id', $currentBranchId);
+                    }
+                    if ($hasVoucherMasterBranch) {
                         $expTodayV2->where('branch_id', $currentBranchId);
                     }
                 }
@@ -522,8 +533,10 @@ class HomeController extends Controller
                 $expV1Query = DB::table('expense_vouchers');
                 $expV2Query = DB::table('voucher_masters')->where('voucher_type', 'expense');
                 if ($currentBranchId !== null) {
-                    $expV1Query->where('branch_id', $currentBranchId);
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id')) {
+                    if ($hasExpVoucherBranch) {
+                        $expV1Query->where('branch_id', $currentBranchId);
+                    }
+                    if ($hasVoucherMasterBranch) {
                         $expV2Query->where('branch_id', $currentBranchId);
                     }
                 }
@@ -536,15 +549,17 @@ class HomeController extends Controller
                 $expV1Prev = DB::table('expense_vouchers')->whereBetween('entry_date', [$prevStartDateOnly, $prevEndDateOnly]);
                 $expV2Prev = DB::table('voucher_masters')->where('voucher_type', 'expense')->whereBetween('date', [$prevStartDateOnly, $prevEndDateOnly]);
                 if ($currentBranchId !== null) {
-                    $expV1Prev->where('branch_id', $currentBranchId);
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('voucher_masters', 'branch_id')) {
+                    if ($hasExpVoucherBranch) {
+                        $expV1Prev->where('branch_id', $currentBranchId);
+                    }
+                    if ($hasVoucherMasterBranch) {
                         $expV2Prev->where('branch_id', $currentBranchId);
                     }
                 }
                 $expensesPrevPeriod = (float)$expV1Prev->sum('total_amount') + (float)$expV2Prev->sum('total_amount');
 
                 $expenseBreakdownQuery = DB::table('expense_vouchers');
-                if ($currentBranchId !== null) {
+                if ($currentBranchId !== null && $hasExpVoucherBranch) {
                     $expenseBreakdownQuery->where('branch_id', $currentBranchId);
                 }
                 if ($filterPeriod !== 'all') {
@@ -1177,8 +1192,8 @@ class HomeController extends Controller
             // Dynamic Chart Datasets
             if ($filterPeriod === 'all' || $filterPeriod === 'this_year') {
                 $chartOverviewLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                $chartOverviewSales = $salesChartStats['monthly']['sales'];
-                $chartOverviewPurchases = $salesChartStats['monthly']['purchases'];
+                $chartOverviewSales = $salesChartStats['monthly']['sales'] ?? array_fill(0, 12, 0);
+                $chartOverviewPurchases = $salesChartStats['monthly']['purchases'] ?? array_fill(0, 12, 0);
                 $chartFinancialWaveLabels = ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov'];
                 $chartFinancialWaveData = [
                     (float)($salesChartStats['monthly']['sales'][0] ?? 0),
@@ -1190,16 +1205,16 @@ class HomeController extends Controller
                 ];
             } elseif ($filterPeriod === 'this_month' || $filterPeriod === 'last_month') {
                 $chartOverviewLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-                $chartOverviewSales = $salesChartStats['weekly']['sales'];
-                $chartOverviewPurchases = $salesChartStats['weekly']['purchases'];
+                $chartOverviewSales = $salesChartStats['weekly']['sales'] ?? array_fill(0, 4, 0);
+                $chartOverviewPurchases = $salesChartStats['weekly']['purchases'] ?? array_fill(0, 4, 0);
                 $chartFinancialWaveLabels = ['W1', 'W2', 'W3', 'W4'];
-                $chartFinancialWaveData = $salesChartStats['weekly']['sales'];
+                $chartFinancialWaveData = $salesChartStats['weekly']['sales'] ?? array_fill(0, 4, 0);
             } else {
-                $chartOverviewLabels = $salesChartStats['daily']['categories'];
-                $chartOverviewSales = $salesChartStats['daily']['sales'];
-                $chartOverviewPurchases = $salesChartStats['daily']['purchases'];
-                $chartFinancialWaveLabels = $salesChartStats['daily']['categories'];
-                $chartFinancialWaveData = $salesChartStats['daily']['sales'];
+                $chartOverviewLabels = $salesChartStats['daily']['categories'] ?? [];
+                $chartOverviewSales = $salesChartStats['daily']['sales'] ?? [];
+                $chartOverviewPurchases = $salesChartStats['daily']['purchases'] ?? [];
+                $chartFinancialWaveLabels = $salesChartStats['daily']['categories'] ?? [];
+                $chartFinancialWaveData = $salesChartStats['daily']['sales'] ?? [];
             }
 
             // Growth Objects for KPI Cards
@@ -1371,15 +1386,20 @@ class HomeController extends Controller
         $salesQuery = DB::table('sales')->whereDate('created_at', $today)->whereNotIn('sale_status', ['cancelled', 'returned']);
         $purchasesQuery = DB::table('purchases')->whereDate('purchase_date', $today)->whereIn('status_purchase', ['approved', 'posted', 'Partial']);
         $expensesQuery = DB::table('expense_vouchers')->whereDate('entry_date', $today);
+        $hasExpBranch = \Illuminate\Support\Facades\Schema::hasColumn('expense_vouchers', 'branch_id');
 
         if ($effectiveBranchId) {
             $salesQuery->where('branch_id', $effectiveBranchId);
             $purchasesQuery->where('branch_id', $effectiveBranchId);
-            $expensesQuery->where('branch_id', $effectiveBranchId);
+            if ($hasExpBranch) {
+                $expensesQuery->where('branch_id', $effectiveBranchId);
+            }
         } elseif (!$isSuperAdmin) {
             $salesQuery->whereRaw('1 = 0');
             $purchasesQuery->whereRaw('1 = 0');
-            $expensesQuery->whereRaw('1 = 0');
+            if ($hasExpBranch) {
+                $expensesQuery->whereRaw('1 = 0');
+            }
         }
 
         $salesToday = (float) $salesQuery->sum('total_net');

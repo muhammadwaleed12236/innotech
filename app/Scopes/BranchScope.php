@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Auth;
  */
 class BranchScope implements Scope
 {
+    private static array $hasBranchColumnCache = [];
+
     public function apply(Builder $builder, Model $model): void
     {
         // Only apply when a user is authenticated
@@ -31,10 +33,25 @@ class BranchScope implements Scope
             return;
         }
 
+        $table = $model->getTable();
+
+        // Guard: check if table actually has branch_id column to prevent SQL 1054 errors
+        if (!array_key_exists($table, self::$hasBranchColumnCache)) {
+            try {
+                self::$hasBranchColumnCache[$table] = \Illuminate\Support\Facades\Schema::hasColumn($table, 'branch_id');
+            } catch (\Throwable $e) {
+                self::$hasBranchColumnCache[$table] = false;
+            }
+        }
+
+        if (!self::$hasBranchColumnCache[$table]) {
+            return;
+        }
+
         // Branch users: strictly restrict to their own branch
         $branchId = method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
         if ($branchId) {
-            $builder->where($model->getTable() . '.branch_id', $branchId);
+            $builder->where($table . '.branch_id', $branchId);
         } else {
             // Non-superadmin without an assigned branch cannot see any data
             $builder->whereRaw('1 = 0');
