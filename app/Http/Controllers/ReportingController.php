@@ -2490,6 +2490,16 @@ class ReportingController extends Controller
                 DB::raw('0 as due_amount')
             );
 
+        if (!$isSuperAdmin) {
+            if ($effectiveBranchId) {
+                $manualQuery->where('sales.branch_id', $effectiveBranchId);
+            } else {
+                $manualQuery->whereRaw('1 = 0');
+            }
+        } elseif ($request->filled('branch_id') && $request->branch_id !== 'all') {
+            $manualQuery->where('sales.branch_id', $request->branch_id);
+        }
+
         if ($startDate && $endDate) {
             $manualQuery->whereDate('sales.created_at', '>=', $startDate)
                         ->whereDate('sales.created_at', '<=', $endDate);
