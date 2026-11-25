@@ -128,32 +128,34 @@
         .meta-data-table td {
             padding: 1.5px 0;
             vertical-align: top;
-            font-size: 9.5px;
+            font-size: 10px;
             line-height: 1.35;
+            color: #000000 !important;
         }
 
         .meta-data-table td.lbl {
-            font-weight: 800;
-            color: #000;
+            font-weight: 900;
+            color: #000000 !important;
             white-space: nowrap;
             width: 110px;
         }
 
         .meta-data-table td.col {
             width: 10px;
-            font-weight: 800;
+            font-weight: 900;
             text-align: center;
-            color: #000;
+            color: #000000 !important;
         }
 
         .meta-data-table td.val {
             font-weight: 700;
-            color: #000;
+            color: #000000 !important;
         }
 
         .meta-data-table td.val.customer-title {
             font-weight: 900;
-            font-size: 10.5px;
+            font-size: 11px;
+            color: #000000 !important;
         }
 
         .doc-memo-title {
@@ -171,55 +173,58 @@
         .cashmemo-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 9px;
+            font-size: 10px;
             margin-top: 6px;
-            color: #000;
+            color: #000000;
         }
 
         .cashmemo-table th, 
         .cashmemo-table td {
-            border: 1px solid #222;
-            padding: 3px 4px;
+            border: 1px solid #000000;
+            padding: 3.5px 4px;
             line-height: 1.25;
             vertical-align: middle;
+            color: #000000 !important;
         }
 
         .cashmemo-table thead th {
-            font-weight: 800;
-            font-size: 8.5px;
+            font-weight: 900;
+            font-size: 9.5px;
             text-align: center;
             background-color: #ffffff;
-            color: #000;
+            color: #000000 !important;
             text-transform: capitalize;
             letter-spacing: 0.1px;
+            border-bottom: 1.5px solid #000000;
         }
 
         .cashmemo-table thead tr:first-child th {
-            border-bottom: 1px solid #222;
+            border-bottom: 1px solid #000000;
         }
 
         .cashmemo-table tbody td {
-            font-size: 9px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #000000 !important;
+        }
+
+        .cashmemo-table tbody td strong {
+            font-size: 10.5px;
+            font-weight: 800;
+            color: #000000 !important;
         }
 
         .cashmemo-table .category-header-row td {
-            background-color: #f1f5f9;
-            font-weight: 900;
-            font-size: 9.5px;
-            text-transform: uppercase;
-            color: #1e3a8a;
-            letter-spacing: 0.5px;
-            padding: 3.5px 6px;
-            border-top: 1.5px solid #222;
-            border-bottom: 1.5px solid #222;
+            display: none !important;
         }
 
         .cashmemo-table tfoot td {
-            font-weight: 800;
-            font-size: 9px;
-            border-top: 1.5px solid #222;
-            border-bottom: 2px solid #222;
+            font-weight: 900;
+            font-size: 10px;
+            border-top: 1.5px solid #000000;
+            border-bottom: 2px solid #000000;
             background-color: #ffffff;
+            color: #000000 !important;
         }
 
         .text-start { text-align: left !important; }
@@ -235,8 +240,9 @@
 
         .summary-box-table {
             border-collapse: collapse;
-            font-size: 9.5px;
+            font-size: 10px;
             width: 320px;
+            color: #000000;
         }
 
         .summary-box-table td {
@@ -248,25 +254,26 @@
             font-weight: 800;
             text-align: right;
             padding-right: 8px;
-            color: #000;
+            color: #000000 !important;
             white-space: nowrap;
         }
 
         .summary-box-table td.sum-val {
-            border: 1px solid #000;
+            border: 1px solid #000000;
             text-align: right;
             font-weight: 800;
             font-variant-numeric: tabular-nums;
-            width: 100px;
-            padding: 1.5px 6px;
+            width: 105px;
+            padding: 2px 6px;
             background: #fff;
-            color: #000;
+            color: #000000 !important;
         }
 
         .summary-box-table tr.net-invoice-row td.sum-val {
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 900;
-            border: 1.5px solid #000;
+            border: 1.5px solid #000000;
+            color: #000000 !important;
         }
 
         /* Signatures Section */
@@ -330,7 +337,7 @@
                 color: #000000 !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                font-size: 9px !important;
+                font-size: 10px !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -613,12 +620,6 @@
             </thead>
             <tbody>
                 @foreach ($groupedItems as $categoryName => $catItems)
-                    @if(!empty($categoryName))
-                        <tr class="category-header-row">
-                            <td colspan="13">{{ strtoupper($categoryName) }}</td>
-                        </tr>
-                    @endif
-
                     @foreach ($catItems as $item)
                         @php
                             $itPcs = (float)($item['total_pieces'] ?? ($item['qty'] ?? 0));
