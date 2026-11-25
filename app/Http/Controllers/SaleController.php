@@ -1276,7 +1276,13 @@ class SaleController extends Controller
             $isNew = ! $sale->exists;
             // Auto-assign branch_id
             if ($isNew) {
-                $sale->branch_id = $request->branch_id ?? (auth()->check() ? auth()->user()->branch_id : null);
+                $authUser = auth()->user();
+                $effectiveBranchId = $authUser && method_exists($authUser, 'getEffectiveBranchId') ? $authUser->getEffectiveBranchId() : ($authUser->branch_id ?? null);
+                if ($authUser && !$authUser->isSuperAdmin() && $effectiveBranchId) {
+                    $sale->branch_id = $effectiveBranchId;
+                } else {
+                    $sale->branch_id = $request->branch_id ?? $effectiveBranchId;
+                }
             }
             $sale->customer_id = $request->customer;
             $sale->sales_officer_id = $request->filled('sales_officer_id') ? $request->sales_officer_id : ($request->order_booker_id ?? null);
@@ -1373,7 +1379,7 @@ class SaleController extends Controller
                     $cStrn = $relCust->getCustomValue('strn_number') ?? $relCust->strn_number ?? null;
                     $cNtn = $relCust->getCustomValue('ntn_number') ?? $relCust->ntn_number ?? null;
                     $cFilerType = $relCust->getCustomValue('filer_type') ?? $relCust->filer_type ?? null;
-                    $customerHasStrn = !empty(trim((string)$cStrn));
+                    $customerHasStrn = !empty(trim((string)$cStrn)) || !empty($relCust->is_registered);
                     $customerIsFiler = !empty(trim((string)$cNtn)) || strtolower(trim((string)$cFilerType)) === 'filer' || !empty($relCust->is_filer);
                 }
             }
@@ -1647,15 +1653,16 @@ class SaleController extends Controller
                         $postedFtAmt = isset($request->further_tax_amount[$index]) && $request->further_tax_amount[$index] !== '' ? (float)$request->further_tax_amount[$index] : null;
                         $ftType = $request->further_tax_type[$index] ?? 'percent';
 
-                        if ($ftType === 'pkr' && $postedFtAmt !== null) {
+                        if ($customerHasStrn) {
+                            // Registered Customer (STRN) has strictly 0 Further Tax / URC Tax
+                            $furtherTaxPct = 0;
+                            $furtherTaxAmt = 0;
+                        } elseif ($ftType === 'pkr' && $postedFtAmt !== null) {
                             $furtherTaxAmt = round($postedFtAmt, 2);
                             $furtherTaxPct = $calcExclusiveGst > 0 ? round(($furtherTaxAmt / $calcExclusiveGst) * 100, 2) : 0;
                         } elseif ($postedFtPct !== null) {
                             $furtherTaxPct = $postedFtPct;
                             $furtherTaxAmt = round($calcExclusiveGst * ($furtherTaxPct / 100), 2);
-                        } elseif ($customerHasStrn && $strnExemptEnabled) {
-                            $furtherTaxPct = 0;
-                            $furtherTaxAmt = 0;
                         } else {
                             $defaultFtRate = (float) (\App\Models\SaleFieldConfiguration::getDefaultValue('further_tax', 4));
                             $furtherTaxPct = $defaultFtRate;
@@ -2773,9 +2780,12 @@ class SaleController extends Controller
 
     private function _getSaleItems($sale)
     {
+        $cStrn = $sale->customer_relation ? ($sale->customer_relation->strn_number ?? $sale->customer_relation->getCustomValue('strn_number')) : null;
+        $isCustomerRegistered = !empty(trim((string)$cStrn)) || (bool)($sale->customer_relation->is_registered ?? false);
+
         // Legacy support wrapper or direct relation
         // Re-implementing correctly based on new structure
-        return $sale->items->map(function ($item) {
+        return $sale->items->map(function ($item) use ($isCustomerRegistered) {
             $variant = [];
             if (!empty($item->color)) {
                 // Try base64 decode first (since frontend sends base64 variant_data in color field)
@@ -2843,10 +2853,34 @@ class SaleController extends Controller
 
             $variantUnit = $variant['unit'] ?? ($liveVariant['unit'] ?? ($item->product->unit->name ?? ''));
 
+            $baseName = $item->is_manual ? ($item->product_name ?? 'Manual Product') : ($item->product->item_name ?? ($item->product_name ?? 'Item'));
+            $vRawName = trim($variant['name'] ?? ($liveVariant['name'] ?? ''));
+            $vSize = trim($variant['size'] ?? ($liveVariant['size'] ?? ''));
+            $vColor = trim($variant['color'] ?? ($liveVariant['color'] ?? ''));
+
+            if (!$item->is_manual && !empty($vRawName)) {
+                if (stripos($vRawName, $baseName) !== false) {
+                    $fullName = $vRawName;
+                } else {
+                    $fullName = $baseName . ' ' . $vRawName;
+                }
+            } else {
+                $fullName = $baseName;
+            }
+
+            if (!$item->is_manual) {
+                if (!empty($vSize) && $vSize !== '-' && stripos($fullName, $vSize) === false) {
+                    $fullName .= ' ' . $vSize;
+                }
+                if (!empty($vColor) && $vColor !== '-' && stripos($fullName, $vColor) === false) {
+                    $fullName .= ' (' . $vColor . ')';
+                }
+            }
+
             return [
                 'is_manual' => $item->is_manual,
                 'product_id' => $item->product_id,
-                'item_name' => $item->is_manual ? ($item->product_name ?? 'Manual Product') . ' (Manual)' : ($item->product_name ?? $item->product->item_name ?? 'Item'),
+                'item_name' => $item->is_manual ? ($item->product_name ?? 'Manual Product') . ' (Manual)' : $fullName,
                 'item_code' => $item->product->item_code ?? '',
                 'brand' => $item->product->brand->name ?? '',
                 'unit' => $item->product->unit->name ?? '', // Access name if relation exists
@@ -2859,9 +2893,9 @@ class SaleController extends Controller
                 'discount_percent' => (float) $item->discount_percent,
                 'discount_amount' => (float) $item->discount_amount,
                 'total' => (float) $item->total,
-                'variant_name' => $variant['name'] ?? '',
-                'color_val' => $variant['color'] ?? '',
-                'size_val' => $variant['size'] ?? '',
+                'variant_name' => $vRawName,
+                'color_val' => $vColor,
+                'size_val' => $vSize,
                 'variant_unit' => $variantUnit,
                 'weight_per_piece' => $variant['weight_per_piece'] ?? $item->product->weight_per_piece ?? 0,
                 'color' => is_array($variant) ? $variant : [$item->color], // for legacy compatibility
@@ -2883,8 +2917,8 @@ class SaleController extends Controller
                 'exclusive_gst_amount' => (float) ($item->exclusive_gst_amount ?? 0),
                 'sales_tax_percent' => (float) ($item->sales_tax_percent ?? 0),
                 'sales_tax_amount' => (float) ($item->sales_tax_amount ?? 0),
-                'further_tax_percent' => (float) ($item->further_tax_percent ?? 0),
-                'further_tax_amount' => (float) ($item->further_tax_amount ?? 0),
+                'further_tax_percent' => $isCustomerRegistered ? 0.0 : (float) ($item->further_tax_percent ?? 0),
+                'further_tax_amount' => $isCustomerRegistered ? 0.0 : (float) ($item->further_tax_amount ?? 0),
                 'hs_code' => $item->product->hs_code ?? ($variant['hs_code'] ?? ($liveVariant['hs_code'] ?? '')),
                 'category_name' => $item->product->category_relation->name ?? ($item->category->name ?? ''),
                 'reg_disc_percent' => (float) ($item->reg_disc_percent ?? 0),

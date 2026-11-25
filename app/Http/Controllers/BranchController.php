@@ -55,8 +55,10 @@ class BranchController extends Controller
         }
 
         // Step 3: Save or update logic
+        $oldUserId = null;
         if (!empty($editId)) {
             $branch = Branch::find($editId);
+            $oldUserId = $branch ? $branch->user_id : null;
             $msg = [
                 'success' => 'Branch Updated Successfully',
                 'reload' => true
@@ -75,20 +77,31 @@ class BranchController extends Controller
         $branch->user_id = $request->user_id;
         $branch->save();
 
+        // Keep users.branch_id in sync
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'branch_id')) {
+            if ($oldUserId && $oldUserId != $request->user_id) {
+                User::where('id', $oldUserId)->where('branch_id', $branch->id)->update(['branch_id' => null]);
+            }
+            if (!empty($request->user_id)) {
+                User::where('id', $request->user_id)->update(['branch_id' => $branch->id]);
+            }
+        }
+
         return response()->json($msg);
         
     }
 
-    /**
-     * Display the specified resource.
-     */
-  
     /**
      * Remove the specified resource from storage.
      */
     public function delete(string $id)
     {
         $branch = Branch::findOrFail($id);
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'branch_id')) {
+            User::where('branch_id', $branch->id)->update(['branch_id' => null]);
+        }
+
         $branch->delete();
 
         return redirect()->route('branch.index')->with('success', 'Branch deleted successfully.');

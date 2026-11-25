@@ -31,9 +31,10 @@ class BranchScope implements Scope
             return;
         }
 
-        // Branch users: restrict to their own branch
-        if ($user->branch_id) {
-            $builder->where($model->getTable() . '.branch_id', $user->branch_id);
+        // Branch users: strictly restrict to their own branch
+        $branchId = method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
+        if ($branchId) {
+            $builder->where($model->getTable() . '.branch_id', $branchId);
         }
     }
 }

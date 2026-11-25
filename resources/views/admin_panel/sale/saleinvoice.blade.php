@@ -321,8 +321,8 @@
         /* Print Styling */
         @media print {
             @page {
-                size: A4 landscape;
-                margin: 5mm 6mm;
+                size: A4 landscape !important;
+                margin: 5mm 6mm !important;
             }
 
             body {
@@ -341,6 +341,7 @@
             }
 
             .invoice-container {
+                display: block !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 min-height: auto !important;
@@ -351,12 +352,16 @@
                 border-radius: 0 !important;
             }
 
+            .receipt-container {
+                display: none !important;
+            }
+
             body.print-letterhead-mode .company-header-block {
                 display: none !important;
             }
 
             /* Receipt Mode Overrides */
-            body.print-receipt-mode .screen-only {
+            body.print-receipt-mode .invoice-container {
                 display: none !important;
             }
 
@@ -389,9 +394,10 @@
     $channelName = $relCust->party_type ? ucwords($relCust->party_type) : 'Wholesale';
     $subChannelName = $relCust->area ?? ($relCust->city ?? 'Scattered Market');
     $customerMobile = $sale->walkin_mobile ?? ($relCust->mobile ?? ($relCust->phone ?? '—'));
-    $customerStrn = $relCust->strn_number ?? null;
-    $customerNtn = $relCust->ntn_number ?? null;
+    $customerStrn = $relCust ? ($relCust->strn_number ?? $relCust->getCustomValue('strn_number')) : null;
+    $customerNtn = $relCust ? ($relCust->ntn_number ?? $relCust->getCustomValue('ntn_number')) : null;
     $customerCnic = $relCust->cnic ?? null;
+    $isCustomerRegistered = !empty(trim((string)$customerStrn)) || (bool)($relCust->is_registered ?? false);
 
     $companyName = \App\Models\Setting::get('company_name', config('app.name', 'Jamal & Brothers (Mardan)'));
     $compNtn = \App\Models\Setting::get('company_ntn', '50786976');
@@ -443,7 +449,7 @@
         $calcTradeActivity += (float)($it['trade_activity'] ?? 0);
         $calcSalesTax += (float)($it['sales_tax_amount'] ?? 0);
         $calcMrpTax += (float)($it['mrp_amount'] ?? 0);
-        $calcFurtherTax += (float)($it['further_tax_amount'] ?? 0);
+        $calcFurtherTax += $isCustomerRegistered ? 0.0 : (float)($it['further_tax_amount'] ?? 0);
         $calcAdvTax += (float)($it['adv_tax_amount'] ?? 0);
         $calcNetTotal += (float)($it['total'] ?? 0);
     }
@@ -453,7 +459,7 @@
 
     <!-- Print / Action Toolbar -->
     <div class="print-btn-container no-print">
-        <button onclick="window.print()" class="btn btn-success" title="Print Invoice">
+        <button onclick="printCashMemoA4()" class="btn btn-success" title="Print Cash Memo (A4 Landscape)">
             <i class="fas fa-print"></i> Print Cash Memo
         </button>
         <button onclick="printReceipt()" class="btn btn-primary" title="Print 80mm Thermal Receipt">
@@ -465,7 +471,7 @@
     </div>
 
     <!-- Screen & A4 View -->
-    <div class="invoice-container screen-only">
+    <div class="invoice-container">
 
         <!-- 1. Header Section -->
         <div class="company-header-block">
@@ -499,11 +505,7 @@
                         <td class="col"></td>
                         <td class="val">{{ $channelType }}</td>
                     </tr>
-                    <tr>
-                        <td class="lbl">Channel Name:</td>
-                        <td class="col"></td>
-                        <td class="val">{{ $channelName }}</td>
-                    </tr>
+
                     <tr>
                         <td class="lbl">Sub Channel Name:</td>
                         <td class="col"></td>
@@ -629,7 +631,7 @@
                             $itTradeAct = (float)($item['trade_activity'] ?? 0);
                             $itSalesTax = (float)($item['sales_tax_amount'] ?? 0);
                             $itMrpTax = (float)($item['mrp_amount'] ?? 0);
-                            $itFurtherTax = (float)($item['further_tax_amount'] ?? 0);
+                            $itFurtherTax = $isCustomerRegistered ? 0.0 : (float)($item['further_tax_amount'] ?? 0);
                             $itNet = (float)($item['total'] ?? 0);
                             $rawTax = strtoupper(trim($item['tax_type'] ?? ''));
                             $isNonThird = str_contains($rawTax, 'NON THIRD') || str_contains($rawTax, 'NON-THIRD') || str_contains($rawTax, 'NON 3RD');
@@ -647,10 +649,15 @@
                                 $itTaxType = 'Taxable';
                             }
                             $itHsCode = $item['hs_code'] ?? '—';
+                            $dispItemName = !empty($item['item_name']) ? $item['item_name'] : ($item['product_name'] ?? 'Item');
+                            $vName = trim($item['variant_name'] ?? '');
+                            if (!empty($vName) && stripos($dispItemName, $vName) === false) {
+                                $dispItemName .= ' - ' . $vName;
+                            }
                         @endphp
                         <tr>
                             <td class="text-start">
-                                <strong>{{ $item['item_name'] }}</strong>
+                                <strong>{{ $dispItemName }}</strong>
                             </td>
                             <td class="text-center">{{ $itHsCode ?: '—' }}</td>
                             <td class="text-center">{{ (int)$itPcs }}</td>
@@ -825,6 +832,11 @@
     </div>
 
     <script>
+        function printCashMemoA4() {
+            document.body.classList.remove('print-receipt-mode');
+            window.print();
+        }
+
         function printReceipt() {
             document.body.classList.add('print-receipt-mode');
             window.print();

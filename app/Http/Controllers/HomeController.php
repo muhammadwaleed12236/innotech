@@ -54,7 +54,7 @@ class HomeController extends Controller
                 }
             } else {
                 // Non-superadmin / Branch admin is strictly scoped to their own branch
-                $currentBranchId = $user->branch_id ? (int) $user->branch_id : null;
+                $currentBranchId = $user->getEffectiveBranchId();
                 $currentBranch = $currentBranchId ? $allBranches->firstWhere('id', $currentBranchId) : null;
                 $selectedBranchId = $currentBranchId ? (string) $currentBranchId : 'all';
             }
@@ -823,28 +823,28 @@ class HomeController extends Controller
 
             // 10. REAL-TIME ACTIVITY FEED (From business_activities table)
             $liveActivities = BusinessActivity::with(['user', 'branch', 'warehouse'])
-                ->when($currentBranchId, fn($q) => $q->where(fn($sub) => $sub->where('branch_id', $currentBranchId)->orWhereNull('branch_id')))
+                ->when($currentBranchId, fn($q) => $q->where('branch_id', $currentBranchId))
                 ->orderBy('created_at', 'desc')
                 ->limit(20)
                 ->get();
 
             // 11. TODAY'S TASKS & REMINDERS
             $tasks = DashboardTask::with('assignee')
-                ->when($currentBranchId, fn($q) => $q->where(fn($sub) => $sub->where('branch_id', $currentBranchId)->orWhereNull('branch_id')))
+                ->when($currentBranchId, fn($q) => $q->where('branch_id', $currentBranchId))
                 ->orderByRaw("FIELD(status, 'pending', 'in_progress', 'completed', 'cancelled')")
                 ->orderBy('due_date', 'asc')
                 ->limit(10)
                 ->get();
 
             $taskPendingCount = DashboardTask::where('status', 'pending')
-                ->when($currentBranchId, fn($q) => $q->where(fn($sub) => $sub->where('branch_id', $currentBranchId)->orWhereNull('branch_id')))
+                ->when($currentBranchId, fn($q) => $q->where('branch_id', $currentBranchId))
                 ->count();
             $taskCompletedCount = DashboardTask::where('status', 'completed')
-                ->when($currentBranchId, fn($q) => $q->where(fn($sub) => $sub->where('branch_id', $currentBranchId)->orWhereNull('branch_id')))
+                ->when($currentBranchId, fn($q) => $q->where('branch_id', $currentBranchId))
                 ->count();
             $taskOverdueCount = DashboardTask::where('status', 'pending')
                 ->where('due_date', '<', Carbon::today()->format('Y-m-d'))
-                ->when($currentBranchId, fn($q) => $q->where(fn($sub) => $sub->where('branch_id', $currentBranchId)->orWhereNull('branch_id')))
+                ->when($currentBranchId, fn($q) => $q->where('branch_id', $currentBranchId))
                 ->count();
 
             $systemUsers = User::select('id', 'name')->orderBy('name')->get();
@@ -1280,14 +1280,12 @@ class HomeController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Apply access restrictions
-        if (!$isSuperAdmin && $user && $user->branch_id) {
-            $query->where(function ($q) use ($user) {
-                $q->where('branch_id', $user->branch_id)->orWhereNull('branch_id');
-            });
-        } elseif ($branchId && $branchId !== 'all') {
-            $query->where(function ($q) use ($branchId) {
-                $q->where('branch_id', (int) $branchId)->orWhereNull('branch_id');
-            });
+        $effectiveBranchId = (!$isSuperAdmin && $user && method_exists($user, 'getEffectiveBranchId') && $user->getEffectiveBranchId())
+            ? $user->getEffectiveBranchId()
+            : ($branchId && $branchId !== 'all' ? (int) $branchId : null);
+
+        if ($effectiveBranchId) {
+            $query->where('branch_id', $effectiveBranchId);
         }
 
         if (!empty($module) && $module !== 'all') {
@@ -1333,7 +1331,9 @@ class HomeController extends Controller
         $user = Auth::user();
         $isSuperAdmin = $user ? $user->isSuperAdmin() : false;
         $branchId = $request->get('branch_id');
-        $effectiveBranchId = (!$isSuperAdmin && $user && $user->branch_id) ? $user->branch_id : ($branchId && $branchId !== 'all' ? (int) $branchId : null);
+        $effectiveBranchId = (!$isSuperAdmin && $user && method_exists($user, 'getEffectiveBranchId') && $user->getEffectiveBranchId())
+            ? $user->getEffectiveBranchId()
+            : ($branchId && $branchId !== 'all' ? (int) $branchId : null);
 
         $today = Carbon::today();
         $salesQuery = DB::table('sales')->whereDate('created_at', $today)->whereNotIn('sale_status', ['cancelled', 'returned']);

@@ -37,6 +37,11 @@ class BusinessActivity extends Model
         'metadata' => 'array',
     ];
 
+    protected static function booted()
+    {
+        static::addGlobalScope(new \App\Scopes\BranchScope);
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

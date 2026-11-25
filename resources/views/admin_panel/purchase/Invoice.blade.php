@@ -370,94 +370,97 @@
 
 @php
     // Number to words helper for invoice
-    if (!function_exists('purchaseNumberToWords')) {
-        function purchaseNumberToWords($number) {
+    if (!function_exists('_purchaseNumToWordsInternal')) {
+        function _purchaseNumToWordsInternal($number) {
             $hyphen      = ' ';
             $conjunction = ' ';
             $separator   = ' ';
-            $negative    = 'negative ';
-            $decimal     = ' AND PAISAS ';
             $dictionary  = array(
-                0                   => 'zero',
-                1                   => 'one',
-                2                   => 'two',
-                3                   => 'three',
-                4                   => 'four',
-                5                   => 'five',
-                6                   => 'six',
-                7                   => 'seven',
-                8                   => 'eight',
-                9                   => 'nine',
-                10                  => 'ten',
-                11                  => 'eleven',
-                12                  => 'twelve',
-                13                  => 'thirteen',
-                14                  => 'fourteen',
-                15                  => 'fifteen',
-                16                  => 'sixteen',
-                17                  => 'seventeen',
-                18                  => 'eighteen',
-                19                  => 'nineteen',
-                20                  => 'twenty',
-                30                  => 'thirty',
-                40                  => 'forty',
-                50                  => 'fifty',
-                60                  => 'sixty',
-                70                  => 'seventy',
-                80                  => 'eighty',
-                90                  => 'ninety',
-                100                 => 'hundred',
-                1000                => 'thousand',
-                1000000             => 'million',
-                1000000000          => 'billion',
+                0                   => 'ZERO',
+                1                   => 'ONE',
+                2                   => 'TWO',
+                3                   => 'THREE',
+                4                   => 'FOUR',
+                5                   => 'FIVE',
+                6                   => 'SIX',
+                7                   => 'SEVEN',
+                8                   => 'EIGHT',
+                9                   => 'NINE',
+                10                  => 'TEN',
+                11                  => 'ELEVEN',
+                12                  => 'TWELVE',
+                13                  => 'THIRTEEN',
+                14                  => 'FOURTEEN',
+                15                  => 'FIFTEEN',
+                16                  => 'SIXTEEN',
+                17                  => 'SEVENTEEN',
+                18                  => 'EIGHTEEN',
+                19                  => 'NINETEEN',
+                20                  => 'TWENTY',
+                30                  => 'THIRTY',
+                40                  => 'FORTY',
+                50                  => 'FIFTY',
+                60                  => 'SIXTY',
+                70                  => 'SEVENTY',
+                80                  => 'EIGHTY',
+                90                  => 'NINETY',
+                100                 => 'HUNDRED',
+                1000                => 'THOUSAND',
+                1000000             => 'MILLION',
+                1000000000          => 'BILLION',
             );
 
             if (!is_numeric($number)) return '';
-            if ($number < 0) return $negative . purchaseNumberToWords(abs($number));
+            $number = (int)$number;
 
-            $string = $fraction = null;
+            switch (true) {
+                case $number < 21:
+                    return $dictionary[$number];
+                case $number < 100:
+                    $tens  = ((int) ($number / 10)) * 10;
+                    $units = $number % 10;
+                    return $dictionary[$tens] . ($units ? $hyphen . $dictionary[$units] : '');
+                case $number < 1000:
+                    $hundreds  = (int)($number / 100);
+                    $remainder = $number % 100;
+                    $str = $dictionary[$hundreds] . ' ' . $dictionary[100];
+                    if ($remainder) {
+                        $str .= $conjunction . _purchaseNumToWordsInternal($remainder);
+                    }
+                    return $str;
+                default:
+                    $baseUnit     = pow(1000, floor(log($number, 1000)));
+                    $numBaseUnits = (int) ($number / $baseUnit);
+                    $remainder    = $number % $baseUnit;
+                    $str = _purchaseNumToWordsInternal($numBaseUnits) . ' ' . $dictionary[$baseUnit];
+                    if ($remainder) {
+                        $str .= ($remainder < 100 ? $conjunction : $separator) . _purchaseNumToWordsInternal($remainder);
+                    }
+                    return $str;
+            }
+        }
+    }
+
+    if (!function_exists('purchaseNumberToWords')) {
+        function purchaseNumberToWords($number) {
+            if (!is_numeric($number)) return '';
+            if ($number < 0) return 'NEGATIVE ' . purchaseNumberToWords(abs($number));
+
+            $fraction = null;
             if (strpos((string)$number, '.') !== false) {
                 list($number, $fraction) = explode('.', (string)$number);
             }
 
-            switch (true) {
-                case $number < 21:
-                    $string = $dictionary[$number];
-                    break;
-                case $number < 100:
-                    $tens   = ((int) ($number / 10)) * 10;
-                    $units  = $number % 10;
-                    $string = $dictionary[$tens];
-                    if ($units) {
-                        $string .= $hyphen . $dictionary[$units];
-                    }
-                    break;
-                case $number < 1000:
-                    $hundreds  = $number / 100;
-                    $remainder = $number % 100;
-                    $string = $dictionary[(int)$hundreds] . ' ' . $dictionary[100];
-                    if ($remainder) {
-                        $string .= $conjunction . purchaseNumberToWords($remainder);
-                    }
-                    break;
-                default:
-                    $baseUnit = pow(1000, floor(log($number, 1000)));
-                    $numBaseUnits = (int) ($number / $baseUnit);
-                    $remainder = $number % $baseUnit;
-                    $string = purchaseNumberToWords($numBaseUnits) . ' ' . $dictionary[$baseUnit];
-                    if ($remainder) {
-                        $string .= $remainder < 100 ? $conjunction : $separator;
-                        $string .= purchaseNumberToWords($remainder);
-                    }
-                    break;
-            }
+            $string = _purchaseNumToWordsInternal((int)$number);
 
             if (null !== $fraction && is_numeric($fraction) && (int)$fraction > 0) {
-                $string .= $decimal;
-                $string .= purchaseNumberToWords((int)substr($fraction, 0, 2));
+                $paisas = (int)substr(str_pad($fraction, 2, '0'), 0, 2);
+                $string .= ' AND PAISAS ' . _purchaseNumToWordsInternal($paisas) . ' ONLY';
+            } else {
+                $string .= ' ONLY';
             }
 
-            return strtoupper($string . ' ONLY');
+            return $string;
         }
     }
 
@@ -473,9 +476,15 @@
     $vendorName = $purchase->vendor->name ?? 'NATIONAL FOODS LIMITED';
     $vendorNtn = $purchase->vendor->ntn_number ?? '0816613-7';
     $vendorAddress = $purchase->vendor->address ?? 'Plot#346/347, Phase II, M-3, Industrial City, (M-3IC) Sahianwala Interchange, Faisalabad';
+    $vendorCity = $purchase->vendor->city ?? '';
+    $vendorArea = $purchase->vendor->area ?? '';
+    $vendorStreet = trim(implode(', ', array_filter([$vendorAddress, $vendorArea])));
     $vendorPhone = $purchase->vendor->phone ?? '+92-21-38402022';
     $vendorCnic = $purchase->vendor->cnic ?? '—';
     $vendorStrn = $purchase->vendor->strn_number ?? '—';
+
+    // FBR Invoice Number from purchase record (dynamic) or fallback
+    $fbrInvNo = $purchase->fbr_invoice_number ?? ('0816613DID9MAK' . str_pad($purchase->id, 7, '0', STR_PAD_LEFT));
 
     $purchaseDateFormatted = \Carbon\Carbon::parse($purchase->purchase_date)->format('d.m.Y');
     $invNumber = $purchase->invoice_no ?: ('PUR-' . str_pad($purchase->id, 3, '0', STR_PAD_LEFT));
@@ -483,7 +492,6 @@
     $shipmentDoc = $purchase->id + 80230;
     $plantWarehouse = $purchase->warehouse->warehouse_name ?? 'Islamabad TCS Warehouse';
     $poNumber = $purchase->purchase_order_no ?: ($purchase->note ?: ('1000203.D0043-' . str_pad($purchase->id, 4, '0', STR_PAD_LEFT)));
-    $fbrInvNo = '0816613DID9MAK' . str_pad($purchase->id, 7, '0', STR_PAD_LEFT);
 
     // Sums
     $totQty = 0;
@@ -662,8 +670,8 @@
                     <div><span class="meta-lbl">FBR Invoice Number:</span> <span class="meta-val">{{ $fbrInvNo }}</span></div>
                     <div><span class="meta-lbl">Sold-to party (Buyer):</span> <span class="meta-val">1000203 - {{ $buyerName }}</span></div>
                     <div style="padding-left: 95px;" class="meta-val">{{ $buyerAddress }}</div>
-                    <div><span class="meta-lbl">City:</span> <span class="meta-val">{{ $buyerCity }}</span></div>
-                    <div><span class="meta-lbl">Street:</span> <span class="meta-val">{{ $buyerAddress }}</span></div>
+                    <div><span class="meta-lbl">City:</span> <span class="meta-val">{{ $vendorCity ?: $buyerCity }}</span></div>
+                    <div><span class="meta-lbl">Street:</span> <span class="meta-val">{{ $vendorStreet }}</span></div>
 
                     <!-- Barcode Box -->
                     <div class="barcode-box">
@@ -710,8 +718,8 @@
                 <td class="meta-col-2">
                     <div><span class="meta-lbl">Ship-to party:</span> <span class="meta-val">1000203 - {{ $buyerName }}</span></div>
                     <div style="padding-left: 95px;" class="meta-val">{{ $plantWarehouse }} - {{ $buyerAddress }}</div>
-                    <div><span class="meta-lbl">City:</span> <span class="meta-val">{{ $buyerCity }}</span></div>
-                    <div><span class="meta-lbl">Street:</span> <span class="meta-val">{{ $buyerAddress }}</span></div>
+                    <div><span class="meta-lbl">City:</span> <span class="meta-val">{{ $vendorCity ?: $buyerCity }}</span></div>
+                    <div><span class="meta-lbl">Street:</span> <span class="meta-val">{{ $vendorStreet }}</span></div>
                     <div style="height: 26px;"></div>
                     <div><span class="meta-lbl">Telephone (Ship):</span> <span class="meta-val">{{ $buyerPhone }}</span></div>
                     <div><span class="meta-lbl">Cell No (Ship):</span> <span class="meta-val">{{ $buyerCell }}</span></div>

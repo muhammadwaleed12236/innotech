@@ -581,7 +581,17 @@ class SaleReturnController extends Controller
      */
     public function saleReturnIndex()
     {
-        $returns = SaleReturn::with(['customer', 'sale'])->latest()->get();
+        $user = auth()->user();
+        $returnsQuery = SaleReturn::with(['customer', 'sale']);
+
+        if ($user && !$user->isSuperAdmin() && method_exists($user, 'getEffectiveBranchId') && $user->getEffectiveBranchId()) {
+            $branchId = $user->getEffectiveBranchId();
+            $returnsQuery->whereHas('sale', function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            });
+        }
+
+        $returns = $returnsQuery->latest()->get();
         
         // Calculate updated financial details
         $returns->each(function ($return) {

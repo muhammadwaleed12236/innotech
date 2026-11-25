@@ -52,7 +52,38 @@ class User extends Authenticatable
      */
     public function branch()
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
+
+    /**
+     * Get the effective branch ID for this user.
+     * Looks up direct `branch_id` or the Branch where this user is assigned as manager (`branches.user_id`).
+     */
+    public function getEffectiveBranchId(): ?int
+    {
+        if (!empty($this->branch_id)) {
+            return (int) $this->branch_id;
+        }
+
+        if ($this->id) {
+            $managedBranchId = \App\Models\Branch::where('user_id', $this->id)->value('id');
+            if (!empty($managedBranchId)) {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'branch_id')) {
+                    try {
+                        $this->forceFill(['branch_id' => $managedBranchId])->saveQuietly();
+                    } catch (\Throwable $e) {}
+                }
+                return (int) $managedBranchId;
+            }
+        }
+
+        return null;
+    }
+
+    public function getEffectiveBranchAttribute()
+    {
+        $bId = $this->getEffectiveBranchId();
+        return $bId ? Branch::find($bId) : null;
     }
 
     /**
@@ -103,15 +134,21 @@ class User extends Authenticatable
     //     }
 
     /**
-     * Check if user is a Super Admin / unrestricted system owner
+     * Check if user is a Super Admin / unrestricted system owner.
+     * Any user tied to a specific branch is strictly a Branch user/admin, NOT a Super Admin.
      */
     public function isSuperAdmin(): bool
     {
+        if ($this->getEffectiveBranchId() !== null) {
+            return false;
+        }
+
         return $this->hasRole('Super Admin')
             || $this->hasRole('superAdmin')
             || $this->hasRole('admin')
             || $this->hasRole('superadmin')
-            || $this->email === 'superadmin@example.com';
+            || $this->email === 'superadmin@example.com'
+            || $this->email === 'admin@admin.com';
     }
 
     /**

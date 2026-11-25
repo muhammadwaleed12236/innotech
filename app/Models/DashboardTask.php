@@ -26,6 +26,11 @@ class DashboardTask extends Model
         'completed_at' => 'datetime',
     ];
 
+    protected static function booted()
+    {
+        static::addGlobalScope(new \App\Scopes\BranchScope);
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);

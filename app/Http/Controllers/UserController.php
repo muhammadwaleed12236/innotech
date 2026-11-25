@@ -28,8 +28,9 @@ class UserController extends Controller
                 });
 
             // Branch users can only view users belonging to their own branch
-            if ($currentUser && $currentUser->branch_id) {
-                $usersQuery->where('branch_id', $currentUser->branch_id);
+            $myBranchId = $currentUser ? (method_exists($currentUser, 'getEffectiveBranchId') ? $currentUser->getEffectiveBranchId() : $currentUser->branch_id) : null;
+            if ($myBranchId) {
+                $usersQuery->where('branch_id', $myBranchId);
             }
 
             $users = $usersQuery
@@ -114,9 +115,9 @@ class UserController extends Controller
         // Branch assignment logic
         if ($currentUser && $currentUser->isSuperAdmin()) {
             $user->branch_id = $request->branch_id ?: null;
-        } elseif ($currentUser && $currentUser->branch_id) {
+        } elseif ($currentUser && method_exists($currentUser, 'getEffectiveBranchId') && $currentUser->getEffectiveBranchId()) {
             // Child users created by branch users strictly inherit the parent's branch
-            $user->branch_id = $currentUser->branch_id;
+            $user->branch_id = $currentUser->getEffectiveBranchId();
         }
 
         $user->save();

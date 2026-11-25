@@ -743,6 +743,7 @@ class PurchaseController extends Controller
         try {
             $validated = $request->validate([
                 'invoice_no' => 'nullable|string',
+                'fbr_invoice_number' => 'nullable|string|max:255',
                 'purchase_order_no' => 'nullable|string|max:255',
                 'vendor_id' => 'required|exists:vendors,id',
                 'purchase_date' => 'nullable|date',
@@ -796,7 +797,12 @@ class PurchaseController extends Controller
             );
             $userDefaultWhId = (int) ($user?->warehouse_id ?: 1);
 
-            $branchId = (int) ($validated['branch_id'] ?? (auth()->check() && auth()->user()->branch_id ? auth()->user()->branch_id : 1));
+            $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
+            if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+                $branchId = (int) $effectiveBranchId;
+            } else {
+                $branchId = (int) ($validated['branch_id'] ?? ($effectiveBranchId ?: 1));
+            }
             $headerWhId = $canSelectWarehouse
                 ? (int) ($request->header_warehouse_id ?: (is_numeric($request->warehouse_id) ? $request->warehouse_id : (is_array($request->warehouse_id) ? ($request->warehouse_id[0] ?? $userDefaultWhId) : $userDefaultWhId)))
                 : $userDefaultWhId;
@@ -817,6 +823,7 @@ class PurchaseController extends Controller
                 'tax_type_id' => $request->tax_type_id ?? (!empty($request->item_tax_type_id) ? collect($request->item_tax_type_id)->filter()->first() : null),
                 'purchase_date' => $validated['purchase_date'] ?? now(),
                 'invoice_no' => $validated['invoice_no'] ?? $nextInvoice,
+                'fbr_invoice_number' => $validated['fbr_invoice_number'] ?? null,
                 'purchase_order_no' => $validated['purchase_order_no'] ?? null,
                 'note' => $validated['note'] ?? null,
                 'subtotal' => 0,
@@ -1658,6 +1665,7 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'invoice_no' => 'nullable|string',
+            'fbr_invoice_number' => 'nullable|string|max:255',
             'purchase_order_no' => 'nullable|string|max:255',
             'vendor_id' => 'nullable|exists:vendors,id',
             'purchase_date' => 'nullable|date',
@@ -1703,7 +1711,12 @@ class PurchaseController extends Controller
                 ? (int) ($request->header_warehouse_id ?: (is_numeric($request->warehouse_id) ? $request->warehouse_id : ($purchase->warehouse_id ?? $userDefaultWhId)))
                 : $userDefaultWhId;
             $warehouseId = $headerWhId;
-            $branchId = (int) ($validated['branch_id'] ?? $purchase->branch_id ?? 1);
+            $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
+            if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+                $branchId = (int) $effectiveBranchId;
+            } else {
+                $branchId = (int) ($validated['branch_id'] ?? $purchase->branch_id ?? 1);
+            }
 
             $rowWhIds = ($canSelectWarehouse && is_array($request->warehouse_id))
                 ? $request->warehouse_id
@@ -2099,6 +2112,7 @@ class PurchaseController extends Controller
                 'warehouse_id' => $warehouseId,
                 'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,
                 'invoice_no' => $validated['invoice_no'] ?? $purchase->invoice_no,
+                'fbr_invoice_number' => $validated['fbr_invoice_number'] ?? $purchase->fbr_invoice_number,
                 'purchase_order_no' => $validated['purchase_order_no'] ?? $purchase->purchase_order_no,
                 'note' => $validated['note'] ?? $purchase->note,
                 'subtotal' => $subtotal,

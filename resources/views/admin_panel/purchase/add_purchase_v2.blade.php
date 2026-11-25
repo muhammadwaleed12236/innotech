@@ -755,6 +755,12 @@
                         <input type="text" class="form-control text-center fw-bold input-readonly" name="invoice_no" value="{{ $nextInvoice ?? 'NEW' }}" readonly style="width: 140px; height: 38px;">
                     </div>
 
+                    {{-- FBR Invoice # --}}
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 fw-bold text-secondary">FBR Inv #:</label>
+                        <input type="text" class="form-control text-center fw-bold" name="fbr_invoice_number" placeholder="FBR Invoice #" style="width: 160px; height: 38px;">
+                    </div>
+
                     {{-- Vendor Ref # --}}
                     <div class="d-flex align-items-center gap-2">
                         <label class="field-label mb-0 fw-bold text-secondary">Vendor Ref #:</label>
