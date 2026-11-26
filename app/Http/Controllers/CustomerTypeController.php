@@ -6,6 +6,7 @@ use App\Models\CustomerType;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CustomerTypeController extends Controller
 {
@@ -31,8 +32,18 @@ class CustomerTypeController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $branchId = ($user && !$user->isSuperAdmin() && method_exists($user, 'getEffectiveBranchId'))
+            ? $user->getEffectiveBranchId()
+            : ($user->branch_id ?? null);
+
         $validator = Validator::make($request->all(), [
-            'name' => 'required|unique:customer_types,name,' . $request->edit_id,
+            'name' => [
+                'required',
+                Rule::unique('customer_types', 'name')
+                    ->where(fn($q) => $q->where('branch_id', $branchId))
+                    ->ignore($request->edit_id),
+            ],
             'description' => 'nullable|string',
         ]);
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ExpenseCategoryController extends Controller
 {
@@ -16,8 +17,20 @@ class ExpenseCategoryController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $branchId = ($user && !$user->isSuperAdmin() && method_exists($user, 'getEffectiveBranchId'))
+            ? $user->getEffectiveBranchId()
+            : ($user->branch_id ?? null);
+
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:expense_categories,name,' . $request->edit_id . ',id',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('expense_categories', 'name')
+                    ->where(fn($q) => $q->where('branch_id', $branchId))
+                    ->ignore($request->edit_id),
+            ],
             'code' => 'nullable|string|max:50',
             'description' => 'nullable|string',
         ]);
