@@ -19,12 +19,12 @@ return new class extends Migration
             Schema::table($tableName, function (Blueprint $table) use ($oldIndexName) {
                 $table->dropUnique($oldIndexName);
             });
-        }
 
-        if (!in_array($newIndexName, $indexes)) {
-            Schema::table($tableName, function (Blueprint $table) use ($newIndexName) {
-                $table->unique(['branch_id', 'name'], $newIndexName);
-            });
+            if (!in_array($newIndexName, $indexes)) {
+                Schema::table($tableName, function (Blueprint $table) use ($newIndexName) {
+                    $table->unique(['branch_id', 'name'], $newIndexName);
+                });
+            }
         }
     }
 
