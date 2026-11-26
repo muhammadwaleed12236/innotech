@@ -35,9 +35,9 @@ class HomeController extends Controller
         $usertype = $user->usertype;
         $userId = $user->id;
 
-        if ($usertype == 'user') {
+        if ($usertype == 'user' && $user->roles->isEmpty()) {
             return view('user_panel.dashboard', compact('userId'));
-        } elseif ($usertype == 'admin' || $user->hasRole('admin') || $user->hasRole('Super Admin')) {
+        } elseif ($usertype == 'admin' || $user->roles->isNotEmpty()) {
 
             // Super Admin vs Branch Admin Access Management
             $isSuperAdmin = $user->isSuperAdmin();

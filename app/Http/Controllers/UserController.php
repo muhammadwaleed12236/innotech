@@ -108,6 +108,9 @@ class UserController extends Controller
 
         $user->name = $request->name;
         $user->email = $request->email;
+        if (empty($editId) && empty($user->usertype)) {
+            $user->usertype = 'admin';
+        }
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
