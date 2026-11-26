@@ -664,45 +664,59 @@ class HomeController extends Controller
             // 5. RECEIVABLES & PAYABLES
             $totalReceivables = null;
             if ($user->can('recovery.report.view') || $user->can('customer.ledger.view') || $user->can('customers.view')) {
-                $customerIds = DB::table('customers')->pluck('id');
-                $totalReceivables = 0;
-                foreach ($customerIds as $cid) {
-                    $latest = DB::table('customer_ledgers')->where('customer_id', $cid)->latest('id')->first();
-                    if ($latest) {
-                        $totalReceivables += (float)$latest->closing_balance;
-                    } else {
-                        $c = DB::table('customers')->where('id', $cid)->first();
-                        $totalReceivables += (float)($c->opening_balance ?? 0);
-                    }
-                }
-                if ($totalReceivables <= 0) {
+                if ($currentBranchId !== null) {
+                    // Branch-scoped receivables: strictly from this branch's sales
                     $totalReceivables = (float) DB::table('sales')
+                        ->where('branch_id', $currentBranchId)
                         ->whereNotIn('sale_status', ['cancelled', 'returned'])
-                        ->selectRaw('COALESCE(SUM(total_net - COALESCE(cash, 0)), 0) as due')
+                        ->selectRaw('COALESCE(SUM(GREATEST(total_net - COALESCE(cash, 0), 0)), 0) as due')
                         ->value('due');
+                } else {
+                    $customerIds = DB::table('customers')->pluck('id');
+                    $totalReceivables = 0;
+                    foreach ($customerIds as $cid) {
+                        $latest = DB::table('customer_ledgers')->where('customer_id', $cid)->latest('id')->first();
+                        if ($latest) {
+                            $totalReceivables += (float)$latest->closing_balance;
+                        } else {
+                            $c = DB::table('customers')->where('id', $cid)->first();
+                            $totalReceivables += (float)($c->opening_balance ?? 0);
+                        }
+                    }
+                    if ($totalReceivables <= 0) {
+                        $totalReceivables = (float) DB::table('sales')
+                            ->whereNotIn('sale_status', ['cancelled', 'returned'])
+                            ->selectRaw('COALESCE(SUM(total_net - COALESCE(cash, 0)), 0) as due')
+                            ->value('due');
+                    }
                 }
             }
 
             $totalPayables = null;
             if ($user->can('payable.report.view') || $user->can('vendor.ledger.view') || $user->can('vendors.view')) {
-                $vendorIds = DB::table('vendors')->pluck('id');
-                $totalPayables = 0;
-                foreach ($vendorIds as $vid) {
-                    $latest = DB::table('vendor_ledgers')->where('vendor_id', $vid)->latest('id')->first();
-                    if ($latest) {
-                        $totalPayables += (float)$latest->closing_balance;
-                    } else {
-                        $v = DB::table('vendors')->where('id', $vid)->first();
-                        $totalPayables += (float)($v->opening_balance ?? 0);
+                if ($currentBranchId !== null) {
+                    // Branch-scoped payables: strictly from this branch's purchases
+                    $totalPayables = (float) DB::table('purchases')
+                        ->where('branch_id', $currentBranchId)
+                        ->whereNotIn('status_purchase', ['cancelled', 'draft'])
+                        ->sum('due_amount');
+                } else {
+                    $vendorIds = DB::table('vendors')->pluck('id');
+                    $totalPayables = 0;
+                    foreach ($vendorIds as $vid) {
+                        $latest = DB::table('vendor_ledgers')->where('vendor_id', $vid)->latest('id')->first();
+                        if ($latest) {
+                            $totalPayables += (float)$latest->closing_balance;
+                        } else {
+                            $v = DB::table('vendors')->where('id', $vid)->first();
+                            $totalPayables += (float)($v->opening_balance ?? 0);
+                        }
                     }
-                }
-                if ($totalPayables <= 0) {
-                    $totalPayablesQuery = DB::table('purchases')
-                        ->whereNotIn('status_purchase', ['cancelled', 'draft']);
-                    if ($currentBranchId !== null) {
-                        $totalPayablesQuery->where('branch_id', $currentBranchId);
+                    if ($totalPayables <= 0) {
+                        $totalPayables = (float) DB::table('purchases')
+                            ->whereNotIn('status_purchase', ['cancelled', 'draft'])
+                            ->sum('due_amount');
                     }
-                    $totalPayables = (float) $totalPayablesQuery->sum('due_amount');
                 }
             }
 
@@ -739,18 +753,12 @@ class HomeController extends Controller
             $warehouseStockStats = collect();
 
             if ($user->can('warehouse.stock.view') || $user->can('stocks.view') || $user->can('inventory.onhand') || $user->can('products.view') || $user->can('item.stock.report.view') || $user->hasRole('admin') || $user->hasRole('Super Admin')) {
-                try {
-                    $stockReq = new Request([
-                        'warehouse_id' => 'all',
-                        'report_mode' => 'summary'
-                    ]);
-                    $reportingCtrl = app(ReportingController::class);
-                    $stockRes = $reportingCtrl->fetchItemStock($stockReq);
-                    $stockData = $stockRes->getData(true);
-                    $totalStockValue = (float) ($stockData['grand_total'] ?? 0);
-                } catch (\Throwable $e) {
+                if ($currentBranchId !== null) {
+                    // Branch-scoped stock valuation & pieces
                     $totalStockValue = (float) (DB::table('warehouse_stocks')
+                        ->join('warehouses', 'warehouses.id', '=', 'warehouse_stocks.warehouse_id')
                         ->join('products', 'products.id', '=', 'warehouse_stocks.product_id')
+                        ->where('warehouses.branch_id', $currentBranchId)
                         ->where('warehouse_stocks.total_pieces', '>', 0)
                         ->selectRaw('COALESCE(SUM(warehouse_stocks.total_pieces * (
                             CASE 
@@ -762,12 +770,50 @@ class HomeController extends Controller
                             END
                         )), 0) as total')
                         ->value('total') ?? 0);
+
+                    $totalStockPieces = (float) DB::table('warehouse_stocks')
+                        ->join('warehouses', 'warehouses.id', '=', 'warehouse_stocks.warehouse_id')
+                        ->where('warehouses.branch_id', $currentBranchId)
+                        ->sum('warehouse_stocks.total_pieces');
+                } else {
+                    try {
+                        $stockReq = new Request([
+                            'warehouse_id' => 'all',
+                            'report_mode' => 'summary'
+                        ]);
+                        $reportingCtrl = app(ReportingController::class);
+                        $stockRes = $reportingCtrl->fetchItemStock($stockReq);
+                        $stockData = $stockRes->getData(true);
+                        $totalStockValue = (float) ($stockData['grand_total'] ?? 0);
+                    } catch (\Throwable $e) {
+                        $totalStockValue = (float) (DB::table('warehouse_stocks')
+                            ->join('products', 'products.id', '=', 'warehouse_stocks.product_id')
+                            ->where('warehouse_stocks.total_pieces', '>', 0)
+                            ->selectRaw('COALESCE(SUM(warehouse_stocks.total_pieces * (
+                                CASE 
+                                    WHEN products.size_mode IN ("by_size", "by_m2") THEN COALESCE(products.pieces_per_m2, 0) * COALESCE(products.purchase_price_per_m2, 0)
+                                    WHEN COALESCE(products.purchase_price_per_piece, 0) > 0 THEN products.purchase_price_per_piece
+                                    WHEN COALESCE(products.purchase_price_per_box, 0) > 0 AND COALESCE(products.pieces_per_box, 0) > 0 THEN (products.purchase_price_per_box / products.pieces_per_box)
+                                    WHEN COALESCE(products.trade_price, 0) > 0 THEN products.trade_price
+                                    ELSE 0
+                                END
+                            )), 0) as total')
+                            ->value('total') ?? 0);
+                    }
+
+                    $totalStockPieces = (float) DB::table('warehouse_stocks')->sum('total_pieces');
                 }
 
-                $totalStockPieces = (float) DB::table('warehouse_stocks')->sum('total_pieces');
+                $branchWhIds = $currentBranchId !== null
+                    ? DB::table('warehouses')->where('branch_id', $currentBranchId)->pluck('id')->toArray()
+                    : null;
 
                 // Low stock products
-                $lowStockProducts = Product::withSum('warehouseStocks', 'total_pieces')
+                $lowStockProducts = Product::withSum(['warehouseStocks' => function ($q) use ($branchWhIds) {
+                        if ($branchWhIds !== null) {
+                            $q->whereIn('warehouse_id', empty($branchWhIds) ? [-1] : $branchWhIds);
+                        }
+                    }], 'total_pieces')
                     ->whereNotNull('alert_carton_quantity')
                     ->where('is_active', 1)
                     ->get()
@@ -785,7 +831,11 @@ class HomeController extends Controller
                     ->values();
 
                 // Out of stock products count
-                $outOfStockCount = Product::withSum('warehouseStocks', 'total_pieces')
+                $outOfStockCount = Product::withSum(['warehouseStocks' => function ($q) use ($branchWhIds) {
+                        if ($branchWhIds !== null) {
+                            $q->whereIn('warehouse_id', empty($branchWhIds) ? [-1] : $branchWhIds);
+                        }
+                    }], 'total_pieces')
                     ->where('is_active', 1)
                     ->get()
                     ->filter(fn($p) => (float)($p->warehouse_stocks_sum_total_pieces ?? 0) <= 0)
