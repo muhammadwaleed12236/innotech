@@ -836,7 +836,8 @@
                             (method_exists($user, 'hasRole') && ($user->hasRole('Super Admin') || $user->hasRole('admin') || $user->hasRole('superadmin'))) ||
                             $user->can('warehouse.view')
                         );
-                        $userWarehouseId = $user ? ($user->warehouse_id ?? 1) : 1;
+                        $firstBranchWhId = (isset($Warehouse) && count($Warehouse) > 0) ? $Warehouse->first()->id : 0;
+                        $userWarehouseId = $user ? ($user->warehouse_id ?? ($user->isSuperAdmin() ? 1 : $firstBranchWhId)) : $firstBranchWhId;
                     @endphp
                     @if($canSelectWarehouse)
                     <div class="d-flex align-items-center gap-2">

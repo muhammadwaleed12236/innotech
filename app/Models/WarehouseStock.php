@@ -47,6 +47,26 @@ class WarehouseStock extends Model
 
     protected static function booted()
     {
+        static::addGlobalScope('branch', function (\Illuminate\Database\Eloquent\Builder $builder) {
+            if (!\Illuminate\Support\Facades\Auth::check()) {
+                return;
+            }
+            $user = \Illuminate\Support\Facades\Auth::user();
+            if ($user->isSuperAdmin()) {
+                return;
+            }
+            $branchId = method_exists($user, 'getEffectiveBranchId')
+                ? $user->getEffectiveBranchId()
+                : ($user->branch_id ?? null);
+            if ($branchId) {
+                $builder->whereHas('warehouse', function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId);
+                });
+            } else {
+                $builder->whereRaw('1 = 0');
+            }
+        });
+
         static::saved(function ($warehouseStock) {
             $product = $warehouseStock->product;
             if ($product) {

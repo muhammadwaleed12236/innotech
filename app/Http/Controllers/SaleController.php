@@ -140,7 +140,17 @@ class SaleController extends Controller
         $salesOfficers = \App\Models\SalesOfficer::active()->orderBy('name')->get();
         $orderBookers = \App\Models\SalesOfficer::active()->bookers()->orderBy('name')->get();
         $salesmen = \App\Models\SalesOfficer::active()->salesmen()->orderBy('name')->get();
+        $user = auth()->user();
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
         $warehouse = Warehouse::all();
+        if ($warehouse->isEmpty() && $user && !$user->isSuperAdmin() && $effectiveBranchId) {
+            $branchName = $user->effective_branch?->name ?? ('Branch #' . $effectiveBranchId);
+            $newWh = Warehouse::firstOrCreate(
+                ['branch_id' => $effectiveBranchId, 'warehouse_name' => $branchName . ' Store'],
+                ['creater_id' => $user->id ?? 1]
+            );
+            $warehouse = collect([$newWh]);
+        }
         
         \App\Models\InvoiceSeries::ensureQuotationSeries();
         $allSeries = \App\Models\InvoiceSeries::orderBy('prefix', 'asc')->get();
@@ -196,7 +206,17 @@ class SaleController extends Controller
     public function searchpname(Request $request)
     {
         $q = trim((string)$request->get('q', ''));
-        $warehouseId = $request->get('warehouse_id', 1);
+        $user = auth()->user();
+        $warehouseId = $request->get('warehouse_id');
+
+        if ($user && !$user->isSuperAdmin()) {
+            // Ensure branch user can only query warehouses belonging to their own branch
+            if (!$warehouseId || !Warehouse::where('id', $warehouseId)->exists()) {
+                $warehouseId = Warehouse::value('id') ?: -1;
+            }
+        } else {
+            $warehouseId = $warehouseId ?: 1;
+        }
 
         $products = Product::with(['brand', 'taxType'])
             ->leftJoin('warehouse_stocks', function ($join) use ($warehouseId) {
@@ -1145,7 +1165,17 @@ class SaleController extends Controller
 
         // 2. Data for Dropdowns (Same as addsale)
         $customer = Customer::with('salesOfficer')->get();
+        $user = auth()->user();
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
         $warehouse = Warehouse::all();
+        if ($warehouse->isEmpty() && $user && !$user->isSuperAdmin() && $effectiveBranchId) {
+            $branchName = $user->effective_branch?->name ?? ('Branch #' . $effectiveBranchId);
+            $newWh = Warehouse::firstOrCreate(
+                ['branch_id' => $effectiveBranchId, 'warehouse_name' => $branchName . ' Store'],
+                ['creater_id' => $user->id ?? 1]
+            );
+            $warehouse = collect([$newWh]);
+        }
         $salesOfficers = \App\Models\SalesOfficer::active()->orderBy('name')->get();
         $orderBookers = \App\Models\SalesOfficer::active()->bookers()->orderBy('name')->get();
         $salesmen = \App\Models\SalesOfficer::active()->salesmen()->orderBy('name')->get();

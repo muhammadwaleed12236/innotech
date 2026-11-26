@@ -117,7 +117,13 @@ class ProductController extends Controller
             ->select('id', 'item_name', 'tracking_type', 'item_code', 'barcode_path', 'size_mode', 'unit_id', 'height', 'width', 'pieces_per_box', 'purchase_price_per_box', 'purchase_price_per_m2', 'purchase_price_per_piece', 'pieces_per_m2', 'purchase_discount_percent', 'sale_discount_percent', 'color', 'sale_price_per_piece', 'sale_price_per_box', 'retail_price', 'trade_price', 'is_third_schedule', 'hs_code', 'tax_type_id', 'model')
             ->with(['unit', 'taxType']);
 
+        $user = auth()->user();
         $warehouseId = $request->get('warehouse_id');
+        if ($user && !$user->isSuperAdmin() && $warehouseId) {
+            if (!\App\Models\Warehouse::where('id', $warehouseId)->exists()) {
+                $warehouseId = -1;
+            }
+        }
         if ($warehouseId) {
             $query->withSum(['warehouseStocks' => function($q) use ($warehouseId) {
                 $q->where('warehouse_id', $warehouseId);
