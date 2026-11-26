@@ -7,6 +7,7 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 class SubcategoryController extends Controller
 {
     
@@ -21,8 +22,18 @@ class SubcategoryController extends Controller
 
 public function store(Request $request)
 {
+    $user = Auth::user();
+    $branchId = ($user && !$user->isSuperAdmin() && method_exists($user, 'getEffectiveBranchId'))
+        ? $user->getEffectiveBranchId()
+        : ($user->branch_id ?? null);
+
     $validator = Validator::make($request->all(), [
-        'name' => 'required|unique:subcategories,name,' . $request->edit_id,
+        'name' => [
+            'required',
+            Rule::unique('subcategories', 'name')
+                ->where(fn($q) => $q->where('branch_id', $branchId))
+                ->ignore($request->edit_id),
+        ],
         'category_id' => 'required',
     ]);
 

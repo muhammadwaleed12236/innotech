@@ -6,6 +6,7 @@ use App\Models\Brand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 class BrandController extends Controller
 {
      public function index()
@@ -19,8 +20,18 @@ class BrandController extends Controller
 
     public function store(Request $request)
 {
+    $user = Auth::user();
+    $branchId = ($user && !$user->isSuperAdmin() && method_exists($user, 'getEffectiveBranchId'))
+        ? $user->getEffectiveBranchId()
+        : ($user->branch_id ?? null);
+
     $validator = Validator::make($request->all(), [
-        'name' => 'required|unique:brands,name,' . $request->edit_id,
+        'name' => [
+            'required',
+            Rule::unique('brands', 'name')
+                ->where(fn($q) => $q->where('branch_id', $branchId))
+                ->ignore($request->edit_id),
+        ],
     ]);
 
     if ($validator->fails()) {

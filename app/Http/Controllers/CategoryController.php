@@ -5,6 +5,7 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 class CategoryController extends Controller
 {
     
@@ -19,10 +20,19 @@ class CategoryController extends Controller
 
     public function store(Request $request)
 {
-    
+    $user = Auth::user();
+    $branchId = ($user && !$user->isSuperAdmin() && method_exists($user, 'getEffectiveBranchId'))
+        ? $user->getEffectiveBranchId()
+        : ($user->branch_id ?? null);
+
     // Validation
     $validator = Validator::make($request->all(), [
-        'name' => 'required|unique:categories,name,' . $request->edit_id . ',id',
+        'name' => [
+            'required',
+            Rule::unique('categories', 'name')
+                ->where(fn($q) => $q->where('branch_id', $branchId))
+                ->ignore($request->edit_id, 'id'),
+        ],
     ]);
 
     if ($validator->fails()) {
