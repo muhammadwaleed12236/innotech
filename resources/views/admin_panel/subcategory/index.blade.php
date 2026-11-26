@@ -276,7 +276,7 @@
                 </thead>
                 <tbody>
                     @foreach ($subcategory as $company)
-                        <tr>
+                        <tr data-category-id="{{ $company->category_id }}">
                             <td class="text-center id"><span class="subcat-id-badge">#{{ $company->id }}</span></td>
                             <td class="text-start name fw-semibold text-dark">{{ $company->name }}</td>
                             <td class="text-start cat-name">
@@ -303,7 +303,7 @@
         {{-- Mobile Cards View (< 768px) --}}
         <div class="mobile-subcat-cards">
             @foreach ($subcategory as $company)
-                <div class="subcat-mcard">
+                <div class="subcat-mcard" data-category-id="{{ $company->category_id }}">
                     <div class="subcat-mcard-hdr">
                         <span class="subcat-id-badge">#{{ $company->id }}</span>
                         <span class="parent-cat-badge"><i class="fas fa-folder me-1"></i>{{ $company->category->name ?? 'Unassigned' }}</span>
@@ -394,13 +394,16 @@
         var tr = $(this).closest("tr, .subcat-mcard");
         var id = tr.find(".id, .subcat-id-badge").text().replace('#', '').trim();
         var name = tr.find(".name, .subcat-mcard-title").text().trim();
-        var catName = tr.find(".cat-name, .parent-cat-badge").text().trim();
+        var catId = tr.data('category-id');
+        var catName = tr.find(".parent-cat-badge").text().trim();
 
         $('#id').val(id);
         $('#name').val(name);
-        
-        // Select category by matching text if possible
-        if (catName) {
+
+        // Select parent category by ID (primary) or matching text (fallback)
+        if (catId) {
+            $('#category_id').val(catId).trigger('change');
+        } else if (catName) {
             $("#category_id option").filter(function() {
                 return $(this).text().trim() === catName;
             }).prop('selected', true);
