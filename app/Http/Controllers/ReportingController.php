@@ -3531,14 +3531,29 @@ class ReportingController extends Controller
         return view('admin_panel.reporting.recovery_report');
     }
 
+    private function getBranchScopeId(): ?int
+    {
+        $user = auth()->user();
+        if ($user && $user->isSuperAdmin()) {
+            return null;
+        }
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId')
+            ? $user->getEffectiveBranchId()
+            : ($user->branch_id ?? null);
+        return $effectiveBranchId ?: -1;
+    }
+
     public function fetch_recovery(Request $request)
     {
+        $branchId = $this->getBranchScopeId();
         $startDate = $request->start_date ?: '2000-01-01';
         $endDate = $request->end_date ?: date('Y-m-d');
         $dateEndParams = $endDate . ' 23:59:59';
         
         $balanceService = app(\App\Services\BalanceService::class);
-        $custQuery = DB::table('customers')->orderBy('customer_name');
+        $custQuery = DB::table('customers')
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('customer_name');
         if ($request->province && $request->province !== 'all') {
             $custQuery->where('province', $request->province);
         }
@@ -3623,12 +3638,16 @@ class ReportingController extends Controller
 
     public function fetch_payable(Request $request)
     {
+        $branchId = $this->getBranchScopeId();
         $startDate = $request->start_date ?: '2000-01-01';
         $endDate = $request->end_date ?: date('Y-m-d');
         $dateEndParams = $endDate . ' 23:59:59';
         
         $balanceService = app(\App\Services\BalanceService::class);
-        $vendors = DB::table('vendors')->orderBy('name')->get();
+        $vendors = DB::table('vendors')
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
+            ->orderBy('name')
+            ->get();
         $apId = $balanceService->getAccountsPayableId();
         
         $rows = [];
@@ -4344,6 +4363,7 @@ class ReportingController extends Controller
      */
     public function fetchProductSaleCustomerWise(Request $request)
     {
+        $branchId = $this->getBranchScopeId();
         $fromDate = $request->from_date;
         $toDate   = $request->to_date;
 
@@ -4383,7 +4403,8 @@ class ReportingController extends Controller
                 DB::raw("SUM(sale_items.total) as gross_amount"),
                 DB::raw("COUNT(DISTINCT sales.id) as invoice_count")
             )
-            ->whereIn('sales.sale_status', ['posted', 'completed', 'booked', 'draft']);
+            ->whereIn('sales.sale_status', ['posted', 'completed', 'booked', 'draft'])
+            ->when($branchId !== null, fn($q) => $q->where('sales.branch_id', $branchId));
 
         if ($fromDate) {
             $salesQuery->whereDate('sales.created_at', '>=', $fromDate);
@@ -4443,7 +4464,8 @@ class ReportingController extends Controller
                 DB::raw("SUM(sale_return_items.qty) as return_qty"),
                 DB::raw("SUM(sale_return_items.line_total) as return_amount")
             )
-            ->whereIn('sale_returns.status', ['approved', 'posted', 'completed']);
+            ->whereIn('sale_returns.status', ['approved', 'posted', 'completed'])
+            ->when($branchId !== null, fn($q) => $q->where('sale_returns.branch_id', $branchId));
 
         if ($fromDate) {
             $returnQuery->whereDate('sale_returns.created_at', '>=', $fromDate);
@@ -4874,6 +4896,7 @@ class ReportingController extends Controller
      */
     public function fetch_trial_balance(Request $request)
     {
+        $branchId = $this->getBranchScopeId();
         $startDate = $request->start_date ?: date('Y-01-01');
         $endDate = $request->end_date ?: date('Y-m-d');
         $endDateTime = $endDate . ' 23:59:59';
@@ -4882,6 +4905,7 @@ class ReportingController extends Controller
 
         $accounts = DB::table('accounts')
             ->leftJoin('account_heads', 'accounts.head_id', '=', 'account_heads.id')
+            ->when($branchId !== null, fn($q) => $q->where('accounts.branch_id', $branchId))
             ->select(
                 'accounts.id',
                 'accounts.account_code',

@@ -61,8 +61,9 @@ class OpeningStockController extends Controller
         $warehouses = $this->getPermittedWarehouses();
         $warehouseIds = $warehouses->pluck('id')->toArray();
 
-        // Query opening stock movements
+        // Query opening stock movements (scoped to branch's products via Product's BranchScope)
         $query = StockMovement::with(['product'])
+            ->whereHas('product')
             ->where('ref_type', 'OPENING_STOCK');
 
         if ($request->filled('search')) {
@@ -76,8 +77,8 @@ class OpeningStockController extends Controller
         $movements = $query->latest()->paginate(20)->appends($request->query());
 
         // Stats summary
-        $totalOpeningMovements = StockMovement::where('ref_type', 'OPENING_STOCK')->count();
-        $totalPiecesAdded      = StockMovement::where('ref_type', 'OPENING_STOCK')->sum('qty');
+        $totalOpeningMovements = StockMovement::whereHas('product')->where('ref_type', 'OPENING_STOCK')->count();
+        $totalPiecesAdded      = StockMovement::whereHas('product')->where('ref_type', 'OPENING_STOCK')->sum('qty');
         $totalBatches          = ProductBatch::count();
         $totalSerials          = ProductSerial::count();
 

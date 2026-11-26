@@ -205,8 +205,17 @@ class WarehouseController extends Controller
         $stockedProductsCount = $statsQuery->where('total_pieces', '>', 0)->distinct('product_id')->count('product_id');
 
         // Estimate inventory value (total_pieces * product.purchase_price_per_piece)
+        $user = auth()->user();
+        $isSuperAdmin = $user && $user->isSuperAdmin();
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId')
+            ? $user->getEffectiveBranchId()
+            : ($user->branch_id ?? null);
+        $branchId = $isSuperAdmin ? null : ($effectiveBranchId ?: -1);
+
         $inventoryValue = DB::table('warehouse_stocks')
+            ->join('warehouses', 'warehouse_stocks.warehouse_id', '=', 'warehouses.id')
             ->join('products', 'warehouse_stocks.product_id', '=', 'products.id')
+            ->when($branchId !== null, fn($q) => $q->where('warehouses.branch_id', $branchId))
             ->when($selectedWarehouseId !== 'all' && !empty($selectedWarehouseId), function ($q) use ($selectedWarehouseId) {
                 $q->where('warehouse_stocks.warehouse_id', $selectedWarehouseId);
             })

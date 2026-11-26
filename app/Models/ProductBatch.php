@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductBatch extends Model
 {
-    use HasFactory;
+    use HasFactory, \App\Traits\BelongsToBranchViaWarehouse;
 
     protected $table = 'product_batches';
 
