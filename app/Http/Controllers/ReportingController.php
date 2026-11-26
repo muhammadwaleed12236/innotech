@@ -4994,14 +4994,18 @@ class ReportingController extends Controller
         // Accounts Receivable Control
         $custBalPrior = DB::table('journal_entries')
             ->where('party_type', \App\Models\Customer::class)
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
             ->where('entry_date', '<', $startDate)
             ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as bal')
             ->value('bal') ?? 0;
-        $custOb = (float)DB::table('customers')->sum('opening_balance');
+        $custOb = (float)DB::table('customers')
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
+            ->sum('opening_balance');
         $custOpenNet = $custOb + (float)$custBalPrior;
 
         $custPeriod = DB::table('journal_entries')
             ->where('party_type', \App\Models\Customer::class)
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
             ->whereBetween('entry_date', [$startDate, $endDateTime])
             ->where('description', 'NOT LIKE', 'Opening Balance%')
             ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
@@ -5039,14 +5043,18 @@ class ReportingController extends Controller
         // Accounts Payable Control
         $vendBalPrior = DB::table('journal_entries')
             ->where('party_type', \App\Models\Vendor::class)
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
             ->where('entry_date', '<', $startDate)
             ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as bal')
             ->value('bal') ?? 0;
-        $vendOb = (float)DB::table('vendors')->sum('opening_balance');
+        $vendOb = (float)DB::table('vendors')
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
+            ->sum('opening_balance');
         $vendOpenNet = $vendOb + (float)$vendBalPrior;
 
         $vendPeriod = DB::table('journal_entries')
             ->where('party_type', \App\Models\Vendor::class)
+            ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
             ->whereBetween('entry_date', [$startDate, $endDateTime])
             ->where('description', 'NOT LIKE', 'Opening Balance%')
             ->selectRaw('COALESCE(SUM(debit), 0) as dr, COALESCE(SUM(credit), 0) as cr')
