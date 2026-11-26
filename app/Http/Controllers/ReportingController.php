@@ -3712,6 +3712,13 @@ class ReportingController extends Controller
 
     public function fetch_parties_balance(Request $request)
     {
+        $user = auth()->user();
+        $isSuperAdmin = $user && $user->isSuperAdmin();
+        $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId')
+            ? $user->getEffectiveBranchId()
+            : ($user->branch_id ?? null);
+        $branchId = $isSuperAdmin ? null : ($effectiveBranchId ?: -1);
+
         $reportType = $request->report_type ?: 'BOTH'; // RECEIVABLE, PAYABLE, BOTH
         $showZero = $request->show_zero == 'true';
         $searchParty = $request->party_name;
@@ -3728,12 +3735,14 @@ class ReportingController extends Controller
         if ($reportType == 'BOTH' || $reportType == 'RECEIVABLE') {
             $custBalances = DB::table('journal_entries')
                 ->where('party_type', \App\Models\Customer::class)
+                ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
                 ->selectRaw('party_id, COALESCE(SUM(debit) - SUM(credit), 0) as balance')
                 ->groupBy('party_id')
                 ->pluck('balance', 'party_id');
 
             $customers = DB::table('customers')
                 ->leftJoin('zones', 'customers.zone', '=', 'zones.id')
+                ->when($branchId !== null, fn($q) => $q->where('customers.branch_id', $branchId))
                 ->select('customers.*', 'zones.zone as zone_name')
                 ->get();
             foreach ($customers as $c) {
@@ -3765,11 +3774,13 @@ class ReportingController extends Controller
             $vendorBalances = DB::table('journal_entries')
                 ->where('party_type', \App\Models\Vendor::class)
                 ->where('account_id', $apId)
+                ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId))
                 ->selectRaw('party_id, COALESCE(SUM(credit) - SUM(debit), 0) as balance')
                 ->groupBy('party_id')
                 ->pluck('balance', 'party_id');
 
-            $vendQuery = DB::table('vendors');
+            $vendQuery = DB::table('vendors')
+                ->when($branchId !== null, fn($q) => $q->where('branch_id', $branchId));
             if ($request->province && $request->province !== 'all') $vendQuery->where('province', $request->province);
             if ($request->city && $request->city !== 'all') $vendQuery->where('city', $request->city);
             if ($request->area && $request->area !== 'all') $vendQuery->where('area', $request->area);
