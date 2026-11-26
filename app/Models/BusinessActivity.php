@@ -67,16 +67,27 @@ class BusinessActivity extends Model
      */
     public static function log(array $data): self
     {
-        $userId = $data['user_id'] ?? (Auth::check() ? Auth::id() : null);
-        $userName = $data['user_name'] ?? (Auth::check() ? Auth::user()->name : 'System');
+        $authUser = Auth::check() ? Auth::user() : null;
+        $userId = $data['user_id'] ?? ($authUser ? $authUser->id : null);
+        $userName = $data['user_name'] ?? ($authUser ? $authUser->name : 'System');
+        $branchId = $data['branch_id'] ?? ($authUser && method_exists($authUser, 'getEffectiveBranchId') ? $authUser->getEffectiveBranchId() : ($authUser->branch_id ?? null));
 
-        // Avoid logging exact duplicates within the same minute
+        // Avoid logging exact duplicates (e.g. during backfill or rapid double-fire within 2 seconds)
         if (!empty($data['reference_no']) && !empty($data['activity_type'])) {
-            $existing = self::where('reference_no', $data['reference_no'])
-                ->where('activity_type', $data['activity_type'])
-                ->first();
-            if ($existing) {
-                return $existing;
+            $dupQuery = self::withoutGlobalScopes()
+                ->where('reference_no', $data['reference_no'])
+                ->where('activity_type', $data['activity_type']);
+
+            if (empty($data['allow_repeat'])) {
+                $existing = $dupQuery->first();
+                if ($existing) {
+                    return $existing;
+                }
+            } else {
+                $existing = $dupQuery->where('created_at', '>=', now()->subSeconds(2))->first();
+                if ($existing) {
+                    return $existing;
+                }
             }
         }
 
@@ -91,7 +102,7 @@ class BusinessActivity extends Model
             'user_name' => $userName,
             'reference_no' => $data['reference_no'] ?? null,
             'amount' => isset($data['amount']) ? (float) $data['amount'] : null,
-            'branch_id' => $data['branch_id'] ?? null,
+            'branch_id' => $branchId,
             'warehouse_id' => $data['warehouse_id'] ?? null,
             'subject_type' => $data['subject_type'] ?? null,
             'subject_id' => $data['subject_id'] ?? null,

@@ -359,6 +359,11 @@
                                                 href="{{ route('roles.index') }}"><i
                                                     class="fa-solid fa-user-lock mr-2"></i><span>Roles</span></a></li>
                                         @endcan
+                                        @if(auth()->user()->can('activity.logs.view') || auth()->user()->can('users.view') || auth()->user()->isSuperAdmin())
+                                        <li class="nav-item"><a class="nav-link"
+                                                href="{{ route('activity.logs.index') }}"><i
+                                                    class="fa-solid fa-clock-rotate-left mr-2"></i><span>Activity Logs</span></a></li>
+                                        @endif
                                         @if(auth()->user()->isSuperAdmin())
                                         <li class="nav-item"><a class="nav-link"
                                                 href="{{ route('permissions.index') }}"><i

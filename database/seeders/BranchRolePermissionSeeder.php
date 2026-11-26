@@ -31,6 +31,7 @@ class BranchRolePermissionSeeder extends Seeder
             'branch.stock.manage',
             'branch.vouchers.manage',
             'branch.reports.view',
+            'activity.logs.view',
         ];
 
         foreach ($branchPermissions as $perm) {
@@ -95,6 +96,7 @@ class BranchRolePermissionSeeder extends Seeder
                     'branch.stock.manage',
                     'branch.vouchers.manage',
                     'branch.reports.view',
+                    'activity.logs.view',
                 ]);
         })->get();
         $branchAdminRole->syncPermissions($branchAdminPerms);

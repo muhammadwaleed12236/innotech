@@ -335,6 +335,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('permission:users.create|users.edit');
     Route::get('/users/delete/{id}', [UserController::class, 'delete'])->name('users.delete')->middleware('permission:users.delete');
     Route::post('/admin/users/update-roles', [UserController::class, 'updateRoles'])->name('users.update.roles')->middleware('permission:users.edit');
+
+    // Activity Logs (Super Admin & Branch Users Management)
+    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])
+        ->name('activity.logs.index')
+        ->middleware('permission:activity.logs.view|users.view');
     // Route::put('/users/{id}/roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
 
     // Zone
