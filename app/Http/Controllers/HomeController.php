@@ -200,12 +200,12 @@ class HomeController extends Controller
             // Quick Business Counts
             $categoryCount = $user->can('categories.view') ? DB::table('categories')->count() : null;
             $subcategoryCount = $user->can('subcategories.view') ? DB::table('subcategories')->count() : null;
-            $productCount = $user->can('products.view') ? DB::table('products')->where('is_active', 1)->count() : null;
-            $totalCatalogProducts = $user->can('products.view') ? DB::table('products')->count() : null;
-            $customerscount = $user->can('customers.view') ? DB::table('customers')->count() : null;
-            $newCustomersCount = $user->can('customers.view') ? DB::table('customers')->whereBetween('created_at', [$startDtStr, $endDtStr])->count() : 0;
-            $vendorCount = $user->can('vendors.view') ? DB::table('vendors')->count() : null;
-            $newVendorsCount = $user->can('vendors.view') ? DB::table('vendors')->whereBetween('created_at', [$startDtStr, $endDtStr])->count() : 0;
+            $productCount = $user->can('products.view') ? $scopeBranch(DB::table('products'))->where('is_active', 1)->count() : null;
+            $totalCatalogProducts = $user->can('products.view') ? $scopeBranch(DB::table('products'))->count() : null;
+            $customerscount = $user->can('customers.view') ? $scopeBranch(DB::table('customers'))->count() : null;
+            $newCustomersCount = $user->can('customers.view') ? $scopeBranch(DB::table('customers'))->whereBetween('created_at', [$startDtStr, $endDtStr])->count() : 0;
+            $vendorCount = $user->can('vendors.view') ? $scopeBranch(DB::table('vendors'))->count() : null;
+            $newVendorsCount = $user->can('vendors.view') ? $scopeBranch(DB::table('vendors'))->whereBetween('created_at', [$startDtStr, $endDtStr])->count() : 0;
             $employeeCount = $user->can('hr.employees.view') ? (
                 \Illuminate\Support\Facades\Schema::hasTable('hr_employees') ? DB::table('hr_employees')->count() : DB::table('users')->count()
             ) : null;

@@ -119,6 +119,19 @@ class Product extends Model
 
     protected static function booted()
     {
+        static::addGlobalScope(new \App\Scopes\BranchScope);
+
+        static::creating(function ($product) {
+            if (empty($product->branch_id) && \Illuminate\Support\Facades\Auth::check()) {
+                $user = \Illuminate\Support\Facades\Auth::user();
+                if ($user && !$user->isSuperAdmin()) {
+                    $product->branch_id = method_exists($user, 'getEffectiveBranchId')
+                        ? $user->getEffectiveBranchId()
+                        : ($user->branch_id ?? null);
+                }
+            }
+        });
+
         static::saved(function ($product) {
             $alertQty = $product->alert_quantity;
             if (is_null($alertQty) && !is_null($product->alert_carton_quantity)) {

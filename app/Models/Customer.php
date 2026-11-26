@@ -10,6 +10,7 @@ class Customer extends Model
     use HasFactory;
     
     protected $fillable = [
+        'branch_id',
         'customer_id', 'customer_name', 'customer_name_ur', 'cnic', 'filer_type', 'zone',
         'contact_person', 'mobile', 'email_address', 'contact_person_2', 'mobile_2',
         'email_address_2', 'opening_balance', 'balance_range', 'address', 'status',
@@ -124,7 +125,16 @@ class Customer extends Model
     protected static function boot()
     {
         parent::boot();
+        static::addGlobalScope(new \App\Scopes\BranchScope);
         static::creating(function ($model) {
+            if (empty($model->branch_id) && \Illuminate\Support\Facades\Auth::check()) {
+                $user = \Illuminate\Support\Facades\Auth::user();
+                if ($user && !$user->isSuperAdmin()) {
+                    $model->branch_id = method_exists($user, 'getEffectiveBranchId')
+                        ? $user->getEffectiveBranchId()
+                        : ($user->branch_id ?? null);
+                }
+            }
             if (empty($model->uuid)) {
                 $model->uuid = (string) \Illuminate\Support\Str::uuid();
             }
