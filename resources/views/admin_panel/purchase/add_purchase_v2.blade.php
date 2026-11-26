@@ -815,6 +815,19 @@
                         </div>
                     </div>
 
+                    {{-- Branch Select (Super Admin Only) --}}
+                    @if(auth()->user()->isSuperAdmin())
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 text-nowrap fw-bold"><i class="fas fa-code-branch text-danger me-1"></i>Branch: <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm fw-bold border-danger shadow-sm" name="branch_id" id="branchSelect" required style="min-width: 160px;">
+                            <option value="">-- Select Branch --</option>
+                            @foreach ($allBranches ?? [] as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+
                     {{-- Warehouse Select --}}
                     @php
                         $user = auth()->user();
@@ -1658,6 +1671,25 @@
 
             $('#purchaseForm').on('submit', function(e) {
                 normalizeDiscountInput();
+
+                // Super Admin: branch must be selected
+                @if(auth()->user()->isSuperAdmin())
+                const selectedBranch = $('#branchSelect').val();
+                if (!selectedBranch) {
+                    e.preventDefault();
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Branch Required',
+                            text: 'Please select a branch before saving this purchase.'
+                        });
+                    } else {
+                        alert('Please select a branch before saving this purchase.');
+                    }
+                    $('#branchSelect').focus();
+                    return false;
+                }
+                @endif
 
                 let hasPaymentError = false;
                 let totalPaid = 0;

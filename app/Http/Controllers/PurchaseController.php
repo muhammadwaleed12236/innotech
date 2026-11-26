@@ -248,7 +248,11 @@ class PurchaseController extends Controller
         $defaultGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
 
         $taxTypes = \App\Models\TaxType::active()->orderBy('is_default', 'desc')->orderBy('code')->get();
-        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent', 'taxTypes'));
+
+        // Pass all branches for super admin branch selector
+        $allBranches = \App\Models\Branch::orderBy('name')->get();
+
+        return view('admin_panel.purchase.add_purchase_v2', compact('Vendor', 'Warehouse', 'Purchase', 'accounts', 'nextInvoice', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent', 'taxTypes', 'allBranches'));
     }
     public function quickCreate()
     {
@@ -347,9 +351,20 @@ class PurchaseController extends Controller
             $user = auth()->user();
             $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
             if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+                // Branch user: locked to their own branch
                 $branchId = (int) $effectiveBranchId;
+            } elseif ($user && $user->isSuperAdmin()) {
+                // Super Admin: must explicitly select a branch
+                $selectedBranch = $request->input('branch_id');
+                if (!$selectedBranch) {
+                    return response()->json(['success' => false, 'message' => 'Super Admin must select a branch before creating a purchase.'], 422);
+                }
+                $branchId = (int) $selectedBranch;
             } else {
-                $branchId = (int) ($request->branch_id ?? ($effectiveBranchId ?: 1));
+                $branchId = (int) ($effectiveBranchId ?: 0);
+                if (!$branchId) {
+                    return response()->json(['success' => false, 'message' => 'No branch assigned. Please contact administrator.'], 422);
+                }
             }
 
             $purchase = Purchase::create([
@@ -850,9 +865,20 @@ class PurchaseController extends Controller
 
             $effectiveBranchId = $user && method_exists($user, 'getEffectiveBranchId') ? $user->getEffectiveBranchId() : ($user->branch_id ?? null);
             if ($user && !$user->isSuperAdmin() && $effectiveBranchId) {
+                // Branch user: locked to their own branch
                 $branchId = (int) $effectiveBranchId;
+            } elseif ($user && $user->isSuperAdmin()) {
+                // Super Admin: must explicitly select a branch — no silent fallback to branch 1
+                $selectedBranch = $validated['branch_id'] ?? $request->input('branch_id');
+                if (!$selectedBranch) {
+                    return back()->withErrors(['branch_id' => 'Super Admin must select a branch before creating a purchase.'])->withInput();
+                }
+                $branchId = (int) $selectedBranch;
             } else {
-                $branchId = (int) ($validated['branch_id'] ?? ($effectiveBranchId ?: 1));
+                $branchId = (int) ($effectiveBranchId ?: 0);
+                if (!$branchId) {
+                    return back()->withErrors(['branch_id' => 'No branch assigned. Please contact administrator.'])->withInput();
+                }
             }
             $headerWhId = $canSelectWarehouse
                 ? (int) ($request->header_warehouse_id ?: (is_numeric($request->warehouse_id) ? $request->warehouse_id : (is_array($request->warehouse_id) ? ($request->warehouse_id[0] ?? $userDefaultWhId) : $userDefaultWhId)))
@@ -1709,7 +1735,11 @@ class PurchaseController extends Controller
         $defaultGstPercent = (float) \App\Models\Setting::get('purchase_gst_percent', '18.00');
 
         $taxTypes = \App\Models\TaxType::active()->orderBy('is_default', 'desc')->orderBy('code')->get();
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent', 'taxTypes'));
+
+        // Pass all branches for super admin branch selector on edit
+        $allBranches = \App\Models\Branch::orderBy('name')->get();
+
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'accounts', 'existingPayments', 'allProducts', 'purchaseGstEnabled', 'defaultGstPercent', 'taxTypes', 'allBranches'));
     }
 
     public function update(Request $request, $id)
