@@ -54,15 +54,17 @@ class HomeController extends Controller
                 }
             } else {
                 // Non-superadmin / Branch admin is strictly scoped to their own branch
-                $currentBranchId = $user->getEffectiveBranchId();
-                $currentBranch = $currentBranchId ? $allBranches->firstWhere('id', $currentBranchId) : null;
-                $selectedBranchId = $currentBranchId ? (string) $currentBranchId : 'all';
+                $currentBranchId = $user->getEffectiveBranchId() ?: -1;
+                $currentBranch = $currentBranchId > 0 ? $allBranches->firstWhere('id', $currentBranchId) : null;
+                $selectedBranchId = $currentBranchId > 0 ? (string) $currentBranchId : 'none';
             }
 
             // Query Branch Scoping Helper
-            $scopeBranch = function ($query, $column = 'branch_id') use ($currentBranchId) {
+            $scopeBranch = function ($query, $column = 'branch_id') use ($currentBranchId, $isSuperAdmin) {
                 if ($currentBranchId !== null) {
                     $query->where($column, $currentBranchId);
+                } elseif (!$isSuperAdmin) {
+                    $query->whereRaw('1 = 0');
                 }
                 return $query;
             };
@@ -266,15 +268,27 @@ class HomeController extends Controller
                 $salesCreditPeriod = max(0, $salesRaw - $salesCashPeriod);
 
                 if ($user->can('sales.returns.view')) {
-                    $srQuery = DB::table('sale_returns');
-                    if ($filterPeriod !== 'all') {
-                        $srQuery->whereBetween('created_at', [$startDtStr, $endDtStr]);
+                    $srQuery = DB::table('sale_returns')
+                        ->leftJoin('sales', 'sales.id', '=', 'sale_returns.sale_id');
+                    if ($currentBranchId !== null) {
+                        $srQuery->where('sales.branch_id', $currentBranchId);
+                    } elseif (!$isSuperAdmin) {
+                        $srQuery->whereRaw('1 = 0');
                     }
-                    $salesReturnsPeriod = (float) $srQuery->sum('net_amount');
+                    if ($filterPeriod !== 'all') {
+                        $srQuery->whereBetween('sale_returns.created_at', [$startDtStr, $endDtStr]);
+                    }
+                    $salesReturnsPeriod = (float) $srQuery->sum('sale_returns.net_amount');
 
-                    $salesReturnsPrevPeriod = (float) DB::table('sale_returns')
-                        ->whereBetween('created_at', [$prevStartDtStr, $prevEndDtStr])
-                        ->sum('net_amount');
+                    $srPrevQuery = DB::table('sale_returns')
+                        ->leftJoin('sales', 'sales.id', '=', 'sale_returns.sale_id')
+                        ->whereBetween('sale_returns.created_at', [$prevStartDtStr, $prevEndDtStr]);
+                    if ($currentBranchId !== null) {
+                        $srPrevQuery->where('sales.branch_id', $currentBranchId);
+                    } elseif (!$isSuperAdmin) {
+                        $srPrevQuery->whereRaw('1 = 0');
+                    }
+                    $salesReturnsPrevPeriod = (float) $srPrevQuery->sum('sale_returns.net_amount');
                 }
 
                 $salesPeriod = max(0, $salesRaw - $salesReturnsPeriod);
@@ -1333,6 +1347,8 @@ class HomeController extends Controller
 
         if ($effectiveBranchId) {
             $query->where('branch_id', $effectiveBranchId);
+        } elseif (!$isSuperAdmin) {
+            $query->whereRaw('1 = 0');
         }
 
         if (!empty($module) && $module !== 'all') {

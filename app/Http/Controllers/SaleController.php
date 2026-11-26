@@ -183,9 +183,13 @@ class SaleController extends Controller
             ->get();
 
         $termsAndConditions = \App\Models\TermsAndCondition::active()->ordered()->get();
+
+        // All branches for super admin branch selector
+        $allBranches = \App\Models\Branch::orderBy('name')->get();
+
         return view('admin_panel.sale.add_sale222', compact('termsAndConditions', 
             'warehouse', 'customer', 'nextInvoiceNumber', 'accounts', 'chequeAccount', 
-            'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers', 'orderBookers', 'salesmen'
+            'recentProducts', 'allProducts', 'allSeries', 'activePrefix', 'salesOfficers', 'orderBookers', 'salesmen', 'allBranches'
         ));
     }
 
@@ -1291,9 +1295,17 @@ class SaleController extends Controller
                 $authUser = auth()->user();
                 $effectiveBranchId = $authUser && method_exists($authUser, 'getEffectiveBranchId') ? $authUser->getEffectiveBranchId() : ($authUser->branch_id ?? null);
                 if ($authUser && !$authUser->isSuperAdmin() && $effectiveBranchId) {
+                    // Branch user: locked to their own branch
                     $sale->branch_id = $effectiveBranchId;
+                } elseif ($authUser && $authUser->isSuperAdmin()) {
+                    // Super Admin: must have explicitly provided branch_id
+                    $selectedBranch = $request->input('branch_id');
+                    if (!$selectedBranch) {
+                        throw new \InvalidArgumentException('Super Admin must select a branch before creating a sale.');
+                    }
+                    $sale->branch_id = (int) $selectedBranch;
                 } else {
-                    $sale->branch_id = $request->branch_id ?? $effectiveBranchId;
+                    $sale->branch_id = $effectiveBranchId;
                 }
             }
             $sale->customer_id = $request->customer;

@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             // PermissionRoleUserSeeder::class, // REMOVED: Using new AllModulesPermissionsSeeder
             ModulesTableSeeder::class, 
             AllModulesPermissionsSeeder::class, // NEW: All module permissions (module.view, module.create, etc.)
+            BranchRolePermissionSeeder::class, // Branch-scoped roles and permissions
             SuperadminSeeder::class, 
         ]);
     }

@@ -1302,6 +1302,18 @@
 
     function ensureSaved() {
         return new Promise(function(resolve, reject) {
+            @if(auth()->user()->isSuperAdmin())
+            if ($('#branchSelect').length && !$('#branchSelect').val()) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Branch Required',
+                    text: 'Please select a branch before saving this sale.'
+                });
+                $('#branchSelect').focus();
+                reject({ msg: 'Branch Required' });
+                return;
+            }
+            @endif
             const existing = $('#booking_id').val();
             let url = '{{ route('sales.store') }}';
             let method = 'POST';
@@ -1349,6 +1361,17 @@
     }
 
     function postNow() {
+        @if(auth()->user()->isSuperAdmin())
+        if ($('#branchSelect').length && !$('#branchSelect').val()) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Branch Required',
+                text: 'Please select a branch before posting this sale.'
+            });
+            $('#branchSelect').focus();
+            return;
+        }
+        @endif
         let formData = $('#saleForm').serializeArray();
         formData = formData.filter(item => item.name !== '_method');
 

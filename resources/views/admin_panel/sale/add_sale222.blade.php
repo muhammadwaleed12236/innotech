@@ -1771,6 +1771,19 @@
                         </div>
                     </div>
 
+                    {{-- Branch Selector (Super Admin Only) --}}
+                    @if(auth()->user()->isSuperAdmin())
+                    <div class="d-flex align-items-center gap-2">
+                        <label class="field-label mb-0 fw-bold text-danger" for="branchSelect"><i class="fas fa-code-branch text-danger me-1"></i>Branch: <span class="text-danger">*</span></label>
+                        <select name="branch_id" id="branchSelect" class="form-select form-select-sm fw-bold border-danger shadow-sm" required style="min-width: 170px; height: 38px;">
+                            <option value="">-- Select Branch --</option>
+                            @foreach($allBranches ?? [] as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+
                     @php
                         $user = auth()->user();
                         $canSelectWarehouse = $user && (
