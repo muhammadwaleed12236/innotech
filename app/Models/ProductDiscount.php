@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductDiscount extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $fillable = [

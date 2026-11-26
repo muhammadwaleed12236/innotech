@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class SaleReturn extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $table = 'sale_returns';

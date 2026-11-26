@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductBooking extends Model
 {
+    use \App\Traits\BelongsToBranch;
     protected $fillable = [
         'customer', 'reference', 'product', 'product_code', 'brand', 'unit',
         'per_price', 'per_discount', 'qty', 'per_total', 'color',

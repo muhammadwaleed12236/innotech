@@ -198,8 +198,8 @@ class HomeController extends Controller
             };
 
             // Quick Business Counts
-            $categoryCount = $user->can('categories.view') ? DB::table('categories')->count() : null;
-            $subcategoryCount = $user->can('subcategories.view') ? DB::table('subcategories')->count() : null;
+            $categoryCount = $user->can('categories.view') ? $scopeBranch(DB::table('categories'))->count() : null;
+            $subcategoryCount = $user->can('subcategories.view') ? $scopeBranch(DB::table('subcategories'))->count() : null;
             $productCount = $user->can('products.view') ? $scopeBranch(DB::table('products'))->where('is_active', 1)->count() : null;
             $totalCatalogProducts = $user->can('products.view') ? $scopeBranch(DB::table('products'))->count() : null;
             $customerscount = $user->can('customers.view') ? $scopeBranch(DB::table('customers'))->count() : null;
@@ -858,15 +858,15 @@ class HomeController extends Controller
             $paymentInPeriod = 0;
             $paymentOutPeriod = 0;
             if ($user->can('vouchers.view') || $user->can('all.vouchers.view') || $user->can('receipts.voucher.view') || $user->can('payment.voucher.view')) {
-                $v2Receipts = (float) DB::table('voucher_masters')->where('voucher_type', 'receipt')->whereBetween('date', [$startDateOnly, $endDateOnly])->sum('total_amount');
-                $v1Receipts = (float) DB::table('receipts_vouchers')->whereBetween('receipt_date', [$startDtStr, $endDtStr])->sum('total_amount');
-                $custPayments = (float) DB::table('customer_payments')->whereBetween('payment_date', [$startDtStr, $endDtStr])->sum('amount');
+                $v2Receipts = (float) $scopeBranch(DB::table('voucher_masters'))->where('voucher_type', 'receipt')->whereBetween('date', [$startDateOnly, $endDateOnly])->sum('total_amount');
+                $v1Receipts = (float) $scopeBranch(DB::table('receipts_vouchers'))->whereBetween('receipt_date', [$startDtStr, $endDtStr])->sum('total_amount');
+                $custPayments = (float) $scopeBranch(DB::table('customer_payments'))->whereBetween('payment_date', [$startDtStr, $endDtStr])->sum('amount');
                 $paymentInPeriod = $v2Receipts + $v1Receipts + $custPayments;
 
-                $v2Payments = (float) DB::table('voucher_masters')->whereIn('voucher_type', ['payment', 'expense'])->whereBetween('date', [$startDateOnly, $endDateOnly])->sum('total_amount');
-                $v1Payments = (float) DB::table('payment_vouchers')->whereBetween('receipt_date', [$startDtStr, $endDtStr])->sum('total_amount');
-                $v1Expenses = (float) DB::table('expense_vouchers')->whereBetween('entry_date', [$startDateOnly, $endDateOnly])->sum('total_amount');
-                $vendorPayments = (float) DB::table('vendor_payments')->whereBetween('payment_date', [$startDtStr, $endDtStr])->sum('amount');
+                $v2Payments = (float) $scopeBranch(DB::table('voucher_masters'))->whereIn('voucher_type', ['payment', 'expense'])->whereBetween('date', [$startDateOnly, $endDateOnly])->sum('total_amount');
+                $v1Payments = (float) $scopeBranch(DB::table('payment_vouchers'))->whereBetween('receipt_date', [$startDtStr, $endDtStr])->sum('total_amount');
+                $v1Expenses = (float) $scopeBranch(DB::table('expense_vouchers'))->whereBetween('entry_date', [$startDateOnly, $endDateOnly])->sum('total_amount');
+                $vendorPayments = (float) $scopeBranch(DB::table('vendor_payments'))->whereBetween('payment_date', [$startDtStr, $endDtStr])->sum('amount');
                 $paymentOutPeriod = $v2Payments + $v1Payments + $v1Expenses + $vendorPayments;
             }
 

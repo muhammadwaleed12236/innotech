@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class InwardGatepass extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
      protected $fillable = [
         'branch_id','warehouse_id','vendor_id',

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ExpenseCategory extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $guarded = [];

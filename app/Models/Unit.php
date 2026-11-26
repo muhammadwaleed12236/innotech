@@ -7,5 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Unit extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 }

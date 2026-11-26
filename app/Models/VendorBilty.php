@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class VendorBilty extends Model
 {
+    use \App\Traits\BelongsToBranch;
     protected $fillable = [
         'vendor_id',
         'purchase_id',

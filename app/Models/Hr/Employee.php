@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Employee extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $table = 'hr_employees';

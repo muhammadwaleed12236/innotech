@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TermsAndCondition extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $table = 'terms_and_conditions';

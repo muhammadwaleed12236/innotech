@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class JournalEntry extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     // The primary source of truth for all Financial Reporting.

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Department extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $table = 'hr_departments';

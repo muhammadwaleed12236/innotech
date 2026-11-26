@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $fillable = ['name', 'show_on_website', 'web_image'];

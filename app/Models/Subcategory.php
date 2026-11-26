@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Category;
 class Subcategory extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
   protected $fillable = ['name','category_id']  ;
     function category(){

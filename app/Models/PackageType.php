@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PackageType extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
     protected $fillable = ['name'];
 }

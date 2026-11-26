@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class InvoiceSeries extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
     protected $table = 'invoice_series';

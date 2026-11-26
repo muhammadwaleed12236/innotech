@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class StockTransfer extends Model
 {
+    use \App\Traits\BelongsToBranch;
     use HasFactory;
 
   protected $fillable = [
