@@ -2756,6 +2756,7 @@ class PurchaseController extends Controller
             }
 
             $return = PurchaseReturn::create([
+                'branch_id' => $purchase ? $purchase->branch_id : (auth()->user()?->getEffectiveBranchId()),
                 'purchase_id' => $purchase ? $purchase->id : null, 
                 'vendor_id' => $validated['vendor_id'],
                 'warehouse_id' => $validated['warehouse_id'],
@@ -2869,6 +2870,10 @@ class PurchaseController extends Controller
                         $lineTotal = round($qty * $piecePrice, 2);
                     } else {
                         $lineTotal = round($qty * $price, 2);
+                    }
+                    $origQtyPieces = $origItem ? (float) ($origItem->qty ?? 0) : 0;
+                    if ($origQtyPieces > 0 && $origItem && $origItem->item_discount > 0 && $qty < $origQtyPieces) {
+                        $itemDisc = round(($qty / $origQtyPieces) * (float) $origItem->item_discount, 2);
                     }
                     $lineTotal = max(0, $lineTotal - $itemDisc);
                 }

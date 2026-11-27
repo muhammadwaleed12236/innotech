@@ -316,20 +316,22 @@
                         <table class="table table-erp table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th style="width: 25%;"><i class="fas fa-lock me-1"
+                                    <th style="width: 22%;"><i class="fas fa-lock me-1"
                                             style="font-size: 0.65rem; opacity: 0.6;"></i>Product</th>
-                                    <th style="width: 10%;"><i class="fas fa-lock me-1"
+                                    <th style="width: 9%;"><i class="fas fa-lock me-1"
                                             style="font-size: 0.65rem; opacity: 0.6;"></i>Item Code</th>
-                                    <th style="width: 15%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>PC per box</th>
+                                    <th style="width: 8%;"><i class="fas fa-lock me-1"
+                                            style="font-size: 0.65rem; opacity: 0.6;"></i>PC / Box</th>
                                     <th style="width: 10%;"><i class="fas fa-lock me-1"
                                             style="font-size: 0.65rem; opacity: 0.6;"></i>Purchased Price</th>
+                                    <th style="width: 11%;"><i class="fas fa-lock me-1"
+                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Purchased Qty</th>
                                     <th style="width: 10%;"><i class="fas fa-lock me-1"
-                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Purchased Qty PC</th>
-                                    <th style="width: 10%;">Return Qty (Box.Piece)</th>
-                                    <th style="width: 12%;">Total Return Pieces</th>
-                                    <th style="width: 12%;">Total Amount</th>
-                                    <th style="width: 5%;" class="text-center">Action</th>
+                                            style="font-size: 0.65rem; opacity: 0.6;"></i>Already Returned</th>
+                                    <th style="width: 10%;">Return Qty (Box.Pc)</th>
+                                    <th style="width: 10%;">Return Pieces</th>
+                                    <th style="width: 10%;">Total Amount</th>
+                                    <th style="width: 4%;" class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="returnItems">
@@ -386,31 +388,39 @@
                                         @endphp
                                         <td>
                                             <div class="text-center">
-                                                <span class="fw-bold text-dark fs-6">{{ $item['remaining_box_display'] ?? $remPieces }}</span>
-                                                <small class="text-muted d-block" style="font-size: 0.65rem;">Remaining Pieces: {{ $remPieces }}</small>
+                                                <span class="fw-bold text-dark">{{ $item['purchased_box_display'] ?? $origPieces }}</span>
+                                                <small class="text-muted d-block" style="font-size: 0.68rem;">{{ $origPieces }} pcs</small>
                                             </div>
-                                            @if ($retPieces > 0)
-                                                <div class="mt-1 pt-1 border-top" style="font-size: 0.65rem;">
-                                                    <span class="text-danger">Returned: {{ $retPieces }} pcs</span>
-                                                    <span class="text-muted ms-1">/ {{ $origPieces }} pcs</span>
-                                                </div>
-                                            @endif
                                         </td>
 
+                                        {{-- Already Returned & Remaining --}}
+                                        <td>
+                                            <div class="text-center">
+                                                @if ($retPieces > 0)
+                                                    <span class="badge bg-danger bg-opacity-10 text-danger fw-bold">{{ $retPieces }} pcs</span>
+                                                @else
+                                                    <span class="badge bg-light text-muted border">0 pcs</span>
+                                                @endif
+                                                <small class="text-success d-block fw-semibold mt-1" style="font-size: 0.68rem;">
+                                                    Rem: {{ $remPieces }} pcs
+                                                </small>
+                                            </div>
+                                        </td>
 
                                         {{-- Return Qty (Box.Piece) --}}
                                         <td>
                                             <input type="text" name="qty_box[]"
                                                 class="form-control text-center quantity-box" value="0"
                                                 placeholder="0.0" {{ $remPieces <= 0 ? 'readonly' : '' }}>
-                                            <small class="text-muted" style="font-size: 0.7rem;">Format: Box.Piece</small>
+                                            <small class="text-muted d-block text-center" style="font-size: 0.65rem;">Box.Piece</small>
                                         </td>
 
-                                        {{-- Total Return Pieces (Read Only, Calculated) --}}
+                                        {{-- Total Return Pieces (2-way synced, editable) --}}
                                         <td>
                                             <input type="number" name="qty[]"
                                                 class="form-control text-center fw-bold text-primary quantity"
-                                                value="0" readonly min="0" max="{{ $remPieces }}"
+                                                value="0" min="0" max="{{ $remPieces }}" step="1"
+                                                {{ $remPieces <= 0 ? 'readonly' : '' }}
                                                 data-max="{{ $remPieces }}" data-original="{{ $origPieces }}"
                                                 data-returned="{{ $retPieces }}">
                                         </td>
@@ -632,14 +642,23 @@
                 return str.trim() + " Rupees Only";
             }
 
+            function formatBoxPiece(totalPieces, ppb) {
+                if (ppb > 1) {
+                    const boxes = Math.floor(totalPieces / ppb);
+                    const pieces = Math.round(totalPieces % ppb);
+                    return pieces > 0 ? (boxes + '.' + pieces) : String(boxes);
+                }
+                return String(totalPieces);
+            }
+
             function recalcRow($row) {
                 const qty = num($row.find('.quantity').val()); // Pieces (Total)
                 const price = num($row.find('.price').val()); // Price
-                const sizeMode = $row.find('.size-mode').val();
+                const sizeMode = ($row.find('.size-mode').val() || '').toLowerCase();
                 const ppm2 = num($row.find('.pieces-per-m2').val());
                 const ppb = num($row.find('.pieces-per-box').val()) || 1;
                 const unitVal = ($row.find('input[name="unit[]"]').val() || '').toLowerCase();
-                const isCarton = (['by_cartons', 'by_bandal'].includes(sizeMode) || unitVal === 'carton' || unitVal === 'ctn' || unitVal === 'box' || ppb > 1);
+                const isCarton = (['by_cartons', 'by_bandal'].includes(sizeMode) || ['carton', 'ctn', 'box', 'bandal', 'bundal', 'bndl'].includes(unitVal));
 
                 let total = 0;
 
@@ -650,6 +669,14 @@
                     total = qty * piecePrice;
                 } else {
                     total = qty * price;
+                }
+
+                // Subtract proportional item discount if any
+                const origQty = num($row.find('.quantity').attr('data-original')) || 0;
+                const origDisc = num($row.find('.item_disc').val()) || 0;
+                if (origQty > 0 && origDisc > 0 && qty > 0) {
+                    const propDisc = (qty / origQty) * origDisc;
+                    total = Math.max(0, total - propDisc);
                 }
 
                 $row.find('.row-total').val(total.toFixed(2));
@@ -818,7 +845,7 @@
                 }
 
                 // Update Read-Only Total Pieces
-                $row.find('.quantity').val(totalPieces);
+                $row.find('.quantity').data('from-box', true).val(totalPieces);
 
                 // Trigger validations and recalc
                 $row.find('.quantity').trigger('input');
@@ -829,19 +856,22 @@
             $(document).on('input', '.quantity, .price, #extraDiscount', function() {
                 const $row = $(this).closest('tr');
 
-                // Validate max returnable quantity
+                // Validate max returnable quantity & sync Box.Piece when user edits Return Pieces directly
                 if ($(this).hasClass('quantity')) {
-                    const qtyPc = num($(this).val());
+                    let qtyPc = Math.max(0, num($(this).val()));
                     const maxReturnable = num($(this).attr('data-max'));
+                    const ppb = num($row.find('.pieces-per-box').val()) || 1;
 
                     if (qtyPc > maxReturnable) {
+                        qtyPc = maxReturnable;
                         $(this).val(maxReturnable);
+                        $row.find('.quantity-box').val(formatBoxPiece(maxReturnable, ppb));
                         $(this).addClass('border-danger');
 
                         // Show warning
                         if (!$(this).next('.text-danger').length) {
                             $(this).after('<small class="text-danger d-block">Max: ' + maxReturnable +
-                                ' pieces (Purchased Qty)</small>');
+                                ' pcs remaining</small>');
                         }
 
                         setTimeout(() => {
@@ -850,7 +880,11 @@
                                 $(this).remove();
                             });
                         }, 2000);
+                    } else if (!$(this).data('from-box')) {
+                        // User typed directly in Return Pieces -> sync Box.Piece input
+                        $row.find('.quantity-box').val(formatBoxPiece(qtyPc, ppb));
                     }
+                    $(this).data('from-box', false);
                 }
 
                 if ($row.length) {
