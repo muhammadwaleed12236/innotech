@@ -1,15 +1,15 @@
 @foreach ($Purchase as $purchase)
     {{-- Table Row --}}
-    <tr class="border-bottom-0">
+    <tr class="border-bottom-0 purchase-row-clickable" data-invoice-url="{{ route('purchase.invoice', $purchase->id) }}" style="cursor: pointer;" title="Click to view Purchase Invoice">
         <td class="text-center" style="width: 35px; vertical-align: middle;">
             <input type="checkbox" class="select-purchase-row" value="{{ $purchase->id }}" style="cursor: pointer; width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin: 0 auto !important;">
         </td>
         <td class="text-center text-nowrap" style="vertical-align: middle;">
-            <span class="fw-bold text-dark">#{{ $purchase->id }}</span>
+            <a href="{{ route('purchase.invoice', $purchase->id) }}" class="fw-bold text-primary text-decoration-none">#{{ $purchase->id }}</a>
             <div class="text-muted small" style="font-size: 11px;">{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') }}</div>
         </td>
         <td style="vertical-align: middle;">
-            <div class="font-monospace fw-bold text-dark">{{ $purchase->invoice_no }}</div>
+            <a href="{{ route('purchase.invoice', $purchase->id) }}" class="font-monospace fw-bold text-dark text-decoration-none">{{ $purchase->invoice_no }}</a>
             @if ($purchase->purchase_order_no)
                 <div class="text-primary font-monospace small" style="font-size: 11px;"><i class="fas fa-file-alt me-1"></i>Ref: {{ $purchase->purchase_order_no }}</div>
             @endif
