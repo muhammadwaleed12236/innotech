@@ -770,15 +770,31 @@
                             }
 
                             $baseProductName = $item->product->item_name ?? 'Item';
-                            $itemCode = $item->product->item_code ?? ($item->product_id ?? '');
                             $expDate = !empty($item->exp_date) ? \Carbon\Carbon::parse($item->exp_date)->format('d.m.Y') : null;
                             $batchNo = $item->batch_no ?? null;
 
-                            $titleParts = [];
-                            if ($itemCode) $titleParts[] = $itemCode;
-                            $titleParts[] = strtoupper($baseProductName);
+                            // Extract variant label from item color/variant field (no item_code)
+                            $variantText = '';
+                            $rawColor = $item->color ?? null;
+                            if (!empty($rawColor)) {
+                                $decoded = is_string($rawColor) ? json_decode($rawColor, true) : $rawColor;
+                                if (is_array($decoded)) {
+                                    $parts = array_filter([
+                                        $decoded['size'] ?? null,
+                                        $decoded['color'] ?? null,
+                                        $decoded['name'] ?? null,
+                                    ], fn($v) => !is_null($v) && trim((string)$v) !== '');
+                                    if (empty($parts)) {
+                                        $parts = array_filter($decoded, fn($v) => is_scalar($v) && trim((string)$v) !== '');
+                                    }
+                                    $variantText = implode(' / ', $parts);
+                                } elseif (is_string($rawColor) && trim($rawColor) !== '' && trim($rawColor) !== '[]') {
+                                    $variantText = trim($rawColor);
+                                }
+                            }
 
-                            $fullDesc = implode('/', $titleParts);
+                            $fullDesc = strtoupper($baseProductName);
+                            if ($variantText !== '') $fullDesc .= ' (' . strtoupper($variantText) . ')';
                             if ($batchNo) $fullDesc .= ' LOC-' . $batchNo;
                             if ($expDate) $fullDesc .= ' EXP: ' . $expDate;
 
