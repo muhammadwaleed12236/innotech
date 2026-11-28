@@ -180,40 +180,41 @@
             color: #000000;
         }
 
-        .cashmemo-table th, 
-        .cashmemo-table td {
+        .cashmemo-table thead th {
             border: 1px solid #000000;
-            padding: 3px 3.5px;
+            padding: 4px 4px;
             line-height: 1.25;
             vertical-align: middle;
-            color: #000000 !important;
-            word-break: break-word;
-        }
-
-        .cashmemo-table thead th {
             font-weight: 900;
             font-size: 8.5px;
-            text-align: center;
+            text-align: center !important;
             background-color: #ffffff;
             color: #000000 !important;
             text-transform: capitalize;
             letter-spacing: 0.1px;
-            border-bottom: 1.5px solid #000000;
-        }
-
-        .cashmemo-table thead tr:first-child th {
-            border-bottom: 1px solid #000000;
+            word-break: break-word;
         }
 
         .cashmemo-table tbody td {
+            border: none !important;
+            padding: 3px 4px;
+            line-height: 1.3;
+            vertical-align: middle;
             font-size: 8.5px;
-            font-weight: 700;
+            font-weight: 600;
             color: #000000 !important;
+            word-break: break-word;
+        }
+
+        .cashmemo-table tbody tr.spacer-row td {
+            border: none !important;
+            padding: 4px 0 !important;
+            height: 6px;
         }
 
         .cashmemo-table tbody td strong {
-            font-size: 9px;
-            font-weight: 800;
+            font-size: 8.5px;
+            font-weight: 700;
             color: #000000 !important;
         }
 
@@ -222,10 +223,12 @@
         }
 
         .cashmemo-table tfoot td {
+            border: 1px solid #000000 !important;
+            padding: 4px 4px;
+            line-height: 1.25;
+            vertical-align: middle;
             font-weight: 900;
-            font-size: 10px;
-            border-top: 1.5px solid #000000;
-            border-bottom: 2px solid #000000;
+            font-size: 9px;
             background-color: #ffffff;
             color: #000000 !important;
         }
@@ -602,7 +605,7 @@
         <table class="cashmemo-table">
             <thead>
                 <tr>
-                    <th rowspan="2" style="width: 15%; text-align: left;">Item / Product Name</th>
+                    <th rowspan="2" style="width: 16%; text-align: center;">Item / Product Name</th>
                     <th rowspan="2" style="width: 6.5%; text-align: center;">HS Code</th>
                     <th rowspan="2" style="width: 4.5%; text-align: center;">PCS</th>
                     <th rowspan="2" style="width: 7.5%; text-align: center;">Trade Price</th>
@@ -683,6 +686,9 @@
                         </tr>
                     @endforeach
                 @endforeach
+                <tr class="spacer-row">
+                    <td colspan="14"></td>
+                </tr>
             </tbody>
             <tfoot>
                 <tr>
