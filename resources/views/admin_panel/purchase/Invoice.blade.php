@@ -773,22 +773,38 @@
                             $expDate = !empty($item->exp_date) ? \Carbon\Carbon::parse($item->exp_date)->format('d.m.Y') : null;
                             $batchNo = $item->batch_no ?? null;
 
-                            // Extract variant label from item color/variant field (no item_code)
+                            // Extract variant label from item color/variant field (supports base64 JSON, plain JSON, or string; no item_code)
                             $variantText = '';
                             $rawColor = $item->color ?? null;
                             if (!empty($rawColor)) {
-                                $decoded = is_string($rawColor) ? json_decode($rawColor, true) : $rawColor;
-                                if (is_array($decoded)) {
-                                    $parts = array_filter([
-                                        $decoded['size'] ?? null,
-                                        $decoded['color'] ?? null,
-                                        $decoded['name'] ?? null,
-                                    ], fn($v) => !is_null($v) && trim((string)$v) !== '');
-                                    if (empty($parts)) {
-                                        $parts = array_filter($decoded, fn($v) => is_scalar($v) && trim((string)$v) !== '');
+                                $decoded = null;
+                                if (is_string($rawColor)) {
+                                    $b64 = base64_decode($rawColor, true);
+                                    if ($b64 !== false) {
+                                        $decoded = json_decode($b64, true);
                                     }
-                                    $variantText = implode(' / ', $parts);
-                                } elseif (is_string($rawColor) && trim($rawColor) !== '' && trim($rawColor) !== '[]') {
+                                    if (!is_array($decoded)) {
+                                        $decoded = json_decode($rawColor, true);
+                                    }
+                                } elseif (is_array($rawColor)) {
+                                    $decoded = $rawColor;
+                                }
+
+                                if (is_array($decoded)) {
+                                    $vName = trim((string)($decoded['name'] ?? ($decoded['variant_name'] ?? '')));
+                                    $vSize = trim((string)($decoded['size'] ?? ''));
+                                    $vColor = trim((string)($decoded['color'] ?? ''));
+
+                                    if ($vName !== '' && strcasecmp($vName, $baseProductName) !== 0) {
+                                        $variantText = $vName;
+                                    } else {
+                                        $parts = array_filter([
+                                            ($vSize !== '' && $vSize !== '-') ? $vSize : null,
+                                            ($vColor !== '' && $vColor !== '-') ? $vColor : null,
+                                        ]);
+                                        $variantText = implode(' / ', $parts);
+                                    }
+                                } elseif (is_string($rawColor) && trim($rawColor) !== '' && trim($rawColor) !== '[]' && trim($rawColor) !== '-') {
                                     $variantText = trim($rawColor);
                                 }
                             }
