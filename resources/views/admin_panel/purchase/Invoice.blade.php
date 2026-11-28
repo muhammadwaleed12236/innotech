@@ -809,9 +809,7 @@
                                 }
                             }
 
-                            $fullDesc = strtoupper($baseProductName);
-                            if ($variantText !== '') $fullDesc .= ' (' . strtoupper($variantText) . ')';
-                            if ($expDate) $fullDesc .= ' EXP: ' . $expDate;
+                            $fullDesc = $variantText !== '' ? strtoupper($variantText) : strtoupper($baseProductName);
 
                             $rVal = (float)($item->retail_value ?: (($item->retail_price ?: ($item->product->retail_price ?? 0)) * $totalPieces));
                             $tVal = (float)($item->trade_value ?: ($item->price * (float)$item->qty));
