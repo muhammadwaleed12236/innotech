@@ -1252,6 +1252,16 @@
                     }
                 });
             });
+            // Click any sale row (outside inputs/buttons/links) to open its invoice
+            $(document).on('click', '.sale-row-clickable', function(e) {
+                if ($(e.target).closest('input, a, button, .dropdown, .btn, label').length) {
+                    return;
+                }
+                const url = $(this).data('invoice-url');
+                if (url) {
+                    window.location.href = url;
+                }
+            });
         });
     </script>
 

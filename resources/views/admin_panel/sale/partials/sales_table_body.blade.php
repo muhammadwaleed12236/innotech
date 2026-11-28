@@ -52,13 +52,13 @@
     @endphp
 
     {{-- Table Row --}}
-    <tr class="border-bottom-0">
+    <tr class="border-bottom-0 sale-row-clickable" data-invoice-url="{{ route('sales.invoice', $sale->id) }}" style="cursor: pointer;" title="Click to view Sale Invoice">
         <td class="ps-3 fw-bold font-monospace">
             @if ($sale->invoice_no)
-                <span class="text-primary fw-bold">{{ $sale->invoice_no }}</span>
+                <a href="{{ route('sales.invoice', $sale->id) }}" class="text-primary fw-bold text-decoration-none">{{ $sale->invoice_no }}</a>
                 <small class="text-muted d-block" style="font-size: 11px;">#{{ $sale->id }}</small>
             @else
-                <span class="text-muted">#{{ $sale->id }}</span>
+                <a href="{{ route('sales.invoice', $sale->id) }}" class="text-muted text-decoration-none">#{{ $sale->id }}</a>
             @endif
         </td>
         <td>
