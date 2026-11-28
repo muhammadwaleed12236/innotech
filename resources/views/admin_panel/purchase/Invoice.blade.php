@@ -215,9 +215,11 @@
 
         .fbr-items-table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             font-size: 8.5px;
             color: #000;
+            word-break: break-word;
         }
 
         .fbr-items-table th, 
@@ -727,19 +729,19 @@
             <table class="fbr-items-table">
                 <thead>
                     <tr>
-                        <th style="width: 24%; text-align: left;">Item Description</th>
+                        <th style="width: 20%; text-align: left;">Item Description</th>
                         <th style="width: 6%; text-align: center;">HS Code</th>
-                        <th style="width: 5%; text-align: right;">Qty.</th>
-                        <th style="width: 5%; text-align: right;">Del. Cart</th>
-                        <th style="width: 9%; text-align: right;">Retail Value Exc. All Taxes</th>
-                        <th style="width: 9%; text-align: right;">Trade Value Exc. All Taxes</th>
-                        <th style="width: 5%; text-align: right;">Disc Rate (%)</th>
-                        <th style="width: 7%; text-align: right;">Discount Value</th>
-                        <th style="width: 8%; text-align: right;">Value After Discount</th>
-                        <th style="width: 6%; text-align: right;">Sales Tax Rate (%)</th>
-                        <th style="width: 8%; text-align: right;">Sales Tax on Retail Value</th>
-                        <th style="width: 8%; text-align: right;">Sales Tax on Disct. Trade</th>
-                        <th style="width: 8%; text-align: right;">Total</th>
+                        <th style="width: 4.5%; text-align: center;">Qty.</th>
+                        <th style="width: 4.5%; text-align: center;">Del. Cart</th>
+                        <th style="width: 8.5%; text-align: center;">Retail Value Exc. All Taxes</th>
+                        <th style="width: 8.5%; text-align: center;">Trade Value Exc. All Taxes</th>
+                        <th style="width: 5%; text-align: center;">Disc Rate (%)</th>
+                        <th style="width: 7%; text-align: center;">Discount Value</th>
+                        <th style="width: 8%; text-align: center;">Value After Discount</th>
+                        <th style="width: 5%; text-align: center;">Sales Tax Rate (%)</th>
+                        <th style="width: 7.5%; text-align: center;">Sales Tax on Retail Value</th>
+                        <th style="width: 7.5%; text-align: center;">Sales Tax on Disct. Trade</th>
+                        <th style="width: 8%; text-align: center;">Total</th>
                     </tr>
                 </thead>
                 <tbody>
