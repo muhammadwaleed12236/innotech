@@ -2,14 +2,13 @@
 
 @section('content')
     <style>
-        .btn-sm i.fa-toggle-on {
-            color: green;
-            font-size: 20px;
-        }
-
-        .btn-sm i.fa-toggle-off {
-            color: gray;
-            font-size: 20px;
+        .customer-header-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
         }
 
         .customer-toolbar {
@@ -17,8 +16,7 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 14px;
         }
 
         .customer-actions {
@@ -31,21 +29,114 @@
         .btn-action-custom {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
-            padding: 7px 14px;
-            font-weight: 500;
+            height: 36px;
+            padding: 0 13px;
+            font-weight: 600;
             border-radius: 8px;
-            font-size: 0.88rem;
-            transition: all 0.2s;
+            font-size: 0.84rem;
+            line-height: 1;
+            white-space: nowrap;
+            transition: all 0.15s ease;
         }
 
         .filter-card {
             background: #ffffff;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
-            padding: 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+
+        .filter-control {
+            height: 38px !important;
+            border-radius: 8px !important;
+            border: 1px solid #cbd5e1 !important;
+            font-size: 0.85rem !important;
+            color: #1e293b !important;
+            box-shadow: none !important;
+        }
+
+        .filter-control:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
+        }
+
+        .filter-btn {
+            height: 38px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-weight: 600;
+            font-size: 0.84rem;
+            white-space: nowrap;
+        }
+
+        #customersTable {
+            margin-bottom: 0;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        #customersTable thead th {
+            background-color: #f8fafc;
+            color: #334155;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            vertical-align: middle;
+            padding: 12px 14px;
+            border-top: none;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        #customersTable tbody td {
+            vertical-align: middle;
+            padding: 10px 14px;
+            font-size: 0.86rem;
+            color: #1e293b;
+            border-color: #eef2f6;
+        }
+
+        #customersTable tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .cust-action-group {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .cust-action-group .btn {
+            height: 30px;
+            min-width: 30px;
+            padding: 0 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            line-height: 1;
+        }
+
+        .cust-action-group .btn i.fa-toggle-on {
+            color: #22c55e;
+            font-size: 16px;
+        }
+
+        .cust-action-group .btn i.fa-toggle-off {
+            color: #cbd5e1;
+            font-size: 16px;
         }
 
         .detail-item {
@@ -78,54 +169,51 @@
             <div class="container-fluid px-4 py-3">
 
                 <!-- Header & Toolbar -->
-                <div class="customer-toolbar">
-                    <div>
-                        <div class="d-flex align-items-center gap-2">
-                            <h3 class="mb-0 fw-bold text-dark">Customer Management</h3>
-                            <span class="badge bg-primary text-white" style="font-size: 0.75rem; border-radius: 6px;">Dynamic</span>
+                <div class="customer-header-card">
+                    <div class="customer-toolbar">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <h4 class="mb-0 fw-bold text-dark">Customer Management</h4>
+                                <span class="badge bg-primary text-white px-2 py-1" style="font-size: 0.72rem; border-radius: 6px;">
+                                    {{ $customers->count() }} Records
+                                </span>
+                            </div>
+                            <small class="text-muted">Manage customer profiles, balances, locations, and CSV imports.</small>
                         </div>
-                        <small class="text-muted">Centrally configured customer records, balances, search, and data exports.</small>
-                    </div>
 
-                    <div class="customer-actions">
-                        <!-- Field Configuration -->
-                        <a href="{{ route('dynamic_fields.index', ['module' => 'customers']) }}" class="btn btn-outline-dark btn-action-custom" title="Configure dynamic fields, visibility and permissions">
-                            <i class="fas fa-sliders-h text-primary"></i> Field Config
-                        </a>
-
-                        <!-- Template Download -->
-                        <a href="{{ route('customers.template') }}" class="btn btn-outline-secondary btn-action-custom" title="Download blank CSV template">
-                            <i class="fas fa-file-csv text-primary"></i> Template
-                        </a>
-
-                        <!-- Export CSV -->
-                        <a href="{{ route('customers.export') }}" class="btn btn-outline-success btn-action-custom" title="Export configured customer columns to CSV">
-                            <i class="fas fa-file-download"></i> Export CSV
-                        </a>
-
-                        <!-- Import CSV (Modal Trigger) -->
-                        <button type="button" class="btn btn-outline-primary btn-action-custom" data-toggle="modal" data-target="#customerImportModal" id="openCustomerImportModalBtn" title="Import customers from CSV">
-                            <i class="fas fa-file-upload"></i> Import CSV
-                        </button>
-
-                        @can('customers.create')
-                            <a href="{{ route('customers.create') }}" class="btn btn-primary btn-action-custom">
-                                <i class="fas fa-user-plus"></i> + Add Customer
+                        <div class="customer-actions">
+                            <a href="{{ route('dynamic_fields.index', ['module' => 'customers']) }}" class="btn btn-outline-dark btn-action-custom" title="Configure dynamic fields, visibility and permissions">
+                                <i class="fas fa-sliders-h text-primary"></i> Field Config
                             </a>
-                        @endcan
-
-                        @can('customers.view')
-                            <a href="{{ route('customers.ledger') }}" class="btn btn-info btn-action-custom text-white">
-                                <i class="fas fa-book"></i> Ledger
+                            <a href="{{ route('customers.template') }}" class="btn btn-outline-secondary btn-action-custom" title="Download blank CSV template">
+                                <i class="fas fa-file-csv text-primary"></i> Template
                             </a>
-                            <a href="{{ route('customer.payments') }}" class="btn btn-secondary btn-action-custom">
-                                <i class="fas fa-money-bill-wave"></i> Payment
+                            <a href="{{ route('customers.export') }}" class="btn btn-outline-success btn-action-custom" title="Export configured customer columns to CSV">
+                                <i class="fas fa-file-download"></i> Export CSV
                             </a>
-                        @endcan
+                            <button type="button" class="btn btn-outline-primary btn-action-custom" data-toggle="modal" data-target="#customerImportModal" id="openCustomerImportModalBtn" title="Import customers from CSV">
+                                <i class="fas fa-file-upload"></i> Import CSV
+                            </button>
 
-                        <a href="{{ route('customers.inactive') }}" class="btn btn-outline-danger btn-action-custom">
-                            <i class="fas fa-user-slash"></i> Inactive
-                        </a>
+                            @can('customers.view')
+                                <a href="{{ route('customers.ledger') }}" class="btn btn-info btn-action-custom text-white">
+                                    <i class="fas fa-book"></i> Ledger
+                                </a>
+                                <a href="{{ route('customer.payments') }}" class="btn btn-secondary btn-action-custom">
+                                    <i class="fas fa-money-bill-wave"></i> Payments
+                                </a>
+                            @endcan
+
+                            <a href="{{ route('customers.inactive') }}" class="btn btn-outline-danger btn-action-custom">
+                                <i class="fas fa-user-slash"></i> Inactive
+                            </a>
+
+                            @can('customers.create')
+                                <a href="{{ route('customers.create') }}" class="btn btn-primary btn-action-custom">
+                                    <i class="fas fa-user-plus"></i> Add Customer
+                                </a>
+                            @endcan
+                        </div>
                     </div>
                 </div>
 
@@ -147,25 +235,23 @@
                     </div>
                 @endif
 
-                <!-- Modern Single-Line Filter Bar -->
-                <div class="filter-card py-2.5 px-3 mb-3" style="background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
-                    <form method="GET" action="{{ route('customers.index') }}" class="d-flex align-items-center flex-wrap flex-xl-nowrap gap-2">
-                        
+                <!-- Responsive Aligned Filter Bar -->
+                <div class="filter-card">
+                    <form method="GET" action="{{ route('customers.index') }}" class="row g-2 align-items-center">
                         <!-- 1. Universal Search Input -->
-                        <div class="flex-grow-1" style="min-width: 250px;">
+                        <div class="col-12 col-md-6 col-xl-3">
                             <div class="position-relative">
-                                <i class="fas fa-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px;"></i>
-                                <input type="text" name="search" class="form-control form-control-sm" 
-                                    placeholder="Search by name, code, phone, address..." 
-                                    value="{{ request('search') }}" 
-                                    style="height: 36px; padding-left: 34px !important; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem;">
+                                <i class="fas fa-search position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 13px; z-index: 2;"></i>
+                                <input type="text" name="search" class="form-control form-control-sm filter-control"
+                                    placeholder="Search name, code, phone, address..."
+                                    value="{{ request('search') }}"
+                                    style="padding-left: 34px !important;">
                             </div>
                         </div>
 
                         <!-- 2. Province Filter -->
-                        <div style="width: 140px; flex-shrink: 0;">
-                            <select name="province" id="cust_search_province" class="form-select form-select-sm" 
-                                style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <select name="province" id="cust_search_province" class="form-select form-select-sm form-control form-control-sm filter-control">
                                 <option value="">All Provinces</option>
                                 @foreach(app(\App\Services\LocationService::class)->getProvinces() as $p)
                                     <option value="{{ $p }}" {{ request('province') == $p ? 'selected' : '' }}>{{ $p }}</option>
@@ -174,9 +260,8 @@
                         </div>
 
                         <!-- 3. City Filter -->
-                        <div style="width: 140px; flex-shrink: 0;">
-                            <select name="city" id="cust_search_city" class="form-select form-select-sm" 
-                                style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                        <div class="col-6 col-md-3 col-xl-2">
+                            <select name="city" id="cust_search_city" class="form-select form-select-sm form-control form-control-sm filter-control">
                                 <option value="">All Cities</option>
                                 @foreach(app(\App\Services\LocationService::class)->getCities(request('province')) as $c)
                                     <option value="{{ $c }}" {{ request('city') == $c ? 'selected' : '' }}>{{ $c }}</option>
@@ -185,9 +270,8 @@
                         </div>
 
                         <!-- 4. Area Filter -->
-                        <div style="width: 140px; flex-shrink: 0;">
-                            <select name="area" id="cust_search_area" class="form-select form-select-sm" 
-                                style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                        <div class="col-6 col-md-4 col-xl-2">
+                            <select name="area" id="cust_search_area" class="form-select form-select-sm form-control form-control-sm filter-control">
                                 <option value="">All Areas</option>
                                 @foreach(app(\App\Services\LocationService::class)->getAreas(request('city')) as $a)
                                     <option value="{{ $a }}" {{ request('area') == $a ? 'selected' : '' }}>{{ $a }}</option>
@@ -196,8 +280,8 @@
                         </div>
 
                         <!-- 5. Customer Type Dropdown -->
-                        <div style="width: 160px; flex-shrink: 0;">
-                            <select name="customer_type" class="form-select form-select-sm" style="height: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem;">
+                        <div class="col-6 col-md-4 col-xl-1">
+                            <select name="customer_type" class="form-select form-select-sm form-control form-control-sm filter-control">
                                 <option value="">All Types</option>
                                 @if(isset($dropdownLookups['customer_types']))
                                     @foreach($dropdownLookups['customer_types'] as $optVal => $optLabel)
@@ -210,22 +294,22 @@
                         </div>
 
                         <!-- 6. Action Buttons -->
-                        <div class="d-flex align-items-center gap-1" style="flex-shrink: 0;">
-                            <button type="submit" class="btn btn-primary btn-sm px-3 fw-bold" style="height: 36px; border-radius: 8px; white-space: nowrap;">
-                                <i class="fas fa-search me-1"></i> Search
+                        <div class="col-12 col-md-4 col-xl-2 d-flex align-items-center justify-content-md-end gap-1">
+                            <button type="submit" class="btn btn-primary btn-sm px-3 filter-btn flex-grow-1 flex-xl-grow-0">
+                                <i class="fas fa-search"></i> Search
                             </button>
-                            <a href="{{ route('customers.index') }}" class="btn btn-light border btn-sm px-2.5 text-secondary" title="Reset Filters" style="height: 36px; border-radius: 8px; display: inline-flex; align-items: center;">
+                            <a href="{{ route('customers.index') }}" class="btn btn-light border btn-sm px-2 text-secondary filter-btn" title="Reset Filters" style="width: 38px;">
                                 <i class="fas fa-undo"></i>
                             </a>
-                            <button type="button" class="btn btn-outline-secondary btn-sm px-2.5" data-bs-toggle="collapse" data-bs-target="#moreCustomerFilters" data-toggle="collapse" data-target="#moreCustomerFilters" title="More Filters" style="height: 36px; border-radius: 8px; display: inline-flex; align-items: center;">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-2 filter-btn" data-bs-toggle="collapse" data-bs-target="#moreCustomerFilters" data-toggle="collapse" data-target="#moreCustomerFilters" title="More Filters" style="width: 38px;">
                                 <i class="fas fa-sliders-h"></i>
                             </button>
                         </div>
                     </form>
 
-                    <!-- Collapsible Extra Filters (Cleanly Hidden by Default to keep 1 Line) -->
-                    <div class="collapse pt-2.5 mt-2 border-top {{ (request('party_type') || request('zone') || request('filer_type') || request('status') || request('ntn_number')) ? 'show' : '' }}" id="moreCustomerFilters">
-                        <form method="GET" action="{{ route('customers.index') }}" class="row g-2 align-items-center">
+                    <!-- Collapsible Extra Filters -->
+                    <div class="collapse pt-3 mt-3 border-top {{ (request('party_type') || request('zone') || request('filer_type') || request('status') || request('ntn_number')) ? 'show' : '' }}" id="moreCustomerFilters">
+                        <form method="GET" action="{{ route('customers.index') }}" class="row g-2 align-items-end">
                             <input type="hidden" name="search" value="{{ request('search') }}">
                             <input type="hidden" name="province" value="{{ request('province') }}">
                             <input type="hidden" name="city" value="{{ request('city') }}">
@@ -234,15 +318,15 @@
 
                             <div class="col-md-3 col-sm-6">
                                 <label class="form-label small text-muted mb-1 fw-bold">Party Category (Role)</label>
-                                <select name="party_type" class="form-select form-select-sm" style="height: 34px; border-radius: 8px;">
+                                <select name="party_type" class="form-select form-select-sm form-control form-control-sm filter-control">
                                     <option value="">All Categories</option>
                                     <option value="customer" {{ request('party_type') == 'customer' ? 'selected' : '' }}>Customer Only</option>
-                                    <option value="both" {{ request('party_type') == 'both' ? 'selected' : '' }}>Both (Customer & Vendor)</option>
+                                    <option value="both" {{ request('party_type') == 'both' ? 'selected' : '' }}>Both (Customer &amp; Vendor)</option>
                                 </select>
                             </div>
                             <div class="col-md-3 col-sm-6">
                                 <label class="form-label small text-muted mb-1 fw-bold">Region / Zone</label>
-                                <select name="zone" class="form-select form-select-sm" style="height: 34px; border-radius: 8px;">
+                                <select name="zone" class="form-select form-select-sm form-control form-control-sm filter-control">
                                     <option value="">All Zones</option>
                                     @if(isset($dropdownLookups['zones']))
                                         @foreach($dropdownLookups['zones'] as $optVal => $optLabel)
@@ -255,15 +339,16 @@
                             </div>
                             <div class="col-md-3 col-sm-6">
                                 <label class="form-label small text-muted mb-1 fw-bold">Tax Status (Filer)</label>
-                                <select name="filer_type" class="form-select form-select-sm" style="height: 34px; border-radius: 8px;">
+                                <select name="filer_type" class="form-select form-select-sm form-control form-control-sm filter-control">
                                     <option value="">All Tax Status</option>
                                     <option value="filer" {{ request('filer_type') == 'filer' ? 'selected' : '' }}>Filer</option>
                                     <option value="non_filer" {{ request('filer_type') == 'non_filer' ? 'selected' : '' }}>Non-Filer</option>
                                 </select>
                             </div>
-                            <div class="col-md-3 col-sm-6 d-flex align-items-end pt-3">
-                                <button type="submit" class="btn btn-sm btn-dark px-3 w-100 fw-semibold" style="height: 34px; border-radius: 8px;">
-                                    Apply Extra Filters
+                            <div class="col-md-3 col-sm-6">
+                                <label class="form-label small d-none d-sm-block mb-1">&nbsp;</label>
+                                <button type="submit" class="btn btn-sm btn-dark px-3 w-100 filter-btn">
+                                    <i class="fas fa-filter"></i> Apply Extra Filters
                                 </button>
                             </div>
                         </form>
@@ -271,15 +356,18 @@
                 </div>
 
                 <!-- Dynamic Customers Table -->
-                <div class="card shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
+                <div class="card shadow-sm border" style="border-radius: 12px; border-color: #e2e8f0 !important; overflow: hidden;">
                     <div class="card-body p-0 table-responsive">
-                        <table class="table table-bordered table-striped table-hover mb-0" id="customersTable">
-                            <thead class="table-light">
+                        <table class="table table-hover align-middle mb-0" id="customersTable">
+                            <thead>
                                 <tr>
                                     @foreach($listFields as $field)
-                                        <th>{{ $field->label }}</th>
+                                        @php
+                                            $thAlign = in_array($field->field_key, ['status', 'party_type']) ? 'text-center' : (in_array($field->field_key, ['closing_balance', 'opening_balance', 'previous_balance', 'credit_limit']) ? 'text-end' : 'text-start');
+                                        @endphp
+                                        <th class="{{ $thAlign }}">{{ $field->label }}</th>
                                     @endforeach
-                                    <th style="min-width: 170px;" class="text-center">Actions</th>
+                                    <th style="width: 190px;" class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -289,9 +377,10 @@
                                             @php
                                                 $key = $field->field_key;
                                                 $formattedVal = app(\App\Services\CustomerFieldService::class)->getFieldValue($customer, $field, true);
+                                                $tdAlign = in_array($key, ['status', 'party_type']) ? 'text-center' : (in_array($key, ['closing_balance', 'opening_balance', 'previous_balance', 'credit_limit']) ? 'text-end fw-semibold' : '');
                                             @endphp
 
-                                            <td>
+                                            <td class="{{ $tdAlign }}">
                                                 @if($key === 'customer_id')
                                                     <a href="javascript:void(0)" class="btn-view-customer fw-bold text-primary" data-id="{{ $customer->id }}" title="Click to view details">
                                                         {{ $formattedVal }}
@@ -342,33 +431,36 @@
 
                                         <!-- Actions Column -->
                                         <td class="text-center">
-                                            <!-- View Details Button -->
-                                            <button type="button" class="btn btn-sm btn-outline-primary btn-view-customer" data-id="{{ $customer->id }}" title="View Customer Details">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
+                                            <div class="cust-action-group">
+                                                <button type="button" class="btn btn-outline-primary btn-view-customer" data-id="{{ $customer->id }}" title="View Customer Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
 
-                                            @include('admin_panel.partials.action_buttons', [
-                                                'editRoute' => route('customers.edit', $customer->id),
-                                                'deleteRoute' => route('customers.destroy', $customer->id),
-                                                'editIsLink' => true,
-                                                'permissions' => [
-                                                    'edit' => 'customers.edit',
-                                                    'delete' => 'customers.delete',
-                                                ],
-                                                'dataId' => $customer->id,
-                                            ])
+                                                @include('admin_panel.partials.action_buttons', [
+                                                    'editRoute' => route('customers.edit', $customer->id),
+                                                    'deleteRoute' => route('customers.destroy', $customer->id),
+                                                    'editIsLink' => true,
+                                                    'permissions' => [
+                                                        'edit' => 'customers.edit',
+                                                        'delete' => 'customers.delete',
+                                                    ],
+                                                    'dataId' => $customer->id,
+                                                ])
 
-                                            @can('customers.edit')
-                                                <a href="{{ route('customers.toggleStatus', $customer->id) }}"
-                                                    class="btn btn-sm {{ $customer->status === 'active' ? 'btn-dark' : 'btn-secondary' }}"
-                                                    title="Toggle Status">
-                                                    <i class="fa-solid {{ $customer->status === 'active' ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
-                                                </a>
-                                            @endcan
+                                                @can('customers.edit')
+                                                    <a href="{{ route('customers.toggleStatus', $customer->id) }}"
+                                                        class="btn {{ $customer->status === 'active' ? 'btn-dark' : 'btn-secondary' }}"
+                                                        title="Toggle Status">
+                                                        <i class="fa-solid {{ $customer->status === 'active' ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>
+                                                    </a>
+                                                @endcan
 
-                                            @can('customers.view')
-                                                <a href="{{ route('customer.payments') }}" class="btn btn-sm btn-info text-white" title="Customer Payments">Payments</a>
-                                            @endcan
+                                                @can('customers.view')
+                                                    <a href="{{ route('customer.payments') }}" class="btn btn-info text-white" title="Customer Payments">
+                                                        <i class="fas fa-money-bill-wave me-1"></i> Pay
+                                                    </a>
+                                                @endcan
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
