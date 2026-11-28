@@ -304,6 +304,7 @@ class SaleImportController extends Controller
                                         'tracking_type' => 'simple',
                                         'size_mode' => 'by_pieces',
                                         'pieces_per_box' => 1,
+                                        'total_m2' => 0,
                                         'trade_price' => $tradePrice,
                                         'retail_price' => $mrpVal > 0 ? $mrpVal : $tradePrice,
                                         'sale_price_per_piece' => $tradePrice,
