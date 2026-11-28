@@ -811,7 +811,7 @@
 
                             $fullDesc = strtoupper($baseProductName);
                             if ($variantText !== '') $fullDesc .= ' (' . strtoupper($variantText) . ')';
-                            if ($batchNo) $fullDesc .= ' LOC-' . $batchNo;
+                            if ($batchNo) $fullDesc .= ' Batch: ' . $batchNo;
                             if ($expDate) $fullDesc .= ' EXP: ' . $expDate;
 
                             $rVal = (float)($item->retail_value ?: (($item->retail_price ?: ($item->product->retail_price ?? 0)) * $totalPieces));
