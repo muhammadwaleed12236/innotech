@@ -60,16 +60,17 @@
             transform: translateY(-1px);
         }
 
-        /* A4 Cash Memo Container */
+        /* A4 Portrait Cash Memo Container */
         .invoice-container {
-            max-width: 297mm;
-            min-height: 210mm;
+            max-width: 210mm;
+            min-height: 297mm;
             margin: 20px auto 40px auto;
             background: #ffffff;
-            padding: 16px 20px;
+            padding: 12px 14px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             border-radius: 4px;
             position: relative;
+            overflow-x: hidden;
         }
 
         /* Company Header */
@@ -172,8 +173,9 @@
         /* Cash Memo Items Table */
         .cashmemo-table {
             width: 100%;
+            max-width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 8.5px;
             margin-top: 6px;
             color: #000000;
         }
@@ -181,15 +183,16 @@
         .cashmemo-table th, 
         .cashmemo-table td {
             border: 1px solid #000000;
-            padding: 3.5px 4px;
-            line-height: 1.25;
+            padding: 2.5px 3px;
+            line-height: 1.2;
             vertical-align: middle;
             color: #000000 !important;
+            word-break: break-word;
         }
 
         .cashmemo-table thead th {
             font-weight: 900;
-            font-size: 9.5px;
+            font-size: 8px;
             text-align: center;
             background-color: #ffffff;
             color: #000000 !important;
@@ -203,13 +206,13 @@
         }
 
         .cashmemo-table tbody td {
-            font-size: 10px;
+            font-size: 8.5px;
             font-weight: 700;
             color: #000000 !important;
         }
 
         .cashmemo-table tbody td strong {
-            font-size: 10.5px;
+            font-size: 9px;
             font-weight: 800;
             color: #000000 !important;
         }
@@ -293,13 +296,13 @@
             display: flex;
             justify-content: space-around;
             align-items: flex-end;
-            gap: 20px;
-            padding: 0 20px;
+            gap: 12px;
+            padding: 0 8px;
         }
 
         .sig-box-wrap {
             text-align: center;
-            width: 200px;
+            width: 150px;
         }
 
         .sig-person-name {
@@ -328,8 +331,8 @@
         /* Print Styling */
         @media print {
             @page {
-                size: A4 landscape !important;
-                margin: 5mm 6mm !important;
+                size: A4 portrait !important;
+                margin: 5mm 5mm !important;
             }
 
             body {
