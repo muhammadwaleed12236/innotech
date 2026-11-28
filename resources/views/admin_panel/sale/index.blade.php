@@ -1400,11 +1400,14 @@
                                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnCreateAllMissingItems">
                                     <i class="fas fa-plus-circle me-1"></i> Create All Missing Items
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelAllMissingItems">
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="btnCancelAllMissingItems">
                                     <i class="fas fa-ban me-1"></i> Cancel All Missing Items
                                 </button>
                                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnCreateAllMissingCustomers">
                                     <i class="fas fa-user-plus me-1"></i> Create All Missing Customers
+                                </button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="btnCancelAllMissingCustomers">
+                                    <i class="fas fa-user-times me-1"></i> Cancel All Missing Customers
                                 </button>
                             </div>
                         </div>
@@ -1458,6 +1461,10 @@
 
                 let totalMissingItems = 0;
                 let totalMissingCusts = 0;
+                let createMissingItems = 0;
+                let cancelMissingItems = 0;
+                let createMissingCusts = 0;
+                let cancelMissingCusts = 0;
 
                 parsedInvoices.forEach(function(inv, invIdx) {
                     if (inv.customer_status === 'missing') totalMissingCusts++;
@@ -1470,6 +1477,10 @@
                     const summary = inv.summary || {};
                     const custAction = inv.customer_action || (inv.customer_status === 'found' ? 'existing' : 'create');
                     inv.customer_action = custAction;
+                    if (inv.customer_status === 'missing') {
+                        if (custAction === 'create') createMissingCusts++;
+                        else if (custAction === 'cancel') cancelMissingCusts++;
+                    }
 
                     let custHtml = '';
                     if (inv.customer_status === 'found') {
@@ -1506,6 +1517,10 @@
                             item.action = item.product_status === 'found' ? 'existing' : 'create';
                         }
                         const isMissing = item.product_status === 'missing';
+                        if (isMissing) {
+                            if (item.action === 'create') createMissingItems++;
+                            else if (item.action === 'cancel') cancelMissingItems++;
+                        }
                         const isCancelled = item.action === 'cancel';
                         const rowCls = isCancelled ? 'table-secondary text-muted' : (isMissing ? 'table-warning' : '');
 
@@ -1586,8 +1601,32 @@
                 });
 
                 $('#importSaleSummaryBanner').html(
-                    `Parsed <b>${parsedInvoices.length}</b> invoice(s) | Missing Customers: <b class="text-warning">${totalMissingCusts}</b> | Missing Items: <b class="text-danger">${totalMissingItems}</b>`
+                    `Parsed <b>${parsedInvoices.length}</b> invoice(s) | Missing Customers: <b class="text-warning">${totalMissingCusts}</b> (Create: <b>${createMissingCusts}</b>, Cancel: <b>${cancelMissingCusts}</b>) | Missing Items: <b class="text-danger">${totalMissingItems}</b> (Create: <b>${createMissingItems}</b>, Cancel: <b>${cancelMissingItems}</b>)`
                 );
+
+                // Sync active state of bulk action buttons
+                const allItemsCreate = totalMissingItems > 0 && createMissingItems === totalMissingItems;
+                const allItemsCancel = totalMissingItems > 0 && cancelMissingItems === totalMissingItems;
+                $('#btnCreateAllMissingItems')
+                    .toggleClass('btn-primary text-white', allItemsCreate)
+                    .toggleClass('btn-outline-primary', !allItemsCreate)
+                    .prop('disabled', totalMissingItems === 0);
+                $('#btnCancelAllMissingItems')
+                    .toggleClass('btn-danger text-white', allItemsCancel)
+                    .toggleClass('btn-outline-danger', !allItemsCancel)
+                    .prop('disabled', totalMissingItems === 0);
+
+                const allCustsCreate = totalMissingCusts > 0 && createMissingCusts === totalMissingCusts;
+                const allCustsCancel = totalMissingCusts > 0 && cancelMissingCusts === totalMissingCusts;
+                $('#btnCreateAllMissingCustomers')
+                    .toggleClass('btn-primary text-white', allCustsCreate)
+                    .toggleClass('btn-outline-primary', !allCustsCreate)
+                    .prop('disabled', totalMissingCusts === 0);
+                $('#btnCancelAllMissingCustomers')
+                    .toggleClass('btn-danger text-white', allCustsCancel)
+                    .toggleClass('btn-outline-danger', !allCustsCancel)
+                    .prop('disabled', totalMissingCusts === 0);
+
                 $('#importSalePreview').removeClass('d-none');
                 $('#btnCommitImportSales').prop('disabled', false);
             }
@@ -1686,6 +1725,13 @@
             $(document).on('click', '#btnCreateAllMissingCustomers', function() {
                 parsedInvoices.forEach(inv => {
                     if (inv.customer_status === 'missing') inv.customer_action = 'create';
+                });
+                renderParsedInvoices();
+            });
+
+            $(document).on('click', '#btnCancelAllMissingCustomers', function() {
+                parsedInvoices.forEach(inv => {
+                    if (inv.customer_status === 'missing') inv.customer_action = 'cancel';
                 });
                 renderParsedInvoices();
             });
