@@ -272,10 +272,21 @@ class SaleImportController extends Controller
                                     $isThirdSchedule = 0;
                                     $taxTypeStr = strtoupper(trim((string) ($item['tax_type'] ?? '')));
                                     if ($taxTypeStr !== '') {
-                                        $tt = TaxType::whereRaw('UPPER(name) LIKE ?', ["%{$taxTypeStr}%"])->first();
+                                        if ($taxTypeStr === 'MRP') {
+                                            $isThirdSchedule = 1;
+                                            $tt = TaxType::where('mrp_tax_active', true)
+                                                ->orWhere('tax_applied_on', 'retail_value')
+                                                ->orWhereRaw('UPPER(title) LIKE ?', ['%MRP%'])
+                                                ->orWhereRaw('UPPER(title) LIKE ?', ['%THIRD%'])
+                                                ->first();
+                                        } else {
+                                            $tt = TaxType::whereRaw('UPPER(title) LIKE ?', ["%{$taxTypeStr}%"])
+                                                ->orWhereRaw('UPPER(code) LIKE ?', ["%{$taxTypeStr}%"])
+                                                ->first();
+                                        }
                                         if ($tt) {
                                             $taxTypeId = $tt->id;
-                                            $isThirdSchedule = method_exists($tt, 'isThirdSchedule') && $tt->isThirdSchedule() ? 1 : 0;
+                                            $isThirdSchedule = (method_exists($tt, 'isThirdSchedule') && $tt->isThirdSchedule()) ? 1 : $isThirdSchedule;
                                         }
                                     }
 
