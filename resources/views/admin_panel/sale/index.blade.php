@@ -1531,7 +1531,6 @@
                                 <td><code>${esc(item.item_code || '-')}</code></td>
                                 <td>
                                     <div class="fw-semibold">${esc(item.item_name)}</div>
-                                    ${item.category ? `<small class="text-muted">${esc(item.category)}</small>` : ''}
                                 </td>
                                 <td><small>${esc(item.hs_code || '-')}</small></td>
                                 <td class="text-end">${Number(item.qty || 0)}</td>

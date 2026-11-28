@@ -591,8 +591,15 @@ class SaleImportController extends Controller
                         continue;
                     }
 
-                    $rawItem = trim(preg_replace('/\s+/', ' ', $tds->item(0)->textContent));
-                    if ($rawItem === '' || str_starts_with(strtolower($rawItem), 'total')) {
+                    $rawItem = trim(preg_replace('/[\s\x{00A0}]+/u', ' ', $tds->item(0)->textContent));
+                    if ($rawItem === '' || $rawItem === '-' || str_starts_with(strtolower($rawItem), 'total')) {
+                        continue;
+                    }
+
+                    $qtyVal = $this->toFloat($tds->item(2)->textContent);
+                    $grossVal = $this->toFloat($tds->item(4)->textContent);
+                    $netVal = $this->toFloat($tds->item(11)->textContent);
+                    if ($qtyVal <= 0 && $grossVal <= 0 && $netVal <= 0) {
                         continue;
                     }
 
@@ -618,14 +625,14 @@ class SaleImportController extends Controller
                     }
 
                     $items[] = [
-                        'category' => $currentCategory,
+                        'category' => '',
                         'raw_name' => $rawItem,
                         'item_code' => $itemCode,
                         'item_name' => $itemName,
-                        'hs_code' => trim($tds->item(1)->textContent),
-                        'qty' => $this->toFloat($tds->item(2)->textContent),
+                        'hs_code' => trim(preg_replace('/[\s\x{00A0}]+/u', ' ', $tds->item(1)->textContent)),
+                        'qty' => $qtyVal,
                         'trade_price' => $this->toFloat($tds->item(3)->textContent),
-                        'gross_amount' => $this->toFloat($tds->item(4)->textContent),
+                        'gross_amount' => $grossVal,
                         'bonus_qty' => $this->toFloat($tds->item(5)->textContent),
                         'sp_disc_amount' => $this->toFloat($tds->item(6)->textContent),
                         'reg_disc_amount' => $this->toFloat($tds->item(7)->textContent),
@@ -634,8 +641,8 @@ class SaleImportController extends Controller
                         'sales_tax_amount' => $salesTax,
                         'mrp' => $mrp,
                         'further_tax_amount' => $furtherTax,
-                        'net_amount' => $this->toFloat($tds->item(11)->textContent),
-                        'tax_type' => $tds->length > 12 ? trim($tds->item(12)->textContent) : '',
+                        'net_amount' => $netVal,
+                        'tax_type' => $tds->length > 12 ? trim(preg_replace('/[\s\x{00A0}]+/u', ' ', $tds->item(12)->textContent)) : '',
                     ];
                 }
             }
