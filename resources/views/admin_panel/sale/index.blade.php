@@ -361,6 +361,11 @@
                             <i class="fas fa-file-alt"></i> Quotation
                         </a>
                         @can('sales.create')
+                            <button type="button" class="btn btn-outline-success px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
+                                id="btnOpenImportSaleModal" data-bs-toggle="modal" data-bs-target="#importSaleModal" data-toggle="modal" data-target="#importSaleModal"
+                                style="border-radius: 8px;">
+                                <i class="fas fa-file-import"></i> Import HTML / PDF
+                            </button>
                             <a class="btn btn-primary px-3 shadow-sm fw-medium d-inline-flex align-items-center justify-content-center gap-1"
                                 href="{{ route('sale.add') }}" style="border-radius: 8px;">
                                 <i class="fas fa-plus"></i> Add Sale
@@ -1326,4 +1331,408 @@
             </div>
         </div>
     </div>
+
+    @can('sales.create')
+    <!-- Import Sale (HTML / PDF) Modal -->
+    <div class="modal fade" id="importSaleModal" tabindex="-1" aria-labelledby="importSaleModalLabel" aria-hidden="true" style="z-index: 1085;">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+                <div class="modal-header text-white py-2 px-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(135deg, #065f46, #047857);">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="p-2 bg-white bg-opacity-25 rounded-3 text-white">
+                            <i class="fas fa-file-import"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold mb-0 text-white" id="importSaleModalLabel">Import Sale from HTML / PDF</h5>
+                            <small class="text-white-50">Upload invoice file, review missing items &amp; customers, and import</small>
+                        </div>
+                    </div>
+                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.6rem; line-height: 1; opacity: 0.85; cursor: pointer;"><span aria-hidden="true">&times;</span></button>
+                </div>
+
+                <div class="modal-body p-3 bg-light">
+                    {{-- Step 1: Upload Bar --}}
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body py-3">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label fw-bold small mb-1">Invoice File (.html, .htm, .pdf)</label>
+                                    <input type="file" id="importSaleFile" class="form-control form-control-sm" accept=".html,.htm,.pdf">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold small mb-1">Save Status</label>
+                                    <select id="importSaleStatus" class="form-select form-select-sm form-control form-control-sm">
+                                        <option value="booked" selected>Booked (Draft / No Stock Check)</option>
+                                        <option value="posted">Posted (Deduct Stock)</option>
+                                    </select>
+                                </div>
+                                @if(auth()->user() && auth()->user()->isSuperAdmin())
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold small mb-1">Branch</label>
+                                    <select id="importSaleBranchId" class="form-select form-select-sm form-control form-control-sm">
+                                        @foreach(\App\Models\Branch::orderBy('id')->get() as $br)
+                                            <option value="{{ $br->id }}">{{ $br->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @endif
+                                <div class="col-md-2">
+                                    <button type="button" id="btnParseImportFile" class="btn btn-success btn-sm w-100 fw-bold">
+                                        <i class="fas fa-search me-1"></i> Parse File
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Loading / Error --}}
+                    <div id="importSaleAlert" class="alert d-none mb-3"></div>
+                    <div id="importSaleLoading" class="text-center py-4 d-none">
+                        <div class="spinner-border text-success" role="status"></div>
+                        <p class="text-muted small mt-2 mb-0">Parsing file and matching items &amp; customers...</p>
+                    </div>
+
+                    {{-- Step 2: Preview & Resolution --}}
+                    <div id="importSalePreview" class="d-none">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2 px-1">
+                            <div class="fw-bold text-dark" id="importSaleSummaryBanner"></div>
+                            <div class="d-flex flex-wrap gap-1">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnCreateAllMissingItems">
+                                    <i class="fas fa-plus-circle me-1"></i> Create All Missing Items
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnCancelAllMissingItems">
+                                    <i class="fas fa-ban me-1"></i> Cancel All Missing Items
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnCreateAllMissingCustomers">
+                                    <i class="fas fa-user-plus me-1"></i> Create All Missing Customers
+                                </button>
+                            </div>
+                        </div>
+                        <div id="importInvoicesContainer"></div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-white py-2 px-3 border-top d-flex align-items-center justify-content-between">
+                    <small class="text-muted">Missing items marked <b>Create</b> will be added to Products; items marked <b>Cancel</b> will be skipped.</small>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm fw-bold" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+                        <button type="button" id="btnCommitImportSales" class="btn btn-success btn-sm fw-bold px-4" disabled>
+                            <i class="fas fa-check-circle me-1"></i> Confirm &amp; Import Sales
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            let parsedInvoices = [];
+
+            function esc(str) {
+                return String(str ?? '').replace(/[&<>"']/g, function(m) {
+                    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+                });
+            }
+
+            function showImportAlert(type, msg) {
+                const el = $('#importSaleAlert');
+                el.removeClass('d-none alert-danger alert-success alert-warning alert-info')
+                  .addClass('alert-' + type)
+                  .html(msg);
+            }
+
+            function hideImportAlert() {
+                $('#importSaleAlert').addClass('d-none').html('');
+            }
+
+            function renderParsedInvoices() {
+                const container = $('#importInvoicesContainer');
+                container.empty();
+
+                if (!parsedInvoices.length) {
+                    $('#importSalePreview').addClass('d-none');
+                    $('#btnCommitImportSales').prop('disabled', true);
+                    return;
+                }
+
+                let totalMissingItems = 0;
+                let totalMissingCusts = 0;
+
+                parsedInvoices.forEach(function(inv, invIdx) {
+                    if (inv.customer_status === 'missing') totalMissingCusts++;
+                    (inv.items || []).forEach(function(it) {
+                        if (it.product_status === 'missing') totalMissingItems++;
+                    });
+
+                    const cust = inv.customer || {};
+                    const meta = inv.meta || {};
+                    const summary = inv.summary || {};
+                    const custAction = inv.customer_action || (inv.customer_status === 'found' ? 'existing' : 'create');
+                    inv.customer_action = custAction;
+
+                    let custHtml = '';
+                    if (inv.customer_status === 'found') {
+                        custHtml = `<span class="badge bg-success"><i class="fas fa-check me-1"></i> Customer Found: ${esc(inv.matched_customer_name)} (${esc(inv.matched_customer_code || '-')})</span>`;
+                    } else {
+                        custHtml = `
+                            <div class="alert alert-warning py-2 px-3 mb-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <strong><i class="fas fa-exclamation-triangle me-1"></i> This customer is not available on your system:</strong>
+                                    <span class="ms-1">${esc(cust.customer_name)}</span>
+                                    ${cust.customer_code ? `<span class="badge bg-dark ms-1">${esc(cust.customer_code)}</span>` : ''}
+                                    ${cust.filer_type ? `<span class="badge bg-info text-dark ms-1">${esc(cust.filer_type)}</span>` : ''}
+                                    <div class="small text-muted mt-1">
+                                        Contact: ${esc(cust.mobile || '-')} | Address: ${esc(cust.address || '-')} | Channel: ${esc(cust.channel_type || '-')}
+                                        ${cust.cnic ? ` | CNIC: ${esc(cust.cnic)}` : ''}
+                                        ${cust.ntn ? ` | NTN: ${esc(cust.ntn)}` : ''}
+                                    </div>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn ${custAction === 'create' ? 'btn-primary' : 'btn-outline-primary'} btn-cust-action" data-inv="${invIdx}" data-action="create">
+                                        <i class="fas fa-user-plus me-1"></i> Create
+                                    </button>
+                                    <button type="button" class="btn ${custAction === 'cancel' ? 'btn-danger' : 'btn-outline-danger'} btn-cust-action" data-inv="${invIdx}" data-action="cancel">
+                                        <i class="fas fa-times me-1"></i> Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    let rowsHtml = '';
+                    (inv.items || []).forEach(function(item, itemIdx) {
+                        if (!item.action) {
+                            item.action = item.product_status === 'found' ? 'existing' : 'create';
+                        }
+                        const isMissing = item.product_status === 'missing';
+                        const isCancelled = item.action === 'cancel';
+                        const rowCls = isCancelled ? 'table-secondary text-muted' : (isMissing ? 'table-warning' : '');
+
+                        let statusCell = '';
+                        if (!isMissing) {
+                            statusCell = `<span class="badge bg-success"><i class="fas fa-check me-1"></i> Available</span>`;
+                        } else {
+                            statusCell = `
+                                <div class="small fw-bold text-danger mb-1">This item is not available on your system</div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn ${item.action === 'create' ? 'btn-primary' : 'btn-outline-primary'} btn-item-action" data-inv="${invIdx}" data-item="${itemIdx}" data-action="create">
+                                        <i class="fas fa-plus me-1"></i> Create
+                                    </button>
+                                    <button type="button" class="btn ${item.action === 'cancel' ? 'btn-danger' : 'btn-outline-danger'} btn-item-action" data-inv="${invIdx}" data-item="${itemIdx}" data-action="cancel">
+                                        <i class="fas fa-ban me-1"></i> Cancel
+                                    </button>
+                                </div>
+                            `;
+                        }
+
+                        rowsHtml += `
+                            <tr class="${rowCls}">
+                                <td><code>${esc(item.item_code || '-')}</code></td>
+                                <td>
+                                    <div class="fw-semibold">${esc(item.item_name)}</div>
+                                    ${item.category ? `<small class="text-muted">${esc(item.category)}</small>` : ''}
+                                </td>
+                                <td><small>${esc(item.hs_code || '-')}</small></td>
+                                <td class="text-end">${Number(item.qty || 0)}</td>
+                                <td class="text-end">${Number(item.trade_price || 0).toFixed(2)}</td>
+                                <td class="text-end">${Number((item.sp_disc_amount || 0) + (item.reg_disc_amount || 0) + (item.trade_offer || 0)).toFixed(2)}</td>
+                                <td class="text-end">${Number((item.sales_tax_amount || 0) + (item.further_tax_amount || 0)).toFixed(2)}</td>
+                                <td class="text-end fw-bold">${Number(item.net_amount || 0).toFixed(2)}</td>
+                                <td style="min-width: 210px;">${statusCell}</td>
+                            </tr>
+                        `;
+                    });
+
+                    const cardHtml = `
+                        <div class="card border shadow-sm mb-3">
+                            <div class="card-header bg-white py-2 px-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <div>
+                                    <span class="fw-bold text-primary">Invoice #${esc(meta.invoice_no || ('INV-' + (invIdx + 1)))}</span>
+                                    ${inv.invoice_exists ? `<span class="badge bg-danger ms-1">Already Exists (will append -IMP suffix)</span>` : ''}
+                                    <small class="text-muted ms-2">Date: ${esc(meta.invoice_date || '-')} | Route: ${esc(meta.route || '-')}</small>
+                                </div>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="fw-bold text-success">Net: Rs. ${Number(summary.net_invoice_amount || 0).toLocaleString()}</span>
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input chk-skip-invoice" type="checkbox" id="skipInv_${invIdx}" data-inv="${invIdx}" ${inv.skip_invoice ? 'checked' : ''}>
+                                        <label class="form-check-label small fw-semibold" for="skipInv_${invIdx}">Skip Invoice</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="mb-2 px-1">${custHtml}</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered align-middle mb-0" style="font-size: 12px;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Item Name</th>
+                                                <th>HS Code</th>
+                                                <th class="text-end">Qty</th>
+                                                <th class="text-end">Price</th>
+                                                <th class="text-end">Discount</th>
+                                                <th class="text-end">Tax</th>
+                                                <th class="text-end">Net</th>
+                                                <th>System Status / Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>${rowsHtml}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.append(cardHtml);
+                });
+
+                $('#importSaleSummaryBanner').html(
+                    `Parsed <b>${parsedInvoices.length}</b> invoice(s) | Missing Customers: <b class="text-warning">${totalMissingCusts}</b> | Missing Items: <b class="text-danger">${totalMissingItems}</b>`
+                );
+                $('#importSalePreview').removeClass('d-none');
+                $('#btnCommitImportSales').prop('disabled', false);
+            }
+
+            function parseSelectedFile() {
+                const fileInput = document.getElementById('importSaleFile');
+                if (!fileInput.files || !fileInput.files.length) {
+                    showImportAlert('warning', 'Please select an .html or .pdf invoice file first.');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                const branchSelect = document.getElementById('importSaleBranchId');
+                if (branchSelect) {
+                    formData.append('branch_id', branchSelect.value);
+                }
+
+                hideImportAlert();
+                $('#importSalePreview').addClass('d-none');
+                $('#importSaleLoading').removeClass('d-none');
+                $('#btnCommitImportSales').prop('disabled', true);
+
+                $.ajax({
+                    url: "{{ route('sale.import.parse') }}",
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}' },
+                    success: function(res) {
+                        $('#importSaleLoading').addClass('d-none');
+                        if (!res.ok) {
+                            showImportAlert('danger', esc(res.message || 'Failed to parse file.'));
+                            return;
+                        }
+                        parsedInvoices = res.invoices || [];
+                        renderParsedInvoices();
+                    },
+                    error: function(xhr) {
+                        $('#importSaleLoading').addClass('d-none');
+                        const msg = xhr.responseJSON?.message || 'Error parsing file.';
+                        showImportAlert('danger', esc(msg));
+                    }
+                });
+            }
+
+            $(document).on('change', '#importSaleFile', function() {
+                if (this.files && this.files.length) {
+                    parseSelectedFile();
+                }
+            });
+
+            $(document).on('click', '#btnParseImportFile', parseSelectedFile);
+
+            $(document).on('click', '.btn-item-action', function() {
+                const invIdx = $(this).data('inv');
+                const itemIdx = $(this).data('item');
+                const action = $(this).data('action');
+                if (parsedInvoices[invIdx] && parsedInvoices[invIdx].items[itemIdx]) {
+                    parsedInvoices[invIdx].items[itemIdx].action = action;
+                    renderParsedInvoices();
+                }
+            });
+
+            $(document).on('click', '.btn-cust-action', function() {
+                const invIdx = $(this).data('inv');
+                const action = $(this).data('action');
+                if (parsedInvoices[invIdx]) {
+                    parsedInvoices[invIdx].customer_action = action;
+                    renderParsedInvoices();
+                }
+            });
+
+            $(document).on('change', '.chk-skip-invoice', function() {
+                const invIdx = $(this).data('inv');
+                if (parsedInvoices[invIdx]) {
+                    parsedInvoices[invIdx].skip_invoice = $(this).is(':checked');
+                }
+            });
+
+            $(document).on('click', '#btnCreateAllMissingItems', function() {
+                parsedInvoices.forEach(inv => (inv.items || []).forEach(it => {
+                    if (it.product_status === 'missing') it.action = 'create';
+                }));
+                renderParsedInvoices();
+            });
+
+            $(document).on('click', '#btnCancelAllMissingItems', function() {
+                parsedInvoices.forEach(inv => (inv.items || []).forEach(it => {
+                    if (it.product_status === 'missing') it.action = 'cancel';
+                }));
+                renderParsedInvoices();
+            });
+
+            $(document).on('click', '#btnCreateAllMissingCustomers', function() {
+                parsedInvoices.forEach(inv => {
+                    if (inv.customer_status === 'missing') inv.customer_action = 'create';
+                });
+                renderParsedInvoices();
+            });
+
+            $(document).on('click', '#btnCommitImportSales', function() {
+                if (!parsedInvoices.length) return;
+                const btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Importing...');
+                hideImportAlert();
+
+                const payload = {
+                    invoices: parsedInvoices,
+                    sale_status: $('#importSaleStatus').val() || 'booked',
+                };
+                const branchSelect = document.getElementById('importSaleBranchId');
+                if (branchSelect) {
+                    payload.branch_id = branchSelect.value;
+                }
+
+                $.ajax({
+                    url: "{{ route('sale.import.commit') }}",
+                    method: 'POST',
+                    data: JSON.stringify(payload),
+                    contentType: 'application/json',
+                    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}' },
+                    success: function(res) {
+                        btn.prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i> Confirm & Import Sales');
+                        if (res.ok) {
+                            showImportAlert('success',
+                                `<strong>${esc(res.message)}</strong> (Created Products: ${res.created_products}, Created Customers: ${res.created_customers}, Skipped Invoices: ${res.skipped_invoices}). Reloading...`
+                            );
+                            setTimeout(function() {
+                                window.location.reload();
+                            }, 1200);
+                        } else {
+                            showImportAlert('danger', esc(res.message || 'Import failed.'));
+                        }
+                    },
+                    error: function(xhr) {
+                        btn.prop('disabled', false).html('<i class="fas fa-check-circle me-1"></i> Confirm & Import Sales');
+                        const msg = xhr.responseJSON?.message || 'Error committing imported sales.';
+                        showImportAlert('danger', esc(msg));
+                    }
+                });
+            });
+        })();
+    </script>
+    @endcan
 @endsection

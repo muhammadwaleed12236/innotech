@@ -449,6 +449,8 @@ Route::middleware('auth')->group(function () {
     // Route::get('booking/system', [SaleController::class,'booking-system'])->name('booking.index');
     Route::get('sale', [SaleController::class, 'index'])->middleware('permission:sales.view')->name('sale.index');
     Route::get('sale/create', [SaleController::class, 'addsale'])->middleware('permission:sales.create')->name('sale.add');
+    Route::post('/sale/import/parse', [App\Http\Controllers\SaleImportController::class, 'parse'])->middleware('permission:sales.create')->name('sale.import.parse');
+    Route::post('/sale/import/commit', [App\Http\Controllers\SaleImportController::class, 'commit'])->middleware('permission:sales.create')->name('sale.import.commit');
     Route::get('/invoice-series/fetch', [SaleController::class, 'fetchInvoiceSeries'])->name('invoice_series.fetch');
     Route::post('/invoice-series/store', [SaleController::class, 'storeInvoiceSeries'])->name('invoice_series.store');
     Route::get('/invoice-series/generate-no', [SaleController::class, 'generateInvoiceNoAjax'])->name('invoice_series.generate_no');
