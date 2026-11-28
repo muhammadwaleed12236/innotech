@@ -175,7 +175,7 @@
             width: 100%;
             max-width: 100%;
             border-collapse: collapse;
-            font-size: 8.5px;
+            font-size: 9px;
             margin-top: 6px;
             color: #000000;
         }
@@ -183,8 +183,8 @@
         .cashmemo-table th, 
         .cashmemo-table td {
             border: 1px solid #000000;
-            padding: 2.5px 3px;
-            line-height: 1.2;
+            padding: 3px 3.5px;
+            line-height: 1.25;
             vertical-align: middle;
             color: #000000 !important;
             word-break: break-word;
@@ -192,7 +192,7 @@
 
         .cashmemo-table thead th {
             font-weight: 900;
-            font-size: 8px;
+            font-size: 8.5px;
             text-align: center;
             background-color: #ffffff;
             color: #000000 !important;
@@ -244,7 +244,7 @@
         .summary-box-table {
             border-collapse: collapse;
             font-size: 10px;
-            width: 320px;
+            width: 340px;
             color: #000000;
         }
 
@@ -255,7 +255,7 @@
 
         .summary-box-table td.sum-lbl {
             font-weight: 800;
-            text-align: right;
+            text-align: left;
             padding-right: 8px;
             color: #000000 !important;
             white-space: nowrap;
@@ -602,23 +602,23 @@
         <table class="cashmemo-table">
             <thead>
                 <tr>
-                    <th rowspan="2" style="width: 25%; text-align: left;">Item / Product Name</th>
-                    <th rowspan="2" style="width: 7%; text-align: center;">HS Code</th>
-                    <th rowspan="2" style="width: 4%; text-align: center;">PCS</th>
-                    <th rowspan="2" style="width: 7%; text-align: right;">Trade Price</th>
-                    <th rowspan="2" style="width: 8%; text-align: right;">Gross Amount</th>
-                    <th rowspan="2" style="width: 7%; text-align: right;">Special Discount</th>
-                    <th rowspan="2" style="width: 7%; text-align: right;">Regular Discount</th>
-                    <th rowspan="2" style="width: 6%; text-align: right;">Trade Offer</th>
-                    <th rowspan="2" style="width: 6%; text-align: right;">Trade Activity</th>
-                    <th colspan="3" style="width: 16%; text-align: center;">Tax</th>
-                    <th rowspan="2" style="width: 8%; text-align: right;">Net Amount</th>
-                    <th rowspan="2" style="width: 5%; text-align: center;">Tax Type</th>
+                    <th rowspan="2" style="width: 15%; text-align: left;">Item / Product Name</th>
+                    <th rowspan="2" style="width: 6.5%; text-align: center;">HS Code</th>
+                    <th rowspan="2" style="width: 4.5%; text-align: center;">PCS</th>
+                    <th rowspan="2" style="width: 7.5%; text-align: center;">Trade Price</th>
+                    <th rowspan="2" style="width: 8.5%; text-align: center;">Gross Amount</th>
+                    <th rowspan="2" style="width: 7.5%; text-align: center;">Special Discount</th>
+                    <th rowspan="2" style="width: 7.5%; text-align: center;">Regular Discount</th>
+                    <th rowspan="2" style="width: 6.5%; text-align: center;">Trade Offer</th>
+                    <th rowspan="2" style="width: 6.5%; text-align: center;">Trade Activity</th>
+                    <th colspan="3" style="width: 17.5%; text-align: center;">Tax</th>
+                    <th rowspan="2" style="width: 8.5%; text-align: center;">Net Amount</th>
+                    <th rowspan="2" style="width: 4.5%; text-align: center;">Tax Type</th>
                 </tr>
                 <tr>
-                    <th style="width: 5.3%; text-align: right;">S.Tax</th>
-                    <th style="width: 5.3%; text-align: right;">MRP</th>
-                    <th style="width: 5.4%; text-align: right;">4%</th>
+                    <th style="width: 6%; text-align: center;">S.Tax</th>
+                    <th style="width: 6%; text-align: center;">MRP</th>
+                    <th style="width: 5.5%; text-align: center;">4%</th>
                 </tr>
             </thead>
             <tbody>
